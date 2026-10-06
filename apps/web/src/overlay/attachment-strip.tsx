@@ -27,7 +27,13 @@
 
 import { useMemo, useState } from 'react';
 import { DialogShell } from '../components/ui/dialog-shell.js';
-import { AttachmentChip } from '../detail/chat-markdown.js';
+import {
+  AttachmentChip,
+  COMPOSER_CHIP_LABEL,
+  SPEC_CHIP,
+  SPEC_CHIP_IMAGE,
+  SPEC_CHIP_IMG,
+} from '../detail/chat-markdown.js';
 import { useI18n } from '../i18n/provider.js';
 import { type PendingAttachment, parseAttachmentTokens } from './attachment-paste.js';
 import './attachment-strip.css';
@@ -95,18 +101,22 @@ export function AttachmentStrip({
           <button
             key={entry.uid}
             type="button"
-            className="spec-chip spec-chip--image spec-chip--preview attachment-pending"
+            className={`spec-chip spec-chip--image spec-chip--preview attachment-pending ${SPEC_CHIP} ${SPEC_CHIP_IMAGE}`}
             title={entry.name}
             onClick={() => {
               if (entry.url !== null) setPreview({ name: entry.name, src: entry.url });
             }}
           >
-            <img src={entry.url} alt={entry.name} className="spec-chip-img" />
+            <img src={entry.url} alt={entry.name} className={`spec-chip-img ${SPEC_CHIP_IMG}`} />
             <span className="attachment-pending-badge">{t('上传中')}</span>
           </button>
         ) : (
-          <span key={entry.uid} className="spec-chip attachment-pending" title={entry.name}>
-            <span className="composer-chip-label">{entry.name}</span>
+          <span
+            key={entry.uid}
+            className={`spec-chip attachment-pending ${SPEC_CHIP}`}
+            title={entry.name}
+          >
+            <span className={COMPOSER_CHIP_LABEL}>{entry.name}</span>
             <span className="attachment-pending-badge">{t('上传中')}</span>
           </span>
         ),

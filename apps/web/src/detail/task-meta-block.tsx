@@ -32,37 +32,59 @@ export interface TaskMetaFields {
   createdAt: number | null;
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+// #945（detail.css 清零）：meta 面皮肤迁 token utilities。行距 = 中列
+// chat-row 的 18px 律——老 `.task-meta-row + .task-meta-row` 相邻选择器改由
+// 渲染序派生（首行不挂 mt，其后逐行 mt-[18px]，与 DOM 相邻语义等价：行集
+// 顺序渲染、中间无其它兄弟）。label 列定宽对齐；墨色比 dlg-token-row 安静
+// 半档（label tertiary，value secondary——meta 是衬底信息，#476 决策记录）。
+function Row({ label, first, children }: { label: string; first?: boolean; children: ReactNode }) {
   return (
-    <div className="task-meta-row">
-      <span className="task-meta-label">{label}</span>
-      <span className="task-meta-value">{children}</span>
+    <div
+      className={`task-meta-row flex items-baseline text-xs leading-[18px]${first === true ? '' : ' mt-[18px]'}`}
+    >
+      <span className="task-meta-label w-[68px] flex-none text-(--text-tertiary)">{label}</span>
+      <span className="task-meta-value min-w-0 flex-1 text-(--text-secondary) [overflow-wrap:anywhere]">
+        {children}
+      </span>
     </div>
   );
 }
 
 export function TaskMetaBlock({ meta, now }: { meta: TaskMetaFields; now: number }) {
   const { t } = useI18n();
-  return (
-    <div className="task-meta" data-testid="task-meta">
-      {meta.sourceIssue != null && (
-        <Row label={t('来源 issue')}>
-          <a
-            className="task-meta-link"
-            href={meta.sourceIssue.url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            #{meta.sourceIssue.number} {meta.sourceIssue.title}
-          </a>
-        </Row>
-      )}
-      {(meta.branch != null || meta.pr != null) && (
-        <Row label={t('分支 / PR')}>
-          {meta.branch != null && <code className="task-meta-code">{meta.branch}</code>}
+  // 行集按字段在场派生（字段缺省整行不渲染、不占空行），首行判定随之走
+  // 渲染序——与老 CSS 的 `+` 相邻选择器同一效果。
+  const rows: Array<{ label: string; content: ReactNode }> = [];
+  if (meta.sourceIssue != null) {
+    rows.push({
+      label: t('来源 issue'),
+      content: (
+        <a
+          className="task-meta-link text-(--chip-plan-fg) no-underline hover:underline"
+          href={meta.sourceIssue.url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          #{meta.sourceIssue.number} {meta.sourceIssue.title}
+        </a>
+      ),
+    });
+  }
+  if (meta.branch != null || meta.pr != null) {
+    rows.push({
+      label: t('分支 / PR'),
+      content: (
+        <>
+          {meta.branch != null && (
+            <code className="task-meta-code font-mono text-[11px]">{meta.branch}</code>
+          )}
           {meta.pr != null && (
             <a
-              className="task-meta-link"
+              // 老 `.task-meta-code + .task-meta-link` 相邻律：branch code 在
+              // 场时链接让 8px；无 branch 时链接行首无 margin。
+              className={`task-meta-link text-(--chip-plan-fg) no-underline hover:underline${
+                meta.branch != null ? ' ml-2' : ''
+              }`}
               href={meta.pr.url}
               target="_blank"
               rel="noopener noreferrer"
@@ -70,25 +92,42 @@ export function TaskMetaBlock({ meta, now }: { meta: TaskMetaFields; now: number
               #{meta.pr.number}
             </a>
           )}
-        </Row>
-      )}
-      {meta.machine != null && (
-        <Row label={t('机器')}>
+        </>
+      ),
+    });
+  }
+  if (meta.machine != null) {
+    rows.push({
+      label: t('机器'),
+      content: (
+        <>
           {meta.machine}
           {meta.machineWaiting && (
-            <span className="task-meta-waiting">{t('（等待机器上线）')}</span>
+            <span className="task-meta-waiting text-(--text-dim)">{t('（等待机器上线）')}</span>
           )}
+        </>
+      ),
+    });
+  }
+  if (meta.model != null) {
+    rows.push({
+      label: t('模型'),
+      content: <code className="task-meta-code font-mono text-[11px]">{meta.model}</code>,
+    });
+  }
+  if (meta.createdAt != null) {
+    rows.push({ label: t('创建时间'), content: relativeTime(meta.createdAt, now, t) });
+  }
+  return (
+    <div className="task-meta" data-testid="task-meta">
+      {rows.map((row, i) => (
+        <Row key={row.label} label={row.label} first={i === 0}>
+          {row.content}
         </Row>
-      )}
-      {meta.model != null && (
-        <Row label={t('模型')}>
-          <code className="task-meta-code">{meta.model}</code>
-        </Row>
-      )}
-      {meta.createdAt != null && (
-        <Row label={t('创建时间')}>{relativeTime(meta.createdAt, now, t)}</Row>
-      )}
-      <div className="task-meta-foot">{t('方案产出后显示于此')}</div>
+      ))}
+      <div className="task-meta-foot mt-6 text-xs leading-4 text-(--text-dim)">
+        {t('方案产出后显示于此')}
+      </div>
     </div>
   );
 }

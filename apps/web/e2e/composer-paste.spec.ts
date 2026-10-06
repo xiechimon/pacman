@@ -265,7 +265,8 @@ async function stubDetailSurface(page: Page) {
   });
 }
 
-const COMPOSER = '.composer-input';
+// #945/#910 重钉：composer 输入面 = composer-card testid 域内 textarea 元素载体。
+const COMPOSER = '[data-testid="composer-card"] textarea';
 const TOKEN_1 = '![pasted-image-1.png](attachment:team-1/att-1.png)';
 const TOKEN_2 = '![pasted-image-2.png](attachment:team-1/att-2.png)';
 
@@ -401,7 +402,7 @@ test('detail face: a mixed file+text clipboard takes the files and drops the tex
   // The synthetic event carries both a file and plain text; the handler
   // must preventDefault (text dropped — files win per the ticket ruling).
   const prevented = await page.evaluate(() => {
-    const ta = document.querySelector('.composer-input');
+    const ta = document.querySelector('[data-testid="composer-card"] textarea');
     if (!(ta instanceof HTMLTextAreaElement)) throw new Error('no composer');
     const dt = new DataTransfer();
     dt.setData('text/plain', 'copied caption');

@@ -279,7 +279,7 @@ function UserMenuPopover({
         alignOffset={8}
         sideOffset={4}
         aria-label={t('用户菜单')}
-        className="user-menu-popover"
+        className="user-menu-popover block rounded-none border-none bg-transparent p-0 shadow-none"
       >
         <UserMenu floating theme={readStoredTheme(localStorage)} />
       </PopoverContent>

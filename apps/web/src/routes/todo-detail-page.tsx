@@ -59,11 +59,15 @@ import {
 } from '../api/mappers.js';
 import { useAgentAvatarUrlById, useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
+import { AppSidebar } from '../board/app-sidebar.js';
 import {
   assignOptionsFromMembers,
   ChiefAgentDialog,
   type ChiefAgentOption,
 } from '../chief/chief-agent-dialog.js';
+import { ChiefWakeFab, ChiefWakePanel, useChiefSettingsNav } from '../chief/chief-wake.js';
+import { useChiefSurface } from '../chief/use-chief-surface.js';
+import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import { useChatFollow } from '../components/chat/use-chat-follow.js';
 import { toastError } from '../components/ui/toaster.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
@@ -83,6 +87,8 @@ import { StopConfirmDialog } from '../detail/stop-confirm-dialog.js';
 import { TaskMetaBlock, type TaskMetaFields } from '../detail/task-meta-block.js';
 import { type LiveStep, Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
+import { markClosed, markDeleted, withoutDeleted } from '../fixtures/deletions.js';
+import { overlayContent } from '../fixtures/fixtures.js';
 import type {
   DetailContent,
   OverlayState,
@@ -91,6 +97,8 @@ import type {
   PlanDiffContent,
   TranscriptItem,
 } from '../fixtures/records.js';
+import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import type { MentionGroups } from '../overlay/mention-picker.js';
@@ -98,15 +106,6 @@ import type { FileMentionEntry } from '../overlay/mention-token.js';
 import { MoreMenu } from '../overlay/more-menu.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
-import '../detail/detail.css';
-import { AppSidebar } from '../board/app-sidebar.js';
-import { ChiefWakeFab, ChiefWakePanel, useChiefSettingsNav } from '../chief/chief-wake.js';
-import { useChiefSurface } from '../chief/use-chief-surface.js';
-import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
-import { markClosed, markDeleted, withoutDeleted } from '../fixtures/deletions.js';
-import { overlayContent } from '../fixtures/fixtures.js';
-import { resolveScenario } from '../fixtures/scenario.js';
-import { useI18n } from '../i18n/provider.js';
 import { readStoredTheme } from '../theme.js';
 
 /** #209 编辑分配弹层文案 [设计](r2 C.18:该弹层内容从未捕获;弹层形态复用
@@ -836,8 +835,16 @@ export function TodoDetailPage() {
     // #447 (ADR 0004 D7): data-chief-open narrows --detail-pane-right to the
     // docked panel width so the composer / FAB / reject-row anchors skip the
     // panel exactly like they skip the 488px right pane when it is closed.
+    // #945（detail.css 清零）：三栏壳（240 | fluid | 488，todos.dev 网格）
+    // 迁 utilities。--detail-pane-right 是右栏宽单源（composer-reject/FAB
+    // 锚按它 calc() 跳过右格位，#447 D7：chief 停靠时收窄到 418）；#932
+    // 窄屏折叠走 max-md 变体（<768px 双定宽栏退场、线程列独占视口，pane
+    // 变量归零让锚位停止跳格；(0,2,0) 律由 max-md:data-chief-open: 复合
+    // 变体承接——媒体变体在工具层里恒排非媒体档之后，与老文件内
+    // 特异度注释同一结果）。board-sidebar 是 #943 保留的运行时钩子类，
+    // 子选择器规则随壳迁移（跨域消费面不断）。
     <div
-      className="detail-shell"
+      className="detail-shell flex h-full overflow-hidden [--detail-pane-right:488px] data-chief-open:[--detail-pane-right:418px] max-md:[--detail-pane-right:0px] max-md:data-chief-open:[--detail-pane-right:0px] [&>.board-sidebar]:max-md:hidden"
       data-route="todo-detail"
       data-todo-id={id}
       data-chief-open={chief.chiefView === 'drawer' ? '' : undefined}
@@ -848,7 +855,10 @@ export function TodoDetailPage() {
         searchPanel={false}
         onSearch={() => search.setOpen(true)}
       />
-      <div className="detail-main">
+      <div
+        className="detail-main group/detail-main relative flex min-w-0 flex-1 flex-col bg-(--surface)"
+        data-testid="detail-main"
+      >
         <DetailHead
           todo={todo}
           phase={live ? phase : (view.phaseOverride ?? todo.phase)}
@@ -858,8 +868,8 @@ export function TodoDetailPage() {
           chipPopoverOpen={fixture.ui?.chipPopoverOpen === true}
           onEditAssign={() => setAssignOpen(true)}
         />
-        <div className="detail-body">
-          <div className="detail-center">
+        <div className="detail-body relative flex min-h-0 flex-1" data-testid="detail-body">
+          <div className="detail-center flex min-w-0 flex-1 flex-col" data-testid="detail-center">
             {/* 来源 issue 行（#452 / ADR 0006 D5/D6）：live 专属——未建成给
                 重试入口；已建成进入拉一次回显（不一致中性提示、拉不到整行
                 隐藏）。fixture 面无来源数据源，不渲染。 */}
@@ -877,7 +887,7 @@ export function TodoDetailPage() {
               />
             )}
             {detail == null ? (
-              <div className="detail-fresh">
+              <div className="detail-fresh min-h-0 flex-1 overflow-y-auto pb-4">
                 <FreshBlock
                   todo={todo}
                   tags={freshTags}
@@ -891,17 +901,21 @@ export function TodoDetailPage() {
                     下（fix 丢字 bug ——之前 spec 落 todo.spec 但 UI 从未呈现
                     给用户看）。fixture 面不走此分支：fixture
                     fresh-probe 用同样的「尚无描述」placeholder。 */}
-                {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
+                {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} fresh />}
               </div>
             ) : (
-              <div className="chat-col" ref={chatColRef}>
+              <div
+                className="chat-col flex min-h-0 flex-1 flex-col-reverse overflow-y-auto pt-[19px] pr-4 pb-4 pl-[19px]"
+                data-testid="transcript-col"
+                ref={chatColRef}
+              >
                 {/* margin-top:auto pins an overflowing transcript to the
                       newest row at first paint (r8 63–77) and keeps short r7
                       transcripts top-aligned — no scroll scripting, so the
                       fixture capture is deterministic. #873: the reader's own
                       send still jumps here (useChatFollow), which the layout
                       alone never did. */}
-                <div className="chat-pin">
+                <div className="chat-pin mb-auto">
                   {/* #827：简报卡住线程列首（随流滚动，不钉住）——此前它挂
                         在 chat-col 之外，长线程下恒占列首视口（M7 #310 把它
                         从 doc 列迁到中心列的理由不变：用户原始输入属于线程
@@ -1132,11 +1146,17 @@ export function TodoDetailPage() {
           <ChiefWakePanel surface={chief} onSettings={chiefSettingsNav} />
         </div>
         {ui.placeholder != null && composerReject != null && (
-          <div className="composer-reject">{composerReject}</div>
+          <div className="composer-reject absolute bottom-[104px] left-4 right-[calc(var(--detail-pane-right)+16px)] text-center text-xs leading-4 text-(--stop)">
+            {composerReject}
+          </div>
         )}
         {/* #447：FAB 与面板拆挂（面板在 detail-body 右栏格位），共享页面
             层的 chief surface——#443 的 unreadOnly 门控原样保留。 */}
-        <ChiefWakeFab surface={chief} fabClassName="detail-fab" unreadOnly />
+        <ChiefWakeFab
+          surface={chief}
+          fabClassName={`detail-fab absolute bottom-4 right-[calc(var(--detail-pane-right)+16px)] flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border-default) bg-(--surface) text-(--text-tertiary) shadow-(--fab-shadow) hover:bg-(--surface) hover:text-(--text-tertiary) dark:hover:bg-(--surface) dark:hover:text-(--text-tertiary) group-has-[.composer]/detail-main:bottom-[104px] in-data-[chief-open]:max-md:hidden`}
+          unreadOnly
+        />
       </div>
       {!live && detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
       <MoreMenu

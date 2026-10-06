@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Textarea } from '../components/ui/textarea.js';
 import { useI18n } from '../i18n/provider.js';
 import './overlays.css';
 
@@ -38,11 +39,13 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
       onClose={onClose}
       className="dlg-reject"
       footer={
-        <div className="dlg-form-foot">
-          <div className="dlg-form-actions">
+        // #945（正典表 §5.4，ReviewDialog 同款）：foot/actions 别名退役走
+        // utility；取消钮 chief-dlg-ghost → Button outline 档。
+        <div className="flex flex-col px-4 pb-4">
+          <div className="flex justify-end gap-2">
             <Button
-              variant="ghost"
-              className="chief-dlg-ghost font-normal active:not-aria-[haspopup]:translate-y-0"
+              variant="outline"
+              className="cursor-pointer active:not-aria-[haspopup]:translate-y-0"
               onClick={onClose}
             >
               {t('取消')}
@@ -60,9 +63,16 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
       }
     >
       <div className="review-focus-row">
-        <span className="dlg-form-label">{label}</span>
-        <textarea
-          className="review-focus-input reject-feedback-input"
+        {/* #945（正典表 §5.4）：.dlg-form-label 别名退役——标签律 =
+            --label-size/--label-spacing 定版 token utility。 */}
+        <span className="mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--text-primary)">
+          {label}
+        </span>
+        {/* #945（#851 裸控件账）：裸 textarea 收编 components/ui Textarea
+            （ReviewDialog focus 面同款中和串；皮肤正本 detail/overlays.css
+            属 detail-b，unlayered 恒压件底座）。 */}
+        <Textarea
+          className="review-focus-input reject-feedback-input field-sizing-fixed transition-none placeholder:text-[color:revert] focus:border-(--focus-ring) focus-visible:ring-0"
           value={feedback}
           onChange={(event) => setFeedback(event.target.value)}
           rows={3}

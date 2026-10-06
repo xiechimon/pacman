@@ -13,11 +13,17 @@ import { expect, test } from '@playwright/test';
 // inline, not the detail) needs a live stack — the fixture composer is a
 // static div — so it is pinned by the live probe in docs/verify/634/
 // (after-mention-inline check), not here.
+//
+// #945/#910 重钉：chip 触发钮 = head 内唯一携带 aria-expanded 的按钮
+// （aria 状态载体，一级）；更多钮 = role+文案。.chip-popover/.more-menu-item/
+// .delete-confirm 属 overlays/overlay 域（#949 批次），类载体原样保留。
 
 const DETAIL = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27';
 const BOARD = /\/app\?scenario=27$/;
 
-const chip = (page: import('@playwright/test').Page) => page.locator('.detail-chip');
+const head = (page: import('@playwright/test').Page) => page.getByTestId('detail-head');
+const chip = (page: import('@playwright/test').Page) =>
+  head(page).locator('button[aria-expanded]');
 const popover = (page: import('@playwright/test').Page) => page.locator('.chip-popover');
 const confirmDialog = (page: import('@playwright/test').Page) => page.locator('.delete-confirm');
 
@@ -52,7 +58,7 @@ test('E2: ESC with the chip popover open closes the popover first', async ({ pag
 
 test('E3: ESC with a modal overlay open closes the overlay first', async ({ page }) => {
   await page.goto(DETAIL);
-  await page.locator('.detail-head-icon--more').click();
+  await page.getByRole('button', { name: '更多' }).click();
   await page.locator('.more-menu-item[data-action="delete"]').click();
   await expect(confirmDialog(page)).toBeVisible();
   await page.keyboard.press('Escape');

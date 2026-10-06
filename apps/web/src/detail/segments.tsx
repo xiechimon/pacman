@@ -5,11 +5,24 @@
 // mention-picker.css so the chip family stays consistent with the
 // composer overlay.
 
+import { cn } from 'cn';
 import { Link } from 'react-router';
 
 import type { DocSegment } from '../fixtures/records.js';
 import '../overlay/mention-picker.css';
 import { AGENTS_HREF } from '../routes/agent-detail-page.js';
+
+/** #945（detail.css 清零）：inline code chip 皮肤从 per-face 规则迁
+ *  utilities，单源住在这里（两族只差行高——chat-code 11px/13px 紧排，
+ *  doc-code 只钉字号、chip 不长 24px 行盒，r7 17b/26d 实测 13–15px 底矩形）。
+ *  --link 变体 = plan 蓝墨 + 同色底（r8 56 文件/提交引用 chip）。类名保留
+ *  作惰性别名（chief-stream-markdown 等它域 spec 与单测按它定位）。 */
+const CODE_SKIN: Record<string, string> = {
+  'chat-code':
+    'mx-0.5 rounded-[4px] bg-(--code-bg) px-1 py-px font-mono text-[11px] leading-[13px]',
+  'doc-code': 'mx-0.5 rounded-[4px] bg-(--code-bg) px-1 py-px font-mono text-[11px]',
+};
+const CODE_LINK_SKIN = 'bg-(--chip-plan-bg) text-(--chip-plan-fg)';
 
 interface SegmentsProps {
   segments: DocSegment[];
@@ -71,9 +84,12 @@ export function Segments({ segments, codeClassName }: SegmentsProps) {
           // fixture order is stable; segments carry no ids
           <code
             key={j}
-            className={
-              seg.style === 'link' ? `${codeClassName} ${codeClassName}--link` : codeClassName
-            }
+            className={cn(
+              codeClassName,
+              CODE_SKIN[codeClassName],
+              seg.style === 'link' && `${codeClassName}--link`,
+              seg.style === 'link' && CODE_LINK_SKIN,
+            )}
           >
             {seg.text}
           </code>

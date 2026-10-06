@@ -140,7 +140,7 @@ async function openDetail(page: Page) {
   await page.goto(`/app/todo/${CARD_ID}`);
   await membersLoaded;
   await skillsLoaded;
-  const input = page.locator('.composer-input');
+  const input = page.locator('[data-testid="composer-card"] textarea'); // #945/#910 重钉
   await expect(input).toBeVisible();
   await expect(input).toBeEditable();
   const menu = page.locator('.slash-menu');
@@ -278,7 +278,7 @@ test('close set: Esc, space, backspace-past-slash, outside click', async ({ page
 
   await input.fill('/');
   await expect(menu).toBeVisible();
-  await page.locator('.composer-toolbar').click();
+  await page.getByTestId('composer-toolbar').click();
   await expect(menu).toBeHidden();
 });
 

@@ -15,6 +15,18 @@ import { expect, test } from '@playwright/test';
 //   5. section switching dead      6. frozen pane-view scenarios
 //      (30/31/32) still pop dialogs  7. fresh phase keeps the empty right
 //      pane or loses the brief's primary action
+//
+// #945/#910 重钉：detail.css 退役——本域载体换语义/二级制：壳 =
+// [data-route=todo-detail]、侧栏 = 壳的直接 aside、列/主栏/右栏 =
+// detail-center / detail-main / detail-right testid、线程列 =
+// transcript-col、composer 卡 = composer-card、头带 = detail-main 内的
+// header、标题 = detail-title、按钮走 role+文案（更多/停止/发送/总管/
+// 打开方案/开始）、dialog 缺席断言走 role=dialog、overlay 缺席断言走
+// rerun 文案。跨域类 locator 保留至各自批次：.doc-select-wrap/
+// .doc-pane-select/.plan-dropdown*（overlays #949）、.dlg-token-total/
+// .dlg-branch-box/.dlg-history-row（detail/overlays.css，detail-b）、
+// .chief-drawer（chief #950）。.detail-tab* / .right-empty 是缺席钉
+// （零规则死类，钉的就是「这些类名永不回来」），原样保留。
 
 const DETAIL_ROUTE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc';
 const FRESH = '/app/todo/fresh-probe?scenario=23';
@@ -27,9 +39,9 @@ test('three abutting panes: 240 sidebar | fluid center | 488 right', async ({ pa
       return { left: r.left, right: r.right, width: Math.round(r.width) };
     };
     return {
-      sidebar: rect('.board-sidebar'),
-      center: rect('.detail-center'),
-      right: rect('.detail-right'),
+      sidebar: rect('[data-route="todo-detail"] > aside'),
+      center: rect('[data-testid="detail-center"]'),
+      right: rect('[data-testid="detail-right"]'),
     };
   });
   expect(geo.sidebar.width).toBe(240);
@@ -41,7 +53,7 @@ test('three abutting panes: 240 sidebar | fluid center | 488 right', async ({ pa
   expect(geo.center.width).toBe(1440 - 240 - 488);
   // the seam between center and right is a 1px hairline, not a shadow
   const seam = await page.evaluate(() => {
-    const cs = getComputedStyle(document.querySelector('.detail-right')!);
+    const cs = getComputedStyle(document.querySelector('[data-testid="detail-right"]')!);
     return { borderLeft: cs.borderLeftWidth, shadow: cs.boxShadow };
   });
   expect(seam.borderLeft).toBe('1px');
@@ -61,9 +73,10 @@ test('detail head keeps the 更多 icon only — branch/token/history icons are 
   page,
 }) => {
   await page.goto(`${DETAIL_ROUTE}?scenario=27`);
-  await expect(page.locator('.detail-head-icon--more')).toBeVisible();
+  await expect(page.getByRole('button', { name: '更多' })).toBeVisible();
+  const head = page.getByTestId('detail-main').locator('header');
   for (const label of ['分支与 PR', 'Token 用量', '运行历史']) {
-    await expect(page.locator(`.detail-head button[aria-label="${label}"]`)).toHaveCount(0);
+    await expect(head.locator(`button[aria-label="${label}"]`)).toHaveCount(0);
   }
 });
 
@@ -72,14 +85,17 @@ test('composer stays in-flow inside the center column: card form, 16px insets, s
 }) => {
   await page.goto(`${DETAIL_ROUTE}?scenario=17b`);
   const geo = await page.evaluate(() => {
-    const rect = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
-    const center = rect('.detail-center');
-    const main = rect('.detail-main');
-    const col = rect('.chat-col');
-    const comp = document.querySelector('.composer')!;
+    const rect = (sel: string) => {
+      const r = document.querySelector(sel)!.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    const center = rect('[data-testid="detail-center"]');
+    const main = rect('[data-testid="detail-main"]');
+    const col = rect('[data-testid="transcript-col"]');
+    const comp = document.querySelector('[data-testid="composer-card"]')!;
     const r = comp.getBoundingClientRect();
     const cs = getComputedStyle(comp);
-    const colCs = getComputedStyle(document.querySelector('.chat-col')!);
+    const colCs = getComputedStyle(document.querySelector('[data-testid="transcript-col"]')!);
     return {
       centerLeft: center.left,
       centerRight: center.right,
@@ -114,39 +130,38 @@ test('composer stays in-flow inside the center column: card form, 16px insets, s
   expect(geo.colPadBottom).toBeGreaterThanOrEqual(16);
 });
 
-test('composer controls share one bottom row: stop is the send button\'s sibling', async ({
+test("composer controls share one bottom row: stop is the send button's sibling", async ({
   page,
 }) => {
   // XMON-55 P5. The stop used to be a 14x14 bare --stop block at right:72 /
   // bottom:17 — 27px adrift of the send button, 4px off its centre line, and
   // with no glyph inside. This pins the four ways it can regress.
   await page.goto(`${DETAIL_ROUTE}?scenario=26`);
+  const stopBtn = page.getByRole('button', { name: '停止' });
+  const sendBtn = page.getByRole('button', { name: '发送' });
   const geo = await page.evaluate(() => {
-    const rect = (sel: string) => {
-      const r = document.querySelector(sel)!.getBoundingClientRect();
-      return {
-        l: r.left,
-        r: r.right,
-        w: r.width,
-        h: r.height,
-        cy: (r.top + r.bottom) / 2,
-      };
+    const rect = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { l: r.left, r: r.right, w: r.width, h: r.height, cy: (r.top + r.bottom) / 2 };
     };
-    const tool = document.querySelector('.composer-tool')!;
+    const byLabel = (label: string) =>
+      document.querySelector(`[data-testid="composer-card"] button[aria-label="${label}"]`)!;
+    const tool = document.querySelector(
+      '[data-testid="composer-toolbar"] button[aria-label="添加附件"]',
+    )!;
     const toolGlyph = tool.querySelector('svg')!.getBoundingClientRect();
-    const ph = document.querySelector('.composer-placeholder')!.getBoundingClientRect();
-    const phCs = getComputedStyle(document.querySelector('.composer-placeholder')!);
-    const stopCs = getComputedStyle(document.querySelector('.composer-stop')!);
-    const sendCs = getComputedStyle(document.querySelector('.composer-send')!);
+    const ph = document.querySelector('[data-testid="composer-placeholder"]')!;
+    const phCs = getComputedStyle(ph);
+    const phBox = ph.getBoundingClientRect();
     return {
-      stop: rect('.composer-stop'),
-      send: rect('.composer-send'),
+      stop: rect(byLabel('停止')),
+      send: rect(byLabel('发送')),
       toolCy: (tool.getBoundingClientRect().top + tool.getBoundingClientRect().bottom) / 2,
       toolGlyphL: toolGlyph.left,
-      phTextL: ph.left + Number.parseFloat(phCs.paddingLeft),
-      stopFill: stopCs.backgroundColor,
-      sendFill: sendCs.backgroundColor,
-      stopGlyph: document.querySelectorAll('.composer-stop-glyph').length,
+      phTextL: phBox.left + Number.parseFloat(phCs.paddingLeft),
+      stopFill: getComputedStyle(byLabel('停止')).backgroundColor,
+      sendFill: getComputedStyle(byLabel('发送')).backgroundColor,
+      stopGlyph: byLabel('停止').querySelectorAll('span').length,
     };
   });
   // a real hit target, not a 14px smudge
@@ -164,6 +179,9 @@ test('composer controls share one bottom row: stop is the send button\'s sibling
   expect(geo.stopGlyph).toBe(1);
   // the toolbar's ink starts on the placeholder text's own left edge
   expect(Math.abs(geo.toolGlyphL - geo.phTextL)).toBeLessThanOrEqual(2);
+  // locators stay semantic (the probe above is the geometry law)
+  await expect(stopBtn).toBeVisible();
+  await expect(sendBtn).toBeVisible();
 });
 
 test('composer width tracks the center column across both pane states (488 pane / 418 chief dock)', async ({
@@ -172,8 +190,8 @@ test('composer width tracks the center column across both pane states (488 pane 
   await page.goto(`${DETAIL_ROUTE}?scenario=detail-unread`);
   const measure = () =>
     page.evaluate(() => {
-      const c = document.querySelector('.detail-center')!.getBoundingClientRect();
-      const r = document.querySelector('.composer')!.getBoundingClientRect();
+      const c = document.querySelector('[data-testid="detail-center"]')!.getBoundingClientRect();
+      const r = document.querySelector('[data-testid="composer-card"]')!.getBoundingClientRect();
       return { center: c.width, comp: r.width };
     });
   const pane = await measure();
@@ -181,8 +199,8 @@ test('composer width tracks the center column across both pane states (488 pane 
   expect(pane.comp).toBeCloseTo(pane.center - 32, 0);
   // chief dock (#447 D7): the panel takes the right slot at 418px and the
   // composer width follows the column — in-flow needs no pane-var resync
-  await page.locator('.detail-fab').click();
-  await expect(page.locator('.detail-right')).toHaveCount(0);
+  await page.getByRole('button', { name: '总管' }).click();
+  await expect(page.getByTestId('detail-right')).toHaveCount(0);
   const drawer = page.locator('.chief-drawer');
   await drawer.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
   const docked = await measure();
@@ -195,9 +213,11 @@ test('right pane type select switches between the doc surface and the three sect
 }) => {
   await page.goto(`${DETAIL_ROUTE}?scenario=27`);
   // review phase opens on the doc view (变更 surface)
-  await expect(page.locator('.detail-right .doc-pane')).toBeVisible();
-  await expect(page.locator('.dlg')).toHaveCount(0);
+  const right = page.getByTestId('detail-right');
+  await expect(right.getByTestId('doc-pane')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
+  // .doc-select-wrap/.doc-pane-select = overlays 域（#949 批次），保留类载体
   const select = page.locator('.doc-select-wrap .doc-pane-select');
   await select.click();
   const dropdown = page.locator('.plan-dropdown');
@@ -208,29 +228,30 @@ test('right pane type select switches between the doc surface and the three sect
   // pick Token 用量 → static section in the pane, no dialog anywhere
   await dropdown.locator('.plan-dropdown-row', { hasText: 'Token 用量' }).click();
   await expect(dropdown).toBeHidden();
-  await expect(page.locator('.dlg')).toHaveCount(0);
-  await expect(page.locator('.detail-right .doc-pane')).toHaveCount(0);
-  await expect(page.locator('.detail-right .dlg-token-total')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(right.getByTestId('doc-pane')).toHaveCount(0);
+  await expect(right.locator('.dlg-token-total')).toBeVisible();
 
   // the section head carries the same select — switch back to the doc view
   await page.locator('.doc-select-wrap .doc-pane-select').click();
   await page.locator('.plan-dropdown-row', { hasText: '变更' }).click();
-  await expect(page.locator('.detail-right .doc-pane')).toBeVisible();
+  await expect(right.getByTestId('doc-pane')).toBeVisible();
   await expect(page.locator('.dlg-token-total')).toHaveCount(0);
 });
 
 test('scenarios 30/31/32 freeze the pane view instead of popping dialogs', async ({ page }) => {
+  const right = page.getByTestId('detail-right');
   await page.goto(`${DETAIL_ROUTE}?scenario=30`);
-  await expect(page.locator('.dlg')).toHaveCount(0);
-  await expect(page.locator('.detail-right .dlg-token-total')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(right.locator('.dlg-token-total')).toBeVisible();
 
   await page.goto(`${DETAIL_ROUTE}?scenario=31`);
-  await expect(page.locator('.dlg')).toHaveCount(0);
-  await expect(page.locator('.detail-right .dlg-branch-box')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(right.locator('.dlg-branch-box')).toBeVisible();
 
   await page.goto(`${DETAIL_ROUTE}?scenario=32`);
-  await expect(page.locator('.dlg')).toHaveCount(0);
-  await expect(page.locator('.detail-right .dlg-history-row')).toHaveCount(1);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(right.locator('.dlg-history-row')).toHaveCount(1);
 });
 
 test('plan card activation in the thread opens the plan doc in the right pane', async ({
@@ -238,12 +259,13 @@ test('plan card activation in the thread opens the plan doc in the right pane', 
 }) => {
   await page.goto(`${DETAIL_ROUTE}?scenario=plan-open`);
   // review phase opens on the changes surface
+  // （.doc-select-wrap/.doc-pane-select = overlays 域类载体，#949 批次）
   await expect(page.locator('.doc-select-wrap .doc-pane-select')).toContainText('变更');
   // the build-open round carries its own plan card; the frozen row is first
-  await page.locator('.chat-plan-open').first().click();
+  await page.getByRole('button', { name: '打开方案' }).first().click();
   // activation flips the pane to the doc view's plan surface
   await expect(page.locator('.doc-select-wrap .doc-pane-select')).toContainText('方案');
-  await expect(page.locator('.doc-pane-body .doc-block').first()).toBeVisible();
+  await expect(page.getByTestId('doc-body').locator('p').first()).toBeVisible();
 });
 
 test('fresh phase: the brief owns the whole center column, right pane collapses', async ({
@@ -253,28 +275,28 @@ test('fresh phase: the brief owns the whole center column, right pane collapses'
   // XMON-55 P0 (reverses #366 修订裁决 3): a fresh todo has no run content, so
   // the 488px pane that existed only to say 「尚无运行内容」 is gone and the
   // fresh block takes the full fluid remainder instead.
-  await expect(page.locator('.detail-center .fresh-block')).toBeVisible();
-  await expect(page.locator('.detail-right')).toHaveCount(0);
+  await expect(page.getByTestId('detail-center').getByTestId('fresh-block')).toBeVisible();
+  await expect(page.getByTestId('detail-right')).toHaveCount(0);
   await expect(page.locator('.right-empty')).toHaveCount(0);
-  await expect(page.locator('.doc-pane')).toHaveCount(0);
+  await expect(page.getByTestId('doc-pane')).toHaveCount(0);
   const center = await page
-    .locator('.detail-center')
+    .getByTestId('detail-center')
     .evaluate((el) => Math.round(el.getBoundingClientRect().width));
   expect(center).toBe(1440 - 240);
 
   // the task title now names the page twice: in the 44px head (XMON-55 P1, so
-  // the reader knows which task they are on while scrolled into the thread) and
-  // on the brief itself
-  await expect(page.locator('.fresh-title')).toHaveText(
-    '在 README.md 末尾追加一行「r7 rebaseline probe」',
-  );
-  await expect(page.locator('.detail-title')).toHaveText(
-    '在 README.md 末尾追加一行「r7 rebaseline probe」',
-  );
-  const start = page.locator('.detail-center .fresh-start');
+  // the reader knows which task they are on while scrolled into the thread)
+  // and on the brief itself
+  const title = '在 README.md 末尾追加一行「r7 rebaseline probe」';
+  await expect(page.getByRole('heading', { name: title })).toHaveText(title);
+  await expect(page.getByTestId('detail-title')).toHaveText(title);
+  const start = page
+    .getByTestId('detail-center')
+    .getByRole('button', { name: '开始', exact: true });
   await expect(start).toBeVisible();
   await expect(start).toHaveText('开始');
   await start.click();
-  // #640：todo 相位 开始 = 单出口直发编排回合，不再弹选择 dialog（fixture inert）。
-  await expect(page.locator('.overlay-title')).toHaveCount(0);
+  // #640：todo 相位 开始 = 单出口直发编排回合，不再弹选择 dialog（fixture
+  // inert）。缺席断言走 rerun 面唯一文案（.overlay-title 类载体退役）。
+  await expect(page.getByText('这张任务将交给总管重新编排。')).toHaveCount(0);
 });

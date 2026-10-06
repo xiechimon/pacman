@@ -68,22 +68,30 @@ interface FreshBlockProps {
 export function FreshBlock({ todo, tags, action, onAction, hasSpec }: FreshBlockProps) {
   const { t } = useI18n();
   return (
-    <div className="fresh-block">
-      <h2 className="fresh-title">{todo.title}</h2>
+    <div className="fresh-block mx-auto max-w-[720px] px-4 pt-[72px]" data-testid="fresh-block">
+      <h2 className="fresh-title m-0 text-[22px] leading-[30px] font-semibold break-words text-(--text-primary)">
+        {todo.title}
+      </h2>
       {/* #394：chips 只读，无标签时整行不渲染（原静态添加 affordance 移除） */}
       {(tags ?? []).length > 0 && (
-        <div className="fresh-tags">
+        <div className="fresh-tags mt-4 flex items-center gap-[15px] text-(--text-dim)">
           {(tags ?? []).map((tag) => (
             <TagChip key={tag.id} tag={tag} className="fresh-tag-chip" />
           ))}
         </div>
       )}
-      {hasSpec !== true && <div className="fresh-nodesc">{t('尚无描述')}</div>}
-      <div className="fresh-meta">
-        <span className="fresh-meta-time">{formatCreatedAt(todo.phaseAt, t)}</span>
+      {hasSpec !== true && (
+        <div className="fresh-nodesc mt-4 text-sm leading-[22px] text-(--text-tertiary)">
+          {t('尚无描述')}
+        </div>
+      )}
+      <div className="fresh-meta mt-5 flex items-center text-(--text-tertiary)">
+        <span className="fresh-meta-time text-xs leading-4">
+          {formatCreatedAt(todo.phaseAt, t)}
+        </span>
       </div>
       {action != null && onAction != null && (
-        <div className="fresh-actions">
+        <div className="fresh-actions mt-8 flex items-center gap-3">
           {/* XMON-24：老 primary/standard（h32 px12 r8 @13px，.fresh-start
               无本面规则）逐值搬 brand utilities；border-0 去掉底座 1px
               透明描边（配 bg-clip-padding 会在漆边留一圈未paint环）。 */}
@@ -94,7 +102,7 @@ export function FreshBlock({ todo, tags, action, onAction, hasSpec }: FreshBlock
           >
             {t(action)}
           </Button>
-          <span className="fresh-action-hint">
+          <span className="fresh-action-hint text-xs leading-4 text-(--text-tertiary)">
             {t('点开始后由总管编排派发，Agent 在你的机器上跑')}
           </span>
         </div>

@@ -74,10 +74,14 @@ export function PaneTypeSelect({
       <DropdownMenu defaultOpen={initiallyOpen}>
         <DropdownMenuTrigger
           render={
+            // #945（detail.css 清零，跨域消费面）：.doc-pane-select 皮肤从
+            // per-face 迁 utilities——与 detail/docpane 的 PANE_SELECT 同配方
+            // （防两消费面漂移的既有律），仅左距不同：wrap 内 6px（老基规则
+            // ml 6px；docpane 的 range-wrap 嵌套覆写才是 ml-0）。
             <Button
               variant="ghost"
               size="default"
-              className="doc-pane-select h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
+              className="doc-pane-select ml-1.5 flex h-auto cursor-pointer items-center justify-start gap-[3px] rounded-none border-none bg-transparent p-0 text-xs leading-4 text-inherit font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             />
           }
         >

@@ -63,6 +63,46 @@ function formatElapsed(seconds: number, t: TFunc): string {
   return t('完成 {elapsed}', { elapsed });
 }
 
+// #945（detail.css 清零）：线程列皮肤迁 token utilities。行距律 = r7
+// 16/17/26/27 捕获：用户行 18px、agent 行 21px、连续 agent 行收紧 14px
+// （r7 26d result→streaming）、note 之后的行 6px——老 CSS 用 `+` 相邻
+// 选择器表达，这里改由渲染序派生（行 margin 是每行首个类，无叠层竞争）。
+// ghost 七通道中和（#908 裁决 3）随各钮带上。
+const ROW_BASE = 'chat-row flex items-start';
+
+/** 行的 DOM 末节点是否 agent 行（连续 agent 收紧律的前件）：robot 无
+ *  footer（有 footer 时末节点是 action 行）与 streaming 两形。 */
+function endsWithAgentRow(item: TranscriptItem | undefined): boolean {
+  if (item == null) return false;
+  if (item.kind === 'streaming') return true;
+  return item.kind === 'robot' && item.footer == null;
+}
+
+/** 现行在老相邻选择器律下的 margin-top（chat-row 族专用）。 */
+function rowMargin(item: TranscriptItem, prev: TranscriptItem | undefined): string {
+  // `.chat-note + .chat-row`（6px）在老文件里排最后 = 同特异度下压过
+  // agent 族——渲染序派生保持同一优先级。
+  if (prev?.kind === 'note') return 'mt-1.5';
+  switch (item.kind) {
+    case 'robot':
+    case 'fail':
+    case 'streaming':
+    case 'review':
+      return endsWithAgentRow(prev) ? 'mt-[14px]' : 'mt-[21px]';
+    case 'chief':
+      return 'mt-1';
+    case 'user':
+      return 'mt-[18px]';
+    default:
+      return '';
+  }
+}
+
+/** `.chat-para + .chat-para`（r7 38：多段机器人消息行距 27 = 20 + 7）的
+ *  渲染序等价形——段列表/finding 容器内非首段挂 7px。 */
+const PARA = 'chat-para m-0';
+const PARA_GAP = 'mt-[7px]';
+
 /** Message action row (r7 17/28, r8 63/65/73, #634 follow-up re-measured
  *  2026-10-02): optional copy button, then the optional `| 完成 Ns` elapsed
  *  tail. Every footer variant observed is a subset of this one row. With
@@ -115,32 +155,37 @@ function ActionRow({
   const tail = (
     <>
       {label != null && (
-        <span className="chat-foot-tools-label">
+        <span className="chat-foot-tools-label inline-flex items-center gap-2 text-xs leading-4 whitespace-nowrap text-(--text-secondary)">
           <Terminal width={12} height={12} />
           {label}
         </span>
       )}
       {(seconds != null || bare === true) && (
-        <span className="chat-foot-elapsed">
+        <span className="chat-foot-elapsed border-l border-(--border-strong) pl-[9px] text-xs leading-4 whitespace-nowrap text-(--text-tertiary)">
           {seconds != null ? formatElapsed(seconds, t) : t('完成')}
         </span>
       )}
       {toggle != null &&
         (toggle.expanded ? (
-          <ChevronDown width={10} height={10} className="chat-foot-chevron" />
+          <ChevronDown width={10} height={10} className="chat-foot-chevron text-(--text-dim)" />
         ) : (
-          <ChevronRight width={10} height={10} className="chat-foot-chevron" />
+          <ChevronRight width={10} height={10} className="chat-foot-chevron text-(--text-dim)" />
         ))}
     </>
   );
   return (
-    <div className="chat-row-icons">
+    <div
+      className="chat-row-icons mt-5 flex items-center gap-3.5 pl-[31px] text-(--text-dim)"
+      data-testid="msg-actions"
+    >
       {copy != null && (
         // p-0 keeps the 13px icon box the inert span carried, so the row
-        // geometry the #470 fence pins does not move.
+        // geometry the #470 fence pins does not move. #945：.chat-copy 的
+        // 无边框透明底迁 utilities（ghost hover 底双档中和，墨色走 inherit
+        // = 行的 dim；老面无 cursor 规则，不加 cursor-pointer）。
         <Button
           variant="ghost"
-          className="chat-copy h-auto rounded-none justify-start p-0 active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          className="chat-copy h-auto justify-start rounded-none border-none bg-transparent p-0 hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
           aria-label={t('复制')}
           onClick={() => {
             void navigator.clipboard.writeText(copy);
@@ -152,15 +197,13 @@ function ActionRow({
       {toggle == null ? (
         tail
       ) : (
-        // XMON-24：行图标 toggle 切 shadcn ghost——皮肤/几何全在
-        // .chat-row-icons(--toggle) per-face（font:inherit 顺手灭底座字号，
-        // bg transparent 灭 hover/aria-expanded 底）；utilities 只清 h-8、
-        // justify、active 位移、svg 强制 16px（chevron 属性 10px）四条差额。
-        // #634 follow-up：toggle 退为行内尾段钮（copy 钮独立成兄弟），
-        // 嵌套钮内的左 padding 由后代选择器归零（unlayered 压 utilities）。
+        // XMON-24 行图标 toggle shadcn ghost 底座不变；#945 皮肤/几何迁
+        // utilities——font:inherit 灭底座字号（text/leading-[inherit]）、
+        // bg transparent + 七通道中和灭 hover/aria-expanded 底、左 padding
+        // 归零（#634：toggle 是行内尾段钮，行的 31px inset 只算一次）。
         <Button
           variant="ghost"
-          className="chat-row-icons--toggle h-auto rounded-none justify-start active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          className="chat-row-icons--toggle h-auto cursor-pointer justify-start rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit aria-expanded:bg-transparent aria-expanded:text-inherit active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
           aria-expanded={toggle.expanded}
           onClick={toggle.onToggle}
         >
@@ -171,24 +214,32 @@ function ActionRow({
   );
 }
 
-function Para({ para }: { para: RobotPara }) {
+function Para({ para, gap = false }: { para: RobotPara; gap?: boolean }) {
+  // #945：AI-review 引用块（r8 65）= 4px 左缝 + 15px 内距 + tint 带
+  // background-clip 到 content box（缝留透明）；悬挂序号 = relative +
+  // 19px 左内距 + 绝对序号位。
+  const quoteSkin =
+    'chat-para--quote border-l-4 border-(--border-default) bg-(--code-bg) pt-1.5 pr-2 pb-1.5 pl-[15px] [background-clip:content-box] text-(--text-secondary)';
   if (para.quote === true) {
     return (
-      <p className="chat-para chat-para--quote">
+      <p className={`${PARA} ${quoteSkin}${gap ? ` ${PARA_GAP}` : ''}`}>
         <Segments segments={para.segments} codeClassName="chat-code" />
       </p>
     );
   }
   if (para.ordinal != null) {
     return (
-      <p className="chat-para chat-para--num" data-ordinal={para.ordinal}>
-        <span className="chat-num-mark">{para.ordinal}.</span>
+      <p
+        className={`${PARA} chat-para--num relative pl-[19px]${gap ? ` ${PARA_GAP}` : ''}`}
+        data-ordinal={para.ordinal}
+      >
+        <span className="chat-num-mark absolute left-0">{para.ordinal}.</span>
         <Segments segments={para.segments} codeClassName="chat-code" />
       </p>
     );
   }
   return (
-    <p className="chat-para">
+    <p className={`${PARA}${gap ? ` ${PARA_GAP}` : ''}`}>
       <Segments segments={para.segments} codeClassName="chat-code" />
     </p>
   );
@@ -204,8 +255,13 @@ function AgentRowAvatar({
 }: {
   agent: { displayName: string; avatarUrl: string | null } | null;
 }) {
+  // agent 头像骑在文本行盒上方 4px（r7 26/27/36：avatar top = text top − 4，
+  // 老 `.chat-row--agent .chat-avatar` 上下文规则的同值迁移）。
   return (
-    <span className="chat-avatar">
+    <span
+      className="chat-avatar -mt-1 flex-none size-5 [&_img]:block [&_img]:size-5"
+      data-testid="msg-avatar"
+    >
       <SeededAvatar
         name={agent?.displayName}
         src={agent?.avatarUrl}
@@ -217,6 +273,7 @@ function AgentRowAvatar({
 
 function Row({
   item,
+  prev,
   t,
   onOpenPlan,
   agent,
@@ -224,19 +281,22 @@ function Row({
   liveStep,
 }: {
   item: TranscriptItem;
+  /** 前一条目——行距律（18/21/14/6px）的相邻判定输入（#945）。 */
+  prev: TranscriptItem | undefined;
   t: TFunc;
   onOpenPlan?: () => void;
   agent: { displayName: string; avatarUrl: string | null } | null;
   user: CurrentUser;
   liveStep: LiveStep | null;
 }) {
+  const margin = rowMargin(item, prev);
   switch (item.kind) {
     case 'run':
       return (
-        <div className="chat-stamp">
+        <div className="chat-stamp flex-none text-center text-xs leading-4 text-(--text-dim)">
           {item.at != null && <div>{item.at}</div>}
           {item.machine != null && (
-            <div className="chat-stamp-machine">
+            <div className="chat-stamp-machine mt-1 text-[11px] leading-3 text-(--text-dim) [&_span]:underline">
               {t('运行在 {m} 上', { m: item.machine ?? '' })
                 .split(item.machine ?? '')
                 .map((part, i) =>
@@ -251,35 +311,55 @@ function Row({
                 )}
             </div>
           )}
-          {item.cancelled === true && <div className="chat-stamp-cancelled">{t('已取消')}</div>}
+          {item.cancelled === true && (
+            <div className="chat-stamp-cancelled mt-1 text-[11px] leading-3 text-(--fail-fg)">
+              {t('已取消')}
+            </div>
+          )}
         </div>
       );
     case 'note':
       // #634: note text is data (daemon/system prose or mapper labels like
       // 记忆已更新) — route it through t() so en-dict entries apply; unknown
       // keys fall back to the zh original (translate.ts law).
-      return <div className="chat-note">{t(item.text)}</div>;
+      // #470：68ch 行宽 cap + auto 侧 margin（宽列下居中不 mid-token 折行）。
+      return (
+        <div
+          className="chat-note mx-auto mt-5 max-w-[68ch] text-center text-xs leading-4 text-(--text-dim)"
+          data-testid="transcript-note"
+        >
+          {t(item.text)}
+        </div>
+      );
     case 'scheduled':
       return (
-        <div className="chat-scheduled">
+        <div className="chat-scheduled mt-3.5 flex items-center gap-1.5 text-xs leading-4 text-(--text-tertiary)">
           <Clock width={13} height={13} />
           {t('由定时发起')}
         </div>
       );
     case 'chief':
       return (
-        <div className="chat-row chat-row--chief">
-          <span className="chat-avatar">
+        <div className={`${ROW_BASE} chat-row--chief ${margin}`}>
+          <span
+            className="chat-avatar flex-none size-5 [&_img]:block [&_img]:size-5"
+            data-testid="msg-avatar"
+          >
             <img src="/avatar-robot-2.svg" alt="" />
           </span>
-          <span className="chat-chief">{t('由总管发起')}</span>
+          <span className="chat-chief ml-[11px] text-xs leading-4 text-(--text-tertiary)">
+            {t('由总管发起')}
+          </span>
         </div>
       );
     case 'user':
       return (
         <>
-          <div className="chat-row">
-            <span className="chat-avatar">
+          <div className={`${ROW_BASE} ${margin}`}>
+            <span
+              className="chat-avatar flex-none size-5 [&_img]:block [&_img]:size-5"
+              data-testid="msg-avatar"
+            >
               <SeededAvatar
                 name={user.displayName}
                 src={user.avatarUrl}
@@ -288,15 +368,32 @@ function Row({
             </span>
             {/* #612：真实用户话语带 markdown 槽（live mapper 设置；robot 行
                 #469 同款渲染期解析）——围栏/列表/标题不再按字面裸排。纯文本
-                槽 = fixture 捕获形，DOM 与几何保持不变。 */}
-            <span className={item.markdown != null ? 'chat-bubble chat-bubble--md' : 'chat-bubble'}>
+                槽 = fixture 捕获形，DOM 与几何保持不变。XMON-55 P3：
+                min-height 保单行药丸 24px、多行随文长；12px 位圆角与
+                composer 同层（页面上两个用户说话的面同材质）。 */}
+            <span
+              className={`chat-bubble ml-[11px] mt-1 min-h-6 min-w-0 max-w-[68ch] rounded-none bg-(--surface-secondary) px-[13px] text-[15px] leading-6 break-words text-(--text-primary) ${
+                item.markdown != null
+                  ? 'chat-bubble--md whitespace-normal [&>:first-child]:mt-0 [&>:last-child]:mb-0'
+                  : 'whitespace-pre-wrap'
+              }`}
+              data-testid="user-bubble"
+              {...(item.markdown != null ? { 'data-md': 'true' } : {})}
+            >
               {item.markdown != null ? <ChatMarkdown text={item.markdown} /> : item.text}
             </span>
           </div>
           {item.seq != null && item.title != null && (
-            <div className="chat-taskline">
-              <span className="chat-taskline-seq">#{item.seq}</span>
-              <span className="chat-taskline-title">{item.title}</span>
+            <div
+              className="chat-taskline mt-1.5 flex items-center pl-[49px]"
+              data-testid="taskline"
+            >
+              <span className="chat-taskline-seq flex h-[18px] flex-none items-center rounded-[4px] bg-(--code-bg) px-[7px] text-[11px] leading-4 text-(--text-secondary)">
+                #{item.seq}
+              </span>
+              <span className="chat-taskline-title ml-[5px] min-w-0 break-words text-[15px] leading-5 font-semibold text-(--text-primary)">
+                {item.title}
+              </span>
             </div>
           )}
           {/* #634 follow-up: the user row's copy is real too — the bubble's
@@ -307,9 +404,12 @@ function Row({
       );
     case 'robot':
       return (
-        <div className="chat-row chat-row--agent">
+        <div className={`${ROW_BASE} chat-row--agent ${margin}`} data-row="agent">
           <AgentRowAvatar agent={agent} />
-          <span className="chat-text">
+          <span
+            className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--text-primary)"
+            data-testid="agent-text"
+          >
             {item.markdown != null ? (
               // #469: block markdown reply — parsed + rendered at render
               // time (headings / nested lists / code fences); inline code
@@ -318,7 +418,7 @@ function Row({
             ) : (
               (item.paragraphs ?? []).map((raw, i) => (
                 // fixture order is stable; paragraphs carry no ids
-                <Para key={i} para={Array.isArray(raw) ? { segments: raw } : raw} />
+                <Para key={i} para={Array.isArray(raw) ? { segments: raw } : raw} gap={i > 0} />
               ))
             )}
           </span>
@@ -329,12 +429,21 @@ function Row({
       );
     case 'fail':
       return (
-        <div className="chat-row chat-row--agent">
+        <div className={`${ROW_BASE} chat-row--agent ${margin}`} data-row="agent">
           <AgentRowAvatar agent={agent} />
-          <span className="chat-text">
-            <p className="chat-para chat-para--fail">{item.title}</p>
-            <p className="chat-para chat-para--failbody">{item.body}</p>
-            <p className="chat-fail-links">
+          <span
+            className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--text-primary)"
+            data-testid="agent-text"
+          >
+            <p className={`${PARA} chat-para--fail text-(--fail-fg)`}>{item.title}</p>
+            <p className={`${PARA} ${PARA_GAP} chat-para--failbody text-(--text-tertiary)`}>
+              {item.body}
+            </p>
+            {/* 老相邻律：links 行同为 .chat-para 兄弟，7px 行距压过自身
+                margin:0（(0,2,0) > (0,1,0)），迁移显式带上。 */}
+            <p
+              className={`${PARA} ${PARA_GAP} chat-fail-links flex gap-3 text-xs leading-[15px] text-(--text-dim)`}
+            >
               {item.links.map((link) => (
                 <span key={link} className="chat-fail-link">
                   {link}
@@ -347,7 +456,7 @@ function Row({
       );
     case 'streaming':
       return (
-        <div className="chat-row chat-row--agent">
+        <div className={`${ROW_BASE} chat-row--agent ${margin}`} data-row="agent">
           <AgentRowAvatar agent={agent} />
           {/* #873: the row itself is the shared live row (components/chat/
               live-row) — same skeleton, same disclosure rule and same honest
@@ -368,16 +477,23 @@ function Row({
             }
           >
             {liveStep != null && (
-              <div className="chat-live-panel">
-                <span className="chat-live-line">{t('本步：{n}', { n: liveStep.step })}</span>
+              // #873 活行展开面：同一行文字族的暗色小字，左对齐、无底、无
+              // 边框，展开时挂该行下方（不撑行高）。
+              <div className="chat-live-panel mt-1 flex flex-col gap-0.5 pl-[31px] text-xs leading-4 text-(--text-tertiary)">
+                <span className="chat-live-line [overflow-wrap:anywhere]">
+                  {t('本步：{n}', { n: liveStep.step })}
+                </span>
                 {liveStep.machine != null && (
-                  <span className="chat-live-line">
+                  <span className="chat-live-line [overflow-wrap:anywhere]">
                     {t('执行机器：{n}', { n: liveStep.machine })}
                   </span>
                 )}
                 {/* #905：「在动 vs 卡住」判据——最近活动信号的走表新鲜度；
                     无信号（fixture / 旧 server / 静默期）整行缺席不摆死数。 */}
-                <LiveSignal at={item.signalAt} className="chat-live-line" />
+                <LiveSignal
+                  at={item.signalAt}
+                  className="chat-live-line [overflow-wrap:anywhere]"
+                />
               </div>
             )}
           </LiveRow>
@@ -386,28 +502,34 @@ function Row({
     case 'plan':
       return (
         <>
-          <div className="chat-plan">
+          <div className="chat-plan mt-3.5 flex items-center pl-[31px] text-xs leading-4 text-(--text-secondary) [&_svg]:text-(--text-tertiary)">
             <FileTab width={14} height={14} />
-            <span className="chat-plan-title">{item.title}</span>
+            <span className="chat-plan-title ml-1.5">{item.title}</span>
             {onOpenPlan != null ? (
-              // XMON-24：打开方案钮切 shadcn ghost；皮肤全在 .chat-plan-open
-              // per-face。字号/行高还原裸钮 preflight 的 font:inherit，
-              // svg 免底座强制 16（属性 12px）。span 态不在此列。
+              // XMON-24 打开方案钮 shadcn ghost 底座不变；#945 皮肤迁
+              // utilities（透明底 + dim 墨 + 七通道中和）。字号/行高还原
+              // 裸钮 preflight 的 font:inherit，svg 免底座强制 16（属性
+              // 12px）。span 态不在此列。
               <Button
                 variant="ghost"
-                className="chat-plan-open h-auto rounded-none justify-start text-[length:inherit] leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                className="chat-plan-open ml-auto mr-1.5 flex h-auto cursor-pointer justify-start rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal text-(--text-dim) hover:bg-transparent hover:text-(--text-dim) dark:hover:bg-transparent dark:hover:text-(--text-dim) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                 aria-label={t('打开方案')}
                 onClick={onOpenPlan}
               >
                 <ExternalLink width={12} height={12} />
               </Button>
             ) : (
-              <span className="chat-plan-open">
+              <span className="chat-plan-open ml-auto mr-1.5 flex">
                 <ExternalLink width={12} height={12} />
               </span>
             )}
           </div>
-          <div className="chat-preview">{item.preview}</div>
+          {/* r7 26/27：preview 行距 20（12px/20），首行距 plan 标题行 8px；
+              两行截断走 max-height（line-clamp 在 headless 上算成 flow-root
+              零高，不可用）；flex-none 防溢出行压扁本项。 */}
+          <div className="chat-preview mt-2 max-h-10 flex-none overflow-hidden pl-[31px] pr-[22px] text-xs leading-5 text-(--text-tertiary)">
+            {item.preview}
+          </div>
           <ActionRow
             seconds={item.seconds}
             bare={item.seconds == null}
@@ -422,19 +544,24 @@ function Row({
       return <ActionRow seconds={item.seconds} t={t} />;
     case 'review':
       return (
-        <div className="chat-row chat-row--agent">
+        <div className={`${ROW_BASE} chat-row--agent ${margin}`} data-row="agent">
           <AgentRowAvatar agent={agent} />
-          <span className="chat-text">
+          <span
+            className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--text-primary)"
+            data-testid="agent-text"
+          >
             {/* 结论先行（r8 §3.1 60）：单段总结 — paragraph chip "审核结论"
                 + 文本。#700：extractionError 在位 = daemon verdict 提取失败
                 —— chip 换「判定提取失败」（danger 色，与 blocking finding
                 同色系），正文 = daemon 原因；与「审核未返回结论」兜底（旧
                 daemon 无信号）在审核面上一眼可分辨——提取器失败不是审核
                 没结论。 */}
-            <p className="chat-para chat-para--review-head">
+            <p className={`${PARA} chat-para--review-head mb-1.5 flex items-baseline gap-2`}>
               <span
-                className={`chat-review-tag${
-                  item.extractionError !== undefined ? ' chat-review-tag--error' : ''
+                className={`chat-review-tag flex-shrink-0 rounded-[4px] bg-(--chip-plan-bg) px-1.5 py-px text-[11px] leading-[1.5] font-semibold text-(--chip-plan-fg)${
+                  item.extractionError !== undefined
+                    ? ' chat-review-tag--error bg-(--danger-soft) text-destructive'
+                    : ''
                 }`}
               >
                 {t(item.extractionError !== undefined ? '判定提取失败' : '审核结论')}
@@ -446,26 +573,46 @@ function Row({
             </p>
             {/* 编号 findings（r8 §3.1 60/61）：每条 = 严重度后缀 + 标题 +
                 描述 + 引用位（文件:行）+ 可选建议。沿用 chat-para--num
-                序号样式（与既有 finding fixture 同族）。 */}
+                序号样式（与既有 finding fixture 同族）；严重度染左侧 3px
+                缝颜色（老修饰类规则的 data-* 无关迁移，类名别名保留）。 */}
             {item.findings.map((f) => (
-              <div key={f.id} className={`chat-review-finding chat-review-finding--${f.severity}`}>
+              <div
+                key={f.id}
+                className={`chat-review-finding chat-review-finding--${f.severity} mt-1 mb-2 border-l-[3px] pl-2.5 ${
+                  f.severity === 'blocking'
+                    ? '[border-left-color:var(--destructive)]'
+                    : f.severity === 'suggestion'
+                      ? '[border-left-color:var(--badge-attention)]'
+                      : '[border-left-color:var(--border-default)]'
+                }`}
+              >
                 <p
-                  className="chat-para chat-para--num"
+                  className={`${PARA} chat-para--num relative pl-[19px]`}
                   data-ordinal={Number.parseInt(f.id, 10) || 0}
                 >
-                  <span className="chat-num-mark">{f.id}.</span>
-                  <span className="chat-review-severity">
+                  <span className="chat-num-mark absolute left-0">{f.id}.</span>
+                  <span
+                    className={`chat-review-severity ml-1.5 inline-block text-[11px] font-semibold ${
+                      f.severity === 'blocking'
+                        ? 'text-destructive'
+                        : f.severity === 'suggestion'
+                          ? 'text-(--badge-attention)'
+                          : 'text-(--text-secondary)'
+                    }`}
+                  >
                     {t(`(${f.severity})` as '(blocking)' | '(suggestion)' | '(info)')}
                   </span>
                   <Segments segments={inlineSegments(f.summary)} codeClassName="chat-code" />
                 </p>
                 {f.description !== undefined && f.description !== '' && (
-                  <p className="chat-para">
+                  <p className={`${PARA} ${PARA_GAP}`}>
                     <Segments segments={inlineSegments(f.description)} codeClassName="chat-code" />
                   </p>
                 )}
                 {(f.file !== undefined || f.line !== undefined) && (
-                  <p className="chat-para chat-para--quote chat-review-quote">
+                  <p
+                    className={`${PARA} ${PARA_GAP} chat-para--quote chat-review-quote border-l-4 border-(--border-default) bg-(--code-bg) pt-1.5 pr-2 pb-1.5 pl-[15px] text-xs [background-clip:content-box] text-(--text-secondary)`}
+                  >
                     <Segments
                       segments={inlineSegments(
                         `${f.file ?? ''}${f.line !== undefined ? `:${f.line}` : ''}`,
@@ -475,7 +622,9 @@ function Row({
                   </p>
                 )}
                 {f.suggestion !== undefined && f.suggestion !== '' && (
-                  <p className="chat-para chat-para--quote chat-review-suggestion">
+                  <p
+                    className={`${PARA} ${PARA_GAP} chat-para--quote chat-review-suggestion border-l-4 border-(--border-default) bg-(--code-bg) pt-1.5 pr-2 pb-1.5 pl-[15px] text-xs [background-clip:content-box] text-(--text-secondary)`}
+                  >
                     <Segments
                       segments={inlineSegments(t('建议：{body}', { body: f.suggestion }))}
                       codeClassName="chat-code"
@@ -539,35 +688,48 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
       />
       {expanded && (
         <>
-          <div className="chat-tools">
+          {/* r7 28：完成 Ns ▾ 头下的满宽 pill 列（组间 8px）。 */}
+          <div className="chat-tools mt-[13px] flex flex-col gap-2 pl-[31px] pr-[5px]">
             {item.pills.map((pill, i) => {
               // #469: the call's stdout/stderr rides index-aligned in
               // `outputs`; render it as its own left-aligned mono block
               // under the pill instead of flattening into `.chat-note`.
               const output = item.outputs?.[i];
               return (
-                <div key={`${i}-${pill}`} className="chat-tool">
-                  <div className="chat-tool-pill">
+                <div key={`${i}-${pill}`} className="chat-tool flex min-w-0 flex-col gap-1">
+                  <div
+                    className="chat-tool-pill flex h-[18px] items-center gap-2 overflow-hidden rounded-[3px] border border-(--border-default) bg-(--surface-secondary) pl-2.5 font-mono text-[11px] leading-4 whitespace-nowrap text-(--text-dim) [&_svg]:flex-none"
+                    data-testid="tool-pill"
+                  >
                     <Terminal width={12} height={12} />
-                    <span className="chat-tool-label">{pill}</span>
+                    <span className="chat-tool-label truncate">{pill}</span>
                   </div>
                   {output != null && output !== '' && (
-                    <pre className="chat-tool-output">{output}</pre>
+                    // 工具 stdout/stderr 独立块（#469）：左对齐 mono 正常
+                    // 对比度——.chat-code 的终端内容孪生；pre-wrap 保留换行
+                    // 不横滚，240px 封顶内滚。
+                    <pre
+                      className="chat-tool-output m-0 max-h-60 overflow-auto rounded-[3px] border border-(--border-default) bg-(--code-bg) px-2.5 py-2 text-left font-mono text-[11px] leading-4 break-words whitespace-pre-wrap text-(--text-primary) [word-break:break-word]"
+                      data-testid="tool-output"
+                    >
+                      {output}
+                    </pre>
                   )}
                 </div>
               );
             })}
           </div>
-          {/* XMON-24：收起钮切 shadcn ghost——皮肤全在 .chat-collapse
-              per-face（bg transparent 灭 hover 底）；utilities 只清 h-8、
-              justify、active 位移与 svg 16px 强制（属性 10px）。 */}
+          {/* XMON-24 收起钮 shadcn ghost 底座不变；#945 皮肤迁 utilities
+              （透明底 + tertiary 墨 + 七通道中和；svg 16px 强制豁免——
+              属性 10px）。chevron 翻 180° 走 TW v4 rotate 属性载体
+              （#943 抬升卡判例：computed 载体是独立 rotate 属性）。 */}
           <Button
             variant="ghost"
-            className="chat-collapse h-auto rounded-none justify-start font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            className="chat-collapse mt-3.5 ml-[31px] flex h-auto cursor-pointer items-center gap-0.5 justify-start rounded-none border-none bg-transparent p-0 text-xs leading-4 font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             onClick={() => setExpanded(false)}
           >
             {t('收起')}
-            <ChevronDown width={10} height={10} className="chat-collapse-icon" />
+            <ChevronDown width={10} height={10} className="chat-collapse-icon rotate-180" />
           </Button>
         </>
       )}
@@ -592,6 +754,7 @@ export function Transcript({
         <Row
           key={i}
           item={item}
+          prev={transcript[i - 1]}
           t={t}
           onOpenPlan={onOpenPlan}
           agent={agent}

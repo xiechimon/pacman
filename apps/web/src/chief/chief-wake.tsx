@@ -65,7 +65,11 @@ export function ChiefWakeFab({
       <ChiefFabIcon chief={chiefData} />
       {/* #468: ⌘J 悬浮提示（四族共用消费点；点击维持 open-only）。 */}
       <KbdHint label="⌘J" />
-      {chiefUnread > 0 && <span className="fab-badge">{chiefUnread}</span>}
+      {chiefUnread > 0 && (
+        <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
+          {chiefUnread}
+        </span>
+      )}
     </Button>
   );
 }

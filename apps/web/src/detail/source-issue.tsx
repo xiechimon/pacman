@@ -44,8 +44,11 @@ export function SourceIssueLine({
     // 行不可点，不弹错（D6 同律）。
     const parsed = todo.sourceRef !== null ? parseOrchestrationSourceRef(todo.sourceRef) : null;
     return (
-      <div className="source-issue" data-testid="source-orchestration">
-        <span className="source-issue-label">{t('来源')}</span>
+      <div
+        className="source-issue flex min-w-0 items-center gap-2 px-4 pt-2 text-xs leading-4 text-(--text-dim)"
+        data-testid="source-orchestration"
+      >
+        <span className="source-issue-label flex-none text-(--text-tertiary)">{t('来源')}</span>
         <Button
           variant="ghost"
           className="source-orchestration-link border-none p-0 text-[13px] font-normal text-(--card-button) cursor-pointer hover:bg-transparent dark:hover:bg-transparent hover:text-(--card-button) disabled:pointer-events-none disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0"
@@ -62,8 +65,13 @@ export function SourceIssueLine({
   }
   if (todo.sourceRef === null) {
     return (
-      <div className="source-issue" data-testid="source-issue-pending">
-        <span className="source-issue-label">{t('GitHub issue 未建成')}</span>
+      <div
+        className="source-issue flex min-w-0 items-center gap-2 px-4 pt-2 text-xs leading-4 text-(--text-dim)"
+        data-testid="source-issue-pending"
+      >
+        <span className="source-issue-label flex-none text-(--text-tertiary)">
+          {t('GitHub issue 未建成')}
+        </span>
         {/* XMON-24：原 ui/button text 变体（透明底 + 品牌紫墨 + 零内边距，
             h32）逐值搬 utilities；老 text 钮无 hover/无 disabled 降档——
             中性化齐（hover 底双档：dark 是默认主题，不清会透 muted/50）。 */}
@@ -84,13 +92,21 @@ export function SourceIssueLine({
   const echo = echoQ.data;
   const mismatch = echo.title !== todo.title;
   return (
-    <div className="source-issue" data-testid="source-issue-echo">
-      <span className="source-issue-label">{t('来源 issue')}</span>
-      <span className="source-issue-number">#{echo.number}</span>
-      <span className="source-issue-state">{echo.state === 'open' ? t('打开') : t('已关闭')}</span>
-      <span className="source-issue-title">{echo.title}</span>
+    <div
+      className="source-issue flex min-w-0 items-center gap-2 px-4 pt-2 text-xs leading-4 text-(--text-dim)"
+      data-testid="source-issue-echo"
+    >
+      <span className="source-issue-label flex-none text-(--text-tertiary)">{t('来源 issue')}</span>
+      <span className="source-issue-number flex-none text-(--text-secondary)">#{echo.number}</span>
+      <span className="source-issue-state flex-none">
+        {echo.state === 'open' ? t('打开') : t('已关闭')}
+      </span>
+      <span className="source-issue-title truncate">{echo.title}</span>
       {mismatch && (
-        <span className="source-issue-drift" data-testid="source-issue-drift">
+        <span
+          className="source-issue-drift flex-none text-(--text-tertiary) italic"
+          data-testid="source-issue-drift"
+        >
           {t('与本地标题不一致')}
         </span>
       )}
