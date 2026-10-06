@@ -12,18 +12,26 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
+import { StatusChip } from '../components/ui/status-chip.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, ChevronLeft, EllipsisVertical } from '../icons/index.js';
 import { ChipPopover } from '../overlays/chip-popover.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
-import { Chip } from '../ui/chip.js';
 
-/** #853：头 chip 即 Chip 原语（18px/9999/11px + 五态 token 对全在
- *  ui/chip）——XMON-24 的 Badge + utilities 转写与原语逐值同形，本票收进
- *  原语本体；detail-chip--<tone> 留 DOM 作 e2e 定位别名（className 透传），
- *  shrink/nowrap 是触发钮内 flex 项的保形几何。 */
+/** #945（#942 正典表 §5.2 C1）：头 chip 从老 ui/chip 原语迁 StatusChip
+ *  适配件（Badge 骨架 + 五对 --chip-* token utility 皮肤；default 档 h-5，
+ *  替旧 md 18px——D2 授权几何）。状态载体 = data-tone（件自带）；
+ *  detail-chip--<tone> 别名退役（全库零 spec 消费，grep 复核 @ 034bf7d5）。
+ *  触发面 .detail-chip 类名保留（detail-b 的 reject-chain/review-reject 与
+ *  integration m5/web-plans 按它定位；重钉归各自批次），皮肤迁 utilities。 */
+
+// 头带 44px（43 + 1px 缝线，r7 §3.1）；主钮 50.5×28 @12px 是 r7 §3.3 冻结
+// 几何（老 scoped override 规则的消费端等价形）。ghost 七通道中和（#908
+// 裁决 3）逐钮带上：hover/aria-expanded 底清零、墨色钉回原值。
+const ICON_BTN =
+  'flex size-7 flex-none cursor-pointer items-center justify-center border-none bg-transparent p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0';
 
 interface DetailHeadProps {
   todo: TodoRecord;
@@ -68,29 +76,41 @@ export function DetailHead({
   // wrap 子树保几何；Esc 由 FloatingShell（Base UI layer 栈）承载。
   const [chipWrap, setChipWrap] = useState<HTMLSpanElement | null>(null);
   return (
-    <header className="detail-head">
-      <Link className="detail-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>
+    <header
+      className="detail-head relative flex h-11 flex-none items-center border-b border-(--border-default) pl-3"
+      data-testid="detail-head"
+    >
+      <Link
+        className="detail-back flex size-7 flex-none cursor-pointer items-center justify-center border-none bg-transparent p-0 text-(--text-tertiary)"
+        to={{ pathname: '/app', search }}
+        aria-label={t('返回')}
+      >
         <ChevronLeft />
       </Link>
-      <span className="detail-seq">#{todo.seqNum}</span>
+      <span className="detail-seq ml-1 flex-none text-xs leading-4 text-(--text-tertiary)">
+        #{todo.seqNum}
+      </span>
+      {/* #949：chipwrap 定位类随 overlays.css 清零退役（relative flex
+          items-center 等值 utility）。 */}
       <span className="relative flex items-center" ref={setChipWrap}>
-        {/* XMON-24：wrapper 裸钮切 shadcn ghost——皮肤全在 .detail-chip
-            per-face（unlayered 压底座，含 bg transparent 顺手灭掉 ghost 的
-            hover/aria-expanded 底）；utilities 只清 h-8、字号继承这些底座
-            差额。detail-chip 基类保留——e2e 按 .detail-chip 定位点击。 */}
+        {/* XMON-24 wrapper 钮 shadcn ghost 底座不变；#945 皮肤从
+            .detail-chip per-face 迁 utilities（七通道中和：hover/
+            aria-expanded 底清零、墨色走 inherit 保持老「无 color 规则」的
+            继承形；h-auto/gap-0/字号继承清底座差额）。detail-chip 基类保留
+            ——detail-b spec 与 integration 按它定位。 */}
         {/* #634: the chevron rides INSIDE the trigger — the whole chip
             (pill + arrow + the space between) is one hit target; it used to
             be a sibling span, so the arrow side of the cluster was dead.
             gap-0 keeps the chevron's own 5px margin as the only spacing. */}
         <Button
           variant="ghost"
-          className="detail-chip h-auto gap-0 rounded-none text-[length:inherit] leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0"
+          className="detail-chip ml-2 flex h-auto flex-none cursor-pointer items-center gap-0 rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit aria-expanded:bg-transparent aria-expanded:text-inherit active:not-aria-[haspopup]:translate-y-0"
           aria-expanded={popover}
           onClick={() => setPopover((value) => !value)}
         >
-          <Chip variant={ui.tone} className={`detail-chip--${ui.tone} shrink-0 whitespace-nowrap`}>
+          <StatusChip tone={ui.tone} className="shrink-0 whitespace-nowrap">
             {t(ui.chip)}
-          </Chip>
+          </StatusChip>
           {/* #949: chevron 皮肤等值迁 utility（规则原住 overlays.css，随
               #949 清零；5px 左距 / 三级墨 / flex-none）。testid = 二级
               载体（触发钮内无 role 的结构钩子，chip-hotzone 的 H1 热区
@@ -136,17 +156,24 @@ export function DetailHead({
           taskline — the head showed an id and a status word and nothing to
           attach them to. Ellipsised, never wrapped: the head is a fixed 44px
           band. */}
-      <span className="detail-title" title={todo.title}>
+      <span
+        className="detail-title ml-3.5 min-w-0 flex-1 truncate text-[15px] leading-5 font-semibold text-(--text-primary)"
+        title={todo.title}
+        data-testid="detail-title"
+      >
         {todo.title}
       </span>
 
-      <div className="detail-head-actions">
-        {/* XMON-24：更多钮切 shadcn ghost——28×28/透明/tertiary 全在
-            .detail-head-icon per-face；utilities 只清 active 位移与底座
-            svg 16px 强制（EllipsisVertical 按自身默认尺寸渲染）。 */}
+      <div
+        className="detail-head-actions ml-3 flex flex-none items-center gap-1.5 pr-3"
+        data-testid="detail-head-actions"
+      >
+        {/* XMON-24 更多钮 shadcn ghost 底座不变；#945 皮肤迁 utilities
+            （ICON_BTN 七通道中和；svg 免底座 16px 强制——EllipsisVertical
+            按自身默认尺寸渲染）。--more 别名保留（8 处 spec 钉）。 */}
         <Button
           variant="ghost"
-          className="detail-head-icon detail-head-icon--more active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          className={`detail-head-icon detail-head-icon--more ${ICON_BTN} [&_svg:not([class*='size-'])]:size-auto`}
           aria-label={t('更多')}
           onClick={onMore}
         >
@@ -155,7 +182,7 @@ export function DetailHead({
         {ui.action != null && (
           <Button
             variant="brand"
-            className="detail-head-action border-none font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
+            className="detail-head-action h-7 w-[50.5px] flex-none cursor-pointer border-none p-0 text-xs leading-7 font-normal active:not-aria-[haspopup]:translate-y-0"
             onClick={onAction}
           >
             {t(ui.action)}

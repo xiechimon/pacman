@@ -43,6 +43,28 @@ const ROWS = [
   { label: 'MCP', href: '/app/resources/mcp-servers' },
 ];
 
+// #945（detail.css 清零）：面板皮肤迁 token utilities。V2 弹层壳（#790
+// P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / --plate-shadow 盘投影（#854
+// 三件套）；#163/#388/#610 锚定律的底边 48px 不动（floating 变体交给
+// Popover Positioner，本壳只留触发形态标记）。Arrow = before/after 双三角
+// （描边 12×6 下指触发行左上），伪元经 before:/after: 变体承载。
+const PANEL =
+  "user-menu absolute bottom-12 left-2 z-10 flex w-56 flex-col rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--plate-shadow) before:absolute before:bottom-px before:left-5 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_0,50%_100%,100%_0)] before:content-[''] after:absolute after:bottom-0.5 after:left-[21px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_0,50%_100%,100%_0)] after:content-['']";
+const PANEL_FLOATING = 'user-menu--floating relative bottom-auto left-auto z-auto';
+
+// 外观 seg（r7 37 probe #138）：~20px 描边格 + 8px 侧内边距 + 发丝缝。
+// ghost 七通道中和（#908 裁决 3）+ --seg-hover 自立 token 的 hover tint
+// （#138 家族律；fine-pointer 门收敛进 TW v4 hover 变体的 @media
+// (hover:hover)，#943 sidebar 行同判例）。选中格 = --seg-active 实底 +
+// 透明缝 + secondary 墨（data-active 载体不动——segmented-controls/
+// theme-toggle spec 按它断言）。
+const SEG_BASE =
+  'h-5 cursor-pointer rounded-[6px] px-2 text-[11px] leading-[18px] font-normal transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) active:not-aria-[haspopup]:translate-y-0';
+const SEG_OFF =
+  'border-(--border-default) bg-transparent text-(--text-tertiary) hover:bg-(--seg-hover) hover:text-(--text-tertiary) dark:hover:bg-(--seg-hover) dark:hover:text-(--text-tertiary)';
+const SEG_ON =
+  'border-transparent bg-(--seg-active) text-(--text-secondary) hover:bg-(--seg-active) hover:text-(--text-secondary) dark:hover:bg-(--seg-active) dark:hover:text-(--text-secondary)';
+
 export function UserMenu({ theme: initialTheme, floating = false, className }: UserMenuProps) {
   const { t } = useI18n();
   const { user } = useLiveData();
@@ -59,27 +81,28 @@ export function UserMenu({ theme: initialTheme, floating = false, className }: U
   };
   return (
     <div
-      className={`user-menu${floating ? ' user-menu--floating' : ''}${
+      className={`${PANEL}${floating ? ` ${PANEL_FLOATING}` : ''}${
         className != null && className !== '' ? ` ${className}` : ''
       }`}
     >
-      <div className="user-menu-head">
+      <div className="user-menu-head flex flex-none items-center gap-[11px] border-b border-(--border-default) py-3.5 [&_img]:size-[30px] [&_img]:rounded-full">
         <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
         <div>
-          <div className="user-menu-name">{user.displayName}</div>
+          <div className="user-menu-name text-[13px] leading-4 text-(--text-primary)">
+            {user.displayName}
+          </div>
         </div>
       </div>
-      <div className="user-menu-rows">
-        <div className="user-menu-row">
+      <div className="user-menu-rows flex flex-col gap-3 py-3">
+        <div className="user-menu-row flex h-4 items-center text-xs leading-4 text-(--text-secondary)">
           {t('外观')}
-          <span className="user-menu-seg">
-            {/* XMON-24：分段钮切 shadcn ghost——皮肤全在 detail.css
-                `.user-menu-seg button` 后代选择器 per-face（元素仍是
-                button，选择器照旧命中；data-active 直通）；utilities 只清
-                font-medium 与 active 位移两条底座差额。 */}
+          <span className="user-menu-seg ml-auto flex items-center gap-0.5">
+            {/* XMON-24 分段钮 shadcn ghost 底座不变；#945 皮肤从 detail.css
+                后代选择器迁到消费端 utilities（SEG_BASE + 选中/未选两态），
+                data-active 载体直通（族 spec 断言面不动）。 */}
             <Button
               variant="ghost"
-              className="font-normal active:not-aria-[haspopup]:translate-y-0"
+              className={`${SEG_BASE} ${theme === 'light' ? SEG_ON : SEG_OFF}`}
               data-active={theme === 'light'}
               onClick={() => select('light')}
             >
@@ -87,7 +110,7 @@ export function UserMenu({ theme: initialTheme, floating = false, className }: U
             </Button>
             <Button
               variant="ghost"
-              className="font-normal active:not-aria-[haspopup]:translate-y-0"
+              className={`${SEG_BASE} ${theme === 'dark' ? SEG_ON : SEG_OFF}`}
               data-active={theme === 'dark'}
               onClick={() => select('dark')}
             >
@@ -96,7 +119,11 @@ export function UserMenu({ theme: initialTheme, floating = false, className }: U
           </span>
         </div>
         {ROWS.map(({ label, href }) => (
-          <Link key={label} className="user-menu-row" to={{ pathname: href, search }}>
+          <Link
+            key={label}
+            className="user-menu-row flex h-4 items-center text-xs leading-4 text-(--text-secondary)"
+            to={{ pathname: href, search }}
+          >
             {t(label)}
           </Link>
         ))}

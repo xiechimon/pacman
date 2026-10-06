@@ -6,23 +6,36 @@
 // 记进会话，此前同一份文本又以首条用户气泡二次呈现——套娃；mapper 现按
 // shared records/prompts 词表过滤该行）。渲染 = ChatMarkdown 单源（agent
 // 回复、用户气泡、任务简报同一套块级语法：标题/列表/围栏/附件 token 行），
-// 此前这里只有 \n\n 切段 + inline code chip，`#`/`-`/围栏全按字面裸排，且
-// .spec-block/.spec-chip 三个类从未有过样式规则。
+// 此前这里只有 \n\n 切段 + inline code chip，`#`/`-`/围栏全按字面裸排。
 //
 // dirty 钩：本票范围内 spec 详情面只读渲染（无编辑 UI）——#310 AC 只要求
 // 「详情页可见」,编辑 + dirty 闸归 #318 后续编辑器票,届时复用本组件的受控
 // spec 接口即可。
+//
+// #945（detail.css 清零）：简报卡皮肤迁 token utilities——配方 = composer
+// 卡同族（1px --border-default 缝线 + --surface-secondary 底，线程列里用户
+// 说话的两个面读作同一材质）；15px/1.6 阅读档 + 68ch cap = #470 线程正文
+// 纪律。fresh 态（任务简报独占中心列）经 `fresh` 入参并入 720px 居中轴
+// （老 `.detail-fresh .spec-block` 上下文覆写规则的组件侧等价形）。
 
+import { cn } from 'cn';
 import { ChatMarkdown } from './chat-markdown.js';
 
 interface SpecBlockProps {
   /** todo.spec 原文（含 `![name](attachment:key)` token 行）。 */
   spec: string;
+  /** fresh 相位（详情中心列独占态）：720px 居中轴 + auto 侧 margin。 */
+  fresh?: boolean;
 }
 
-export function SpecBlock({ spec }: SpecBlockProps) {
+export function SpecBlock({ spec, fresh = false }: SpecBlockProps) {
   return (
-    <section className="spec-block">
+    <section
+      className={cn(
+        'spec-block mt-4 mx-4 rounded-none border border-(--border-default) bg-(--surface-secondary) px-[15px] py-[13px] text-[15px] leading-[1.6] break-words text-(--text-primary) [&>*]:max-w-[68ch]',
+        fresh && 'mx-auto max-w-[720px]',
+      )}
+    >
       <ChatMarkdown text={spec} />
     </section>
   );

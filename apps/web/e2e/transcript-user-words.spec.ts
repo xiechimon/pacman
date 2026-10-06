@@ -168,40 +168,55 @@ async function stubWorld(page: Page) {
     return route.fulfill(json({ error: 'e2e stub: not the surface under test' }, 500));
   });
   await page.goto(`/app/todo/${CARD_ID}`);
-  await expect(page.locator('.chat-col')).toBeVisible();
+  await expect(page.getByTestId('transcript-col')).toBeVisible();
 }
 
 test('1. 任务原文只出现一次：描述区承担，气泡不再复述（套娃修复）', async ({ page }) => {
   await stubWorld(page);
-  await expect(page.locator('.spec-block')).toContainText('任务目标');
-  await expect(page.locator('.chat-bubble', { hasText: '任务目标' })).toHaveCount(0);
-  await expect(page.locator('.chat-bubble', { hasText: '把圆角改成' })).toHaveCount(0);
+  // #945/#910 重钉：detail.css 退役——线程列/简报卡/气泡/note/taskline 走
+  // testid+元素载体；气泡 md 态断言从表现类 toHaveClass 换 data-md 数据
+  // 载体（裁定 3：状态归行为）。
+  await expect(page.getByTestId('transcript-col').locator('section')).toContainText(
+    '任务目标',
+  );
+  await expect(
+    page.getByTestId('user-bubble').filter({ hasText: '任务目标' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByTestId('user-bubble').filter({ hasText: '把圆角改成' }),
+  ).toHaveCount(0);
 });
 
 test('2. CONTINUE 续轮指令不冒名用户气泡', async ({ page }) => {
   await stubWorld(page);
-  await expect(page.locator('.chat-bubble', { hasText: '方案已确认' })).toHaveCount(0);
+  await expect(
+    page.getByTestId('user-bubble').filter({ hasText: '方案已确认' }),
+  ).toHaveCount(0);
 });
 
 test('3. 审核宣告行 = note 家族（与「发起了合并」同形），不是气泡', async ({ page }) => {
   await stubWorld(page);
-  await expect(page.locator('.chat-bubble', { hasText: '发起了 AI 审核' })).toHaveCount(0);
-  await expect(page.locator('.chat-note', { hasText: 'Xmon Dai 发起了 AI 审核' })).toBeVisible();
+  await expect(
+    page.getByTestId('user-bubble').filter({ hasText: '发起了 AI 审核' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByTestId('transcript-note').filter({ hasText: 'Xmon Dai 发起了 AI 审核' }),
+  ).toBeVisible();
 });
 
 test('4. 真实 steer 话语走 markdown：围栏成代码块，字面 ``` 不泄漏', async ({ page }) => {
   await stubWorld(page);
-  const bubbles = page.locator('.chat-bubble');
+  const bubbles = page.getByTestId('user-bubble');
   await expect(bubbles).toHaveCount(2);
   const md = bubbles.first();
-  await expect(md).toHaveClass(/chat-bubble--md/);
-  await expect(md.locator('.chat-md-code')).toContainText('border-radius: 10px');
+  await expect(md).toHaveAttribute('data-md', 'true');
+  await expect(md.getByTestId('md-code')).toContainText('border-radius: 10px');
   await expect(md).not.toContainText('```');
 });
 
 test('5. 单段短消息气泡保持 24px 药丸高度（几何不漂移）', async ({ page }) => {
   await stubWorld(page);
-  const short = page.locator('.chat-bubble', { hasText: '收到，谢谢' });
+  const short = page.getByTestId('user-bubble').filter({ hasText: '收到，谢谢' });
   await expect(short).toBeVisible();
   const box = await short.evaluate((el) => {
     const r = el.getBoundingClientRect();
@@ -213,5 +228,5 @@ test('5. 单段短消息气泡保持 24px 药丸高度（几何不漂移）', as
 
 test('6. taskline 不错挂：任务文本行退场后没有 #seq 行残留', async ({ page }) => {
   await stubWorld(page);
-  await expect(page.locator('.chat-taskline')).toHaveCount(0);
+  await expect(page.getByTestId('taskline')).toHaveCount(0);
 });

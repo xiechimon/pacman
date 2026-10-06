@@ -22,6 +22,7 @@ import {
   type FileMentionEntry,
   parseDraftChips,
 } from '../overlay/mention-token.js';
+import { COMPOSER_CHIP_LABEL } from './chat-markdown.js';
 
 interface ComposerChipsProps {
   draft: string;
@@ -61,7 +62,16 @@ export function ComposerChips({ draft, files, suspended }: ComposerChipsProps) {
   }, [keyed]);
   if (suspended || keyed.length === 0) return null;
   return (
-    <div className="composer-chips" role="status" aria-label={t('提及')}>
+    // #945（detail.css 清零）：strip 挂载皮肤迁 utilities——盒外锚
+    // （bottom: calc(100% + 6px)，与 listbox 同锚）、pointer-events none
+    // 永不拦截 transcript/listbox、z-30 local 阶梯（#688：只需压住 composer
+    // 内部，listbox 40 在其上）。mention-chip 皮肤正本在
+    // overlay/mention-picker.css（overlay 域），不动。
+    <div
+      className="composer-chips pointer-events-none absolute right-0 bottom-[calc(100%+6px)] left-0 z-30 flex flex-wrap gap-1.5"
+      role="status"
+      aria-label={t('提及')}
+    >
       {keyed.map(({ chip, key }) => (
         <span
           key={key}
@@ -70,8 +80,11 @@ export function ComposerChips({ draft, files, suspended }: ComposerChipsProps) {
               ? ' composer-chip--fresh animate-in fade-in-0 zoom-in-98 duration-100'
               : ''
           }`}
+          // #910 裁定 3：fresh 是瞬态动画状态——data-fresh 数据载体替类名
+          // 断言面（composer-chip--fresh 类名保留作动画钩别名）。
+          {...(freshKeys.has(key) ? { 'data-fresh': 'true' } : {})}
         >
-          <span className="composer-chip-label">{chip.label}</span>
+          <span className={COMPOSER_CHIP_LABEL}>{chip.label}</span>
         </span>
       ))}
     </div>

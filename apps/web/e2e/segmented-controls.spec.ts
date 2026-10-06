@@ -175,16 +175,21 @@ test('branch-dialog seg: hover tints Git, click swaps the tab body', async ({ pa
   // #366: the detail route no longer opens the branch dialog (the surface
   // is a static right-pane section there) — the board card icon remains
   // the dialog's live trigger.
+  // #945/#910 重钉（正典表 §5.4）：seg 迁 Tabs 件 default 档——载体换
+  // role=tab + 文案一级（.dlg → getByRole('dialog')，.dlg-seg-tab 退役）；
+  // data-active/aria-selected 断言归并成 selected:true（Base UI 的
+  // aria-selected 即 selected 态载体）；hover tint 值 = --seg-hover 不变
+  // （#138 家族律走消费端 TabsTrigger hover utility）。
   await page.goto('/app?scenario=01');
   await page.locator('.todo-card-branch').first().click();
-  await expect(page.locator('.dlg')).toBeVisible();
-  const git = page.locator('.dlg-seg-tab').nth(1);
+  await expect(page.getByRole('dialog')).toBeVisible();
+  const git = page.getByRole('tab', { name: 'Git' });
   await git.hover();
   await expect.poll(() => bg(git)).toBe(HOVER_DARK);
 
   await git.click();
-  await expect(git).toHaveAttribute('data-active', 'true');
-  await expect(git).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Git', selected: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '同步到机器', selected: false })).toBeVisible();
 });
 
 test('team layout toggle: official ring border + hover tint + chip token', async ({ page }) => {

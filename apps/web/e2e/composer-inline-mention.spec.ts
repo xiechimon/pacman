@@ -169,7 +169,7 @@ async function openDetail(
   // (skills/machines) need no explicit wait: the five-kind tests assert row
   // counts through expect auto-retry.
   await membersLoaded;
-  const input = page.locator('.composer-input');
+  const input = page.locator('[data-testid="composer-card"] textarea');
   await expect(input).toBeVisible();
   await expect(input).toBeEditable();
   const listbox = page.locator('.mention-inline');
@@ -444,7 +444,7 @@ test('close set: clicking outside the composer closes the list', async ({ page }
   const { input, listbox } = await openDetail(page);
   await input.fill('@bu');
   await expect(listbox).toBeVisible();
-  await page.locator('.detail-body').click({ position: { x: 4, y: 4 } });
+  await page.getByTestId('detail-body').click({ position: { x: 4, y: 4 } });
   await expect(listbox).toBeHidden();
   await expect(input).toHaveValue('@bu'); // the draft survives the dismiss
 });
@@ -472,7 +472,7 @@ test('multiple mentions: a second @ after an insert opens fresh and lands in ord
 
 test('popover multi-select inserts every token with trailing spaces (F11)', async ({ page }) => {
   const { input } = await openDetail(page);
-  await page.locator('.composer-toolbar button[aria-label="提及"]').click();
+  await page.getByTestId('composer-toolbar').getByRole('button', { name: '提及' }).click();
   const picker = page.locator('.mention-picker');
   await expect(picker).toBeVisible();
   await page.locator('.mention-row--top[aria-label="Agents (3)"]').click();
@@ -526,7 +526,7 @@ test('geometry: the listbox stays anchored above the composer (#688 ladder untou
   // boundingBox is scaled (mention-picker-center.spec precedent).
   await page.waitForTimeout(300);
   const listBox = await listbox.boundingBox();
-  const composerBox = await page.locator('.composer').boundingBox();
+  const composerBox = await page.getByTestId('composer-card').boundingBox();
   expect(listBox).toBeTruthy();
   expect(composerBox).toBeTruthy();
   const lb = listBox as { x: number; y: number; width: number; height: number };
@@ -568,7 +568,7 @@ async function openDetailWithFiles(page: Page) {
   // 空集；reload 后 stub 生效）。react-query 对 500 不重试（retry: false）。
   await page.reload();
   await filesLoaded;
-  const input = page.locator('.composer-input');
+  const input = page.locator('[data-testid="composer-card"] textarea');
   await expect(input).toBeVisible();
   await expect(input).toBeEditable();
   return { ...opened, input, listbox: page.locator('.mention-inline'), rows: page.locator('.mention-inline-row') };
@@ -644,15 +644,15 @@ test('chips: Enter-select renders the file chip with a fresh pop', async ({ page
   await expect(rows).toHaveCount(1);
   await input.press('ArrowDown');
   await input.press('Enter');
-  const strip = page.locator('.composer-chips');
+  const strip = page.getByTestId('composer-card').getByRole('status', { name: '提及' });
   await expect(strip).toBeVisible();
   await expect(strip.locator('.mention-chip')).toHaveCount(1);
   await expect(strip.locator('.mention-chip')).toContainText('apps/web/src/ui/button.tsx');
   // 新 chip 带 fresh 态（轻过渡的挂载钩子）。
-  await expect(strip.locator('.composer-chip--fresh')).toHaveCount(1);
+  await expect(strip.locator('[data-fresh]')).toHaveCount(1);
   // C9：过渡真在播——编译产物里有该 animation（类名写了≠生效，#656 前例）。
   const animationName = await strip
-    .locator('.composer-chip--fresh')
+    .locator('[data-fresh]')
     .evaluate((el) => getComputedStyle(el).animationName);
   expect(animationName).not.toBe('none');
   await evidenceShot(page, 'chips-file-fresh.png');
@@ -664,7 +664,7 @@ test('chips: agent select renders the agent chip', async ({ page }) => {
   await expect(rows).toHaveCount(1);
   await input.press('ArrowDown');
   await input.press('Enter');
-  const strip = page.locator('.composer-chips');
+  const strip = page.getByTestId('composer-card').getByRole('status', { name: '提及' });
   await expect(strip.locator('.mention-chip--agent')).toHaveCount(1);
   await expect(strip.locator('.mention-chip--agent')).toContainText('builder');
 });
@@ -676,7 +676,7 @@ test('chips: Tab and click render the identical chip (accept 路径一致）', a
   await input.fill('@butt');
   await expect(rows).toHaveCount(1);
   await input.press('Tab');
-  const strip = page.locator('.composer-chips');
+  const strip = page.getByTestId('composer-card').getByRole('status', { name: '提及' });
   await expect(strip.locator('.mention-chip')).toContainText('apps/web/src/ui/button.tsx');
 
   await input.fill('');
@@ -685,7 +685,7 @@ test('chips: Tab and click render the identical chip (accept 路径一致）', a
   await expect(rows).toHaveCount(1);
   await rows.first().click();
   await expect(strip.locator('.mention-chip')).toContainText('apps/web/src/ui/button.tsx');
-  await expect(strip.locator('.composer-chip--fresh')).toHaveCount(1);
+  await expect(strip.locator('[data-fresh]')).toHaveCount(1);
 });
 
 test('chips: editing the path retires the chip; the pop plays only once (C8)', async ({
@@ -696,13 +696,13 @@ test('chips: editing the path retires the chip; the pop plays only once (C8)', a
   await expect(rows).toHaveCount(1);
   await input.press('ArrowDown');
   await input.press('Enter');
-  const strip = page.locator('.composer-chips');
-  await expect(strip.locator('.composer-chip--fresh')).toHaveCount(1);
+  const strip = page.getByTestId('composer-card').getByRole('status', { name: '提及' });
+  await expect(strip.locator('[data-fresh]')).toHaveCount(1);
 
   // 无关编辑（尾随空格后加字）：chip 留，fresh 退。
   await input.press('x');
   await expect(strip.locator('.mention-chip')).toHaveCount(1);
-  await expect(strip.locator('.composer-chip--fresh')).toHaveCount(0);
+  await expect(strip.locator('[data-fresh]')).toHaveCount(0);
 
   // 把路径吃掉：chip 退，strip 卸载（C7）。
   await input.fill('');
@@ -715,7 +715,7 @@ test('chips: the strip yields while the listbox is open (C6)', async ({ page }) 
   await expect(rows).toHaveCount(1);
   await input.press('ArrowDown');
   await input.press('Enter');
-  const strip = page.locator('.composer-chips');
+  const strip = page.getByTestId('composer-card').getByRole('status', { name: '提及' });
   await expect(strip).toBeVisible();
 
   // 再开一次 @：listbox 现形期间 strip 让路，不叠挂。
@@ -757,7 +757,7 @@ test('five-kind: skill Tab-inserts the scheme token and the chip confirms', asyn
   await expect(rows.first()).toContainText('code-review');
   await input.press('Tab');
   await expect(input).toHaveValue('[code-review](skill:skill-1) ');
-  const strip = page.locator('.composer-chips');
+  const strip = page.getByTestId('composer-card').getByRole('status', { name: '提及' });
   await expect(strip.locator('.mention-chip--skill')).toHaveCount(1);
   await expect(strip.locator('.mention-chip--skill')).toContainText('code-review');
   await evidenceShot(page, 'five-kind-skill-insert.png');
@@ -787,7 +787,7 @@ test('five-kind: project click inserts the scheme token and the chip confirms', 
   await expect(rows).toHaveCount(1);
   await rows.first().click();
   await expect(input).toHaveValue('[pacman](project:proj-1) ');
-  const strip = page.locator('.composer-chips');
+  const strip = page.getByTestId('composer-card').getByRole('status', { name: '提及' });
   await expect(strip.locator('.mention-chip--project')).toHaveCount(1);
 });
 

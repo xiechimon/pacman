@@ -44,16 +44,36 @@ export function useLiveSeconds(startedAt: number | null | undefined): number | n
   return Math.max(1, Math.round((now - startedAt) / 1000));
 }
 
-/** Per-surface skin. The row skeleton and every behaviour stay shared. */
+/** Per-surface skin. The row skeleton and every behaviour stay shared.
+ *  #945（detail.css 清零）：detail 皮肤从 per-face 规则迁到 token
+ *  utilities——类名保留为惰性别名（detail-b 票的 spec 与 integration 仍按
+ *  它定位）。值 = 老 computed 逐项同形：行 20px / 12px 墨 / dim 标签 /
+ *  spinner 走 spot 实底 + spinner-breathe 脉冲（keyframes 正本在
+ *  motion.css carrier 层，reduced-motion 冻结走 motion-reduce 变体）。 */
 const SKIN = {
   detail: {
-    head: 'chat-streaming',
-    spinner: 'chat-spinner',
-    secs: 'chat-streaming-secs',
-    label: 'chat-streaming-label',
+    head: 'chat-streaming ml-[15px] flex h-5 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs leading-4 text-(--text-tertiary)',
+    /** #873/#885 disclosure 钮形态：命中盒 20→24px（WCAG 2.5.8），纵向
+     *  +2px 内边距被等量负 margin 抵掉，content box 仍 20px、相邻行零位移。
+     *  ghost 七通道中和（#908 裁决 3）：hover/aria-expanded 底与墨、字重、
+     *  边框、gap·px、press 位移全数钉回老 per-face 的透明形态。 */
+    headBtn:
+      "h-6 -my-0.5 cursor-pointer rounded-none justify-start border-none bg-transparent py-0.5 text-left text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto",
+    spinner:
+      'chat-spinner flex-none text-(--card-button) animate-[spinner-breathe_1800ms_var(--ease-standard)_infinite] motion-reduce:animate-none',
+    secs: 'chat-streaming-secs tabular-nums',
+    /** #910 二级载体：live 行是无 role 结构位；spinner 是库件封闭 props
+     *  （loading-dev SpinnerProps 无 data-* 透传），spec 按 row scope +
+     *  aria-hidden 库根载体定位，不另铺钩。 */
+    rowTestid: 'live-row',
+    label: 'chat-streaming-label truncate text-(--text-dim)',
   },
   chief: {
+    rowTestid: undefined,
     head: 'chief-streaming',
+    /** chief 面皮肤仍住 chief.css（#950 域）——这里只留底座中和件原串。 */
+    headBtn:
+      "h-auto rounded-none justify-start font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto",
     spinner: 'chief-spinner',
     secs: 'chief-streaming-secs',
     label: 'chief-streaming-label',
@@ -120,11 +140,14 @@ export function LiveRow({
   return (
     <>
       {disclosure == null ? (
-        <span className={skin.head}>{body}</span>
+        <span className={skin.head} data-testid={skin.rowTestid}>
+          {body}
+        </span>
       ) : (
         <Button
           variant="ghost"
-          className={`${skin.head} h-auto rounded-none justify-start font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
+          className={`${skin.head} ${skin.headBtn}`}
+          data-testid={skin.rowTestid}
           aria-label={t(expanded ? disclosure.collapse : disclosure.expand)}
           aria-expanded={expanded}
           onClick={() => setExpanded((v) => !v)}

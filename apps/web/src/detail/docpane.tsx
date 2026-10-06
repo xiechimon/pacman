@@ -25,6 +25,7 @@
 // the changes/diff file stack scrolls in .doc-files under the pinned head.
 
 import type { DiffFileContent } from '@pacman/shared';
+import { cn } from 'cn';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useBuildChangeFile } from '../api/hooks.js';
@@ -89,6 +90,27 @@ interface DocPaneProps {
   emptyMeta?: ReactNode;
 }
 
+// #945（detail.css 清零）：右栏文档面皮肤迁 token utilities。族律 = r7
+// 27/27b/36 捕获：head 36px 发丝缝、文件行 32px surface-secondary、diff
+// mono 11px（hunk 头 22px 行盒 / 行 17px）、gutter 老新双列右对齐
+// （old 18px / new 19px，r7 27b x255/x274 实测）。ghost 七通道中和随各钮。
+/** pane 头带（36px + 发丝缝，#366）——docpane 与 right-pane 三 section 头
+ *  共用单源（#945：老 .doc-pane-head 规则族的两消费面防漂移律不变）。 */
+export const PANE_HEAD =
+  'doc-pane-head flex h-9 flex-none items-center border-b border-(--border-default) pl-[17px] text-xs leading-4 text-(--text-secondary) [&>svg]:text-(--text-tertiary)';
+const PANE_SELECT =
+  'ml-0 flex h-auto cursor-pointer items-center justify-start gap-[3px] rounded-none border-none bg-transparent p-0 text-xs leading-4 text-inherit font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary)';
+const DIFF_LINE = 'flex items-center font-mono text-[11px] leading-[17px] text-(--text-secondary)';
+// gutter 老/新行号格右对齐；宽度差 1px 是 r7 27b 捕获原值（old 列尾 x255、
+// new 列尾 x274）。
+const DIFF_NO = 'flex-none pr-[3px] text-right text-(--text-dim)';
+const DIFF_KIND_SKIN: Record<string, string> = {
+  add: 'bg-(--diff-add-bg)',
+  del: 'bg-(--diff-del-bg)',
+  marker: 'bg-transparent text-(--text-dim)',
+  context: '',
+};
+
 /** 全文视图状态（#225，镜像 #202 deriveFileView 五态）：hidden = hunk 面；
  *  loading/error 仅 fetch 面可达（changes 面 live）；binary = 不可预览态
  *  （live base64 封套 / 槽位缺 fullContent）；text 直渲。 */
@@ -140,7 +162,9 @@ function DiffFileBlock({
   const full = deriveFullFileView(fetchLive, showFull, file.fullContent ?? null, fullQ);
   return (
     <div className="diff-file">
-      <div className="doc-file-row">
+      {/* 文件行骑 surface-secondary（r7 27 双模）：chevron + 路径 + 👁 +
+          右对齐 +N（mono，−N 走 danger 墨）。 */}
+      <div className="doc-file-row flex h-8 flex-none items-center gap-1.5 bg-(--surface-secondary) pl-[13px] text-[13px] leading-4 text-(--text-secondary) [&_svg]:text-(--text-tertiary)">
         {expanded ? (
           <ChevronDown width={10} height={10} />
         ) : (
@@ -148,13 +172,13 @@ function DiffFileBlock({
         )}
         <FileText width={14} height={14} />
         {file.path}
-        <span className="doc-file-eye">
+        <span className="doc-file-eye flex text-(--text-dim)">
           <Eye width={14} height={14} />
         </span>
-        <span className="doc-file-add">
+        <span className="doc-file-add ml-auto pr-[17px] font-mono text-xs leading-4 text-(--diff-add-fg)">
           +{file.added}
           {file.removed != null && file.removed > 0 && (
-            <span className="doc-file-del"> −{file.removed}</span>
+            <span className="doc-file-del text-(--danger)"> −{file.removed}</span>
           )}
         </span>
       </div>
@@ -163,38 +187,58 @@ function DiffFileBlock({
           {full.kind === 'hidden' &&
             file.hunks.map((hunk) => (
               <div key={hunk.header} className="diff-hunk">
-                <div className="diff-hunk-head">{hunk.header}</div>
+                <div className="diff-hunk-head border-y border-(--border-default) bg-(--surface-secondary) pl-[53px] font-mono text-[11px] leading-[22px] text-(--text-dim)">
+                  {hunk.header}
+                </div>
                 {hunk.lines.map((line, i) => (
                   // fixture order is stable; lines carry no ids
-                  <div key={i} className={`diff-line diff-line--${line.kind}`}>
-                    <span className="diff-no diff-no--old">{line.oldNo ?? ''}</span>
-                    <span className="diff-no diff-no--new">{line.newNo ?? ''}</span>
-                    <span className="diff-mark">
+                  <div
+                    key={i}
+                    className={`diff-line diff-line--${line.kind} ${DIFF_LINE} ${
+                      DIFF_KIND_SKIN[line.kind] ?? ''
+                    }`}
+                    data-kind={line.kind}
+                  >
+                    <span data-no="old" className={`diff-no diff-no--old ${DIFF_NO} w-[18px]`}>
+                      {line.oldNo ?? ''}
+                    </span>
+                    <span data-no="new" className={`diff-no diff-no--new ${DIFF_NO} w-[19px]`}>
+                      {line.newNo ?? ''}
+                    </span>
+                    <span className="diff-mark w-[11px] flex-none text-center text-(--diff-add-fg)">
                       {line.kind === 'add' ? '+' : line.kind === 'del' ? '-' : ''}
                     </span>
-                    <span className="diff-text">{line.text}</span>
+                    <span className="diff-text pl-1.5 whitespace-pre">{line.text}</span>
                   </div>
                 ))}
               </div>
             ))}
           {full.kind === 'text' && (
-            <div className="diff-full">
+            <div className="diff-full" data-testid="diff-full">
               {full.content
                 .replace(/\n$/, '')
                 .split('\n')
                 .map((text, i) => (
                   // file order is stable; lines carry no ids
-                  <div key={i} className="diff-line diff-line--context">
-                    <span className="diff-no diff-no--old" />
-                    <span className="diff-no diff-no--new">{i + 1}</span>
-                    <span className="diff-mark" />
-                    <span className="diff-text">{text}</span>
+                  <div
+                    key={i}
+                    className={`diff-line diff-line--context ${DIFF_LINE}`}
+                    data-kind="context"
+                  >
+                    <span data-no="old" className={`diff-no diff-no--old ${DIFF_NO} w-[18px]`} />
+                    <span data-no="new" className={`diff-no diff-no--new ${DIFF_NO} w-[19px]`}>
+                      {i + 1}
+                    </span>
+                    <span className="diff-mark w-[11px] flex-none text-center text-(--diff-add-fg)" />
+                    <span className="diff-text pl-1.5 whitespace-pre">{text}</span>
                   </div>
                 ))}
             </div>
           )}
           {(full.kind === 'loading' || full.kind === 'error' || full.kind === 'binary') && (
-            <div className="diff-full diff-full--state">
+            // #225 全文态占位：loading/error/binary 在 hunk 区同槽，左对齐
+            // hunk 头文本位（53px），dim mono 同 hunk 头族。
+            <div className="diff-full diff-full--state py-2 pr-[13px] pl-[53px] font-mono text-[11px] leading-[17px] text-(--text-dim)">
               {full.kind === 'loading'
                 ? t('加载中…')
                 : full.kind === 'error'
@@ -202,13 +246,13 @@ function DiffFileBlock({
                   : t('二进制文件暂不支持预览')}
             </div>
           )}
-          {/* XMON-24：切 shadcn ghost——漆底/几何全在 .diff-expand per-face；
-              utilities 清底座圆角（老面漆底直角）、justify、右内边距
-              （per-face 只钉左 13，px-0 后左值仍 per-face 赢）、字重、
-              active 位移与 svg 16px 强制（属性 12px）。 */}
+          {/* XMON-24 shadcn ghost 底座不变；#945 漆底/几何迁 utilities——
+              27px 满宽条、surface-secondary 漆面（hover 双档钉回漆面，
+              灭 ghost 的 muted）、左 13 内衬（pr-0 老面只钉左值）、方角、
+              svg 免底座 16px 强制（属性 12px）。 */}
           <Button
             variant="ghost"
-            className="diff-expand rounded-none justify-start px-0 font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            className="diff-expand flex h-[27px] w-full cursor-pointer items-center justify-start gap-1.5 rounded-none border-none bg-(--surface-secondary) pr-0 pl-[13px] text-xs leading-4 font-normal text-(--text-primary) hover:bg-(--surface-secondary) hover:text-(--text-primary) dark:hover:bg-(--surface-secondary) dark:hover:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             onClick={() => setShowFull((v) => !v)}
           >
             <UnfoldVertical width={12} height={12} />
@@ -244,29 +288,35 @@ function VersionMenu({
   onBase: () => void;
 }) {
   const { t } = useI18n();
-  // XMON-24：菜单行切 shadcn ghost——几何/皮肤全在 .version-menu-row
-  // per-face（space-between 压 justify、bg transparent 灭 hover 底）；
-  // utilities 只清字重、active 位移与 svg 16px 强制（Restore 属性 13px）。
-  // svg 子句与底座字符串逐字节同形（单引号）——twMerge 按字面识别冲突组，
-  // 引号风格不同会双写 size-4/size-auto 赌 CSS 顺序。
-  const rowClass =
-    "version-menu-row font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  // XMON-24 菜单行 shadcn ghost 底座不变；#945 几何/皮肤迁 utilities——
+  // 37px 行距 + 行间发丝缝（末行免缝，老 :last-child 律走 last: 变体）+
+  // space-between 压底座 justify、透明底灭 hover（七通道中和）、svg 免
+  // 16px 强制（Restore 属性 13px）。svg 子句与底座字符串逐字节同形
+  // （单引号）——twMerge 按字面识别冲突组。菜单盘：212 宽右对齐 chip
+  // （r8 §2.7），--radius-popover + edge 投影（0 8 24 @14%）。
+  const ROW_BASE =
+    "version-menu-row flex h-[37px] w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-(--border-default) bg-transparent text-left text-xs leading-4 font-normal last:border-b-0 hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto [&_svg]:text-(--text-dim)";
+  const rowClass = `${ROW_BASE} px-[7px] text-(--text-primary) hover:text-(--text-primary) dark:hover:text-(--text-primary)`;
+  // 子菜单行（与其他版本对比 ▸ 上一版本）：8px 侧衬 + secondary 墨。
+  const subRowClass = `${ROW_BASE} px-2 text-(--text-secondary) hover:text-(--text-secondary) dark:hover:text-(--text-secondary)`;
+  const MENU_PANEL =
+    'version-menu absolute top-[30px] -right-0.5 z-(--z-popover) w-53 rounded-(--radius-popover) bg-(--popover-bg) py-1 shadow-[0_8px_24px_rgb(0_0_0/0.14)]';
   if (menu === 'compare') {
     return (
-      <div className="version-menu version-menu--sub">
-        <Button variant="ghost" className={rowClass} onClick={onCompare}>
+      <div className={`${MENU_PANEL} version-menu--sub w-auto min-w-[69px]`}>
+        <Button variant="ghost" className={subRowClass} onClick={onCompare}>
           {t('上一版本')}
         </Button>
       </div>
     );
   }
   return (
-    <div className="version-menu">
+    <div className={MENU_PANEL}>
       {versions.map((row, i) => (
         <Button
           variant="ghost"
           key={row.v}
-          className={`${rowClass}${i === 0 ? ' version-menu-row--current' : ''}`}
+          className={`${rowClass}${i === 0 ? ' version-menu-row--current font-semibold' : ''}`}
           onClick={() => onMenu(undefined)}
         >
           <span>
@@ -277,7 +327,9 @@ function VersionMenu({
       ))}
       <Button variant="ghost" className={rowClass} onClick={() => onMenu('compare')}>
         <span>{t('与其他版本对比…')}</span>
-        {diffOpen && diffFrom != null && <span className="version-menu-label">{diffFrom}</span>}
+        {diffOpen && diffFrom != null && (
+          <span className="version-menu-label text-(--text-tertiary)">{diffFrom}</span>
+        )}
       </Button>
       {diffOpen && (
         <Button variant="ghost" className={rowClass} onClick={onBase}>
@@ -313,15 +365,16 @@ function VersionControl({
 }) {
   const toggle = () => onVersionMenu?.(versionMenu === 'versions' ? undefined : 'versions');
   return (
-    <span className="doc-range-wrap">
-      {/* XMON-24：两 chip 钮切 shadcn ghost——range chip 皮肤全在
-          .doc-range-chip per-face（漆底灭 hover）；select 面与
-          overlays/plan-dropdown 同 class 同 neutralizer 串（逐字节一致，
-          防两消费面漂移）。svg 免底座 16px 强制（属性 12px）。 */}
+    <span className="doc-range-wrap relative ml-[18px] inline-flex">
+      {/* XMON-24 两 chip 钮 shadcn ghost 底座不变；#945 皮肤迁 utilities
+          ——range chip = 24h 描边 pill `v1 → v2 ⌄`（r8 65，A3 圆角归一
+          8px），漆底灭 hover（七通道中和）；select 面与 overlays/
+          plan-dropdown 同 class 同配方（ml-0：wrap 内贴左，老嵌套覆写
+          规则的消费端等价形）。svg 免底座 16px 强制（属性 12px）。 */}
       {range != null ? (
         <Button
           variant="ghost"
-          className="doc-range-chip font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          className="doc-range-chip flex h-6 cursor-pointer items-center gap-1 rounded-[8px] border border-(--range-chip-border) bg-(--range-chip-bg) px-2 text-xs leading-4 font-normal text-(--text-secondary) hover:bg-(--range-chip-bg) hover:text-(--text-secondary) dark:hover:bg-(--range-chip-bg) dark:hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
           onClick={toggle}
         >
           {range.from} → {range.to}
@@ -330,7 +383,7 @@ function VersionControl({
       ) : (
         <Button
           variant="ghost"
-          className="doc-pane-select h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
+          className={`doc-pane-select ${PANE_SELECT} [&_svg:not([class*='size-'])]:size-auto`}
           onClick={toggle}
         >
           {label}
@@ -351,6 +404,16 @@ function VersionControl({
       )}
     </span>
   );
+}
+
+/** plan-doc 块皮肤（r8 56 / XMON-55 P2）：正文 15px/24；段间距 8px（首块
+ *  归零）；bullet 悬挂 17/−12；节标签 = 12px/500 tertiary 上 22px 下 6px
+ *  （是 label 不是 title——它引导的散文是 15px，节边界由更宽的上带标出）。 */
+function docBlockClass(kind: string, first: boolean): string {
+  const base = 'text-[15px] leading-6 break-words text-(--text-primary)';
+  if (kind === 'para') return `${base}${first ? '' : ' mt-2'}`;
+  if (kind === 'bullet') return `${base} pl-[17px] [text-indent:-12px]`;
+  return `${base} ${first ? 'mt-0' : 'mt-[22px]'} mb-1.5 text-xs leading-4 font-medium tracking-[0.02em] text-(--text-tertiary)`;
 }
 
 export function DocPane({
@@ -391,11 +454,11 @@ export function DocPane({
     const added = files.reduce((sum, f) => sum + f.added, 0);
     const removed = files.reduce((sum, f) => sum + (f.removed ?? 0), 0);
     return (
-      <section className="doc-pane">
+      <section className="doc-pane flex min-h-0 flex-1 flex-col" data-testid="doc-pane">
         {/* #366: the pane head always renders — it carries the view picker,
             so the empty surfaces keep their way out; the version chip /
             stat / toggle only make sense over data. */}
-        <header className="doc-pane-head">
+        <header className={PANE_HEAD}>
           <FileTab width={14} height={14} />
           {typeSelect(mode === 'diff' ? '方案' : '变更')}
           {hasData &&
@@ -422,16 +485,20 @@ export function DocPane({
             ))}
           {hasData && (
             <>
-              <span className="doc-changes-stat">
+              {/* changes mode（r7 27/36）：stat 簇 + 右对齐展开切换。 */}
+              <span className="doc-changes-stat ml-[18px] text-(--text-tertiary)">
                 {t('· {n} 个文件改动', { n: fileCount })}{' '}
-                <span className="doc-changes-add">+{added}</span>
-                {removed > 0 && <span className="doc-changes-del"> −{removed}</span>}
+                <span className="doc-changes-add text-(--diff-add-fg)">+{added}</span>
+                {removed > 0 && (
+                  <span className="doc-changes-del text-(--danger)"> −{removed}</span>
+                )}
               </span>
-              {/* XMON-24：切 shadcn ghost——皮肤全在 .doc-expand-all
-                  per-face（无高度声明，h-auto 还原裸钮内容高）。 */}
+              {/* XMON-24 shadcn ghost 底座不变；#945 皮肤迁 utilities
+                  （无高度声明——h-auto 还原裸钮内容高；透明底 + tertiary
+                  墨 + 七通道中和；ml-auto 右对齐 + 17px 右衬）。 */}
               <Button
                 variant="ghost"
-                className="doc-expand-all h-auto rounded-none font-normal hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
+                className="doc-expand-all ml-auto mr-[17px] h-auto cursor-pointer rounded-none border-none bg-transparent p-0 text-xs leading-4 font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0"
                 onClick={onToggleExpand}
               >
                 {expanded ? t('全部收起') : t('全部展开')}
@@ -440,7 +507,7 @@ export function DocPane({
           )}
         </header>
         {hasData ? (
-          <div className="doc-files">
+          <div className="doc-files min-h-0 flex-1 overflow-y-auto">
             {files.map((file) => (
               <DiffFileBlock
                 key={file.path}
@@ -451,15 +518,19 @@ export function DocPane({
             ))}
           </div>
         ) : (
-          <div className="doc-empty doc-empty--full">{t('暂无可显示的变更')}</div>
+          // changes-empty 占位（r7 38）：整 pane 居中、头上无 band——
+          // --full 变体把 .doc-empty 的绝对居中改回 static flex 项。
+          <div className="doc-empty doc-empty--full static flex flex-1 items-center justify-center text-xs leading-4 text-(--text-dim)">
+            {t('暂无可显示的变更')}
+          </div>
         )}
       </section>
     );
   }
 
   return (
-    <section className="doc-pane">
-      <header className="doc-pane-head">
+    <section className="doc-pane flex min-h-0 flex-1 flex-col" data-testid="doc-pane">
+      <header className={PANE_HEAD}>
         <FileTab width={14} height={14} />
         {typeSelect('方案')}
         {doc != null && (
@@ -474,16 +545,26 @@ export function DocPane({
           />
         )}
       </header>
-      <div className="doc-pane-body">
+      <div
+        className="doc-pane-body relative min-h-0 flex-1 overflow-y-auto pt-4 pr-[18px] pb-6 pl-[17px]"
+        data-testid="doc-body"
+      >
         {doc == null
           ? // #476：live 空态由任务元信息块承接（顶对齐、随 doc-pane-body
             // 既有滚动）；fixture 面 emptyMeta 缺省 → 居中占位原样。
-            (emptyMeta ?? <div className="doc-empty">{t('暂无方案')}</div>)
+            (emptyMeta ?? (
+              <div className="doc-empty absolute inset-0 flex items-center justify-center text-xs leading-4 text-(--text-dim)">
+                {t('暂无方案')}
+              </div>
+            ))
           : doc.map((block, i) => (
               <p
                 // fixture order is stable; blocks carry no ids
                 key={i}
-                className={`doc-block doc-block--${block.kind}`}
+                className={cn(
+                  `doc-block doc-block--${block.kind}`,
+                  docBlockClass(block.kind, i === 0),
+                )}
               >
                 {block.kind === 'bullet' ? '• ' : ''}
                 <Segments segments={block.segments} codeClassName="doc-code" />
