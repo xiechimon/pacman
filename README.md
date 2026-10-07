@@ -106,9 +106,8 @@ pnpm test         # vitest
 | `apps/server` | Server: Hono REST + SSE + SQLite (package `@xiechimon/pacman` — directory name differs from package name) |
 | `apps/daemon` | Executor daemon (package `@xiechimon/pacman-cli` — directory name differs from package name) |
 | `packages/shared` | Protocol vocabulary, record shapes, brand-slot single source (`@pacman/shared`) |
-| `docs/spec/` | Implementation canon, volumes 00–06 (Chinese) |
-| `docs/research/` | r1–r8 replication-era site inventories and evidence (historical archive) |
-| `parity/` | Pixel-parity harness against `docs/research/assets/` baselines (now a regression tool) |
+| `docs/spec/` | Implementation canon, volumes 00–25 (Chinese) |
+| `docs/research/` | r1–r15 site inventories and later product research (historical archive) |
 | `scripts/` | Build-time tools (incl. `generate-icons.mjs`) |
 
 ## Third-party credits

@@ -105,9 +105,8 @@ pnpm test         # vitest
 | `apps/server` | server：Hono REST + SSE + SQLite（包名 `@xiechimon/pacman`，目录名 ≠ 包名） |
 | `apps/daemon` | 执行机 daemon（包名 `@xiechimon/pacman-cli`，目录名 ≠ 包名） |
 | `packages/shared` | 协议词表 / 记录形状 / 品牌槽单源（`@pacman/shared`） |
-| `docs/spec/` | 实现正典 00–06 册（中文） |
-| `docs/research/` | r1–r8 复刻期原站盘点与证据（历史档案） |
-| `parity/` | 像素对拍 harness（对 `docs/research/assets/` 基线；现身份 = 回归工具） |
+| `docs/spec/` | 实现正典 00–25 册（中文） |
+| `docs/research/` | r1–r15 原站盘点与后续产品调研（历史档案） |
 | `scripts/` | 构建期工具（含 `generate-icons.mjs`） |
 
 ## 第三方署名
