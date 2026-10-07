@@ -68,7 +68,7 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
       <div className={FOCUS_ROW}>
         {/* #945（正典表 §5.4）：.dlg-form-label 别名退役——标签律 =
             --label-size/--label-spacing 定版 token utility。 */}
-        <span className="mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--text-primary)">
+        <span className="mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--foreground)">
           {label}
         </span>
         {/* #945（#851 裸控件账）：裸 textarea 收编 components/ui Textarea；
@@ -83,7 +83,7 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
         />
       </div>
       {rejectReason != null && (
-        <p className={`${ACCEPT_NOTE_LINE} text-(--danger)`} role="alert">
+        <p className={`${ACCEPT_NOTE_LINE} text-(--destructive)`} role="alert">
           {rejectReason}
         </p>
       )}

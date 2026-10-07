@@ -49,6 +49,7 @@ import {
 import { createActivityTracker } from './activity.js';
 import { SessionNotResumableError } from './backend/errors.js';
 import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
+import { RETRY_STORM_MAX } from './backend/pi-retry.js';
 import { type BriefHandle, caseInsensitiveFsFor, cleanupBrief, writeBrief } from './brief-file.js';
 import {
   type ClaudeCodeAuthProbe,
@@ -124,13 +125,11 @@ export interface RunStepOptions {
   streamDurationCapMs?: number;
 }
 
-/** auto_retry 有界生命周期预算（#708 失败方式 2）：连续零进展 auto_retry 的
- * 允许上限。默认 3 = pi 自身单错重试预算（settings-manager maxRetries ?? 3）
- * ——预算内的重试归 pi 自己收（连接错 1→2→3 退场形不惊动本护栏）；超过它
- * 还在同一错误上空转 = 预算被某种机制重置的病态（#519 run4/6 实测 ~40 发/
- * 10min 同形重试），由 runner 从外部掐断：停会话、根因直报、failed 收尾。
- * 每轮发数钉死 = 1 + RETRY_STORM_MAX（首轮 + 预算内重试）。 */
-export const RETRY_STORM_MAX = 3;
+/** auto_retry 有界生命周期预算（#708 失败方式 2）——单源与理据正本见 backend/pi-retry.ts
+ *  （#926：与 pi 会话 retry.maxRetries 同源派生，不再各处硬编码）。runner 侧行为：连续零进展
+ *  重试超预算 → 停会话、根因直报、failed 收尾；每轮发数钉死 = 1 + RETRY_STORM_MAX（首轮 +
+ *  预算内重试）。在此 re-export 供既有消费面（runner 内部 + 测试）沿用 '../src/runner.js' 入口。 */
+export { RETRY_STORM_MAX };
 
 /** 超时收尸文案与根因组合（#708 失败方式 1）：终态错误优先级 = 真实终态
  * 错误 > 超时文案；两者并存时组合成文（票面例「stream timeout；根因: 400 …」），
@@ -1180,9 +1179,10 @@ export async function runStep(
     // 零进展 + 终局失败（超时收尸 / storm 掐断但底层模型错误在位 / 终局
     // error 行）+ 签名命中且旋钮可翻 → 翻旋钮重开一轮。停止钮经
     // handle.stop() 收尾不带 error，天然不进此闸。
-    // #708：不看 sawDone——真 pi 失败流必以 done 收尾（agent_end
-    // willRetry=false → done 映射；#654 脚本流只喂 error 漏测此点，真 400
-    // 会被 sawDone 闭死闸门）；sawProgress 已排除错误终局行（见事件分支）。——
+    // #708：不看 sawDone——真 pi 失败流必以 done 收尾（#926 起 = agent_settled
+    // → done 映射，settled 在 _runAgentPrompt 的 finally 恒发，错误流也带；#654
+    // 脚本流只喂 error 漏测此点，真 400 会被 sawDone 闭死闸门）；sawProgress
+    // 已排除错误终局行（见事件分支）。——
     if (pass === 0 && !sawProgress) {
       const failureText = lastModelError ?? lastError;
       if (

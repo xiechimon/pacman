@@ -56,10 +56,10 @@ export function ApiKeysPage() {
     >
       {keys.length === 0 ? (
         <div data-testid="keys-empty">
-          <div className="mt-[41px] flex size-11 items-center justify-center rounded-(--radius-popover) bg-(--surface-secondary) text-(--text-secondary) [&_svg]:size-5">
+          <div className="mt-[41px] flex size-11 items-center justify-center rounded-(--radius-popover) bg-(--secondary) text-(--text-secondary) [&_svg]:size-5">
             <Key />
           </div>
-          <h2 className="mt-[21px] text-[15px] font-semibold text-(--text-primary)">
+          <h2 className="mt-[21px] text-[15px] font-semibold text-(--foreground)">
             {t('尚无 API 密钥。')}
           </h2>
           <p className="mt-[11px] text-[13px] text-(--text-tertiary)">
@@ -88,9 +88,9 @@ export function ApiKeysPage() {
             .map((key) => (
               <div
                 key={`once-${key.id}`}
-                className="mt-6 flex flex-wrap items-center gap-3 rounded-(--radius-popover) border border-(--border-default) bg-(--surface-secondary) p-4"
+                className="mt-6 flex flex-wrap items-center gap-3 rounded-(--radius-popover) border border-(--border) bg-(--secondary) p-4"
               >
-                <code className="font-mono text-[13px] text-(--text-primary)">{key.plaintext}</code>
+                <code className="font-mono text-[13px] text-(--foreground)">{key.plaintext}</code>
                 {/* 差额并项（28 高 / 0 12 内垫 / 12px 字 / 字重 400 是 [推断]
                     面的既有钉回值）：border-0 同上。 */}
                 <Button
@@ -114,13 +114,13 @@ export function ApiKeysPage() {
             {keys.map((key) => (
               <div
                 key={key.id}
-                className="flex h-[62px] items-center gap-3 rounded-(--radius-popover) bg-(--surface-secondary) px-4"
+                className="flex h-[62px] items-center gap-3 rounded-(--radius-popover) bg-(--secondary) px-4"
               >
                 <span className="flex text-(--text-tertiary)">
                   <Key width={16} height={16} />
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="text-sm text-(--text-primary)">{key.name ?? key.masked}</span>
+                  <span className="text-sm text-(--foreground)">{key.name ?? key.masked}</span>
                   {key.name != null && (
                     <span className="font-mono text-xs text-(--text-tertiary)">{key.masked}</span>
                   )}

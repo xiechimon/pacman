@@ -56,21 +56,20 @@ const TABS: { id: ChiefSettingsTab; label: string }[] = [
 /** 设置面卡片族公共皮肤（#950 清零，旧 .chief-compress/.chief-host 等值：
  *  surface-secondary 块 / 16 横垫 8 纵垫 / min-height 62——#772 律英文描述
  *  换行时长高 / 17 上距）。 */
-const CARD_CLS =
-  'mt-[17px] flex min-h-[62px] items-center gap-4 bg-(--surface-secondary) px-4 py-2';
+const CARD_CLS = 'mt-[17px] flex min-h-[62px] items-center gap-4 bg-(--secondary) px-4 py-2';
 
 /** 卡片文字组（旧 .chief-compress-text h3/p 等值）。 */
-const CARD_TITLE_CLS = 'text-sm font-semibold text-(--text-primary)';
+const CARD_TITLE_CLS = 'text-sm font-semibold text-(--foreground)';
 const CARD_DESC_CLS = 'mt-0.5 text-xs text-(--text-tertiary)';
 
 /** 空态卡（旧 .chief-memo/.chief-watches 等值，#772 min-height + 居中 +
  *  tertiary 统一律）。 */
 const EMPTY_CARD_CLS =
-  'mt-[17px] flex min-h-11 items-center justify-center rounded-none bg-(--surface-secondary) px-4 py-2 text-[13px] text-(--text-tertiary)';
+  'mt-[17px] flex min-h-11 items-center justify-center rounded-none bg-(--secondary) px-4 py-2 text-[13px] text-(--text-tertiary)';
 
 /** 列表卡（旧 .chief-memory-card/.chief-watch-card 等值：8 圆角一次性尺寸
  *  §3.1(a)，XMON-117 一卡多行律）。 */
-const LIST_CARD_CLS = 'mt-[17px] rounded-[8px] bg-(--surface-secondary) text-[13px]';
+const LIST_CARD_CLS = 'mt-[17px] rounded-[8px] bg-(--secondary) text-[13px]';
 
 /** tab chip（#950 清零，旧 .chief-tab 等值：26 高 / 11 横垫 / 13px 次级墨 /
  *  方角透明底；z-[1] 压在滑动指示条之上）。选中态载体 = aria-selected
@@ -78,7 +77,7 @@ const LIST_CARD_CLS = 'mt-[17px] rounded-[8px] bg-(--surface-secondary) text-[13
  *  hover tint 只给未选中 chip、只吃精细指针（#73/#138 律）；过渡只动
  *  background-color（旧律：选中墨切换瞬切不过渡）。 */
 const TAB_CLS =
-  'relative z-[1] h-[26px] cursor-pointer rounded-none border-none bg-transparent px-[11px] text-[13px] text-(--text-secondary) transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) pointer-fine:hover:aria-[selected=false]:bg-(--seg-hover) aria-selected:font-semibold aria-selected:text-(--text-primary)';
+  'relative z-[1] h-[26px] cursor-pointer rounded-none border-none bg-transparent px-[11px] text-[13px] text-(--text-secondary) transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) pointer-fine:hover:aria-[selected=false]:bg-(--seg-hover) aria-selected:font-semibold aria-selected:text-(--foreground)';
 
 /** 滑动指示条（#644，旧 .chief-tab-indicator 等值）：Base UI 把激活 chip 的
  *  几何写进内联 --active-tab-* 自定义属性，pill 垫在 chip 下层（z-0）按
@@ -94,7 +93,7 @@ const TAB_INDICATOR_CLS =
 /** 已绑定 Agent 行头像（旧 .chief-agent-row-avatar 等值：首字母 chip =
  *  24 圆盘 surface 底 + 墨线框；--img 律去 chip 底边，图即圆盘）。 */
 const ROW_AVATAR_CLS =
-  'grid size-6 flex-none place-items-center rounded-full border border-(--border-default) bg-(--surface) text-xs text-(--text-primary)';
+  'grid size-6 flex-none place-items-center rounded-full border border-(--border) bg-(--card) text-xs text-(--foreground)';
 const ROW_AVATAR_IMG_CLS =
   'grid size-6 flex-none place-items-center rounded-full border-none bg-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full';
 
@@ -212,7 +211,7 @@ export function ChiefSettings({
         </Button>
         {/* 标题 = 全宽绝对定位覆盖层；pointer-events-none 放行到底层返回钮
             （#811：纯文本标题不需要命中测试，布局/绘制零变化）。 */}
-        <h1 className="pointer-events-none absolute inset-x-0 text-center text-[15px] font-semibold text-(--text-primary)">
+        <h1 className="pointer-events-none absolute inset-x-0 text-center text-[15px] font-semibold text-(--foreground)">
           {t('总管设置')}
         </h1>
       </header>
@@ -229,7 +228,7 @@ export function ChiefSettings({
         >
           <TabsList
             variant="bare"
-            className="relative inline-flex rounded-none bg-(--chief-tab-bg) p-0.5"
+            className="relative inline-flex rounded-none bg-(--secondary) p-0.5"
           >
             {/* #644 滑动指示条：选中 chip 的底色不再画在 chip 上，改由这根
                 pill 承载——切 tab 时它按参考站实测的过渡滑到新位并变宽。 */}
@@ -255,7 +254,7 @@ export function ChiefSettings({
                 24 / ChevronRight 14 属性尺寸）+ 行首 svg tertiary 墨。 */}
             <Button
               variant="ghost"
-              className="mt-[17px] h-11 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--surface-secondary) px-4 text-sm leading-normal font-normal text-(--text-secondary) hover:bg-(--surface-secondary) hover:text-(--text-secondary) dark:hover:bg-(--surface-secondary) dark:hover:text-(--text-secondary) aria-expanded:bg-(--surface-secondary) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:first-child]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
+              className="mt-[17px] h-11 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--secondary) px-4 text-sm leading-normal font-normal text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) dark:hover:text-(--text-secondary) aria-expanded:bg-(--secondary) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:first-child]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
               onClick={() => setAgentOpen(true)}
             >
               {boundAgent != null ? (
@@ -319,11 +318,11 @@ export function ChiefSettings({
             {charter !== '' ? (
               // live 既有章程呈现位(r5 未拍非空章程 tab,[设计]:同空态块
               // 语言换实文)。旧 .chief-charter-text 等值迁移。
-              <div className="mt-[17px] bg-(--surface-secondary) px-4 py-3 text-[13px] leading-5 whitespace-pre-wrap text-(--text-primary)">
+              <div className="mt-[17px] bg-(--secondary) px-4 py-3 text-[13px] leading-5 whitespace-pre-wrap text-(--foreground)">
                 {charter}
               </div>
             ) : (
-              <div className="mt-[17px] grid min-h-[78px] place-items-center rounded-none border border-dashed border-(--border-strong) bg-(--surface-secondary) text-[13px] text-(--text-tertiary)">
+              <div className="mt-[17px] grid min-h-[78px] place-items-center rounded-none border border-dashed border-(--input) bg-(--secondary) text-[13px] text-(--text-tertiary)">
                 {t('尚无章程。点击编辑，为总管添加常设指示。')}
               </div>
             )}
@@ -365,10 +364,10 @@ export function ChiefSettings({
                           // XMON-117 一卡多行律：行间分隔线（旧
                           // .chief-memory-row + 兄弟选择器等值，随改落
                           // 条件类）。
-                          index > 0 ? 'block border-t border-(--border-default) py-2' : 'block py-2'
+                          index > 0 ? 'block border-t border-(--border) py-2' : 'block py-2'
                         }
                       >
-                        <span className="block text-(--text-primary)">{memory.title}</span>
+                        <span className="block text-(--foreground)">{memory.title}</span>
                         <span className="block text-(--text-secondary)">{memory.content}</span>
                       </div>
                     ))}
@@ -387,7 +386,7 @@ export function ChiefSettings({
             <div className="flex flex-col">
               {watches.map((watch) => (
                 <div key={watch.threadId} className={`${LIST_CARD_CLS} px-4 py-2`}>
-                  <span className="block text-(--text-primary)">{watch.title}</span>
+                  <span className="block text-(--foreground)">{watch.title}</span>
                   <span className="block text-xs text-(--text-tertiary)">{watch.threadTitle}</span>
                 </div>
               ))}
@@ -397,7 +396,7 @@ export function ChiefSettings({
                 const id = typeof wake.id === 'string' ? wake.id : null;
                 return (
                   <div key={id ?? `${at}`} className={`${LIST_CARD_CLS} px-4 py-2`}>
-                    <span className="block text-(--text-primary)">{note ?? t('到点提醒')}</span>
+                    <span className="block text-(--foreground)">{note ?? t('到点提醒')}</span>
                     {at != null && (
                       <span className="block text-xs text-(--text-tertiary)">
                         {new Date(at).toLocaleString()}

@@ -28,7 +28,7 @@ import { MENU_ARROW_LEFT_CLS, MENU_SHELL_CLS } from './recipes.js';
 const ROW_SKIN: ModelRowSkin = {
   row: 'h-auto gap-2 px-5 py-[7px]',
   col: 'flex min-w-0 flex-auto flex-col',
-  name: 'truncate text-[13px] text-(--text-primary)',
+  name: 'truncate text-[13px] text-(--foreground)',
   provider: 'text-[11px] text-(--text-tertiary)',
   check: 'inline-flex flex-none text-(--text-tertiary)',
 };

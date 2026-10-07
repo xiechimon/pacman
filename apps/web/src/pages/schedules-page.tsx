@@ -138,7 +138,7 @@ const ICON_BTN_24_CLS =
  *  语义钩子（button[aria-label=时|分] + [role=listbox][aria-label] + option
  *  名）零漂移。 */
 const SEL_TRIGGER_CLS =
-  "h-8 w-fit min-w-14 cursor-pointer justify-start gap-1.5 rounded-none border border-(--border-default) bg-transparent px-2 text-[13px] font-normal leading-[inherit] text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
+  "h-8 w-fit min-w-14 cursor-pointer justify-start gap-1.5 rounded-none border border-(--border) bg-transparent px-2 text-[13px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
 
 function SchedSelect({
   value,
@@ -189,12 +189,12 @@ function ScheduleCard({
   const { t } = useI18n();
   const ui = PHASE_UI[schedule.todo.phase];
   return (
-    <div className="sched-card flex h-[92px] items-start rounded-none bg-(--surface-secondary) p-4">
+    <div className="sched-card flex h-[92px] items-start rounded-none bg-(--secondary) p-4">
       <span className="flex size-7 flex-none items-center justify-center self-center rounded-none bg-(--surface-tertiary) text-(--text-secondary)">
         <Clock width={14} height={14} />
       </span>
       <div className="ml-6 min-w-0 flex-1">
-        <div className="truncate text-[13px] leading-5 text-(--text-primary)">{`#${schedule.todo.seqNum} ${schedule.todo.title}`}</div>
+        <div className="truncate text-[13px] leading-5 text-(--foreground)">{`#${schedule.todo.seqNum} ${schedule.todo.title}`}</div>
         <div className="mt-0.5 flex items-center gap-1.5 text-xs leading-[18px] text-(--text-secondary)">
           {`${monthDay(schedule.at, t)} ${hourMinute(schedule.at)} ${t(RUN_WORD[schedule.kind])}`}
         </div>
@@ -242,14 +242,14 @@ function ScheduleCard({
             align="end"
             sideOffset={4}
             aria-label={t('更多')}
-            className="sched-card-menu w-40 rounded-(--radius-popover) bg-(--popover-bg) p-1 shadow-(--fab-shadow) ring-0 [&_svg:not([class*='size-'])]:size-auto"
+            className="sched-card-menu w-40 rounded-(--radius-popover) bg-(--popover) p-1 shadow-(--fab-shadow) ring-0 [&_svg:not([class*='size-'])]:size-auto"
           >
             {/* 行皮肤（原 .sched-card-menu-row[data-action=delete]）：--stop 墨
                 + hover danger 淡 tint（#791 §1.1）；行面无静息 hover 涂底，
                 focus:bg 中和回透明；键盘 roving focus 环按 #388 配方补钉
                 （div[role=menuitem] 不在全局环名单）。 */}
             <DropdownMenuItem
-              className="sched-card-menu-row h-8 w-full cursor-pointer gap-2.5 rounded-[8px] px-3 py-0 text-left text-xs leading-4 text-(--stop) hover:bg-(--danger-soft) hover:text-(--stop) focus:bg-transparent focus:text-(--stop) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) [&_svg]:text-(--stop)"
+              className="sched-card-menu-row h-8 w-full cursor-pointer gap-2.5 rounded-[8px] px-3 py-0 text-left text-xs leading-4 text-(--destructive) hover:bg-(--danger-soft) hover:text-(--destructive) focus:bg-transparent focus:text-(--destructive) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) [&_svg]:text-(--destructive)"
               data-action="delete"
               onClick={onDelete}
             >
@@ -319,13 +319,13 @@ function ScheduleForm({
         }}
       >
         <div
-          className="w-[488px] rounded-none bg-(--surface-elevated) shadow-(--fab-shadow)"
+          className="w-[488px] rounded-none bg-(--card) shadow-(--fab-shadow)"
           role="dialog"
           aria-modal="true"
           aria-label={t('新建定时')}
         >
-          <header className="flex h-[46px] items-center justify-between border-b border-(--border-default) px-4">
-            <span className="text-sm font-semibold leading-5 text-(--text-primary)">
+          <header className="flex h-[46px] items-center justify-between border-b border-(--border) px-4">
+            <span className="text-sm font-semibold leading-5 text-(--foreground)">
               {t('新建定时')}
             </span>
             {/* XMON-25 收编：老 ui/Button icon 变体 → ghost + size icon；#946：
@@ -343,16 +343,16 @@ function ScheduleForm({
           <div className="p-4">
             {/* 行盒（原 .sched-form-row）：36 高带框行；首行不带头顶距
                 （原 .sched-form-body > :first-child 规则）。 */}
-            <div className="flex h-9 items-center justify-between rounded-none border border-(--border-default) px-3">
+            <div className="flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
               <span className="text-[13px] leading-5 text-(--text-secondary)">{t('项目')}</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--text-primary) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
+              <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
                 {repo}
                 <ChevronRight width={12} height={12} />
               </span>
             </div>
-            <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border-default) px-3">
+            <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
               <span className="text-[13px] leading-5 text-(--text-secondary)">{t('任务')}</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--text-primary) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
+              <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
                 {todo == null ? '' : `#${todo.seqNum} ${todo.title}`}
                 <ChevronRight width={12} height={12} />
               </span>
@@ -421,9 +421,9 @@ function ScheduleForm({
             <div className="mt-3 mb-1 text-xs leading-4 text-(--text-tertiary)">
               {t('按你的本地时区运行（Asia/Shanghai）')}
             </div>
-            <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border-default) px-3">
+            <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
               <span className="text-[13px] leading-5 text-(--text-secondary)">{t('机器')}</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--text-primary) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
+              <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
                 {t('自动')}
                 <ChevronRight width={12} height={12} />
               </span>
@@ -434,7 +434,7 @@ function ScheduleForm({
                 钉回静息值），保存 = brand（--card-button 实底的等价迁移位）。 */}
             <Button
               variant="ghost"
-              className="sched-form-cancel h-[30px] cursor-pointer rounded-none border-none bg-(--surface-secondary) px-4 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-(--surface-secondary) hover:text-(--text-secondary) dark:hover:bg-(--surface-secondary) active:not-aria-[haspopup]:translate-y-0"
+              className="sched-form-cancel h-[30px] cursor-pointer rounded-none border-none bg-(--secondary) px-4 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) active:not-aria-[haspopup]:translate-y-0"
               onClick={onClose}
             >
               {t('取消')}
@@ -530,11 +530,11 @@ export function SchedulesPage() {
       <div className={`${PAGE_COL_CLS} space-y-3 pt-10`}>
         {schedules.length === 0 ? (
           <div className="sched-empty">
-            <div className="flex size-12 items-center justify-center rounded-none bg-(--surface-secondary) text-(--text-secondary)">
+            <div className="flex size-12 items-center justify-center rounded-none bg-(--secondary) text-(--text-secondary)">
               <Clock width={26} height={26} />
             </div>
             {/* sched-empty-title 类名留存 = accent-typo 字重探针的跨域别名。 */}
-            <div className="sched-empty-title mt-5 text-sm font-semibold leading-5 text-(--text-primary)">
+            <div className="sched-empty-title mt-5 text-sm font-semibold leading-5 text-(--foreground)">
               {t('尚无定时。')}
             </div>
             <p className="mt-3 max-w-[448px] text-[13px] leading-5 text-(--text-tertiary)">

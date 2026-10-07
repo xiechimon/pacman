@@ -34,13 +34,13 @@ export const RES_SEARCH_ROW_CLS = 'flex gap-2';
 
 /** 搜索盒（32px 高、card-border 描边、surface 底、13px 图标 + 输入位）。 */
 export const RES_SEARCH_BOX_CLS =
-  'flex h-8 flex-1 items-center gap-1.5 border border-(--card-border) bg-(--surface) px-2 text-(--text-tertiary)';
+  'flex h-8 flex-1 items-center gap-1.5 border border-(--border) bg-(--card) px-2 text-(--text-tertiary)';
 
 /** 盒内真 Input（components/ui 底座）：盒形由 RES_SEARCH_BOX_CLS 承载，
  *  input 本体零装饰；focus 环走 #388 家族律（2px --focus-ring + offset 2，
  *  utility 层就地并掉件默认的 border-ring + 灰 ring）。 */
 export const RES_SEARCH_INPUT_CLS =
-  'h-full min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-sm leading-4 text-(--text-primary) shadow-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) focus-visible:ring-0 dark:bg-transparent';
+  'h-full min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-sm leading-4 text-(--foreground) shadow-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) focus-visible:ring-0 dark:bg-transparent';
 
 /** 排序钮的定位包裹（弹层锚点）。 */
 export const RES_SORT_WRAP_CLS = 'relative flex';
@@ -57,20 +57,20 @@ export const GHOST_ROW_BTN_CLS =
  *  （记忆 tab 是内容宽）；皮肤等值迁移，件默认档按七通道律就地并掉
  *  （本钮是带框盒形：hover/aria-expanded 回到 surface 皮肤而非透明）。 */
 export const RES_SORT_TRIGGER_CLS =
-  "h-8 flex-none cursor-pointer justify-start gap-0 rounded-none border border-(--card-border) bg-(--surface) px-[11px] text-[13px] font-normal leading-4 text-(--text-secondary) hover:bg-(--surface) hover:text-(--text-secondary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&>span]:ml-2 [&>span]:flex-none [&>span]:whitespace-nowrap [&_svg:last-of-type]:ml-1 [&_svg:not([class*='size-'])]:size-auto";
+  "h-8 flex-none cursor-pointer justify-start gap-0 rounded-none border border-(--border) bg-(--card) px-[11px] text-[13px] font-normal leading-4 text-(--text-secondary) hover:bg-(--card) hover:text-(--text-secondary) aria-expanded:bg-(--card) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&>span]:ml-2 [&>span]:flex-none [&>span]:whitespace-nowrap [&_svg:last-of-type]:ml-1 [&_svg:not([class*='size-'])]:size-auto";
 
 /** 排序盘（DropdownMenuContent）：V2 弹层壳（#790 P3——最小宽 220 / 12px
  *  内边距 / 1px 墨线框 / 直角 / plate-shadow）+ 上指锚边右上的描边 Arrow
  *  （12×6 外三角压 10×5 内三角，clip-path utility 承载）。 */
 export const RES_SORT_MENU_CLS =
-  "relative flex min-w-[220px] flex-col rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--plate-shadow) ring-0 before:absolute before:top-px before:right-4 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+  "relative flex min-w-[220px] flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--plate-shadow) ring-0 before:absolute before:top-px before:right-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** 盘内单选行（DropdownMenuRadioItem）：32px 行、12px 字、选中 --spot-soft
  *  （plan-dropdown 同族）；行是 div[role=menuitemradio]，不在 #388 全局环
  *  名单，键盘 roving focus 的可见环按同配方就地补钉；勾色 --card-button 走
  *  indicator 槽选择器。 */
 export const RES_SORT_ROW_CLS =
-  "h-8 w-full cursor-pointer rounded-none px-1 py-0 text-left text-xs leading-4 text-(--text-primary) data-checked:bg-(--spot-soft) focus:bg-transparent focus:data-checked:bg-(--spot-soft) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button) [&_svg:not([class*='size-'])]:size-auto";
+  "h-8 w-full cursor-pointer rounded-none px-1 py-0 text-left text-xs leading-4 text-(--foreground) data-checked:bg-(--spot-soft) focus:bg-transparent focus:data-checked:bg-(--spot-soft) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button) [&_svg:not([class*='size-'])]:size-auto";
 
 /* ---- 行卡与行内文字族 ---- */
 
@@ -104,7 +104,7 @@ export function Tile({
 /** 行卡公共皮肤（原 .res-card）：card-border 描边 + radius-popover 圆角 +
  *  surface-secondary 底；Card 件默认的 rounded-xl/ring/bg-card 就地并掉。 */
 const CARD_SKIN_CLS =
-  'gap-0 overflow-hidden rounded-(--radius-popover) border border-(--card-border) bg-(--surface-secondary) py-0 ring-0';
+  'gap-0 overflow-hidden rounded-(--radius-popover) border border-(--border) bg-(--secondary) py-0 ring-0';
 
 /** 域内列表行卡组合件：单行卡（skills / secrets / mcp 行，64/62px）。
  *  onOpen（XMON-114 技能行开编辑弹窗）：整行可点——role=button + 键盘
@@ -184,7 +184,7 @@ export function RowGrow({
       {...(divided ? { 'data-divided': '' } : {})}
       className={cn(
         'flex items-center px-4',
-        divided ? 'h-[59px] border-t border-(--card-border)' : 'h-[60px]',
+        divided ? 'h-[59px] border-t border-(--border)' : 'h-[60px]',
         className,
       )}
       {...rest}
@@ -208,7 +208,7 @@ export function RowLine({ className, children }: { className?: string; children:
 /** 行标题（14/20，primary 墨，不换行）。 */
 export function RowTitle({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <span className={cn('whitespace-nowrap text-sm leading-5 text-(--text-primary)', className)}>
+    <span className={cn('whitespace-nowrap text-sm leading-5 text-(--foreground)', className)}>
       {children}
     </span>
   );
@@ -263,7 +263,7 @@ export function StatusPill({ label }: { label: string }) {
   return (
     <Badge
       variant="secondary"
-      className="ml-auto h-5 flex-none rounded-[4px] border-none bg-(--pill-idle-bg) px-[5px] text-[11px] font-normal leading-4 text-(--text-tertiary)"
+      className="ml-auto h-5 flex-none rounded-[4px] border-none bg-(--secondary) px-[5px] text-[11px] font-normal leading-4 text-(--text-tertiary)"
     >
       {t(label)}
     </Badge>
@@ -337,7 +337,7 @@ export function EmptyState({
       className="items-stretch justify-start gap-0 p-0 pt-6 text-left [text-wrap:wrap]"
     >
       <Tile Icon={Icon} size="hero" tone="orange" />
-      <h2 className="mt-4 text-[15px] leading-5 font-semibold text-(--text-primary)">{t(title)}</h2>
+      <h2 className="mt-4 text-[15px] leading-5 font-semibold text-(--foreground)">{t(title)}</h2>
       <p className="mt-1.5 max-w-[450px] text-[13px] leading-5 text-(--text-tertiary)">
         {t(description, descriptionVars)}
       </p>

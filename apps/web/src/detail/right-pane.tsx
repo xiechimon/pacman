@@ -57,11 +57,9 @@ function SectionHead({ icon, select }: { icon: ReactNode; select: PaneSelectProp
  *  1px 左距；ring 12px / 1.5px dialog-ring 描边圆。 */
 function RunGlyph({ status }: { status: RunHistoryRow['status'] }) {
   if (status === 'current')
-    return (
-      <span className="ml-px size-3 flex-none rounded-full border-[1.5px] border-(--dialog-ring)" />
-    );
+    return <span className="ml-px size-3 flex-none rounded-full border-[1.5px] border-(--input)" />;
   if (status === 'failed' || status === 'failed-current')
-    return <X width={14} height={14} className="ml-px size-3.5 flex-none text-(--stop)" />;
+    return <X width={14} height={14} className="ml-px size-3.5 flex-none text-(--destructive)" />;
   return <Check width={14} height={14} className="ml-px size-3.5 flex-none text-(--badge-done)" />;
 }
 
@@ -89,13 +87,13 @@ function TokenSection({
             律等值迁 utility——total 行 61 高（60 内容 + 1 缝线，border-box 会
             吃掉缝线故钉 61）baseline 两端；model 行 39 高 mono 12；stat 行
             27 高 12px。 */}
-        <div className="flex h-[61px] items-baseline justify-between border-b border-b-(--card-border) px-4">
-          <span className="text-[length:24px] font-semibold tracking-[-0.3px] text-(--text-primary)">
+        <div className="flex h-[61px] items-baseline justify-between border-b border-b-(--border) px-4">
+          <span className="text-[length:24px] font-semibold tracking-[-0.3px] text-(--foreground)">
             {stats.total}
           </span>
           <span className="text-[length:12px] text-(--text-tertiary)">tokens</span>
         </div>
-        <div className="flex h-[39px] items-center justify-between border-b border-b-(--card-border) px-4 font-mono text-[length:12px]">
+        <div className="flex h-[39px] items-center justify-between border-b border-b-(--border) px-4 font-mono text-[length:12px]">
           <span className="text-(--text-secondary)">{stats.model}</span>
           <span className="text-(--text-tertiary)">{stats.modelTotal}</span>
         </div>
@@ -106,7 +104,7 @@ function TokenSection({
               className="flex h-[27px] items-center justify-between px-4 text-[length:12px]"
             >
               <span className="text-(--text-tertiary)">{t(label)}</span>
-              <span className="text-(--text-primary)">{value}</span>
+              <span className="text-(--foreground)">{value}</span>
             </div>
           ))}
         </div>
@@ -143,15 +141,15 @@ function HistorySection({
               data-testid="history-row"
               className={cn(
                 'flex items-center gap-[11px]',
-                index > 0 && 'mt-2 border-t border-t-(--card-border) pt-2',
+                index > 0 && 'mt-2 border-t border-t-(--border) pt-2',
               )}
             >
               <RunGlyph status={run.status} />
               <div>
                 <div className="flex h-[18px] items-center gap-2">
-                  <span className="text-[13px] text-(--text-primary)">{t(run.label)}</span>
+                  <span className="text-[13px] text-(--foreground)">{t(run.label)}</span>
                   {(run.status === 'current' || run.status === 'failed-current') && (
-                    <span className="h-[18px] rounded-[4px] bg-(--code-bg) px-[5px] text-[11px] leading-[18px] text-(--text-tertiary)">
+                    <span className="h-[18px] rounded-[4px] bg-(--muted) px-[5px] text-[11px] leading-[18px] text-(--text-tertiary)">
                       {t('当前')}
                     </span>
                   )}
@@ -257,7 +255,7 @@ export function RightPane({ view, docLabel, onView, content, buildId, children }
   });
   return (
     <aside
-      className="detail-right flex w-(--detail-pane-right) min-h-0 flex-none flex-col border-l border-(--border-default) max-md:hidden"
+      className="detail-right flex w-(--detail-pane-right) min-h-0 flex-none flex-col border-l border-(--border) max-md:hidden"
       data-testid="detail-right"
     >
       {content == null || view === 'doc' ? (

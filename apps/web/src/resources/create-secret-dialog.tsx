@@ -21,8 +21,7 @@ import { useI18n } from '../i18n/provider.js';
 /** .dlg-form-label 退役后的等值 rhythm（正典表 §5.4）：9/8 外距 + 18 行盒；
  *  字号/字距 = c.css 定版 --label-size 12px / --label-spacing 0.01em——#915
  *  落 token 后改 text-(--label-size) tracking-(--label-spacing)（§4-4）。 */
-const LABEL_CLS =
-  'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--text-primary)';
+const LABEL_CLS = 'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--foreground)';
 
 interface CreateSecretDialogProps {
   /** #73 retained-mount open flag. */

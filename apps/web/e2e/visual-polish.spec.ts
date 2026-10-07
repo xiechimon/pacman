@@ -28,7 +28,7 @@ async function edgeContract(page: Page, selector: string) {
     const ringProbe = document.createElement('div');
     ringProbe.style.boxShadow = 'var(--edge-ring)';
     const colorProbe = document.createElement('div');
-    colorProbe.style.backgroundColor = 'var(--border-default)';
+    colorProbe.style.backgroundColor = 'var(--border)';
     const cardShadowProbe = document.createElement('div');
     cardShadowProbe.style.boxShadow = 'var(--card-shadow)';
     const edgeShadowProbe = document.createElement('div');

@@ -41,7 +41,7 @@ const TILE_BASE_CLS =
  *  (hover:hover) 且细指针上加（motion.css #73 的 hover 门同律，粗指针无
  *  hover 态）。三态 indeterminate 不挂本组（实底即皮肤，TSX 里分支）。 */
 const TILE_UNCHECKED_CLS =
-  'data-unchecked:bg-transparent data-unchecked:shadow-[inset_0_0_0_1px_var(--border-strong)] [@media(hover:hover)_and_(pointer:fine)]:group-hover/ckbox:data-unchecked:shadow-[inset_0_0_0_1px_var(--card-button)]';
+  'data-unchecked:bg-transparent data-unchecked:shadow-[inset_0_0_0_1px_var(--input)] [@media(hover:hover)_and_(pointer:fine)]:group-hover/ckbox:data-unchecked:shadow-[inset_0_0_0_1px_var(--card-button)]';
 
 /** 勾/横杠覆层的进退场（原 .ui-checkbox-indicator 三律）：进场 140ms 微
  *  overshoot（目的态 = 基类），退场 90ms ease-out 缩退（目的态 =

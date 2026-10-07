@@ -78,10 +78,10 @@ function RuntimeHead({ source }: { source: ModelSource }) {
     <div
       data-testid="runtime-head"
       data-runtime={source.runtime}
-      className="mt-4 rounded-(--radius-popover) border border-(--card-border) bg-(--surface-secondary) px-4 py-3.5"
+      className="mt-4 rounded-(--radius-popover) border border-(--border) bg-(--secondary) px-4 py-3.5"
     >
       <div className="flex items-center gap-2">
-        <span className="text-sm leading-5 font-semibold text-(--text-primary)">
+        <span className="text-sm leading-5 font-semibold text-(--foreground)">
           {RUNTIME_LABELS[source.runtime]}
         </span>
         {source.installed ? (
@@ -204,7 +204,7 @@ export function ProvidersPage() {
                   key={`${model.id}:${i}`}
                   className={cn(
                     'flex min-h-[52px] items-center px-4 py-2',
-                    i > 0 && 'border-t border-(--card-border)',
+                    i > 0 && 'border-t border-(--border)',
                   )}
                   data-runtime={source.runtime}
                   data-model-id={model.id}
@@ -235,7 +235,7 @@ export function ProvidersPage() {
             // #910 二级结构载体（原 .res-runtime-empty）。
             <div
               data-testid="runtime-empty"
-              className="mt-4 rounded-lg border border-dashed border-(--dash-border) px-4 py-6"
+              className="mt-4 rounded-lg border border-dashed border-(--input) px-4 py-6"
             >
               <p className="m-0 text-[13px] leading-5 text-(--text-tertiary)">
                 {t('尚未添加服务商。添加后，服务商的模型会出现在这里。')}
@@ -257,7 +257,7 @@ export function ProvidersPage() {
             source.installed && (
               <div
                 data-testid="runtime-empty"
-                className="mt-4 rounded-lg border border-dashed border-(--dash-border) px-4 py-6"
+                className="mt-4 rounded-lg border border-dashed border-(--input) px-4 py-6"
               >
                 <p className="m-0 text-[13px] leading-5 text-(--text-tertiary)">
                   {t('settings.json 未配置模型槽。')}
@@ -271,7 +271,7 @@ export function ProvidersPage() {
         // #707：尚无执行机上报过（旧 daemon / 未注册）——缺席不断言未安装。
         <div
           data-testid="runtime-empty"
-          className="mt-4 rounded-lg border border-dashed border-(--dash-border) px-4 py-6"
+          className="mt-4 rounded-lg border border-dashed border-(--input) px-4 py-6"
         >
           <p className="m-0 text-[13px] leading-5 text-(--text-tertiary)">
             {t('尚无执行机上报模型信息。')}

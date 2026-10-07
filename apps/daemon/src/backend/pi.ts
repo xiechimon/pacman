@@ -11,8 +11,9 @@
 //   toolcall_end（含 result，同 id 幂等 upsert 覆盖）
 // - message_end → message_end；stopReason=aborted → message_stop；error → error
 // - compaction_start/end、auto_retry_start/end → 同名事件
-// - agent_end(!willRetry) → done(usage)；裸 compaction 事件本映射不产生
-//   （词表位保留给引擎侧压缩归档消息 [推断]）。
+// - agent_settled → done(usage)（#926：收敛权威信号，取代旧 agent_end(!willRetry)
+//   猜测——agent_end 后仍可能有排队工作/溢出恢复继续，settled 才是「不再自动继续」）；
+//   裸 compaction 事件本映射不产生（词表位保留给引擎侧压缩归档消息 [推断]）。
 //
 // per-step 凭证纪律（02 §8 运行时层）：apiKey 只走 ModelRuntime.setRuntimeApiKey
 // （内存态，不持久化）；models.json 落盘的 apiKey 恒为占位符。
@@ -67,6 +68,7 @@ import { ENV_VARS, THINKING_LEVELS } from '@pacman/shared';
 import { gateToolCallHandler, type PermissionRule } from './command-gate.js';
 import { SessionNotResumableError } from './errors.js';
 import { connectFailedLine } from './mcp-config.js';
+import { PI_RETRY_SETTINGS } from './pi-retry.js';
 import {
   enrichProviderError,
   type ProviderResponseSink,
@@ -86,6 +88,14 @@ export const PI_CAPABILITIES: AgentBackendCapabilities = {
 
 /** pi 内建工具默认面（02 §5.6：其余工具面 = pi-coding-agent 内建）。 */
 const PI_BUILTIN_TOOLS = ['read', 'bash', 'edit', 'write'];
+
+/** 会话 SettingsManager.inMemory 的设置位（#926）：compaction 开 + retry 面显式值
+ *  （不吃 pi 内建默认）。抽成导出纯函数 = 可测缝——单测断言 retry 确实接到了
+ *  PI_RETRY_SETTINGS（而非摆设/漂移回默认），pi 包不进测试面。retry 单源在
+ *  backend/pi-retry.ts，runner 的 RETRY_STORM_MAX 同源派生（护栏与设置不脱钩）。 */
+export function buildPiSessionSettings() {
+  return { compaction: { enabled: true }, retry: PI_RETRY_SETTINGS };
+}
 
 // —— #730 图片交付（pi 面原生支持：prompt(text, {images}) / steer(text,
 // images)；pi-ai ImageContent 结构 = {type:'image', data, mimeType}）—————————
@@ -749,11 +759,18 @@ export function mapPiSessionEvent(event: AgentSessionEventLike, state: MapState)
       return [{ type: 'auto_retry_start', attempt: event.attempt ?? 1 }];
     case 'auto_retry_end':
       return [{ type: 'auto_retry_end', attempt: event.attempt ?? 1 }];
-    case 'agent_end': {
-      if (event.willRetry) return [];
+    // 收敛判定（#926）：agent_settled 是「pi 不会再自动继续」的权威信号
+    // （docs/sdk.md §Subscribing）。agent_end 只标记一次低层 run 结束，其后仍可能
+    // 有排队工作 / 溢出恢复继续（_handlePostAgentRun → agent.continue），故 agent_end
+    // 一律不发 done——旧 agent_end(!willRetry) 推断只覆盖错误重试一条继续路径，
+    // 会在排队工作继续时提前发 done 并 dispose 会话（时序赌博）。done 携 state 累积
+    // usage（agent_settled 在所有 message_end 之后，usage 比 agent_end 时刻更完整）。
+    case 'agent_settled': {
       const usage: ModelUsage[] = [...state.usage.values()];
       return [{ type: 'done', usage }];
     }
+    case 'agent_end':
+      return [];
     default:
       return [];
   }
@@ -1004,7 +1021,7 @@ export class PiBackend implements AgentBackend {
     // `composeSections` 产出、runner 写进 worktree 的上下文文件，不再追加进
     // systemPrompt。这里只透传 runner 给的 systemPrompt——**只有**不具备简报
     // 通道的后端才会拿到非空值。空集 = 不覆盖引擎自身的 system prompt。
-    const settingsManager = SettingsManager.inMemory({ compaction: { enabled: true } });
+    const settingsManager = SettingsManager.inMemory(buildPiSessionSettings());
     // —— #929 命令闸：inline extension 的 tool_call handler（pi 原生阻断缝）
     // ——拦截缝换挂点（策略表不动，见 command-gate.ts 头注）：bash 面 =
     // 规则表 + DEFAULT_BASH_PATTERNS 全量裁决；MCP/嵌套调用同过此管线，规则

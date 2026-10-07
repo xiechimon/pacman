@@ -43,7 +43,7 @@ export interface PageTab {
  *  律压回 surface（含 dark:）；hover 墨色不中和——旧面 per-face 无 color
  *  声明，ghost 的 hover:text-foreground 本就生效，等值保留。 */
 export const PAGE_FAB_CLS =
-  'absolute bottom-4 right-4 size-12 cursor-pointer rounded-full border-none bg-(--surface) shadow-(--fab-shadow) hover:bg-(--surface) dark:hover:bg-(--surface)';
+  'absolute bottom-4 right-4 size-12 cursor-pointer rounded-full border-none bg-(--card) shadow-(--fab-shadow) hover:bg-(--card) dark:hover:bg-(--card)';
 
 /** Text-tab pill group (任务|文件 in the topbar, 基本信息|仓库|标签 in the
  *  settings column — r2 24b/24c share one markup). #946: role=tablist/tab +
@@ -130,9 +130,9 @@ export function PageShell({
           The wake pair stays the row's last child: its FAB rides the
           page-main absolute anchor while the docked panel takes the flex
           slot, so the content column yields by exactly the panel width. */}
-      <div className="page-main relative flex min-w-0 flex-1 bg-(--surface)">
+      <div className="page-main relative flex min-w-0 flex-1 bg-(--card)">
         <div className="page-main-col flex min-w-0 flex-1 flex-col">
-          <header className="page-topbar relative flex h-11 flex-none items-center border-b border-(--border-default) pl-3">
+          <header className="page-topbar relative flex h-11 flex-none items-center border-b border-(--border) pl-3">
             <Link
               className="flex size-7 flex-none items-center justify-center text-(--text-tertiary) no-underline"
               to={{ pathname: '/app', search }}
@@ -141,12 +141,12 @@ export function PageShell({
               <ChevronLeft />
             </Link>
             {leftTitle != null && (
-              <span className="ml-1 min-w-0 truncate text-sm font-medium leading-[22px] text-(--text-primary)">
+              <span className="ml-1 min-w-0 truncate text-sm font-medium leading-[22px] text-(--foreground)">
                 {leftTitle}
               </span>
             )}
             {title != null && (
-              <div className="pointer-events-none absolute inset-x-0 text-center text-sm font-medium leading-[22px] text-(--text-primary)">
+              <div className="pointer-events-none absolute inset-x-0 text-center text-sm font-medium leading-[22px] text-(--foreground)">
                 {t(title)}
               </div>
             )}

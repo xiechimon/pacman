@@ -49,7 +49,7 @@ const ROWS = [
 // Popover Positioner，本壳只留触发形态标记）。Arrow = before/after 双三角
 // （描边 12×6 下指触发行左上），伪元经 before:/after: 变体承载。
 const PANEL =
-  "user-menu absolute bottom-12 left-2 z-10 flex w-56 flex-col rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--plate-shadow) before:absolute before:bottom-px before:left-5 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_0,50%_100%,100%_0)] before:content-[''] after:absolute after:bottom-0.5 after:left-[21px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_0,50%_100%,100%_0)] after:content-['']";
+  "user-menu absolute bottom-12 left-2 z-10 flex w-56 flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--plate-shadow) before:absolute before:bottom-px before:left-5 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_0,50%_100%,100%_0)] before:content-[''] after:absolute after:bottom-0.5 after:left-[21px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_0,50%_100%,100%_0)] after:content-['']";
 const PANEL_FLOATING = 'user-menu--floating relative bottom-auto left-auto z-auto';
 
 // 外观 seg（r7 37 probe #138）：~20px 描边格 + 8px 侧内边距 + 发丝缝。
@@ -61,7 +61,7 @@ const PANEL_FLOATING = 'user-menu--floating relative bottom-auto left-auto z-aut
 const SEG_BASE =
   'h-5 cursor-pointer rounded-[6px] px-2 text-[11px] leading-[18px] font-normal transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) active:not-aria-[haspopup]:translate-y-0';
 const SEG_OFF =
-  'border-(--border-default) bg-transparent text-(--text-tertiary) hover:bg-(--seg-hover) hover:text-(--text-tertiary) dark:hover:bg-(--seg-hover) dark:hover:text-(--text-tertiary)';
+  'border-(--border) bg-transparent text-(--text-tertiary) hover:bg-(--seg-hover) hover:text-(--text-tertiary) dark:hover:bg-(--seg-hover) dark:hover:text-(--text-tertiary)';
 const SEG_ON =
   'border-transparent bg-(--seg-active) text-(--text-secondary) hover:bg-(--seg-active) hover:text-(--text-secondary) dark:hover:bg-(--seg-active) dark:hover:text-(--text-secondary)';
 
@@ -85,10 +85,10 @@ export function UserMenu({ theme: initialTheme, floating = false, className }: U
         className != null && className !== '' ? ` ${className}` : ''
       }`}
     >
-      <div className="user-menu-head flex flex-none items-center gap-[11px] border-b border-(--border-default) py-3.5 [&_img]:size-[30px] [&_img]:rounded-full">
+      <div className="user-menu-head flex flex-none items-center gap-[11px] border-b border-(--border) py-3.5 [&_img]:size-[30px] [&_img]:rounded-full">
         <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
         <div>
-          <div className="user-menu-name text-[13px] leading-4 text-(--text-primary)">
+          <div className="user-menu-name text-[13px] leading-4 text-(--foreground)">
             {user.displayName}
           </div>
         </div>

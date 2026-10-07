@@ -138,26 +138,26 @@ export const AGENTS_HREF = '/app/resources/agents';
 /** 名称值钮（原 .agent-name 两律 + ghost 差额并项）：15px 值墨，hover 换
  *  主题色（原形真换墨，不是中和到自身）。 */
 const AGENT_NAME_CLS =
-  'agent-name h-auto cursor-pointer justify-start gap-0 rounded-none border-none bg-transparent p-0 text-left text-[15px] font-normal leading-[inherit] text-(--text-primary) hover:bg-transparent hover:text-(--card-button) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+  'agent-name h-auto cursor-pointer justify-start gap-0 rounded-none border-none bg-transparent p-0 text-left text-[15px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--card-button) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** 图标编辑钮（原 .agent-name-edit / .agent-role-edit 两律 + 中和）：
  *  tertiary 墨，hover 回 primary；只留 padding 盒（size-7 由 icon-sm 底座给，
  *  图标-only 钮不吃底座字号）。 */
 const AGENT_ICON_EDIT_CLS =
-  'p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+  'p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** 名称编辑器（原 .agent-name-input）：32 高带框盒（件底座 h-8/w-full/
  *  rounded-none/px-2.5 即原值，只补皮肤差）；15px 值墨同显示态。focus 环走
  *  件底座（#855 收敛律）。 */
 const AGENT_NAME_INPUT_CLS =
-  'agent-name-input border-(--card-border) bg-(--surface) text-[15px] text-(--text-primary) md:text-[15px] dark:bg-(--surface)';
+  'agent-name-input border-(--border) bg-(--card) text-[15px] text-(--foreground) md:text-[15px] dark:bg-(--card)';
 
 /** 职责编辑器（原 .agent-role-input，裸 textarea 收编 Textarea 件）：13px 墨
  *  + card-border/surface 皮肤；min-h 64 / 8+10 垫 / 方角即件正典（min-h-16 /
  *  py-2 px-2.5 / rounded-none）。旧 resize:vertical 随件退役——
  *  field-sizing-content 自增长替代手动拖拽（spec/22 §5.3 同律）。 */
 const AGENT_ROLE_INPUT_CLS =
-  'agent-role-input border-(--card-border) bg-(--surface) text-[13px] text-(--text-primary) md:text-[13px] dark:bg-(--surface)';
+  'agent-role-input border-(--border) bg-(--card) text-[13px] text-(--foreground) md:text-[13px] dark:bg-(--card)';
 
 /** 进行中任务行（原 .agent-task-row 两律 + 既有差额并项）：整块行钮，
  *  hover 跟主题色（P4 #791，base-ui-theme §1.1）；行高由内容定（h-auto），
@@ -458,20 +458,20 @@ export function AgentDetailPage() {
               <ProfileRow label={t('思考强度')} labelClassName="agent-field-label">
                 {/* 只读值行（B1 裁「保持只读」）：值经能力读面词表解析，不直接
                     透出存值——引擎没有的档位不呈现（#499 B3 / XMON-16）。 */}
-                <span className="agent-thinking text-[13px] text-(--text-primary)">
+                <span className="agent-thinking text-[13px] text-(--foreground)">
                   {thinkingLevel ?? t('默认')}
                 </span>
               </ProfileRow>
             </ProfileCard>
             {/* 进行中（原版概览最后一段；r3 53 截图拍到的是空态
-                `暂无进行中的任务`）。结构照原件：一张描边卡（bg-surface-secondary
+                `暂无进行中的任务`）。结构照原件：一张描边卡（bg-secondary
                 + 11px 三级色段头），空态是段内一行说明文字；段头带计数，
                 但 N=0 时不出「 · 0」（原件 `count > 0 ? ' · N' : ''`）。
                 行 = `#序号` + 标题（单行截断）+ 状态 chip + 右箭头，整行是
                 按钮，落点 = 任务详情（原件 TaskRow onPress 走 todo.id）。
                 行间不画分隔线——原件 Agent 详情这一处没传 `divided`（机器详情
                 的同款列表才传），照抄。 */}
-            <div className="agent-tasks overflow-hidden rounded-[10px] border border-(--border-default) bg-(--surface-secondary) py-1.5">
+            <div className="agent-tasks overflow-hidden rounded-[10px] border border-(--border) bg-(--secondary) py-1.5">
               <p className="agent-tasks-head m-0 px-4 pb-0.5 pt-1 text-[11px] font-medium leading-4 text-(--text-tertiary)">
                 {t('进行中')}
                 {agentTasks.length > 0 ? ` · ${agentTasks.length}` : ''}
@@ -496,7 +496,7 @@ export function AgentDetailPage() {
                       <span className="agent-task-seq flex-none text-xs text-(--text-tertiary)">
                         #{row.todo.seqNum}
                       </span>
-                      <span className="agent-task-title min-w-0 flex-[1_1_auto] truncate text-[13px] text-(--text-primary)">
+                      <span className="agent-task-title min-w-0 flex-[1_1_auto] truncate text-[13px] text-(--foreground)">
                         {row.todo.title}
                       </span>
                       <StatusChip tone={ui.tone} size="sm">
@@ -625,7 +625,7 @@ export function AgentDetailPage() {
                         className={cn(PROFILE_ROW_AUTO_CLS, 'agent-memory-row items-start gap-3')}
                       >
                         <span className="agent-memory-text flex flex-1 flex-col gap-0.5">
-                          <span className="agent-memory-title text-[13px] text-(--text-primary)">
+                          <span className="agent-memory-title text-[13px] text-(--foreground)">
                             {memory.title}
                           </span>
                           <span className="agent-memory-content text-[12px] leading-[1.5] text-(--text-secondary)">
@@ -669,7 +669,10 @@ export function AgentDetailPage() {
                 原文：500 的 body 对用户不可操作，且网络级失败的原文是英文串，
                 混进中文面反而更糊（todo-detail 的被拒提示行同律）。 */}
             {permSaveFailed && (
-              <p className="agent-perm-error m-0 text-xs leading-4 text-(--danger)" role="alert">
+              <p
+                className="agent-perm-error m-0 text-xs leading-4 text-(--destructive)"
+                role="alert"
+              >
                 {t('保存失败，请重试。')}
               </p>
             )}
@@ -677,7 +680,7 @@ export function AgentDetailPage() {
                 留作段头，行 = label（+ 说明副文案）左、开关右，与个人页的
                 推送通知行同形。 */}
             <section className="agent-perm-group flex flex-col gap-2">
-              <h3 className="agent-perm-title m-0 text-[13px] font-medium text-(--text-primary)">
+              <h3 className="agent-perm-title m-0 text-[13px] font-medium text-(--foreground)">
                 {t('工具')}
               </h3>
               <ProfileCard className="agent-perm-card">
@@ -704,7 +707,7 @@ export function AgentDetailPage() {
             </section>
 
             <section className="agent-perm-group flex flex-col gap-2">
-              <h3 className="agent-perm-title m-0 text-[13px] font-medium text-(--text-primary)">
+              <h3 className="agent-perm-title m-0 text-[13px] font-medium text-(--foreground)">
                 {t('密钥')}
               </h3>
               {/* 授权粒度 = 原版的「全有全无」（#510）：一行「团队密钥 + 总
@@ -763,7 +766,7 @@ export function AgentDetailPage() {
             <section className="agent-perm-group flex flex-col gap-2">
               {/* 段级说明（整组共用一句，不挂在单行上——挂哪一行都是任选），
                   形随模板的副文案档（12px 三级色）。 */}
-              <h3 className="agent-perm-title m-0 text-[13px] font-medium text-(--text-primary)">
+              <h3 className="agent-perm-title m-0 text-[13px] font-medium text-(--foreground)">
                 {t('MCP 服务器')}
               </h3>
               <p className={PROFILE_HINT_CLS}>{t(AGENT_PERMISSION_COPY.mcpServers)}</p>
@@ -933,7 +936,7 @@ function RoleRow({
     >
       {draft === null ? (
         <>
-          <span className="agent-role-text text-[13px] text-(--text-primary)">
+          <span className="agent-role-text text-[13px] text-(--foreground)">
             {value ?? t('未设置职责')}
           </span>
           <div className="agent-role-actions flex justify-end gap-2">

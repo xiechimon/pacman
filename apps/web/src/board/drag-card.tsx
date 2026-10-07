@@ -28,7 +28,7 @@ export function DragCard({ todo, projectName }: DragCardProps) {
   const initial = projectName ? projectName.charAt(0).toLowerCase() : PROJECT_INITIAL;
   return (
     <div
-      className="board-drag-card flex flex-col gap-1.5 rounded-none border border-(--border-default) bg-(--card-bg) py-2.5 px-3 opacity-[0.92] rotate-2 [box-shadow:var(--drag-shadow)]"
+      className="board-drag-card flex flex-col gap-1.5 rounded-none border border-(--border) bg-(--card) py-2.5 px-3 opacity-[0.92] rotate-2 [box-shadow:var(--drag-shadow)]"
       data-todo-id={todo.id}
     >
       <div className="board-drag-card-row1 flex items-center gap-1.5">
