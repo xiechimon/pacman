@@ -210,23 +210,54 @@ function ensureLocalSkills() {
   w('secret-local', '白名单外本机技能（#919 探针拒侧）。', '白名单外技能正文。', SECRET_MARKER);
 }
 
+/** 团队库三技能：haiku-helper（两腿白名单内）+ haiku-local / secret-local。
+ *  后两者同时进团队库是因为 agent.skills 的白名单引用在 server 侧按团队库
+ *  现扫过滤（死引用静默脱落）——deny 腿要白名单含 haiku-local，它就必须是
+ *  团队库已知 id；secret-local 进库但无人白名单 → 永不分发，拒侧仍靠本机
+ *  目录那份（同名冲突团队条目胜，本机 loser 不进拒绝集，读取照放行）。 */
 async function ensureTeamSkill(teamId) {
-  const res = await jfetch('POST', `/api/skills?teamId=${encodeURIComponent(teamId)}`, {
-    body: {
+  const bodies = [
+    {
       name: 'haiku-helper',
       description:
         'Use when the task asks to write a haiku, a three-line short poem, or similar short verse.',
       files: [{ path: 'SKILL.md', content: HAIKU_HELPER_SKILL_MD }],
     },
-  });
-  // 201 = 新建；4xx 且已存在 = 幂等通过（复跑形态）。
-  if (res.status === 201) return res;
-  const list = await jfetch('GET', `/api/skills?teamId=${encodeURIComponent(teamId)}`);
-  const names = (Array.isArray(list.body) ? list.body : (list.body?.skills ?? [])).map(
-    (s) => s.id ?? s.name,
-  );
-  if (names.includes('haiku-helper')) return { status: 200, body: { reused: true } };
-  throw new Error(`team skill create failed: ${res.status} ${JSON.stringify(res.body).slice(0, 200)}`);
+    {
+      name: 'haiku-local',
+      description: '本机俳句对照技能（#919 探针放侧）。',
+      files: [
+        {
+          path: 'SKILL.md',
+          content: `---\nname: haiku-local\ndescription: 本机俳句对照技能（#919 探针放侧）。\n---\n\n本机俳句技能正文。\n\n${HAIKU_LOCAL_MARKER}\n`,
+        },
+      ],
+    },
+    {
+      name: 'secret-local',
+      description: '白名单外本机技能（#919 探针拒侧）。',
+      files: [
+        {
+          path: 'SKILL.md',
+          content: `---\nname: secret-local\ndescription: 白名单外本机技能（#919 探针拒侧）。\n---\n\n白名单外技能正文。\n\n${SECRET_MARKER}\n`,
+        },
+      ],
+    },
+  ];
+  for (const body of bodies) {
+    const res = await jfetch('POST', `/api/skills?teamId=${encodeURIComponent(teamId)}`, { body });
+    // 201 = 新建；4xx 且已存在 = 幂等通过（复跑形态）。
+    if (res.status === 201) continue;
+    const list = await jfetch('GET', `/api/skills?teamId=${encodeURIComponent(teamId)}`);
+    const names = (Array.isArray(list.body) ? list.body : (list.body?.skills ?? [])).map(
+      (s) => s.id ?? s.name,
+    );
+    if (names.includes(body.name)) continue;
+    throw new Error(
+      `team skill create failed: ${res.status} ${JSON.stringify(res.body).slice(0, 200)}`,
+    );
+  }
+  return { status: 200, body: { ensured: bodies.map((b) => b.name) } };
 }
 
 async function teamIdOf() {
@@ -311,8 +342,10 @@ async function phaseBehavior() {
     modelId: MODEL,
     skills: ['haiku-helper'],
   });
+  // hosted = 项目创建即 init bare repo + 种子 main（提交面断言与变更面截图
+  // 都要 git 真值；缺省 manual 形态无仓库，产物进不了任何提交）。
   const projRes = await jfetch('POST', '/api/projects', {
-    body: { name: `probe-919-behavior-${Date.now()}` },
+    body: { name: `probe-919-behavior-${Date.now()}`, repoKind: 'hosted' },
   });
   const projectId = projRes.body?.id;
   if (!projectId) throw new Error(`project create failed: ${projRes.status}`);
@@ -486,7 +519,7 @@ async function phaseDenyUi() {
       skills: ['haiku-helper', 'haiku-local'],
     });
     const projRes = await jfetch('POST', '/api/projects', {
-      body: { name: `probe-919-deny-${Date.now()}` },
+      body: { name: `probe-919-deny-${Date.now()}`, repoKind: 'hosted' },
     });
     const projectId = projRes.body?.id;
     const { todoId, buildId } = await createTaskAndBuild(
