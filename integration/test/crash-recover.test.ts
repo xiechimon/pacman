@@ -1,11 +1,13 @@
 // T2 证据 B（00/T2 时间盒，03 M3 首张票）：宿主 durable 编排的崩溃恢复面——
 // daemon 子进程 SIGKILL 于步执行中 → 重启 → `[recover]` journal 对账 →
-// 任务文本重发续跑 → done → phase 推进。
-// 实测边界（T2 记录）：pi SessionManager 将会话 jsonl 的首次落盘推迟到
-// assistant 首条消息到达（session-manager.js persist 注释「when assistant
-// arrives, all entries get written」）——步中崩溃时无会话文件可续，宿主
-// journal（prompt 快照）兜底以 new session 重发；跨已完成步的 continue
-// session（合并轮/驳回轮复用，02 §4.2）在 m3a-demo 实测通过。
+// continue session 真续跑 → done → phase 推进。
+// 实测边界（pi ≥1.0，#923 复核）：会话 jsonl 自 user 消息起落盘（pi #10000
+// ——「keeps the prompt on disk if the first turn never completes」），步中
+// 崩溃时会话文件在位可续，recover 走 continue session 真续跑。journal 兜底面
+// （会话文件缺失/不可续 → continue unavailable 回退 new session 重发任务文本，
+// 跨机认领即此形态，#862 T1）由 apps/daemon/test/runner-resume-note.test.ts
+// 单测钉住；跨已完成步的 continue session（合并轮/驳回轮复用，02 §4.2）在
+// m3a-demo 实测通过。
 // 步队列 server 持有（02 §4.2/A6）+ 会话持久化索引宿主自持（00/D3）。
 
 import { type ChildProcess, spawn } from 'node:child_process';
@@ -118,8 +120,9 @@ describe('崩溃恢复（T2：AgentSession 缝 × 宿主 durable 编排）', () 
     const buildId = (started.body as { builds: { id: string }[] }).builds[0]!.id;
 
     // 等 pi 会话建立且首条 LLM 请求已发出（journal 已落 sessionId + prompt
-    // 快照）后硬杀——此刻会话 jsonl 尚未落盘（pi 推迟到 assistant 首条），
-    // 恢复走 journal 兜底重发。
+    // 快照）后硬杀——此刻会话 jsonl 已带 user 首条消息落盘（pi #10000：
+    // 「keeps the prompt on disk if the first turn never completes」），
+    // 恢复走 continue session 真续跑。
     await waitFor(() => logLines().some((l) => l.includes(`new session ${buildId}`)), 90_000);
     await waitFor(() => stub.requests.length >= 1, 30_000);
     await new Promise((r) => setTimeout(r, 300));
@@ -144,11 +147,15 @@ describe('崩溃恢复（T2：AgentSession 缝 × 宿主 durable 编排）', () 
     await waitFor(() => logLines().some((l) => l.includes('finished (0 running)')), 30_000);
 
     const lines = logLines();
-    // journal 兜底：会话文件不可续 → 显式回退行 + new session 重发任务文本。
-    expect(lines.some((l) => l.includes('continue session unavailable'))).toBe(true);
-    expect(lines.filter((l) => l.includes(`new session ${buildId}`))).toHaveLength(2);
+    // 真续跑：会话文件自 user 首条落盘（pi #10000）→ recover 续接成功，
+    // continue 行在位、new session 只属首个 daemon（journal 兜底回退面由
+    // runner-resume-note.test.ts 单测钉住，此处不发生）。
+    expect(lines.some((l) => l.includes(`continue session ${buildId}`))).toBe(true);
+    expect(lines.some((l) => l.includes('continue session unavailable'))).toBe(false);
+    expect(lines.filter((l) => l.includes(`new session ${buildId}`))).toHaveLength(1);
     expect(lines.some((l) => l.includes('finished (0 running)'))).toBe(true);
-    // 任务文本自 journal 快照重发（宿主 durable 面，非引擎持久面）。
+    // 任务文本在续跑首轮请求可见（引擎持久面：会话历史自带原 user 消息；
+    // journal 快照重发同文——两面同证）。
     expect(JSON.stringify(stub.requests[1]?.messages ?? [])).toContain('崩溃恢复探针');
 
     // 步收尾 + sessionId 持久（后续合并轮 continue 的解析键）。
