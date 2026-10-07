@@ -175,7 +175,13 @@ const ROW_HOVER = 'hover:before:bg-sidebar-hover';
    useSingleLitSurface。 */
 const SEARCH_OPEN_DIM =
   '[html[data-search-open]_&]:before:bg-transparent [html[data-search-open]_&]:text-(--text-secondary)';
-const ROW_SELECTED = `text-foreground before:bg-sidebar-active ${SEARCH_OPEN_DIM}`;
+/** #953 终账裁决（#908 comment-6001887439 观察 2）：旧 text-foreground 档与
+   ROW_BASE 的 text-muted-foreground 在无 tailwind-merge 的模板串里共存，编译
+   序恒让 muted 胜——选中行墨自 #414 以来即 muted，选择信号由 pill 底承担
+   （docs/verify/943/contrast-943.md 实测；#953 摘除死档前后双模复测逐字节
+   一致，docs/verify/953/）。--selected 别名状态类按 spec/22 §5.0 别名残留律
+   原位保留（CSS 零规则，spec 一律钉 aria-current="page"）。 */
+const ROW_SELECTED = `before:bg-sidebar-active ${SEARCH_OPEN_DIM}`;
 
 /** 行钮中和件（#943 裸控件收编 Button）：行的视觉盒 = before: pill 层，
  *  Button 自带的件配方在行面上逐位归零——ghost hover/aria-expanded 的整盒

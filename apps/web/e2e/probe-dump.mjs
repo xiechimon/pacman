@@ -35,6 +35,11 @@
 //   node e2e/probe-dump.mjs --out ../../docs/verify/921
 //   node e2e/probe-dump.mjs --skip-run --ndjson /tmp/records.ndjson
 //
+// A bare `--` separator in argv is skipped, not rejected: pnpm forwards the
+// npm-style `--` verbatim to the script, so the workspace-filter form above
+// used to die with `unknown flag --` (#953 fix, per #908
+// comment-6001887439 ruling 4; both invocation forms now behave identically).
+//
 // Flags:
 //   --specs <name>...   spec filter(s), passed through to playwright test;
 //                       static enumeration narrows to the same set. Default:
@@ -152,6 +157,7 @@ function parseArgs(argv) {
       if (i >= argv.length) throw new Error(`missing value for ${a}`);
       return argv[i];
     };
+    if (a === '--') continue; // npm-style separator, forwarded verbatim by pnpm (#953)
     if (a === '--specs') {
       while (i + 1 < argv.length && !argv[i + 1].startsWith('--')) opts.specs.push(argv[++i]);
     } else if (a === '--port') opts.port = Number(next());
