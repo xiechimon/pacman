@@ -8,9 +8,10 @@
 //      绕行三种形态）→ check + operations 双侧断言
 //   6. 授权路径被误挡 → 放行且内容逐字节
 //   7. 门控整体替换 operations 丢图片面 → detectImageMimeType 必须在位
-//   8. claude-code deny 规则形状漂移（非 Read(//…/**) 形 / 元字符未转义）
+//   8. claude-code deny 规则形状漂移（Read(//…/**) / Skill(<name>) /
+//      Skill(skill:<name>) 三条缺一、元字符未转义）
 //   9. sdkOptions 组装回归：settingSources 承重档（'project'）缺失或漂移、
-//      chief 面多发 skills/settings 键（零回归面被打破）
+//      chief 面多发 settings 键、实测 inert 的 SDK skills 键复活
 //  10. catalog 观测行缺失（entries=0 不落行 = 信号有洞）
 
 import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -224,16 +225,22 @@ describe('createSkillReadGate（pi 内建 read 的门控 operations）', () => {
 // —— claude-code deny 规则面（失败方式 8）——————————————————————————
 
 describe('buildSkillDenyRules / escapeGitignorePath（claude-code 硬挡规则形）', () => {
-  test('规则形 = Read(//<绝对路径>/**)（gitignore 文件系统根锚定）', () => {
+  test('三条/技能：Read(//<绝对路径>/**) + Skill(<name>) + Skill(skill:<name>)', () => {
+    // Read deny 挡不住 Skill 工具的内容加载（verify/917 B4 实测），Skill 名
+    // deny 必须独立成规；skill: 前缀形覆盖 alias/display 名（官方语义）。
     const rules = buildSkillDenyRules([{ name: 'beta', baseDir: '/Users/x/.agents/skills/beta' }]);
-    expect(rules).toEqual(['Read(//Users/x/.agents/skills/beta/**)']);
+    expect(rules).toEqual([
+      'Read(//Users/x/.agents/skills/beta/**)',
+      'Skill(beta)',
+      'Skill(skill:beta)',
+    ]);
   });
 
-  test('gitignore 元字符转义（[ ] * ? 与反斜杠），普通路径不动', () => {
+  test('gitignore 元字符转义（[ ] * ? 与反斜杠）只作用于 Read 路径位', () => {
     expect(escapeGitignorePath('/a/b-c')).toBe('/a/b-c');
     expect(escapeGitignorePath('/a/[2026] b*c?d')).toBe('/a/\\[2026\\] b\\*c\\?d');
     const rules = buildSkillDenyRules([{ name: 'x', baseDir: '/a/[weird]' }]);
-    expect(rules).toEqual(['Read(//a/\\[weird\\]/**)']);
+    expect(rules).toEqual(['Read(//a/\\[weird\\]/**)', 'Skill(x)', 'Skill(skill:x)']);
   });
 
   test('空拒绝集 = 空规则数组（settings 键不发的判据）', () => {
@@ -255,31 +262,32 @@ function baseParts() {
   };
 }
 
-describe('buildClaudeSdkOptions（spec 14 §裁决后的范围 1/2：settingSources + 白名单两层）', () => {
+describe('buildClaudeSdkOptions（spec 14 §裁决后的范围 1/2：settingSources + deny 硬挡）', () => {
   test("settingSources 恒钉 ['user','project','local']（'project' = 简报承重位，spec 24）", () => {
     const opts = buildClaudeSdkOptions(baseParts());
     expect(opts.settingSources).toEqual(['user', 'project', 'local']);
     expect(CLAUDE_SETTING_SOURCES).toContain('project');
   });
 
-  test('worker 面：skills = allowlist 原值；deny 规则进 settings.permissions.deny', () => {
+  test('worker 面：deny 规则进 settings.permissions.deny（flag settings 层）', () => {
     const opts = buildClaudeSdkOptions({
       ...baseParts(),
-      nativeSkills: ['alpha'],
-      skillDenyRules: ['Read(//skills/beta/**)'],
+      skillDenyRules: ['Read(//skills/beta/**)', 'Skill(beta)', 'Skill(skill:beta)'],
     });
-    expect(opts.skills).toEqual(['alpha']);
-    expect(opts.settings).toEqual({ permissions: { deny: ['Read(//skills/beta/**)'] } });
+    expect(opts.settings).toEqual({
+      permissions: { deny: ['Read(//skills/beta/**)', 'Skill(beta)', 'Skill(skill:beta)'] },
+    });
   });
 
-  test('空 allowlist（[]）= skills: [] 照发（原生清单全关），非缺省', () => {
-    const opts = buildClaudeSdkOptions({ ...baseParts(), nativeSkills: [] });
-    expect(opts.skills).toEqual([]);
+  test('SDK skills 键恒不发（实测 inert：只翻译成 allow 规则，bypass 下无效果）', () => {
+    expect('skills' in buildClaudeSdkOptions(baseParts())).toBe(false);
+    expect(
+      'skills' in buildClaudeSdkOptions({ ...baseParts(), skillDenyRules: ['Skill(beta)'] }),
+    ).toBe(false);
   });
 
-  test('chief 面：skills / settings 两键都不发（CLI 默认行为零回归）', () => {
+  test('chief 面：settings 键不发（CLI 默认行为零回归）', () => {
     const opts = buildClaudeSdkOptions(baseParts());
-    expect('skills' in opts).toBe(false);
     expect('settings' in opts).toBe(false);
   });
 

@@ -169,10 +169,12 @@ T1 (#367) 不阻塞 T3 但共享 wire 形状；T1 完工后开 T3 让 lane367 �
 
 1. **显式 settingSources（口径 3）**：claude-code 后端组装 SDK Options 时钉 `settingSources: ['user', 'project', 'local']`——把「依赖 SDK 缺省（omitted = 全部加载）」改成「依赖产品声明」。`'project'` 是 CLAUDE.md 简报的承重位（spec 24 §通道漂移：这一档被关掉或缺失，简报**零报错地消失**）；后续任何改动要动这个列表，先重验简报存活。
 2. **白名单硬挡（口径 4）**：`agent.skills` 之外技能的**文件读取必须被拒**，不只是不出现在目录里。落后端各表：
-   - **claude-code**，两层：
-     ① SDK `settings.permissions.deny`（flag settings 层，用户可控设置里最高优先级）按扫描出的每个未授权技能 `baseDir` 下一条 `Read(//<baseDir>/**)`——`//` 前缀 = 文件系统根锚定的 gitignore 形（Claude Code permissions 正典），路径里的 gitignore 元字符（`* ? [ ] !` 与行首 `#`）反斜杠转义。deny 规则在**包括 `bypassPermissions` 在内的每个 permission mode 都生效**（官方文档明示「Deny rules block in every mode, including bypassPermissions」；bundled CLI 2.1.278），且 Read 面 deny 同路径连带挡 Edit/Write（≥2.1.208 语义）。
-     ② SDK `skills` 选项按 worker 步的 `agent.skills` 原值传入：原生清单只列授权技能、Skill 工具拒绝未授权（d.ts：「unlisted skills are hidden from the model's listing and rejected by the Skill tool」）——堵住 issue 背景里「白名单只过滤 pacman 那段文本、挡不住原生清单」的老洞。
-     chief 步（allowlist 缺省）两层都不发：`skills` 缺省 = CLI 默认发现行为零回归；无 deny 规则。空白名单（`[]`）= 两层都按空集生效（原生清单全关、目录零注入纪律不变）。
+   - **claude-code**：SDK `settings.permissions.deny`（flag settings 层，用户可控设置里最高优先级）按扫描出的每个未授权技能下三条规则：
+     ① `Read(//<baseDir>/**)`——文件工具面。`//` 前缀 = 文件系统根锚定的 gitignore 形（Claude Code permissions 正典），路径里的 gitignore 元字符（`\ * ? [ ]`）反斜杠转义。deny 规则在**包括 `bypassPermissions` 在内的每个 permission mode 都生效**（官方文档明示 + `docs/verify/917/` 实物对照：无规则时 bypass 下读成功、有规则时同一读取被拒），且 Read 面 deny 同路径连带挡 Edit/Write（≥2.1.208 语义；bundled CLI 2.1.278）。
+     ② `Skill(<name>)` + ③ `Skill(skill:<name>)`——Skill 工具面。**实测两条机制事实决定了这一层必须独立存在**：Read deny **不**连带挡 Skill 工具的内容加载（Skill 调用读 SKILL.md 不走 Read 权限检查——`docs/verify/917/` B4：仅 Read deny 时未授权技能内容仍进模型上下文）；而 `Skill(<name>)` deny 在 bypassPermissions 下拒绝调用并落 `result.permission_denials`（B5 实物）。`skill:` 前缀形按官方文档匹配该技能的任一名字（alias / display name），与精确形并发双保险。
+     **不采 SDK `skills` 选项**：d.ts 宣称「unlisted skills are hidden from the model's listing and rejected by the Skill tool」，实测（`docs/verify/917/` run1 B2）它只被 SDK 翻译成 `Skill(<name>)` **allow** 规则——allow 规则在 bypassPermissions 下无效果，且原生清单条数分毫未动（122 → 122）。宣称与实现不符，弃用。
+     chief 步（allowlist 缺省）不发任何 deny 规则（CLI 默认行为零回归）。空白名单（`[]`）= 全部扫得技能进拒绝集（目录零注入纪律的对应面）。
+     **已知残差**：deny 规则只覆盖 pacman 扫描面（`PACMAN_SKILLS_DIR` + 团队目录）里点得出名字的技能；机器上原生目录（`~/.claude/skills`、插件）里 pacman 不知道的条目仍对模型可见、可调用——那是被搁置的口径 2（关整个原生面）的领域，本节不越权。实物基线：本机原生清单 122 条（B1）。
    - **pi**：内建 `read` 以同名 customTool 覆盖成门控版（#866 T5 gated bash 同形，pi 注册表按名后写胜出）。门控落在 `ReadOperations.readFile/access`：命中未授权技能 `baseDir` 前缀的路径抛拒绝——比较前**两侧都过 realpath 归一**（macOS `/tmp` → `/private/tmp` 符号漂移不得放行），拒绝进 tool error 结果（agent 可见改道文案）+ `[skills] denied-read:` 行。pi 的 `operations` 是**整体替换**（read.js `options.operations ?? defaultReadOperations`），故 `readFile/access/detectImageMimeType` 三件必须齐——最后一件透传 pi 根导出的 `detectSupportedImageMimeTypeFromFile`，图片读取面零扰动。
    - **未授权集的单源**：`collectDeniedSkillDirs`（backend/pi.ts 导出，claude-code.ts 经 backend 缝内既有通道消费）——与 `buildSkillsCatalog` 同参扫描（teamSkillsDir 在前 first-wins），allowlist 缺省 → 空集；名单外条目的 `baseDir` 即拒绝目标。目录里未被扫成技能的散文件不属本节授权面。
    - **已知边界（如实登记）**：bash 绕行（`cat <未授权 SKILL.md>`）两后端都不挡——本节硬挡的覆盖面 = 文件工具面，与口径 4「permission deny 路径规则」的字面一致；沙箱级收敛不在本票。
@@ -186,6 +188,6 @@ T1 (#367) 不阻塞 T3 但共享 wire 形状；T1 完工后开 T3 让 lane367 �
 
 ### 验收（seam，双向）
 
-- **单测**：claude-code sdkOptions 组装面（settingSources 钉值；worker `skills` = allowlist 原值、chief 不发；deny 规则 `Read(//…/**)` 形与元字符转义；空 allowlist 两层都按空集）；`collectDeniedSkillDirs` 四态（缺省 / 部分授权 / 空名单 / 未知 slug 容忍）；pi 门控 read ops（未授权拒绝且带技能名、授权放行、realpath 归一生效、图片 mime 面在位）；`catalog:` / `deny:` 日志行形。
-- **integration（skills-inject-e2e 扩展）**：同一次运行取两侧证据——worker 步 read **授权** SKILL.md = 正文 marker 落库（既有条），read **未授权** SKILL.md = tool 结果带拒绝文案、其正文 marker **不**落库；pi agentDir 种一个原生技能后，stub 请求面**不出现**该技能段（noSkills 实证，before = #958 期两份清单并存的接线实录）；`[skills] catalog: entries=` 行落盘。
-- **实物取证（docs/verify/917/）**：真 SDK/CLI 面上 before/after 对照——deny 规则在 `bypassPermissions` 下挡 Read（before 无规则读成功、after 有规则被拒，两侧都留证）；worker `skills` 过滤下原生清单只剩授权技能。机制声称一律取运行时真值，读源码/看配置不算验收。
+- **单测**：claude-code sdkOptions 组装面（settingSources 钉值；deny 规则三条形 `Read(//…/**)` / `Skill(<name>)` / `Skill(skill:<name>)` 与元字符转义；chief 不发 settings、`skills` 键恒不发）；`collectDeniedSkillDirs` 四态（缺省 / 部分授权 / 空名单 / 未知 slug 容忍）；pi 门控 read ops（未授权拒绝且带技能名、授权放行、realpath 归一生效、图片 mime 面在位）；`catalog:` / `deny:` 日志行形。
+- **integration（skills-inject-e2e 扩展）**：同一次运行取两侧证据——worker 步 read **授权** SKILL.md = 正文 marker 落库（既有条），read **未授权** SKILL.md = tool 结果带拒绝文案、其正文 marker **不**落库；pi agentDir 种一个原生技能后，stub 请求面**不出现**该技能段（noSkills 实证，before = 关掉 noSkills 的同 harness 红跑 + #958 期两份清单并存的接线实录）；`[skills] catalog: entries=` 行落盘。
+- **实物取证（docs/verify/917/，已归档）**：真 SDK/CLI（bundled 2.1.278 + 真模型）before/after 对照六件——A1/A2：deny 规则在 `bypassPermissions` 下挡 Read（无规则读成功 / 有规则被拒，init.permissionMode 两侧均 bypass 实证）；B1：原生清单实数基线；B3/B4/B5：Skill 工具面三态（无规则可调用 / 仅 Read deny 不连带挡 / `Skill(<name>)` deny 拒绝并落 permission_denials）；C1：显式 settingSources 下 CLAUDE.md 简报通道存活。机制声称一律取运行时真值，读源码/看配置不算验收。

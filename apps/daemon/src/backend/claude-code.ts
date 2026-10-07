@@ -734,21 +734,30 @@ export function escapeGitignorePath(p: string): string {
   return p.replaceAll(/([\\*?[\]])/g, '\\$1');
 }
 
-/** 未授权技能目录 → Read deny 路径规则（口径 4 第二层）。形 =
- * `Read(//<绝对路径>/**)`——`//` 前缀 = 文件系统根锚定的 gitignore 形
- * （Claude Code permissions 正典）。deny 规则在包括 bypassPermissions 在内的
- * 每个 permission mode 都生效，且 Read 面 deny 同路径连带挡 Edit/Write
- * （bundled CLI 2.1.278 ≥ 2.1.208 语义）。daemon 机器面 = macOS/Linux，
- * posix 绝对路径形足够（Windows 归一化 `//c/...` 不在本缝范围）。 */
+/** 未授权技能 → deny 规则三条/技能（口径 4）。deny 规则在包括
+ * bypassPermissions 在内的每个 permission mode 都生效（docs/verify/917 实物
+ * 对照 A1/A2/B5）。
+ * ① `Read(//<baseDir>/**)` = 文件工具面：`//` 前缀 = 文件系统根锚定的
+ *    gitignore 形（Claude Code permissions 正典）；Read 面 deny 同路径连带挡
+ *    Edit/Write（bundled CLI 2.1.278 ≥ 2.1.208 语义）。daemon 机器面 =
+ *    macOS/Linux，posix 绝对路径形足够（Windows 归一化 `//c/...` 不在本缝范围）。
+ * ② `Skill(<name>)` + ③ `Skill(skill:<name>)` = Skill 工具面：① 挡不住它——
+ *    Skill 调用加载 SKILL.md 不走 Read 权限检查（verify/917 B4 实测），必须
+ *    独立成规；`skill:` 前缀形按官方语义匹配该技能任一名字（alias/display），
+ *    与精确形并发双保险。SDK `skills` 选项不采：实测只翻译成 allow 规则，
+ *    bypassPermissions 下无效果、原生清单分毫不动（verify/917 run1 B2）。 */
 export function buildSkillDenyRules(denied: readonly DeniedSkillEntry[]): string[] {
-  return denied.map((d) => `Read(/${escapeGitignorePath(d.baseDir)}/**)`);
+  return denied.flatMap((d) => [
+    `Read(/${escapeGitignorePath(d.baseDir)}/**)`,
+    `Skill(${d.name})`,
+    `Skill(skill:${d.name})`,
+  ]);
 }
 
-/** sdkOptions 组装面（纯函数可单测；open() 只备料）。nativeSkills =
- * 口径 4 第一层（SDK `skills` 选项收编原生清单到同一张白名单：名单外技能
- * hidden from listing + rejected by the Skill tool）；undefined = 不发
- * （chief 面 CLI 默认行为零回归），[] = 照发（原生清单全关，空勾选纪律）。
- * skillDenyRules 空/缺省 = settings 键不发。 */
+/** sdkOptions 组装面（纯函数可单测；open() 只备料）。skillDenyRules =
+ * buildSkillDenyRules 产物（口径 4 硬挡）；空/缺省 = settings 键不发
+ * （chief 面 CLI 默认行为零回归）。SDK `skills` 键恒不发——见
+ * buildSkillDenyRules 注释的实测依据。 */
 export interface ClaudeSdkOptionParts {
   cwd: string;
   modelId: string;
@@ -759,7 +768,6 @@ export interface ClaudeSdkOptionParts {
   effort?: EffortLevel;
   /** systemPrompt preset append（#958 后仅无简报通道的调用面非空）。 */
   append?: string;
-  nativeSkills?: string[];
   skillDenyRules?: string[];
   abortController: AbortController;
 }
@@ -784,7 +792,6 @@ export function buildClaudeSdkOptions(parts: ClaudeSdkOptionParts): Options {
         }
       : {}),
     ...(parts.resumeId !== null ? { resume: parts.resumeId } : { sessionId: parts.sessionId }),
-    ...(parts.nativeSkills !== undefined ? { skills: parts.nativeSkills } : {}),
     ...(parts.skillDenyRules !== undefined && parts.skillDenyRules.length > 0
       ? { settings: { permissions: { deny: [...parts.skillDenyRules] } } }
       : {}),
@@ -808,9 +815,10 @@ export class ClaudeCodeBackend implements AgentBackend {
   readonly capabilities = CLAUDE_CODE_CAPABILITIES;
 
   /** 简报文件通道（#958）：SDK 只在 `settingSources` 含 `'project'` 时读
-   * worktree 的 CLAUDE.md，而该选项缺省即"全部加载"——**这是承重位**：把它显式
-   * 声明成 `[]` 或不含 `'project'`，简报会零报错地消失（#917 口径 3 落地时必须
-   * 保住这一档，见 spec 24）。AGENTS.md 一概不读。 */
+   * worktree 的 CLAUDE.md。#917 起该选项由 buildClaudeSdkOptions 显式钉成
+   * CLAUDE_SETTING_SOURCES（含 'project'）——承重位从「依赖 SDK 缺省」变成
+   * 「产品声明 + 单测钉值」；改动那份列表前先重验简报存活（spec 24 §通道漂移）。
+   * AGENTS.md 一概不读。 */
   readonly brief: BriefChannel = {
     backendId: 'claude-code',
     composeBody: (opts, base) =>
@@ -864,7 +872,7 @@ export class ClaudeCodeBackend implements AgentBackend {
     const effort = toEffort(opts.thinkingLevel);
     // skills catalog 的落点自 #958 起归简报文件通道（见 this.brief）：目录内容由
     // `composeSections` 产出、runner 写进 worktree 的 CLAUDE.md，SDK 经
-    // `settingSources` 的 'project' 档原生读取（缺省即含 'project'，不得被关）。
+    // `settingSources` 的 'project' 档原生读取（#917 起显式钉值，'project' 不得被摘）。
     // 这里只透传 runner 给的 systemPrompt——**只有**不具备简报通道的后端才拿得到
     // 非空值。
     const append = opts.systemPrompt;
@@ -874,10 +882,10 @@ export class ClaudeCodeBackend implements AgentBackend {
     const disallowedTools = [SDK_ASK_TOOL, ...(opts.readOnly === true ? SDK_WRITE_TOOLS : [])];
     const abort = new AbortController();
     const sessionId = resumeId ?? randomUUID(); // 自铸 UUID（A7 通道同值回传）
-    // 白名单硬挡（#917 口径 4）两层：① SDK `skills` 选项把原生清单收编到
-    // agent.skills 同一张白名单（worker 步原值透传；chief 缺省不发 = CLI 默认
-    // 行为零回归）；② 未授权技能目录进 settings.permissions.deny 路径规则——
-    // bypassPermissions 下仍生效（deny 规则不属被 bypass 的「prompt」面）。
+    // 白名单硬挡（#917 口径 4）：未授权技能进 settings.permissions.deny
+    // （Read 路径规则挡文件工具面 + Skill 名规则挡 Skill 工具面）——deny 规则
+    // 在 bypassPermissions 下仍生效（deny 不属被 bypass 的「prompt」面；实物
+    // 对照 docs/verify/917）。chief 步拒绝集恒空 = 不发 settings 键，零回归。
     const deniedSkills = collectDeniedSkillDirs(this.opts.skills, opts);
     const skillDenyRules = buildSkillDenyRules(deniedSkills);
     if (deniedSkills.length > 0) {
@@ -892,7 +900,6 @@ export class ClaudeCodeBackend implements AgentBackend {
       mcpServers,
       ...(effort !== undefined ? { effort } : {}),
       ...(append !== undefined ? { append } : {}),
-      ...(opts.skillsAllowlist !== undefined ? { nativeSkills: opts.skillsAllowlist } : {}),
       skillDenyRules,
       abortController: abort,
     });
