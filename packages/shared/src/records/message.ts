@@ -29,10 +29,14 @@ export const messageRecordSchema = z
 export type MessageRecord = z.infer<typeof messageRecordSchema>;
 
 /** transcript 消息行（r5 §3.6 封套行实测含 id/createdAt 位；conversation
- * stream message 事件同形，protocol/sse.ts）。 */
+ * stream message 事件同形，protocol/sse.ts）。
+ * actor（#902）：过闸宣告行的动作主体 displayName（人 = 用户、chief 工具面 =
+ * Chief 绑定 Agent）。仅 server 动作面写入的行携带；daemon 上传行与存量旧行
+ * 为 null/缺省——呈现层回落当前用户名（旧行语义不变）。 */
 export const transcriptRowSchema = messageRecordSchema.extend({
   id: recordId,
   createdAt: epochMs,
+  actor: z.string().nullish(),
 });
 export type TranscriptRow = z.infer<typeof transcriptRowSchema>;
 
@@ -49,6 +53,32 @@ export const MERGE_ANNOUNCEMENT = '发起了合并';
  * （server applyBuildStepAction review 分支）与呈现端（web transcript mapper）
  * 双端单源。 */
 export const REVIEW_ANNOUNCEMENT = '发起了 AI 审核';
+
+/** 确认闸通过行 content canon（#902）：`steps {action:'confirm'}`（REST 人肉
+ * 按闸 / chief confirm_builds / MCP confirm）落 transcript 的宣告行，与
+ * MERGE/REVIEW 同族（role user 纯文本，呈现层拼装时间；actor 位记「在场的
+ * 是谁」——#892 §6 建议 3：没有 actor，「闸被人按过」永远只能是推断）。
+ * 写入端（server applyBuildStepAction confirm 分支）与呈现端（web transcript
+ * mapper）双端单源。 */
+export const CONFIRM_ANNOUNCEMENT = '通过了确认';
+
+/** 手动/工具面 done 落地行 content canon（#902/#901/#900）：不经合并步的
+ * done 落地（看板 confirm/review→done 拖拽的 PATCH phase 面、chief/MCP
+ * complete_todos）落 todo 最新 build 会话的宣告行，同族行形。actor 位区分
+ * 人与 agent（#892 实证：88% done 经手动改相落地且零审计）。写入端（server
+ * updateTodo 闸相位分支 / transitionTodos done 落地）与呈现端（web
+ * transcript mapper）双端单源。 */
+export const DONE_ANNOUNCEMENT = '标记为已完成';
+
+/** 过闸宣告行 content 全集（#902）：呈现端按本表把行折叠成 note（不是用户
+ * 气泡），拼装 `${actor ?? 当前用户} ${text}`。新增宣告行必须进本表，否则
+ * mapper 会把审计行渲染成用户话语。 */
+export const GATE_ANNOUNCEMENTS: readonly string[] = [
+  MERGE_ANNOUNCEMENT,
+  REVIEW_ANNOUNCEMENT,
+  CONFIRM_ANNOUNCEMENT,
+  DONE_ANNOUNCEMENT,
+];
 
 /** AI 审核步完成占位 ack（M7 #312 票 A 占位 emit；#326 真 findings 上线后此
  * 常量保留作 step journal 行 / 测试 fixture 字面，不作真 wire emit 用）。 */

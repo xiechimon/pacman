@@ -673,6 +673,8 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         role: r.role,
         content: r.content,
         createdAt: r.createdAt,
+        // #902 过闸宣告行的动作主体（存量行/daemon 上传行 = null）。
+        actor: r.actor,
       })),
       chips: [],
       historyEpoch: 0,
@@ -1848,6 +1850,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         attachmentsDir: ctx.attachmentsDir,
         mcpConfigPath: ctx.mcpConfigPath,
         skillsDir: ctx.skillsDir,
+        ...(ctx.convHub !== undefined ? { convHub: ctx.convHub } : {}),
         ...(ctx.githubFetch !== undefined ? { githubFetch: ctx.githubFetch } : {}),
       },
       c.req.raw,

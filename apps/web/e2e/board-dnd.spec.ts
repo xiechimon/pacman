@@ -4,6 +4,9 @@ import { expect, type Page, test } from '@playwright/test';
  *  类名钩随 detail/overlays.css 清零退役）。 */
 const resetDialog = (page: Page) => page.getByRole('dialog', { name: '把任务重置回待开始？' });
 
+/** #901 done 落位闸弹层：同载体律（role=dialog + 可及名一级）。 */
+const doneDialog = (page: Page) => page.getByRole('dialog', { name: '把任务标记为已完成？' });
+
 // Issue #616 → #753 acceptance: the board drag is the reference product's
 // drag (todos.dev, 2026-10-03/04 live 重测——推翻 2026-10-02 旧测的两条:
 // 「待处理/已完成卡不可拖」与「待处理永不作落点」）— a pure cross-column
@@ -521,6 +524,98 @@ test('重置闸·静默：零历史卡拖回待开始不设闸 (#755)', async ({
   ).toBeVisible();
   await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('2');
   await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('1');
+});
+
+// ---- done 落位闸 (#901, scenario board-drag-matrix) ----
+// 闸相位（confirm/review）且有变更产物的卡拖向已完成 = 跳过合并语义，开
+// 确认弹层（取消零提交）；无产物卡与其余源列拖拽保持静默改相（#892：数据
+// 不支持砍掉拖拽捷径本身，只咬「有产物在审的卡」）。
+
+test('done 闸·取消：review(有变更) 拖已完成开弹层，取消零提交（卡不动、计数不动、无写请求）(#901)', async ({
+  page,
+}) => {
+  await page.goto('/app?scenario=board-drag-matrix');
+  const writes: string[] = [];
+  page.on('request', (req) => {
+    if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method())) writes.push(req.url());
+  });
+  const list = await page.locator('[data-column-list="done"]').boundingBox();
+  if (list == null) throw new Error('done list missing');
+  await dragTo(page, '[data-todo-id="dm-review"]', {
+    x: list.x + list.width / 2,
+    y: list.y + list.height - 24,
+  });
+  await settleDrag(page);
+  await page.mouse.up();
+  await settleDrop(page);
+  // dm-review = review ∧ hasChanges（probeTodo 相位默认位）：落位开 done 闸，
+  // 卡片停在源列，计数不动。
+  await expect(doneDialog(page)).toBeVisible();
+  await expect(doneDialog(page).getByText('变更不会合入默认分支；已开出的 PR 保持原状')).toBeVisible();
+  await expect(
+    page.locator('[data-column="pending"] [data-todo-id="dm-review"]'),
+  ).toBeVisible();
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('2');
+  await doneDialog(page).getByRole('button', { name: '取消' }).click();
+  await expect(doneDialog(page)).toBeHidden();
+  await expect(
+    page.locator('[data-column="pending"] [data-todo-id="dm-review"]'),
+  ).toBeVisible();
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('3');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('2');
+  expect(writes).toEqual([]);
+});
+
+test('done 闸·确认：review(有变更) 确认后落已完成（fixture 本地提交，计数耦合）(#901)', async ({
+  page,
+}) => {
+  await page.goto('/app?scenario=board-drag-matrix');
+  const list = await page.locator('[data-column-list="done"]').boundingBox();
+  if (list == null) throw new Error('done list missing');
+  await dragTo(page, '[data-todo-id="dm-review"]', {
+    x: list.x + list.width / 2,
+    y: list.y + list.height - 24,
+  });
+  await settleDrag(page);
+  await page.mouse.up();
+  await settleDrop(page);
+  await expect(doneDialog(page)).toBeVisible();
+  await doneDialog(page).getByRole('button', { name: '确认完成' }).click();
+  await expect(doneDialog(page)).toBeHidden();
+  await expect(
+    page.locator('[data-column="done"] [data-todo-id="dm-review"]'),
+  ).toBeVisible();
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('2');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('3');
+});
+
+test('done 闸·静默：无变更产物的 confirm 卡与 building 源拖已完成不设闸 (#901)', async ({
+  page,
+}) => {
+  await page.goto('/app?scenario=board-drag-matrix');
+  const list = await page.locator('[data-column-list="done"]').boundingBox();
+  if (list == null) throw new Error('done list missing');
+  const to = { x: list.x + list.width / 2, y: list.y + list.height - 24 };
+  // confirm ∧ 无变更（probeTodo confirm 默认 hasChanges=false）= 无码可审的
+  // 人肉清理路径：静默改相，dialog 不出现（#892 实证 10 张测试卡形态）。
+  await dragTo(page, '[data-todo-id="dm-confirm"]', to);
+  await settleDrag(page);
+  await page.mouse.up();
+  await settleDrop(page);
+  await expect(doneDialog(page)).toBeHidden();
+  await expect(
+    page.locator('[data-column="done"] [data-todo-id="dm-confirm"]'),
+  ).toBeVisible();
+  // building 源（非闸相位）拖已完成同样保持静默——「其余拖拽不变」。
+  await dragTo(page, '[data-todo-id="dm-building"]', to);
+  await settleDrag(page);
+  await page.mouse.up();
+  await settleDrop(page);
+  await expect(doneDialog(page)).toBeHidden();
+  await expect(
+    page.locator('[data-column="done"] [data-todo-id="dm-building"]'),
+  ).toBeVisible();
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('4');
 });
 
 // ---- draggable from every column (#753; rewrites 「待处理/已完成 cards

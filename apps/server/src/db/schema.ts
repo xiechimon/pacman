@@ -196,6 +196,10 @@ export const message = sqliteTable('message', {
   role: text('role').$type<'system' | 'user' | 'assistant'>().notNull(),
   content: json<unknown>('content').notNull(),
   createdAt: epochMs('createdAt').notNull(),
+  /** 过闸宣告行的动作主体 displayName（#902：人 = 用户、chief 工具面 =
+   * Chief 绑定 Agent）。仅 server 动作面写入的行携带；daemon 上传行与存量
+   * 旧行恒 NULL（呈现层回落当前用户名）。 */
+  actor: text('actor'),
 });
 
 // —— branch_sync（M7 #319，08 册 §3 story 10 + 附录 B）——————————————————————

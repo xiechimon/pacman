@@ -14,6 +14,7 @@ import type {
   UserRecord,
 } from '@pacman/shared';
 import {
+  DONE_ANNOUNCEMENT,
   derivePlaceholderTitle,
   githubIssueSourceRef,
   IN_PROGRESS_PHASES,
@@ -48,6 +49,7 @@ import { hasGithubConnection, openGithubToken } from './github-connection.js';
 import type { MachineWakeHub } from './machines.js';
 import { notifyTodoPhase } from './notifications.js';
 import { assertPhaseTransition, canManualMovePhase } from './phase.js';
+import { insertGateAnnouncement } from './transcript.js';
 
 type TodoRow = typeof todo.$inferSelect;
 
@@ -58,6 +60,9 @@ export interface TodoDeps {
   machineHub?: MachineWakeHub;
   /** 通知收件人（phase 漏斗挂 plan_ready/build_review，02 §9.1）。 */
   user: UserRecord;
+  /** conversation stream 通道（#901 闸相位 done 落地审计行的 live 推送；
+   * 缺省 = 只落库不推流，单测/内部流形态）。 */
+  convHub?: ConversationStreamHub;
   /** GitHub 写向 deps（#452 / ADR 0006：自建 issue + 标题回写）。box =
    * github_connection token 解密位；缺省 = 写向关闭（单测/纯本地形态，
    * local 项目行为逐字节不变）。 */
@@ -391,6 +396,19 @@ export function updateTodo(
         .where(eq(todo.id, id))
         .run();
     }
+  }
+
+  // #901/#902：闸相位 done 落地（confirm/review → done，看板拖拽与 raw PATCH
+  // 同一写面）往 todo 最新 build 会话落审计行——88% done 落地经本通道且此前
+  // 零通知/零 actor/零时间线行（#892 §6 建议 2）。行的落库不依赖弹层（web
+  // 确认闸只是 UI 位，raw PATCH 绕过弹层也必须有痕）。无 latestBuildId =
+  // 无会话可挂：静默跳过（改相本身不变）。
+  if (
+    sets.phase === 'done' &&
+    (row.phase === 'confirm' || row.phase === 'review') &&
+    row.latestBuildId !== null
+  ) {
+    insertGateAnnouncement(deps, row.latestBuildId, DONE_ANNOUNCEMENT, deps.user.displayName);
   }
 
   const record = getTodo(deps, id);
