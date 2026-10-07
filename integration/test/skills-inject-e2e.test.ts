@@ -1,9 +1,13 @@
-// skills 执行面注入 E2E（spec 14 / #371 + #372 per-agent 白名单）：daemon 扫描
-// PACMAN_SKILLS_DIR → 按 agent.skills 勾选过滤 → `<available_skills>` catalog
-// 追加进 session systemPrompt（不覆盖既有段）→ agent 按 catalog 指引用 read
-// 工具真读 SKILL.md（连通性硬验收：catalog 不能是装饰品——read 结果带正文
+// skills 执行面注入 E2E（spec 14 / #371 + #372 per-agent 白名单 + #917 硬挡）：
+// daemon 扫描 PACMAN_SKILLS_DIR → 按 agent.skills 勾选过滤 → `<available_skills>`
+// catalog 追加进 session systemPrompt（不覆盖既有段）→ agent 按 catalog 指引用
+// read 工具真读 SKILL.md（连通性硬验收：catalog 不能是装饰品——read 结果带正文
 // marker 落库即证路径可达）。白名单面：授权 skill 在位、同目录未授权 skill
-// 不出现（#372 验收一）。
+// 不出现（#372 验收一）。#917 增补（spec 14 §技能可见面收归）：白名单硬挡双向
+// 证据——worker 步 read 授权 SKILL.md 得正文、read 未授权 SKILL.md 得拒绝文案
+// 且其正文 marker 不落库；pi 原生 `<available_skills>` 段关断（noSkills——#958
+// 接线实录的重复清单收口，agentDir/skills 种入的原生技能不得出现在 LLM 输入
+// 面）；`[skills] catalog:/deny:/denied-read:` 观测行落盘。
 
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -28,6 +32,11 @@ import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 /** SKILL.md 正文 marker：read 结果落库断言键（catalog 触发按需读的实证）。 */
 const SKILL_MARKER = 'SKILLS-INJECT-MARKER-371';
+/** 未授权技能正文 marker（#917 硬挡：此文本永不落库 = 拒绝面实证）。 */
+const EXTRA_MARKER = 'EXTRA-BODY-MARKER-917';
+/** pi 原生发现面 marker（#917 noSkills：种进 agentDir/skills 的原生技能
+ * 不得出现在 LLM 输入面 = 重复清单收口实证）。 */
+const PI_NATIVE_MARKER = 'PI-NATIVE-DUP-MARKER-917';
 
 let stub: StubLlm;
 let server: RealServer;
@@ -36,6 +45,7 @@ let paths: StatePaths;
 let home: string;
 let skillsDir: string;
 let skillFile: string;
+let extraSkillFile: string;
 let world: { projectId: string; todoId: string };
 let buildId = '';
 
@@ -64,29 +74,34 @@ beforeAll(async () => {
     ].join('\n'),
     'utf8',
   );
-  // 未授权对照 skill（#372）：同目录在位但 agent.skills 白名单外——注入面
-  // 必须不出现。
+  // 未授权对照 skill（#372 注入面 + #917 硬挡面）：同目录在位但 agent.skills
+  // 白名单外——注入面必须不出现，read 面必须被拒（正文 marker 永不落库）。
+  extraSkillFile = join(skillsDir, 'extra-skill', 'SKILL.md');
   mkdirSync(join(skillsDir, 'extra-skill'), { recursive: true });
   writeFileSync(
-    join(skillsDir, 'extra-skill', 'SKILL.md'),
+    extraSkillFile,
     [
       '---',
       'name: extra-skill',
       'description: 白名单外对照技能。',
       '---',
       '',
-      'extra body.',
+      `extra body ${EXTRA_MARKER}`,
       '',
     ].join('\n'),
     'utf8',
   );
 
   stub = await startStubLlm([
-    // 轮 1：agent 按 catalog 指引 read SKILL.md（绝对路径 = catalog location）。
+    // 轮 1（#917 硬挡双向证据·拒侧）：read 未授权技能文件——门控 read 必须以
+    // tool error 结果拒绝（文案带技能名），正文 marker 不得落库。
+    { toolCall: { name: 'read', arguments: { path: extraSkillFile } } },
+    // 轮 2（双向证据·放侧）：agent 按 catalog 指引 read 授权 SKILL.md（绝对
+    // 路径 = catalog location）——正文 marker 落库。
     { toolCall: { name: 'read', arguments: { path: skillFile } } },
-    // 轮 2：真做一处改动（#703 闸 2——执行步无改动过不了 review 闸）。
+    // 轮 3：真做一处改动（#703 闸 2——执行步无改动过不了 review 闸）。
     { toolCall: { name: 'bash', arguments: { command: 'printf "skills probe\\n" >> README.md' } } },
-    // 轮 3：收尾。
+    // 轮 4：收尾。
     { content: '已读取演示技能。' },
   ]);
   server = await bootRealServer({
@@ -114,6 +129,25 @@ beforeAll(async () => {
     {},
   );
   paths = statePaths(config.home, config.workspacesDir);
+  // pi 原生发现面种入（#917 noSkills 实证）：agentDir/skills 是 pi resource
+  // loader 的默认扫描位之一——#958 接线实录里它与 pacman catalog 两份清单
+  // 并存。种一个带 marker 的原生技能，断言面 = stub 捕获的 LLM 输入**不含**
+  // 该 marker（before 态：未关断时它会以 `<available_skills>` 段出现）。
+  const nativeDupDir = join(paths.agentRuntimeDir, 'skills', 'native-dup');
+  mkdirSync(nativeDupDir, { recursive: true });
+  writeFileSync(
+    join(nativeDupDir, 'SKILL.md'),
+    [
+      '---',
+      'name: native-dup',
+      `description: pi 原生发现面对照（${PI_NATIVE_MARKER}）。`,
+      '---',
+      '',
+      'native dup body.',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
   const logger = createDaemonLogger({ logFile: paths.daemonLog });
   handle = await runMachine({
     config,
@@ -182,6 +216,28 @@ describe('spec 14 skills 执行面注入 E2E', () => {
     // ③ [skills] 日志行族落 daemon.log（loaded 态 + filtered 行，#372）。
     expect(logLines().some((l) => l.startsWith('[skills] loaded: 1 skills from'))).toBe(true);
     expect(logLines()).toContain('[skills] filtered: extra-skill not in agent allowlist');
+
+    // ⑤ #917 白名单硬挡（双向证据，同一次运行）：
+    //    拒侧——轮 1 的未授权 read 以 tool error 结果落库（拒绝文案带技能名），
+    //    其正文 marker **不**落库；放侧 = ② 的授权 marker 落库。
+    const msgsFlat = JSON.stringify(msgs);
+    expect(msgsFlat).toContain('not in the agent allowlist');
+    expect(msgsFlat).toContain('extra-skill');
+    expect(msgsFlat).not.toContain(EXTRA_MARKER);
+    // 观测行（spec 14 §裁决后的范围 5）：catalog 条数信号 + 硬挡集声明 +
+    // 逐次拒绝行。
+    expect(logLines().some((l) => l.startsWith('[skills] catalog: entries=1 '))).toBe(true);
+    expect(logLines()).toContain('[skills] deny: 1 skill dir(s) hard-blocked');
+    expect(logLines().some((l) => l.startsWith('[skills] denied-read:'))).toBe(true);
+    expect(logLines().some((l) => l.includes('denied-read:') && l.includes(extraSkillFile))).toBe(
+      true,
+    );
+
+    // ⑥ #917 pi 原生发现面关断（noSkills）：agentDir/skills 种入的原生技能
+    //    不得出现在 LLM 输入面——重复清单收口（#958 接线实录的 before 态：
+    //    两份 <available_skills> 并存）。
+    expect(flat).not.toContain(PI_NATIVE_MARKER);
+    expect(flat).not.toContain('native-dup');
 
     // ④ #958：①那条目录断言现在走的是**完全不同**的投递路径——简报不再进
     //    systemPrompt，而是落进任务 worktree 的上下文文件，由 pi 原生加载成

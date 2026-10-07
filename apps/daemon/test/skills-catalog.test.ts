@@ -62,10 +62,10 @@ describe('buildSkillsCatalog 输入五态（spec 14 Testing Decisions）', () =>
     expect(logs.some((l) => l.startsWith('loaded:'))).toBe(false);
   });
 
-  test('目录存在但空 = 空 catalog，无诊断', () => {
+  test('目录存在但空 = 空 catalog，无诊断（#917：catalog 观测行恒落）', () => {
     const { catalog, logs } = collect(fixtureRoot('empty'));
     expect(catalog).toBe('');
-    expect(logs).toEqual([]);
+    expect(logs).toEqual(['catalog: entries=0 chars=0']);
   });
 
   test('目录含子目录但无 SKILL.md = 空 catalog（pi 递归扫描无命中）', () => {

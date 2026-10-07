@@ -17,19 +17,30 @@
 // per-step 凭证纪律（02 §8 运行时层）：apiKey 只走 ModelRuntime.setRuntimeApiKey
 // （内存态，不持久化）；models.json 落盘的 apiKey 恒为占位符。
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  constants,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs';
+import { access as fsAccess, readFile as fsReadFile } from 'node:fs/promises';
 import { homedir, hostname } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import {
   type AgentSession,
   createAgentSession,
   createBashToolDefinition,
   createLocalBashOperations,
+  createReadToolDefinition,
   DefaultResourceLoader,
   defineTool,
+  detectSupportedImageMimeTypeFromFile,
   formatSkillsForPrompt,
   loadSkills,
   ModelRuntime,
+  type ReadOperations,
   type ResourceDiagnostic,
   SessionManager,
   SettingsManager,
@@ -194,6 +205,7 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
     diagnostics = result.diagnostics;
   } catch (err) {
     log?.(`invalid: ${err instanceof Error ? err.message : String(err)}`);
+    log?.('catalog: entries=0 chars=0');
     return '';
   }
   for (const d of diagnostics) {
@@ -233,7 +245,11 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
         : `loaded: ${skills.length} skills from ${opts.skillsDir}`,
     );
   }
-  return formatSkillsForPrompt(skills, 'read');
+  const catalog = formatSkillsForPrompt(skills, 'read');
+  // 观测信号（#917 口径 5）：目录条数/字节数每次构造都落行——entries=0 也落，
+  // 「注入了多少」不靠 loaded 行的在位与否反推。
+  log?.(`catalog: entries=${skills.length} chars=${catalog.length}`);
+  return catalog;
 }
 
 /** catalog 追加语义（spec 14 数据契约：追加到 systemPrompt 末尾而非覆盖；
@@ -263,6 +279,100 @@ export function composeSkillsSection(
     ...(opts.teamSkillsDir !== undefined ? { teamSkillsDir: opts.teamSkillsDir } : {}),
     ...(log ? { log } : {}),
   });
+}
+
+// —— 白名单硬挡（#917 口径 4，spec 14 §技能可见面收归）—————————————————
+// 「不出现在目录里」只是提示级；未授权技能的文件读取必须被拒。未授权集单源
+// = collectDeniedSkillDirs（与 buildSkillsCatalog 同参扫描、同 name 匹配语义）；
+// 消费面两个：pi 的门控 read（本节）与 claude-code 的 deny 路径规则
+// （claude-code.ts buildSkillDenyRules）。
+
+/** 未授权技能条目：拒绝目标 = 技能目录（baseDir，含 SKILL.md 与全部引用
+ * 文件）；name 供拒绝文案与日志点名。 */
+export interface DeniedSkillEntry {
+  name: string;
+  baseDir: string;
+}
+
+/** 扫描 → allowlist 外技能的 baseDir 集。allowlist 缺省（chief 面）或 skills
+ * 配置缺省 = 空集（全量直通零回归）；扫描失败 fail-open 空集——与 catalog
+ * 同律：扫描失败时注入面也为空，无「目录里有、却挡不住」的错位。 */
+export function collectDeniedSkillDirs(
+  skills: { skillsDir: string; cwd: string } | undefined,
+  opts: { skillsAllowlist?: string[]; teamSkillsDir?: string },
+): DeniedSkillEntry[] {
+  if (!skills || opts.skillsAllowlist === undefined) return [];
+  let loaded: Skill[];
+  try {
+    loaded = loadSkills({
+      cwd: skills.cwd,
+      agentDir: NO_PI_DEFAULT_AGENT_DIR,
+      skillPaths:
+        opts.teamSkillsDir !== undefined
+          ? [opts.teamSkillsDir, skills.skillsDir]
+          : [skills.skillsDir],
+      includeDefaults: false,
+    }).skills;
+  } catch {
+    return [];
+  }
+  const allowed = new Set(opts.skillsAllowlist);
+  return loaded
+    .filter((s) => !allowed.has(s.name))
+    .map((s) => ({ name: s.name, baseDir: s.baseDir }));
+}
+
+/** 门控 read 的判定 + operations 面。check：null = 放行；条目 = 拒绝（命中
+ * 未授权技能目录，含目录自身）。路径两侧都过 realpath 归一——macOS
+ * `/tmp` → `/private/tmp` 符号漂移不得放行；realpath 失败回落原形（目录
+ * 缺失不影响前缀判定）。前缀比较带分隔符边界（`beta` 不吞 `beta-2`）。 */
+export interface SkillReadGate {
+  check(absolutePath: string): DeniedSkillEntry | null;
+  operations: ReadOperations;
+}
+
+export function createSkillReadGate(
+  denied: readonly DeniedSkillEntry[],
+  log?: (msg: string) => void,
+): SkillReadGate {
+  const resolve = (p: string): string => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return p;
+    }
+  };
+  const realms = denied.map((entry) => ({ entry, resolved: resolve(entry.baseDir) }));
+  const check = (absolutePath: string): DeniedSkillEntry | null => {
+    const target = resolve(absolutePath);
+    for (const { entry, resolved } of realms) {
+      if (target === resolved || target.startsWith(resolved + sep)) return entry;
+    }
+    return null;
+  };
+  const guard = async (absolutePath: string): Promise<void> => {
+    const hit = check(absolutePath);
+    if (hit === null) return;
+    log?.(`denied-read: ${absolutePath} (skill ${hit.name} not in allowlist)`);
+    // 拒绝进 tool error 结果（gated bash 同律：agent 可见改道文案，不抛断回合）。
+    throw new Error(`read denied: skill '${hit.name}' is not in the agent allowlist`);
+  };
+  return {
+    check,
+    // pi read.js 的 operations 是整体替换（`options.operations ?? default`），
+    // 三件必须齐——detectImageMimeType 透传 pi 原实现，图片读取面零扰动。
+    operations: {
+      readFile: async (absolutePath: string) => {
+        await guard(absolutePath);
+        return fsReadFile(absolutePath);
+      },
+      access: async (absolutePath: string) => {
+        await guard(absolutePath);
+        return fsAccess(absolutePath, constants.R_OK);
+      },
+      detectImageMimeType: detectSupportedImageMimeTypeFromFile,
+    },
+  };
 }
 
 /** models.json custom provider 占位 key（真 key 走 setRuntimeApiKey 内存态）。 */
@@ -775,6 +885,12 @@ export class PiBackend implements AgentBackend {
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
       settingsManager,
+      // pi 原生发现关断（#917，spec 14 §技能可见面收归 3）：loader 自注入的
+      // `<available_skills>` 段（agentDir/skills 与 .pi/skills 默认目录）与
+      // pacman catalog 构成重复清单，且不受 agent.skills 白名单约束。关断后
+      // 技能目录只剩简报文件通道一份。`noContextFiles` / `agentsFilesOverride`
+      // 是 AGENTS.md 简报的承重位（spec 24 §通道漂移），一概不动。
+      noSkills: true,
       ...(opts.systemPrompt !== undefined ? { systemPromptOverride: () => opts.systemPrompt } : {}),
     });
     await loader.reload();
@@ -883,6 +999,22 @@ export class PiBackend implements AgentBackend {
         }),
       }),
     );
+    // 白名单硬挡（#917 口径 4）：worker 步（allowlist 在位）把内建 read 以同名
+    // customTool 覆盖成门控版（gated bash 同形，注册表按名后写胜出）——未授权
+    // 技能文件读取被拒。chief 步（allowlist 缺省）拒绝集恒空、不注册门控，
+    // read 面零变化。
+    const deniedSkills = collectDeniedSkillDirs(this.opts.skills, opts);
+    const gatedRead =
+      deniedSkills.length > 0
+        ? defineTool(
+            createReadToolDefinition(opts.cwd, {
+              operations: createSkillReadGate(deniedSkills, this.opts.onSkillsLog).operations,
+            }),
+          )
+        : null;
+    if (deniedSkills.length > 0) {
+      this.opts.onSkillsLog?.(`deny: ${deniedSkills.length} skill dir(s) hard-blocked`);
+    }
     const { session } = await createAgentSession({
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
@@ -909,8 +1041,16 @@ export class PiBackend implements AgentBackend {
         mcpTools: mcpTools.map((t) => t.name),
         localTools: localTools.map((t) => t.name),
       }),
-      ...(customTools.length > 0 || mcpTools.length > 0 || localTools.length > 0
-        ? { customTools: [gatedBash, ...customTools, ...localTools, ...mcpTools] }
+      ...(customTools.length > 0 || mcpTools.length > 0 || localTools.length > 0 || gatedRead
+        ? {
+            customTools: [
+              gatedBash,
+              ...(gatedRead ? [gatedRead] : []),
+              ...customTools,
+              ...localTools,
+              ...mcpTools,
+            ],
+          }
         : { customTools: [gatedBash] }),
     });
     this.opts.onSession?.(session.sessionId, session.sessionFile);

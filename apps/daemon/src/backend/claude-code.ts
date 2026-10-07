@@ -36,6 +36,7 @@ import {
   type SDKMessage,
   type SDKUserMessage,
   type SdkMcpToolDefinition,
+  type SettingSource,
   tool,
 } from '@anthropic-ai/claude-agent-sdk';
 import type {
@@ -56,7 +57,12 @@ import type {
 import { z } from 'zod';
 import { claudeCodeAuthFailureMessage } from '../claude-code-auth.js';
 import { SessionNotResumableError } from './errors.js';
-import { appendSkillsCatalog, composeSkillsSection } from './pi.js';
+import {
+  appendSkillsCatalog,
+  collectDeniedSkillDirs,
+  composeSkillsSection,
+  type DeniedSkillEntry,
+} from './pi.js';
 
 /** spec 17 :108 能力面。thinkingLevels = SDK effort 五档（pi 七档里
  *  off/minimal 无 SDK 对应——不发 effort 即缺省，见 toEffort）。 */
@@ -713,6 +719,79 @@ export function mapMcpEndpoint(endpoint: McpEndpoint): McpServerConfig {
   };
 }
 
+// —— 技能可见面收归（#917，spec 14 §技能可见面收归）———————————————
+
+/** 口径 3：settings 加载源从「SDK 缺省（omitted = 全部加载）」改成产品显式
+ * 声明——缺省行为一变，agent 能力面会静默塌方且无人收到告警。`'project'` 是
+ * CLAUDE.md 简报的承重位（spec 24 §通道漂移：缺它简报零报错地消失），动这个
+ * 列表前先重验简报存活。 */
+export const CLAUDE_SETTING_SOURCES: readonly SettingSource[] = ['user', 'project', 'local'];
+
+/** gitignore 元字符转义（deny 路径规则用；CLI 自家「don't ask again」落规则
+ * 时同法转义，解析面认反斜杠形）。行首 `!`/`#` 的特殊位只在 pattern 头——
+ * 本仓规则恒以 `//` 起头，无需处理。 */
+export function escapeGitignorePath(p: string): string {
+  return p.replaceAll(/([\\*?[\]])/g, '\\$1');
+}
+
+/** 未授权技能目录 → Read deny 路径规则（口径 4 第二层）。形 =
+ * `Read(//<绝对路径>/**)`——`//` 前缀 = 文件系统根锚定的 gitignore 形
+ * （Claude Code permissions 正典）。deny 规则在包括 bypassPermissions 在内的
+ * 每个 permission mode 都生效，且 Read 面 deny 同路径连带挡 Edit/Write
+ * （bundled CLI 2.1.278 ≥ 2.1.208 语义）。daemon 机器面 = macOS/Linux，
+ * posix 绝对路径形足够（Windows 归一化 `//c/...` 不在本缝范围）。 */
+export function buildSkillDenyRules(denied: readonly DeniedSkillEntry[]): string[] {
+  return denied.map((d) => `Read(/${escapeGitignorePath(d.baseDir)}/**)`);
+}
+
+/** sdkOptions 组装面（纯函数可单测；open() 只备料）。nativeSkills =
+ * 口径 4 第一层（SDK `skills` 选项收编原生清单到同一张白名单：名单外技能
+ * hidden from listing + rejected by the Skill tool）；undefined = 不发
+ * （chief 面 CLI 默认行为零回归），[] = 照发（原生清单全关，空勾选纪律）。
+ * skillDenyRules 空/缺省 = settings 键不发。 */
+export interface ClaudeSdkOptionParts {
+  cwd: string;
+  modelId: string;
+  resumeId: string | null;
+  sessionId: string;
+  disallowedTools: string[];
+  mcpServers: Record<string, McpServerConfig>;
+  effort?: EffortLevel;
+  /** systemPrompt preset append（#958 后仅无简报通道的调用面非空）。 */
+  append?: string;
+  nativeSkills?: string[];
+  skillDenyRules?: string[];
+  abortController: AbortController;
+}
+
+export function buildClaudeSdkOptions(parts: ClaudeSdkOptionParts): Options {
+  return {
+    cwd: parts.cwd,
+    model: parts.modelId,
+    permissionMode: 'bypassPermissions',
+    disallowedTools: parts.disallowedTools,
+    includePartialMessages: true, // text_delta/thinking_delta 增量面
+    settingSources: [...CLAUDE_SETTING_SOURCES],
+    ...(Object.keys(parts.mcpServers).length > 0 ? { mcpServers: parts.mcpServers } : {}),
+    ...(parts.effort !== undefined ? { effort: parts.effort } : {}),
+    ...(parts.append !== undefined
+      ? {
+          systemPrompt: {
+            type: 'preset' as const,
+            preset: 'claude_code' as const,
+            append: parts.append,
+          },
+        }
+      : {}),
+    ...(parts.resumeId !== null ? { resume: parts.resumeId } : { sessionId: parts.sessionId }),
+    ...(parts.nativeSkills !== undefined ? { skills: parts.nativeSkills } : {}),
+    ...(parts.skillDenyRules !== undefined && parts.skillDenyRules.length > 0
+      ? { settings: { permissions: { deny: [...parts.skillDenyRules] } } }
+      : {}),
+    abortController: parts.abortController,
+  };
+}
+
 // —— 后端 ——————————————————————————————————————————————————
 
 export interface ClaudeCodeBackendOpts {
@@ -795,20 +874,28 @@ export class ClaudeCodeBackend implements AgentBackend {
     const disallowedTools = [SDK_ASK_TOOL, ...(opts.readOnly === true ? SDK_WRITE_TOOLS : [])];
     const abort = new AbortController();
     const sessionId = resumeId ?? randomUUID(); // 自铸 UUID（A7 通道同值回传）
-    const sdkOptions: Options = {
+    // 白名单硬挡（#917 口径 4）两层：① SDK `skills` 选项把原生清单收编到
+    // agent.skills 同一张白名单（worker 步原值透传；chief 缺省不发 = CLI 默认
+    // 行为零回归）；② 未授权技能目录进 settings.permissions.deny 路径规则——
+    // bypassPermissions 下仍生效（deny 规则不属被 bypass 的「prompt」面）。
+    const deniedSkills = collectDeniedSkillDirs(this.opts.skills, opts);
+    const skillDenyRules = buildSkillDenyRules(deniedSkills);
+    if (deniedSkills.length > 0) {
+      this.opts.onSkillsLog?.(`deny: ${deniedSkills.length} skill dir(s) hard-blocked`);
+    }
+    const sdkOptions: Options = buildClaudeSdkOptions({
       cwd: opts.cwd,
-      model: opts.modelId,
-      permissionMode: 'bypassPermissions',
+      modelId: opts.modelId,
+      resumeId,
+      sessionId,
       disallowedTools,
-      includePartialMessages: true, // text_delta/thinking_delta 增量面
-      ...(Object.keys(mcpServers).length > 0 ? { mcpServers } : {}),
+      mcpServers,
       ...(effort !== undefined ? { effort } : {}),
-      ...(append !== undefined
-        ? { systemPrompt: { type: 'preset', preset: 'claude_code', append } }
-        : {}),
-      ...(resumeId !== null ? { resume: resumeId } : { sessionId }),
+      ...(append !== undefined ? { append } : {}),
+      ...(opts.skillsAllowlist !== undefined ? { nativeSkills: opts.skillsAllowlist } : {}),
+      skillDenyRules,
       abortController: abort,
-    };
+    });
     const state = createClaudeMapState({
       modelId: opts.modelId,
       machineName: this.opts.machineName ?? hostname(),
