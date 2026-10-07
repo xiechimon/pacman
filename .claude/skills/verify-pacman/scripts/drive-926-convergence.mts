@@ -9,28 +9,39 @@
 //             只在 agent_settled 处产出 done（agent_end 处不产出）——收敛信号 = settled。
 //   Phase C — mapPiSessionEvent 的确定性对照（agent_end(!willRetry) → 空；agent_settled → done）。
 //
-// 运行（tsx 在 daemon 包内；探针只 import daemon 源码与 pi 包，二者都从 apps/daemon 解析）：
+// 运行（tsx 在 daemon 包内）：
 //   cd apps/daemon && corepack pnpm exec tsx \
 //     <repo>/.claude/skills/verify-pacman/scripts/drive-926-convergence.mts
 // 产物：docs/verify/926/convergence-evidence.json（+ stdout 人读摘要）。退出码 0 = 全部断言通过。
+//
+// import 形态（CLAUDE.md 禁 inline import，top-level only）：探针在 .claude/ 下，bare
+// `@earendil-works/*` 只在 apps/daemon 内解析（pnpm 未 hoist 到仓根），故一律走 repo-relative
+// 静态 import——daemon 源码（.ts，tsx 直接加载）+ pi 的 dist 入口（package.json exports "."
+// 的 import 位）。探针位置与 pnpm 布局固定，相对路径稳定；pi dist 内部 bare import 从其
+// realpath（.pnpm store）解析，不受探针位置影响。
 
 import { createServer, type Server } from 'node:http';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  buildPiSessionSettings,
+  mapPiSessionEvent,
+  materializeProvider,
+  newMapState,
+} from '../../../../apps/daemon/src/backend/pi.ts';
+import { PI_RETRY_SETTINGS, RETRY_STORM_MAX } from '../../../../apps/daemon/src/backend/pi-retry.ts';
+import {
+  createAgentSession,
+  DefaultResourceLoader,
+  ModelRuntime,
+  SessionManager,
+  SettingsManager,
+} from '../../../../apps/daemon/node_modules/@earendil-works/pi-coding-agent/dist/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../../../..');
-const daemonPiUrl = `file://${resolve(root, 'apps/daemon/src/backend/pi.ts')}`;
-const piEntryUrl = `file://${resolve(
-  root,
-  'apps/daemon/node_modules/@earendil-works/pi-coding-agent/dist/index.js',
-)}`;
-
-const { buildPiSessionSettings, mapPiSessionEvent, newMapState, materializeProvider } =
-  await import(daemonPiUrl);
-const pi = await import(piEntryUrl);
 
 let failures = 0;
 function check(name: string, ok: boolean, detail?: unknown): void {
@@ -86,30 +97,45 @@ async function startStubLlm(): Promise<StubLlm> {
 
 const evidence: Record<string, unknown> = { ticket: 926, generatedAt: new Date().toISOString() };
 
-// —— Phase A：pi 真 SettingsManager 读回显式 retry 配置 ————————————————
+// —— Phase A：pi 真 SettingsManager 读回显式 retry 配置 + 设置驱动读回对照 ——————
 {
   const settings = buildPiSessionSettings();
-  const sm = pi.SettingsManager.inMemory(settings);
+  const sm = SettingsManager.inMemory(settings);
   const readback = sm.getRetrySettings();
   const providerReadback = sm.getProviderRetrySettings();
+  // 关键对照：上面的显式值恰与 pi 1.0.4 内建默认逐字节相同，单看读回**分不清**「读了我们
+  // 的设置」还是「回落默认」。故再喂同一 inMemory 一份 maxRetries ≠ 默认（5）的 retry 设置，
+  // 读回随即变 5 —— 证明 getRetrySettings 读的是传入设置（设置驱动读回）。配合单测的引用
+  // 同一性（buildPiSessionSettings().retry === PI_RETRY_SETTINGS）与 pi.ts 把该设置喂进
+  // SettingsManager.inMemory，即得：真会话里 pi 读到的 maxRetries=3 来自我们的显式设置，不是
+  // 默认巧合；且改动设置值会改变 pi 重试逻辑读到的值（不是摆设）。
+  const probeMaxRetries = 5; // 故意 ≠ pi 默认 3
+  const drivenReadback = SettingsManager.inMemory({
+    compaction: { enabled: true },
+    retry: { ...PI_RETRY_SETTINGS, maxRetries: probeMaxRetries },
+  }).getRetrySettings();
   evidence.phaseA = {
     buildPiSessionSettings: settings,
     piGetRetrySettings: readback,
     piGetProviderRetrySettings: providerReadback,
+    drivenProbe: { injectedMaxRetries: probeMaxRetries, readbackMaxRetries: drivenReadback.maxRetries },
+    RETRY_STORM_MAX,
   };
-  console.log('\n[Phase A] pi SettingsManager 读回 daemon 显式 retry 配置');
+  console.log('\n[Phase A] pi SettingsManager 读回显式 retry 配置 + 设置驱动读回对照');
   check('retry.enabled 显式 = true', readback.enabled === true, readback.enabled);
   check('retry.maxRetries 显式 = 3', readback.maxRetries === 3, readback.maxRetries);
   check('retry.baseDelayMs 显式 = 2000', readback.baseDelayMs === 2000, readback.baseDelayMs);
   check('retry.maxAgentDelayMs 显式 = 60000', readback.maxAgentDelayMs === 60000, readback.maxAgentDelayMs);
   check('retry.provider.maxRetries 显式 = 0', providerReadback.maxRetries === 0, providerReadback.maxRetries);
-  // 护栏常量与设置同源（RETRY_STORM_MAX 从 runner 面读；此处经 daemon pi.ts 的同源常量核对）。
-  const { RETRY_STORM_MAX } = await import(`file://${resolve(root, 'apps/daemon/src/backend/pi-retry.ts')}`);
+  check(
+    `设置驱动读回：注入 maxRetries=${probeMaxRetries}（≠默认 3）→ pi 读回随之 = ${probeMaxRetries}（证非默认巧合）`,
+    drivenReadback.maxRetries === probeMaxRetries,
+    drivenReadback.maxRetries,
+  );
   check('RETRY_STORM_MAX === pi getRetrySettings().maxRetries（护栏与设置不脱钩）', RETRY_STORM_MAX === readback.maxRetries, {
     RETRY_STORM_MAX,
     maxRetries: readback.maxRetries,
   });
-  evidence.phaseA.RETRY_STORM_MAX = RETRY_STORM_MAX;
 }
 
 // —— Phase B：真 pi AgentSession 打 stub LLM，捕获原始事件序 ——————————————
@@ -142,14 +168,14 @@ const evidence: Record<string, unknown> = { ticket: 926, generatedAt: new Date()
   const mappedTypes: string[] = [];
   const doneAtRawIndex: number[] = [];
   try {
-    const runtime = await pi.ModelRuntime.create({ authPath, modelsPath });
+    const runtime = await ModelRuntime.create({ authPath, modelsPath });
     await runtime.setRuntimeApiKey('stub-gw', 'stub-key');
     const model = runtime.getModel('stub-gw', 'stub-model');
-    const settingsManager = pi.SettingsManager.inMemory(buildPiSessionSettings());
-    const loader = new pi.DefaultResourceLoader({ cwd, agentDir, settingsManager, noSkills: true });
+    const settingsManager = SettingsManager.inMemory(buildPiSessionSettings());
+    const loader = new DefaultResourceLoader({ cwd, agentDir, settingsManager, noSkills: true });
     await loader.reload();
-    const sessionManager = pi.SessionManager.create(cwd, sessionDir);
-    const { session } = await pi.createAgentSession({
+    const sessionManager = SessionManager.create(cwd, sessionDir);
+    const { session } = await createAgentSession({
       cwd,
       agentDir,
       model,

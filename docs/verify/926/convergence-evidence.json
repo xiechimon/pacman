@@ -1,6 +1,6 @@
 {
   "ticket": 926,
-  "generatedAt": "2026-10-07T17:03:15.990Z",
+  "generatedAt": "2026-10-07T17:35:21.999Z",
   "phaseA": {
     "buildPiSessionSettings": {
       "compaction": {
@@ -25,6 +25,10 @@
     "piGetProviderRetrySettings": {
       "maxRetries": 0,
       "maxRetryDelayMs": 60000
+    },
+    "drivenProbe": {
+      "injectedMaxRetries": 5,
+      "readbackMaxRetries": 5
     },
     "RETRY_STORM_MAX": 3
   },

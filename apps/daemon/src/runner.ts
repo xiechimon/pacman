@@ -125,13 +125,10 @@ export interface RunStepOptions {
   streamDurationCapMs?: number;
 }
 
-/** auto_retry 有界生命周期预算（#708 失败方式 2）：连续零进展 auto_retry 的
- * 允许上限。单源在 backend/pi-retry.ts（#926）——与 pi 会话设置里的 retry.maxRetries
- * 同源派生，不再各处硬编码 3：预算内的重试归 pi 自己收（连接错 1→2→3 退场形
- * 不惊动本护栏）；超过它还在同一错误上空转 = 预算被某种机制重置的病态（#519
- * run4/6 实测 ~40 发/10min 同形重试），由 runner 从外部掐断：停会话、根因直报、
- * failed 收尾。每轮发数钉死 = 1 + RETRY_STORM_MAX（首轮 + 预算内重试）。
- * 在此 re-export 供既有消费面（runner 内部 + 测试）沿用 '../src/runner.js' 入口。 */
+/** auto_retry 有界生命周期预算（#708 失败方式 2）——单源与理据正本见 backend/pi-retry.ts
+ *  （#926：与 pi 会话 retry.maxRetries 同源派生，不再各处硬编码）。runner 侧行为：连续零进展
+ *  重试超预算 → 停会话、根因直报、failed 收尾；每轮发数钉死 = 1 + RETRY_STORM_MAX（首轮 +
+ *  预算内重试）。在此 re-export 供既有消费面（runner 内部 + 测试）沿用 '../src/runner.js' 入口。 */
 export { RETRY_STORM_MAX };
 
 /** 超时收尸文案与根因组合（#708 失败方式 1）：终态错误优先级 = 真实终态

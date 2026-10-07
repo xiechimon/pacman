@@ -9,7 +9,7 @@
 
 按仓内 `verify-pacman`「机制生效验收:实物判据」硬规则，声称的机制从**运行时真值**取证，不是读源码。探针 `drive-926-convergence.mts` 起真 pi 运行时打 stub LLM，产物 = `convergence-evidence.json`。
 
-### Phase A — retry 面被 pi 实际消费（不是摆设）
+### Phase A — retry 面被 pi 实际消费（不是摆设，也不是默认巧合）
 
 `buildPiSessionSettings()` 产出的设置对象喂进 **pi 真 `SettingsManager.inMemory`**，再 `getRetrySettings()` 读回：
 
@@ -19,7 +19,9 @@ piGetProviderRetrySettings = { maxRetries: 0, maxRetryDelayMs: 60000 }
 RETRY_STORM_MAX            = 3
 ```
 
-读回值 == daemon 显式声明值（非 pi 内建默认回落）。`RETRY_STORM_MAX === getRetrySettings().maxRetries` —— 护栏常量与 pi 实际读到的重试预算同源，结构上不脱钩（单源 = `apps/daemon/src/backend/pi-retry.ts`）。
+读回值 == daemon 显式声明值。**但这些显式值恰与 pi 1.0.4 内建默认逐字节相同**——单看读回分不清「读了我们的设置」还是「回落默认」。故探针再做一步对照（`drivenProbe`）：给同一 `inMemory` 喂一份 `maxRetries = 5`（≠ 默认 3）的 retry 设置，读回随即变 5，证明 `getRetrySettings` 读的是传入设置（**设置驱动读回**）。配合单测的引用同一性（`buildPiSessionSettings().retry === PI_RETRY_SETTINGS`）与 `pi.ts` 把该设置喂进 `SettingsManager.inMemory`，即得：真会话里 pi 读到的 `maxRetries=3` 来自我们的显式设置，且**改动设置值会改变 pi 重试逻辑读到的值**（不是摆设）。
+
+`RETRY_STORM_MAX === getRetrySettings().maxRetries` —— 护栏常量与 pi 实际读到的重试预算同源，结构上不脱钩（单源 = `apps/daemon/src/backend/pi-retry.ts`）。
 
 ### Phase B — 真 pi 会话的原始事件序 + done 时机
 
