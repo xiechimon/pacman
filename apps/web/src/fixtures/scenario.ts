@@ -88,6 +88,7 @@ import {
   schedulesFormDaily,
   schedulesFormOnce,
   schedulesList,
+  skillsRouting,
   teamGrid,
   teamOrgChart,
   teamOrgChartEmpty,
@@ -194,6 +195,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // block-rendering pin — an agent reply with raw block markdown + a
       // tool group whose bash stdout renders as left-aligned mono blocks
       'md-toolout': mdToolout,
+      // #919 named scenario (no capture, md-toolout precedent): skill
+      // routing rows (read + blocked) in the thread column and the 技能
+      // summary section row in the pane type select
+      'skills-routing': skillsRouting,
       // #443 named scenario (no capture, notify-banner precedent): scenario
       // 16's planning surface + chiefUnread 3 — the unread-gated detail FAB
       // face (badge pass-through pin; the shell-consistency detail row and

@@ -62,6 +62,7 @@ import type {
   ReviewFinding,
   RunHistoryRow,
   SkillRow,
+  SkillSummaryRow,
   TeamAgentCard,
   TeamContent,
   TokenUsageContent,
@@ -243,6 +244,66 @@ export function pillOf(call: ToolCallRecord): string {
           ? args.command
           : '';
   return primary === '' ? call.name : `${call.name} ${primary}`;
+}
+
+// —— 技能路由条目检测（#919 seam 4）———————————————————————————————
+// 数据面 = 既有 wire（ToolCallRecord），零 schema 变更。检测词表锚定运行时
+// 真值：pi 门控拒绝文案（backend/pi.ts createSkillReadGate 原文，含技能名）、
+// claude-code deny 规则拒绝（docs/verify/917 A2/B5 实物：isError tool_result
+// + permission_denials；文案随 CLI 版本漂移，判定不依赖文案）、claude-code
+// 原生 Skill 工具调用（tool_input.skill）。已知边界（与后端硬挡覆盖面对齐，
+// 不装看不见）：bash 绕行（`cat …/SKILL.md`）两后端都不挡、也不检测。
+
+/** pi 门控 read 的拒绝文案（技能名在文案里，优先于路径目录名——目录名与
+ *  frontmatter name 可不同源）。 */
+const SKILL_DENY_TEXT = /skill '([^']+)' is not in the agent allowlist/;
+/** SKILL.md 路径判定（read 工具面的技能文件锚）。 */
+const SKILL_MD_PATH = /(?:^|\/)SKILL\.md$/;
+
+function pathArgOf(call: ToolCallRecord): string {
+  const args = (call.arguments ?? {}) as Record<string, unknown>;
+  if (typeof args.file_path === 'string') return args.file_path;
+  if (typeof args.path === 'string') return args.path;
+  return '';
+}
+
+/** 路径的父目录名（…/<slug>/SKILL.md → <slug>）。 */
+function parentDirName(path: string): string {
+  const parent = path.slice(0, path.lastIndexOf('/'));
+  const name = parent.slice(parent.lastIndexOf('/') + 1);
+  return name === '' ? path : name;
+}
+
+/** 工具调用 → 技能路由事件（null = 非技能面调用，照旧进 tools 组）。 */
+function skillEventOf(call: ToolCallRecord): { name: string; blocked: boolean } | null {
+  if (call.name === 'Skill') {
+    // claude-code 原生 Skill 工具：调用即命中，isError 即被 deny 规则拒。
+    const args = (call.arguments ?? {}) as Record<string, unknown>;
+    const name = typeof args.skill === 'string' && args.skill !== '' ? args.skill : call.name;
+    return { name, blocked: call.isError === true };
+  }
+  if (call.name !== 'read' && call.name !== 'Read') return null;
+  const denyMatch = SKILL_DENY_TEXT.exec(resultToText(call.result) ?? '');
+  if (denyMatch !== null) return { name: denyMatch[1]!, blocked: true };
+  const path = pathArgOf(call);
+  if (!SKILL_MD_PATH.test(path)) return null;
+  // claude-code deny 规则形：isError + SKILL.md 路径（文案不可依赖），名字
+  // 取路径目录名。放侧 = 授权读取命中。
+  return { name: parentDirName(path), blocked: call.isError === true };
+}
+
+/** 详情页技能汇总（右栏「技能」节，#919）：同名技能计数，首见序稳定。
+ *  输入 = transcript 条目（fixture 与 live 同一派生路径）。 */
+export function summarizeSkillItems(items: readonly TranscriptItem[]): SkillSummaryRow[] {
+  const byName = new Map<string, SkillSummaryRow>();
+  for (const item of items) {
+    if (item.kind !== 'skill') continue;
+    const row = byName.get(item.name) ?? { name: item.name, reads: 0, blocked: 0 };
+    if (item.blocked) row.blocked += 1;
+    else row.reads += 1;
+    byName.set(item.name, row);
+  }
+  return [...byName.values()];
 }
 
 // —— plan.md → DocBlock（文档 pane；四段卡软结构，r3 §3.3）———————————————
@@ -524,6 +585,13 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
   for (const m of messages) {
     const call = toolCallOfContent(m.content);
     if (call !== null) {
+      // #919：技能路由事件升格成一等条目（人类面孔取代原始 pill，#634 回声
+      // 律同款）——读取命中与被 deny 拦截都离开 tools 组单列成行。
+      const skillEvent = skillEventOf(call);
+      if (skillEvent !== null) {
+        entries.push({ at: m.createdAt, item: { kind: 'skill', ...skillEvent } });
+        continue;
+      }
       entries.push({ at: m.createdAt, item: toolItem(call) });
       continue;
     }

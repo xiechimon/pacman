@@ -2981,6 +2981,46 @@ export const mdToolout: FixtureSet = {
   },
 };
 
+/** #919 named scenario（无 capture，mdToolout 先例）：技能路由行为验收的
+ *  UI 面——线程列命中条目（读取技能）与被拦截条目（deny 可见面）各就位，
+ *  右栏型选多一行「技能」汇总节（同名计数 + 拦截 chip）。行内容与
+ *  transcript-skill-rows.test.ts 的检测面同词表（haiku 场景 = 行为证据腿
+ *  的同款任务形）。 */
+const SKILLS_ROUTING_TRANSCRIPT: TranscriptItem[] = [
+  { kind: 'run', at: '13:35', machine: 'xmonsMac-3574' },
+  {
+    kind: 'user',
+    text: '写一首深夜写代码主题的三行俳句，保存到 haiku.txt',
+    seq: 9,
+    title: '写一首俳句并保存',
+  },
+  { kind: 'skill', name: 'local-blocked', blocked: true },
+  { kind: 'skill', name: 'haiku-helper', blocked: false },
+  { kind: 'skill', name: 'haiku-helper', blocked: false },
+  {
+    kind: 'tools',
+    seconds: 8,
+    expanded: false,
+    pills: ['bash printf "深夜码农忙…" > haiku.txt'],
+    outputs: [null],
+  },
+  {
+    kind: 'robot',
+    paragraphs: [[{ text: '已把俳句写进 haiku.txt。' }]],
+    footer: { seconds: 12 },
+  },
+];
+
+export const skillsRouting: FixtureSet = {
+  todos: [probeTodo('review', r7(13, 37))],
+  now: r7(13, 40),
+  detail: {
+    transcript: SKILLS_ROUTING_TRANSCRIPT,
+    doc: DOC_V2,
+    changes: probeChanges(true),
+  },
+};
+
 /** r8 63: version dropdown open on the v2 surface. */
 export const versionMenuV2: FixtureSet = withDetail(detailV2(r8(23, 54)), {
   versionMenu: 'versions',
