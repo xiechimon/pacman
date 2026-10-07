@@ -49,7 +49,7 @@ import { hasGithubConnection, openGithubToken } from './github-connection.js';
 import type { MachineWakeHub } from './machines.js';
 import { notifyTodoPhase } from './notifications.js';
 import { assertPhaseTransition, canManualMovePhase } from './phase.js';
-import { insertMessageRow } from './transcript.js';
+import { insertGateAnnouncement } from './transcript.js';
 
 type TodoRow = typeof todo.$inferSelect;
 
@@ -408,13 +408,7 @@ export function updateTodo(
     (row.phase === 'confirm' || row.phase === 'review') &&
     row.latestBuildId !== null
   ) {
-    insertMessageRow(deps, row.latestBuildId, {
-      id: newRecordId(),
-      role: 'user',
-      content: DONE_ANNOUNCEMENT,
-      createdAt: nowMs(),
-      actor: deps.user.displayName,
-    });
+    insertGateAnnouncement(deps, row.latestBuildId, DONE_ANNOUNCEMENT, deps.user.displayName);
   }
 
   const record = getTodo(deps, id);

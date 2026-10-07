@@ -34,7 +34,7 @@ import { HttpError } from '../lib/errors.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { verifyApiKey } from './api-keys.js';
 import { startBuilds } from './builds.js';
-import type { ChiefToolDeps } from './chief-tools.js';
+import type { ChiefToolDeps, TransitionActor } from './chief-tools.js';
 import { confirmBuild, mergeBuild, transitionTodos } from './chief-tools.js';
 import { isChiefConversation } from './machines.js';
 import { createSchedule, deleteSchedule, listSchedules } from './schedules.js';
@@ -168,6 +168,10 @@ export async function executeMcpTool(
     box: deps.box,
     ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
   };
+  // #902 过闸宣告行的 actor 位：MCP 面身份语义（本文件头注）= key 属主即
+  // 用户，triggerSource 'user' 同律——宣告行记用户名，#900 的 agent 闸相位
+  // 拒否不咬本面。
+  const mcpActor: TransitionActor = { kind: 'user', name: deps.user.displayName };
   switch (name) {
     // —— 读 11 组（Read the workspace / Read the repo / Read progress）——
     case 'todos': {
@@ -370,26 +374,11 @@ export async function executeMcpTool(
     // MCP 面身份语义（本文件头注）：key 属主 = 用户——transitionTodos 的
     // actor 记 user（#900 的 agent 闸相位拒否不咬本面；done 落地照落审计行）。
     case 'complete_todos':
-      return json(
-        transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'done', {
-          kind: 'user',
-          name: deps.user.displayName,
-        }),
-      );
+      return json(transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'done', mcpActor));
     case 'close_todos':
-      return json(
-        transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'closed', {
-          kind: 'user',
-          name: deps.user.displayName,
-        }),
-      );
+      return json(transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'closed', mcpActor));
     case 'reopen_todos':
-      return json(
-        transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'todo', {
-          kind: 'user',
-          name: deps.user.displayName,
-        }),
-      );
+      return json(transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'todo', mcpActor));
     case 'schedule_todo': {
       const todoId = str(args, 'todoId');
       const row = requireTeamTodo(db, todoId, ctx.teamId);

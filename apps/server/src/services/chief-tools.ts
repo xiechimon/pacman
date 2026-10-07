@@ -61,7 +61,7 @@ import { createSecret, deleteSecret, listSecrets, updateSecret } from './secrets
 import { createLocalSkill, scanLocalSkills, updateLocalSkill } from './skills.js';
 import { seedFixedTags } from './tags.js';
 import { createTodo, deleteTodo, getTodo, listTodos, setTodoPhase, updateTodo } from './todos.js';
-import { insertMessageRow } from './transcript.js';
+import { insertGateAnnouncement } from './transcript.js';
 
 export interface ChiefToolDeps {
   db: Db;
@@ -219,14 +219,15 @@ export async function executeChiefTool(
   // displayName（未绑定回落 'Chief' 字面）——绝不记成用户名，审计要能区分
   // 「人按的闸」与「agent 按的闸」（#892 §6：没有 actor，闸被人按过只能是
   // 推断）。查询一次每回合复用（confirm_builds / merge_builds / *_todos）。
-  const chiefActorName =
+  const boundChiefName =
     ctx.chiefAgentId !== null
-      ? (db
+      ? db
           .select({ name: agent.displayName })
           .from(agent)
           .where(eq(agent.id, ctx.chiefAgentId))
-          .get()?.name ?? 'Chief')
-      : 'Chief';
+          .get()?.name
+      : undefined;
+  const chiefActor: TransitionActor = { kind: 'agent', name: boundChiefName ?? 'Chief' };
   switch (name) {
     // —— 读侧 16（#627 +models）——
     case 'projects': {
@@ -461,25 +462,12 @@ export async function executeChiefTool(
     }
     case 'close_todos':
       return json(
-        transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'closed', {
-          kind: 'agent',
-          name: chiefActorName,
-        }),
+        transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'closed', chiefActor),
       );
     case 'reopen_todos':
-      return json(
-        transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'todo', {
-          kind: 'agent',
-          name: chiefActorName,
-        }),
-      );
+      return json(transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'todo', chiefActor));
     case 'complete_todos':
-      return json(
-        transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'done', {
-          kind: 'agent',
-          name: chiefActorName,
-        }),
-      );
+      return json(transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'done', chiefActor));
     case 'message_todo': {
       const todoId = str(params, 'todoId');
       const row = requireTeamTodo(db, todoId, ctx.teamId);
@@ -757,7 +745,7 @@ export async function executeChiefTool(
     }
     case 'confirm_builds': {
       const buildIds = strArr(params, 'buildIds');
-      for (const buildId of buildIds) await confirmBuild(deps, buildId, chiefActorName);
+      for (const buildId of buildIds) await confirmBuild(deps, buildId, chiefActor.name);
       return json({ confirmed: buildIds });
     }
     case 'cancel_builds': {
@@ -773,7 +761,7 @@ export async function executeChiefTool(
     }
     case 'merge_builds': {
       const buildIds = strArr(params, 'buildIds');
-      for (const buildId of buildIds) mergeBuild(deps, buildId, chiefActorName);
+      for (const buildId of buildIds) mergeBuild(deps, buildId, chiefActor.name);
       return json({ mergeDelegated: buildIds });
     }
 
@@ -935,14 +923,10 @@ export function transitionTodos(
       if (record) {
         transitioned.push(id);
         // #902 done 落地审计行（不经合并步的 done 一律留痕，actor 答「谁」）。
-        if (to === 'done' && owned.latestBuildId !== null) {
-          insertMessageRow(deps, owned.latestBuildId, {
-            id: newRecordId(),
-            role: 'user',
-            content: DONE_ANNOUNCEMENT,
-            createdAt: nowMs(),
-            actor: actor.name,
-          });
+        // 同相位重放（XMON-59 幂等语义：MCP 批量流转重入）不重复落行——
+        // 审计记发生的流转，不记重放。
+        if (to === 'done' && owned.phase !== 'done' && owned.latestBuildId !== null) {
+          insertGateAnnouncement(deps, owned.latestBuildId, DONE_ANNOUNCEMENT, actor.name);
         }
       } else skipped.push(id);
     } catch {

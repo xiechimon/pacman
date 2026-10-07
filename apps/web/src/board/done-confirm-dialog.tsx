@@ -15,17 +15,12 @@ interface DoneConfirmDialogProps {
   /** #73 retained-mount open flag. */
   open?: boolean;
   onClose: () => void;
+  /** 确认 = 既有 handlePhaseDrop 乐观提交路（同步落位 + 后台 PATCH），无
+   *  在飞态可禁——与 reset 闸的异步确认面不同，不设 confirming 位。 */
   onConfirm: () => void;
-  /** 确认在飞（PATCH 已发出）：确认钮禁用，弹层不关。 */
-  confirming?: boolean;
 }
 
-export function DoneConfirmDialog({
-  open,
-  onClose,
-  onConfirm,
-  confirming,
-}: DoneConfirmDialogProps) {
+export function DoneConfirmDialog({ open, onClose, onConfirm }: DoneConfirmDialogProps) {
   const { t } = useI18n();
   return (
     <DialogShell
@@ -41,7 +36,6 @@ export function DoneConfirmDialog({
             variant="ghost"
             className="h-auto rounded-none p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0"
             onClick={onConfirm}
-            disabled={confirming === true}
           >
             {t('确认完成')}
           </Button>

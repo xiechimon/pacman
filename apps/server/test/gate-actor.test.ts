@@ -33,7 +33,7 @@ import {
   todo as todoTable,
 } from '../src/db/schema.js';
 import { startBuilds } from '../src/services/builds.js';
-import { transitionTodos } from '../src/services/chief-tools.js';
+import { executeChiefTool, transitionTodos } from '../src/services/chief-tools.js';
 import { setTodoPhase } from '../src/services/todos.js';
 import { bootServer, postProject, req, type TestServer } from './helpers.js';
 
@@ -113,7 +113,6 @@ async function runChiefTool(
   name: string,
   params: Record<string, unknown>,
 ): Promise<unknown> {
-  const { executeChiefTool } = await import('../src/services/chief-tools.js');
   const text = await executeChiefTool(chiefDeps(s), chiefCtx(s, chiefAgentId), name, params);
   return JSON.parse(text);
 }

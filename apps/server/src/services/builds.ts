@@ -70,7 +70,7 @@ import type { MachineWakeHub } from './machines.js';
 import { assertPhaseTransition, canTransitionPhase } from './phase.js';
 import { getTodo, setTodoPhase } from './todos.js';
 // #902：transcript 行写入单源提出（todos 面同用，避免 todos→builds 依赖环）。
-import { insertMessageRow } from './transcript.js';
+import { insertGateAnnouncement, insertMessageRow } from './transcript.js';
 
 export interface BuildDeps {
   db: Db;
@@ -658,13 +658,7 @@ export async function applyBuildStepAction(
   if (body.action === 'confirm') {
     // #902 确认闸通过宣告行（MERGE/REVIEW 同族行形）：actor 位答「在场的
     // 是谁」——此前 confirm 闸被按过在库里零痕迹（#892 §6 建议 3）。
-    insertMessageRow(deps, buildId, {
-      id: newRecordId(),
-      role: 'user',
-      content: CONFIRM_ANNOUNCEMENT,
-      createdAt: nowMs(),
-      actor: actorName,
-    });
+    insertGateAnnouncement(deps, buildId, CONFIRM_ANNOUNCEMENT, actorName);
     setTodoPhase(deps, todoRecord.id, 'building');
     enqueueStep(deps, buildId, 'build', todoRecord.teamId);
     return;
@@ -687,13 +681,7 @@ export async function applyBuildStepAction(
     }
     // 时间线「发起了 AI 审核」行（r8 §3.1 实测：行形 = role user 纯文本，
     // 呈现层拼装时间/actor；REVIEW_ANNOUNCEMENT 双端单源）。
-    insertMessageRow(deps, buildId, {
-      id: newRecordId(),
-      role: 'user',
-      content: REVIEW_ANNOUNCEMENT,
-      createdAt: nowMs(),
-      actor: actorName,
-    });
+    insertGateAnnouncement(deps, buildId, REVIEW_ANNOUNCEMENT, actorName);
     // 审核步 prompt：meta header（kind+agentId+gate，claim 载荷据此取 Agent
     // ——step 表无 agentId 列）+ JSON 输出契约 + plan.md 全文 +（审核关口）
     // 本轮变更 + 用户 focus。meta 解析与组装单源 =
@@ -854,13 +842,7 @@ export function requestMerge(
   // 时间线「发起了合并」行（r3 §3.6 实测：`15:06 Xmon Dai 发起了合并`；
   // 行形 [设计]——role user 纯文本 = shared MERGE_ANNOUNCEMENT 单源，呈现层
   // 拼装时间/actor）。
-  insertMessageRow(deps, buildId, {
-    id: newRecordId(),
-    role: 'user',
-    content: MERGE_ANNOUNCEMENT,
-    createdAt: nowMs(),
-    actor: actor ?? deps.user.displayName,
-  });
+  insertGateAnnouncement(deps, buildId, MERGE_ANNOUNCEMENT, actor ?? deps.user.displayName);
   enqueueStep(deps, buildId, 'merge', todoRow.teamId);
   return { delegated: true };
 }
