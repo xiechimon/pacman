@@ -25,13 +25,25 @@ import type {
   WorktreeOps,
 } from '@pacman/shared';
 import { LOCAL_TOOL_CREATE_TAG } from '@pacman/shared';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { PI_CAPABILITIES } from '../src/backend/pi.js';
 import { StepJournal } from '../src/journal.js';
 import type { DaemonLogger } from '../src/log.js';
 import type { MachineApi } from '../src/machine-client.js';
 import { runStep } from '../src/runner.js';
 import { statePaths } from '../src/state.js';
+
+// #966 同源暴露：github 形态步成功收尾时 runStep 调 probeGithubPr（真 gh CLI
+// + api.github.com 双梯）——shim 实测本文件 3 次派真网络探测。本文件钉的是
+// create_tag 注册面，不是探测；真实网络面不进单测（探测行为钉在
+// github-probe.test.ts / runner-delivery.test.ts），mock 形态与二者同款。
+const probeMock = vi.fn();
+vi.mock('../src/github-probe.js', async (importOriginal) => {
+  const real = (await importOriginal<typeof import('../src/github-probe.js')>()) as {
+    githubRepoRefOf: unknown;
+  };
+  return { ...real, probeGithubPr: (...args: unknown[]) => probeMock(...args) };
+});
 
 function captureLogger(): DaemonLogger {
   const push = () => {};
@@ -209,6 +221,9 @@ function fakeWorkspace(): WorktreeOps {
 }
 
 async function setup(claimed: ClaimedStep) {
+  probeMock.mockReset();
+  // 不存在的仓库（o/r）的真值：gh / REST 双梯 404 → null（面板 PR 槽留空）。
+  probeMock.mockResolvedValue(null);
   const home = mkdtempSync(join(tmpdir(), 'pacman-runner-tag-'));
   const paths = statePaths(home, join(home, 'workspaces'));
   const client = new FakeClient();
