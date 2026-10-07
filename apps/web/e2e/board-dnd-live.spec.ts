@@ -59,10 +59,11 @@ interface Stub {
 
 /** 启动面打桩（merge-reject stubBoot 同款）+ todos 读写面。mode='ok'：PATCH
  *  落库（本地 state 翻 review，后续 GET 返回新真值）；mode='409'：PATCH 拒，
- *  state 不动（invalidate 重取 = 原相位，弹回即真值）。 */
-async function stubWorld(page: Page, mode: 'ok' | '409'): Promise<Stub> {
+ *  state 不动（invalidate 重取 = 原相位，弹回即真值）。initialPhase（#901
+ *  done 闸面）：缺省 done（重开对拍），'review' = 闸相位有变更卡。 */
+async function stubWorld(page: Page, mode: 'ok' | '409', initialPhase = 'done'): Promise<Stub> {
   const stub: Stub = { patches: [] };
-  let current = wireCard('done', 1);
+  let current = wireCard(initialPhase, 1);
   await page.route('**/api/**', (route, request) => {
     if (request.method() !== 'GET') return route.fallback();
     return route.fulfill({ status: 500, json: { error: 'e2e stub: not the surface under test' } });
@@ -84,13 +85,13 @@ async function stubWorld(page: Page, mode: 'ok' | '409'): Promise<Stub> {
   return stub;
 }
 
-/** Press the done card and carry it into the pending column's list area;
- *  leaves the button down (caller arms the trace, then ups). */
-async function dragDoneToPending(page: Page): Promise<void> {
+/** Press the card and carry it into the target column's list area; leaves the
+ *  button down (caller arms the trace, then ups). */
+async function dragCardToColumn(page: Page, columnListId: string): Promise<void> {
   const fromBox = await page.locator(`[data-todo-id="${CARD_ID}"]`).boundingBox();
-  if (fromBox == null) throw new Error('done card missing');
-  const list = await page.locator('[data-column-list="pending"]').boundingBox();
-  if (list == null) throw new Error('pending list missing');
+  if (fromBox == null) throw new Error('card missing');
+  const list = await page.locator(`[data-column-list="${columnListId}"]`).boundingBox();
+  if (list == null) throw new Error(`${columnListId} list missing`);
   const sx = fromBox.x + fromBox.width / 2;
   const sy = fromBox.y + fromBox.height / 2;
   await page.mouse.move(sx, sy);
@@ -113,7 +114,7 @@ test('live: done(有变更)→待处理 fires PATCH phase=review, optimistic lan
   await page.goto('/app');
   await expect(page.locator(`[data-column="done"] [data-todo-id="${CARD_ID}"]`)).toBeVisible();
 
-  await dragDoneToPending(page);
+  await dragCardToColumn(page, 'pending');
   await expect(page.locator('[data-column="pending"]')).toHaveAttribute('data-drop', 'true');
 
   // arm the flash trace, then release
@@ -172,7 +173,7 @@ test('live: PATCH 409 = 乐观值作废，卡片弹回源列 + toast 点名失�
   await page.goto('/app');
   await expect(page.locator(`[data-column="done"] [data-todo-id="${CARD_ID}"]`)).toBeVisible();
 
-  await dragDoneToPending(page);
+  await dragCardToColumn(page, 'pending');
   await page.mouse.up();
 
   // the bounce-back IS the truth: server refused, invalidate refetch returns
@@ -187,4 +188,61 @@ test('live: PATCH 409 = 乐观值作废，卡片弹回源列 + toast 点名失�
   await expect(page.locator('[data-sonner-toast]').first()).toBeVisible();
   await expect(page.locator('[data-sonner-toast]').first()).toContainText('移动任务失败');
   expect(stub.patches.length).toBeGreaterThanOrEqual(1);
+});
+
+// ---- done 落位闸 (#901)：review(有变更) 卡拖向已完成不静默发 PATCH——先开
+// 确认弹层（确认前零请求），确认后才走既有乐观 PATCH 提交路。 ----
+
+const doneDialog = (page: Page) => page.getByRole('dialog', { name: '把任务标记为已完成？' });
+
+test('live: review(有变更)→已完成 开 done 闸，取消 = 零 PATCH、卡停源列 (#901)', async ({
+  page,
+}) => {
+  const stub = await stubWorld(page, 'ok', 'review');
+  await page.goto('/app');
+  await expect(
+    page.locator(`[data-column="pending"] [data-todo-id="${CARD_ID}"]`),
+  ).toBeVisible();
+
+  await dragCardToColumn(page, 'done');
+  await page.mouse.up();
+
+  // 落位不开 PATCH，开弹层；卡片停在源列（确认前零提交）。
+  await expect(doneDialog(page)).toBeVisible();
+  expect(stub.patches).toEqual([]);
+  await expect(
+    page.locator(`[data-column="pending"] [data-todo-id="${CARD_ID}"]`),
+  ).toBeVisible();
+
+  await doneDialog(page).getByRole('button', { name: '取消' }).click();
+  await expect(doneDialog(page)).toBeHidden();
+  expect(stub.patches, '取消路径不得发任何 PATCH').toEqual([]);
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('0');
+});
+
+test('live: review(有变更)→已完成 确认后发 PATCH phase=done，乐观落位 (#901)', async ({
+  page,
+}) => {
+  const stub = await stubWorld(page, 'ok', 'review');
+  await page.goto('/app');
+  await expect(
+    page.locator(`[data-column="pending"] [data-todo-id="${CARD_ID}"]`),
+  ).toBeVisible();
+
+  await dragCardToColumn(page, 'done');
+  await page.mouse.up();
+  await expect(doneDialog(page)).toBeVisible();
+  expect(stub.patches, '确认前零 PATCH').toEqual([]);
+
+  await doneDialog(page).getByRole('button', { name: '确认完成' }).click();
+  await expect(doneDialog(page)).toBeHidden();
+  await expect(
+    page.locator(`[data-column="done"] [data-todo-id="${CARD_ID}"]`),
+    'card lands in 已完成 after confirm',
+  ).toBeVisible({ timeout: 10_000 });
+  expect(stub.patches.length).toBeGreaterThanOrEqual(1);
+  expect(stub.patches[0]?.body.phase).toBe('done');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('0');
 });

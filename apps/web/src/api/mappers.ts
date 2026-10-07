@@ -33,10 +33,9 @@ import {
   classifySkillFact,
   classifyUserText,
   conversationBranch,
-  MERGE_ANNOUNCEMENT,
+  GATE_ANNOUNCEMENTS,
   MODEL_SOURCE_RUNTIME_LABELS,
   PLAN_SECTIONS,
-  REVIEW_ANNOUNCEMENT,
   REVIEW_VERDICT_KIND,
   reviewVerdictSchema,
   TRANSCRIPT_PROMPT_ROW_ID_PREFIX,
@@ -71,12 +70,15 @@ import type {
 import { activityLabel } from './activity.js';
 import type { ApiKeyRow, PlanRow, StepRow } from './hooks.js';
 
-/** transcript 消息行（GET messages 封套行形，shared transcriptRowSchema）。 */
+/** transcript 消息行（GET messages 封套行形，shared transcriptRowSchema）。
+ * actor（#902）：过闸宣告行的动作主体 displayName；存量旧行/daemon 上传行 =
+ * null/缺省，宣告行呈现回落当前用户名（旧语义不变）。 */
 export interface MessageRow {
   id: string;
   role: 'system' | 'user' | 'assistant';
   content: unknown;
   createdAt: number;
+  actor?: string | null;
 }
 
 // —— todo ————————————————————————————————————————————————————————————————
@@ -530,12 +532,14 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     }
     const text = textOfContent(m.content).trim();
     if (m.role === 'user') {
-      // 宣告行 content = shared 单源常量（server 写入端同款；呈现层拼装
-      // actor）：合并 r3 §3.6，审核 r8 §3.1——同族 note 行形，不是气泡。
-      if (text === MERGE_ANNOUNCEMENT || text === REVIEW_ANNOUNCEMENT) {
+      // 宣告行 content = shared 单源常量（server 写入端同款）：合并 r3 §3.6，
+      // 审核 r8 §3.1，确认/done 落地 #902——同族 note 行形，不是气泡。
+      // actor 位（#902）：行自带主体（人/chief Agent displayName）优先，
+      // 存量旧行无 actor 回落当前用户名（旧行呈现逐字不变）。
+      if (GATE_ANNOUNCEMENTS.includes(text)) {
         entries.push({
           at: m.createdAt,
-          item: { kind: 'note', text: `${userName} ${text}` },
+          item: { kind: 'note', text: `${m.actor ?? userName} ${text}` },
         });
         continue;
       }

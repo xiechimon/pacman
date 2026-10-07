@@ -58,7 +58,13 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
-import { COLUMNS, canDropOnColumn, needsResetGate, sortColumnTodos } from './columns.js';
+import {
+  COLUMNS,
+  canDropOnColumn,
+  needsDoneGate,
+  needsResetGate,
+  sortColumnTodos,
+} from './columns.js';
 import { DRAG_THRESHOLD_PX } from './dnd.js';
 import { DragCard } from './drag-card.js';
 import { DraggableCard } from './draggable-card.js';
@@ -105,6 +111,10 @@ interface BoardProps {
    *  零提交（本面在 opened 前不写任何乐观值，卡片不动），确认走
    *  POST /api/todos/:id/reset。 */
   onResetIntent?: (todo: TodoRecord) => void;
+  /** #901: 闸相位（confirm/review）有变更产物的卡拖向已完成 = done 意图——
+   *  page 开确认 dialog（跳过合并的显式确认）；取消 = 零提交，确认走既有
+   *  onPhaseDrop 提交路（server 同落审计行，#902）。 */
+  onDoneIntent?: (todo: TodoRecord) => void;
   /** #114: the notification-permission strip between topbar and columns
    *  (r2 §1.3). The route owns the permission state and passes the
    *  rendered banner only while it should show. */
@@ -124,6 +134,7 @@ export function BoardSurface({
   onPhaseDrop,
   onStartIntent,
   onResetIntent,
+  onDoneIntent,
   banner,
   filters,
   tagsById,
@@ -193,6 +204,9 @@ export function BoardSurface({
       const column = COLUMNS.find((c) => c.id === overColumnId);
       if (column?.startGate === true) onStartIntent?.(dragged);
       else if (overColumnId === 'todo' && needsResetGate(dragged)) onResetIntent?.(dragged);
+      // #901 done 落位闸：闸相位有产物在审的卡要先显式确认（跳过合并语义），
+      // 确认前零提交；其余落位保持静默改相（判据单源 columns.needsDoneGate）。
+      else if (overColumnId === 'done' && needsDoneGate(dragged)) onDoneIntent?.(dragged);
       else if (overColumnId != null) onPhaseDrop?.(dragged, overColumnId);
     }
     setDragId(null);
