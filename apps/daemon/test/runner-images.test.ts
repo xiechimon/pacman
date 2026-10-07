@@ -89,8 +89,12 @@ class FakeClient implements MachineApi {
       git: null,
     };
   }
-  async skills() {
-    return { skills: [] };
+  async skillsManifest() {
+    // #920：默认空清单 = 零团队技能（selection=whitelist，既有断言零扰动）。
+    return { selection: 'whitelist' as const, skills: [] };
+  }
+  async skillFile(): Promise<Buffer> {
+    throw new Error('unexpected skillFile call');
   }
   async attachment(stepId: string, attachmentId: string) {
     this.attachmentCalls.push(`${stepId}:${attachmentId}`);

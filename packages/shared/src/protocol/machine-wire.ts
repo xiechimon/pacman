@@ -565,13 +565,18 @@ export type MachineShellResultBody = z.infer<typeof machineShellResultBodySchema
 
 export const machineShellResultResponseSchema = machineOkResponseSchema;
 
-/** GET /api/machine/skills/{stepId} 响应（XMON-109 S1 [设计] 附加端点，
- * MACHINE_WIRE_EXTENSIONS 登记位）：S2 daemon 物化消费契约——按该步
- * Agent 的 skills 白名单出技能包（chief 步 = 信任面全量）。每技能 =
- * record 三字段 + dirName（盘位目录名）+ 全文件内容（path 相对技能目录、
- * posix 分隔）。字节闸：单文件 ≤ MAX_SKILL_FILE_BYTES、包总量 ≤
- * MAX_SKILL_TOTAL_BYTES，超限 400 点名（读面与写面共用一闸）。 */
-export const machineSkillsResponseSchema = z.object({
+/** GET /api/machine/skills/{stepId} 响应（#920 清单 + 按需拉，
+ * MACHINE_WIRE_EXTENSIONS 登记位 [设计]）：每技能 = record 三字段 +
+ * dirName（盘位目录名）+ 文件清单（path 相对技能目录、posix 分隔；
+ * sizeBytes = 盘上字节数；sha256 = 内容 hash）。文件本体经
+ * GET /api/machine/skills/{stepId}/file 按需拉取——daemon 只拉本地缺失或
+ * hash 不同的文件，单请求预算与库总量解耦（旧「一次 GET 塞全量全文」的
+ * 512KB/2MB 整包字节闸即 #920 根因：真实技能库 18MB 必超、分发从未成功）。
+ * selection 区分出包语义：chief 步 = 'all'（信任面全量现扫），worker 步 =
+ * 'whitelist'（agent.skills 白名单交集）——空清单时 daemon 据此点名语境。
+ * 完整性 = 逐文件 sha256 + sizeBytes 双校验（materializeTeamSkills）。 */
+export const machineSkillsManifestResponseSchema = z.object({
+  selection: z.enum(['all', 'whitelist']),
   skills: z.array(
     z.object({
       id: z.string(),
@@ -581,13 +586,14 @@ export const machineSkillsResponseSchema = z.object({
       files: z.array(
         z.object({
           path: z.string(),
-          content: z.string(),
+          sizeBytes: z.number().int().min(0),
+          sha256: z.string().regex(/^[0-9a-f]{64}$/),
         }),
       ),
     }),
   ),
 });
-export type MachineSkillsResponse = z.infer<typeof machineSkillsResponseSchema>;
+export type MachineSkillsManifestResponse = z.infer<typeof machineSkillsManifestResponseSchema>;
 
 /** GET /api/machine/attachment/{stepId}/{attachmentId} 响应（#730 [设计]
  * MACHINE_WIRE_EXTENSIONS 登记位）：daemon 侧图片交付的下载面——ownedStep
@@ -626,7 +632,13 @@ export const MACHINE_WIRE_EXTENSIONS = [
     method: 'GET',
     path: '/api/machine/skills/{stepId}',
     reason:
-      '[设计] XMON-109 S1 技能包下发（spec 14 daemon 注入契约的 S2 消费位；agent.skills 白名单交集 + 字节闸；响应 machineSkillsResponseSchema）',
+      '[设计] XMON-109 S1 技能分发清单（spec 14 daemon 注入契约的 S2 消费位；#920 改清单 + 按需拉：selection all/whitelist + 逐文件 sizeBytes/sha256；响应 machineSkillsManifestResponseSchema）',
+  },
+  {
+    method: 'GET',
+    path: '/api/machine/skills/{stepId}/file',
+    reason:
+      '[设计] #920 技能单文件按需拉取（?dirName=&path=；raw bytes application/octet-stream；清单外/白名单外/逃逸形一律 404 不泄存在性）',
   },
   {
     method: 'GET',

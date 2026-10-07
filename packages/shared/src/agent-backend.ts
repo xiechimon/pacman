@@ -200,10 +200,11 @@ export interface SessionOpts {
    * （chief 面全量直通）；[] = 不注入任何 skill（least-privilege，与 MCP
    * 空勾选同律）；名单内未知 slug 静默跳过（#367 容忍语义）。 */
   skillsAllowlist?: string[];
-  /** 团队技能物化目录（XMON-112 S2，spec 14 增补）：daemon 步启动经
-   * GET /api/machine/skills/{stepId} 拉包物化后的本机缓存目录。backend 把它
-   * 排在本机 skillsDir 之前扫描——同名冲突团队条目胜（pi loadSkills
-   * first-wins，白名单授予是权威信号）。缺省 = 纯本机扫描（零回归）。 */
+  /** 团队技能物化目录（XMON-112 S2，spec 14 增补；#920 清单 + 按需拉）：
+   * daemon 步启动经 GET /api/machine/skills/{stepId} 清单 + /file 按需拉取
+   * 物化后的本机缓存视图目录。backend 把它排在本机 skillsDir 之前扫描——
+   * 同名冲突团队条目胜（pi loadSkills first-wins，白名单授予是权威信号）。
+   * 缺省 = 纯本机扫描（零回归）。 */
   teamSkillsDir?: string;
   /** 只读回合（#511 审核步）：文件写类内建工具（edit/write）不下发——审核者
    * 是来判定的，不是来动手的；bash 保留（跑验证命令是它的职责）。缺省 =
