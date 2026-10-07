@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5c522641-ece8-43b9-9990-7809194d493b",
+  "id": "d0e1eea6-150f-4903-9f51-4e5d9b829d24",
   "prevId": "53900df0-b0fb-427a-bfb3-61f04df3d4c3",
   "tables": {
     "agent": {
@@ -1214,6 +1214,13 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "actor": {
+          "name": "actor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         }
       },
