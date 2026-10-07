@@ -30,6 +30,7 @@ import {
   BRAND,
   CHIEF_TURN_ERROR_KIND,
   chiefTurnErrorContentSchema,
+  classifySkillFact,
   classifyUserText,
   conversationBranch,
   MERGE_ANNOUNCEMENT,
@@ -653,6 +654,26 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
   }
   flushTools();
 
+  // #918 技能事实汇总（详情页的持久一份）：从落库 toolcall 行派生——终态行
+  // 才计（result 在位；开始半行会被同 id 的终态 upsert 覆盖）。分类单源
+  // shared/skill-facts（与 daemon 活行判定同一函数，两面永不漂移）。同名去重、
+  // denied 粘滞（daemon tracker 同律）：挡下的技能不再出现在读列。无命中 =
+  // 不产条目（对照组：无技能的任务零噪声）。
+  const skillReadNames: string[] = [];
+  const skillDeniedNames: string[] = [];
+  for (const m of messages) {
+    const skillCall = toolCallOfContent(m.content);
+    if (skillCall === null) continue;
+    const fact = classifySkillFact(skillCall);
+    if (fact === null) continue;
+    const names = fact.denied ? skillDeniedNames : skillReadNames;
+    if (!names.includes(fact.name)) names.push(fact.name);
+  }
+  const readSkills = skillReadNames.filter((n) => !skillDeniedNames.includes(n));
+  if (readSkills.length > 0 || skillDeniedNames.length > 0) {
+    items.push({ kind: 'skills', read: readSkills, denied: skillDeniedNames });
+  }
+
   // live 尾部：进行中文本（打字面）+ streaming 行（r7 16 `准备工作区...` /
   // 26 `处理中...`）。running 步存在才挂尾。
   const running = steps.find((s) => s.status === 'claimed' || s.status === 'pending');
@@ -684,6 +705,9 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
               : '处理中...',
       ...(actLabel?.vars !== undefined ? { labelVars: actLabel.vars } : {}),
       ...(actLabel != null && act != null ? { signalAt: act.at } : {}),
+      // #918：本步技能事实清单随 activity 事件进披露面（stepId 过滤已由上面
+      // 的 act 判定承担——陈旧步的技能条目不跨步串场）。空/缺省不产字段。
+      ...(act?.skills !== undefined && act.skills.length > 0 ? { skills: act.skills } : {}),
     });
   } else if (build && todo.phase === 'building' && !steps.some((s) => s.status === 'stopped')) {
     // 静止态 live 线索（#471）：building 的步间隙 / agent 非流式窗口没有

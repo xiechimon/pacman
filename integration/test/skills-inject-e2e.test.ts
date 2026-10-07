@@ -53,6 +53,53 @@ function logLines(): string[] {
   return daemonLogLines(paths.daemonLog);
 }
 
+/** #918 activity 事件收集器：订阅会话流，持续记录**最新一份带 skills 的
+ *  activity 载荷**（daemon 侧清单是累计集、随每份上报走——最后一份 = 全步
+ *  事实）。证明链 = daemon 从工具流识别 → 第四形上报 → server 盖 {stepId,at}
+ *  → SSE 会话流可达订阅端，全程真 wire。 */
+function collectConvActivities(convId: string): {
+  latestSkills: () => { name: string; denied: boolean }[] | null;
+  stop: () => void;
+} {
+  const ctrl = new AbortController();
+  let latest: { name: string; denied: boolean }[] | null = null;
+  void (async () => {
+    const res = await fetch(`${server.url}/api/conversations/${convId}/stream`, {
+      signal: ctrl.signal,
+    });
+    if (!res.body) return;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) return;
+      buf += decoder.decode(value, { stream: true });
+      let idx = buf.indexOf('\n\n');
+      while (idx >= 0) {
+        const frame = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        for (const line of frame.split('\n')) {
+          if (!line.startsWith('data:')) continue;
+          try {
+            const ev = JSON.parse(line.slice(5).trim()) as {
+              type: string;
+              activity?: { skills?: { name: string; denied: boolean }[] };
+            };
+            if (ev.type === 'activity' && ev.activity?.skills !== undefined) {
+              latest = ev.activity.skills;
+            }
+          } catch {
+            // 半帧防御
+          }
+        }
+        idx = buf.indexOf('\n\n');
+      }
+    }
+  })().catch(() => {});
+  return { latestSkills: () => latest, stop: () => ctrl.abort() };
+}
+
 beforeAll(async () => {
   // fixture skills 目录：单 skill（frontmatter name + description + 正文 marker）。
   skillsDir = mkdtempSync(join(tmpdir(), 'pacman-it-skills-'));
@@ -189,8 +236,26 @@ describe('spec 14 skills 执行面注入 E2E', () => {
     });
     expect(started.status).toBe(201);
     buildId = (started.body as { builds: { id: string }[] }).builds[0]!.id;
+    // #918：activity 面订阅先行（步认领前挂上，不漏首份上报；hub 进场补发
+    // 兜底晚订阅）。
+    const activities = collectConvActivities(buildId);
 
     await waitFor(() => server.todoPhase(world.todoId) === 'review', 150_000);
+
+    // ⑦ #918 技能事实上 activity 通道（第四形累计集）：读到的（demo-skill）
+    //    与被挡下的（extra-skill，#917 门控 read 拒绝）同线在列、denied 位
+    //    可区分——「被挡下的事件也要显示」的 wire 级实证。
+    try {
+      await waitFor(() => {
+        const skills = activities.latestSkills() ?? [];
+        return (
+          skills.some((s) => s.name === 'demo-skill' && !s.denied) &&
+          skills.some((s) => s.name === 'extra-skill' && s.denied)
+        );
+      }, 15_000);
+    } finally {
+      activities.stop();
+    }
 
     // ① catalog 注入 LLM 输入面（stub 捕获）：systemPrompt 含 <available_skills>
     //    且既有段（agent 职责文本）在位——追加而非覆盖。

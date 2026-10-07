@@ -6,8 +6,17 @@
 //   W5 无活动信号（fixture / 旧 server）→ 既有标签逐字不变（零回归）
 //   W6 相位词表 8 件全有标签（穷尽 switch，编译期 + 运行期双保险）
 //   W7 chief 面：tool 相位 → runningTool 投影；标签接管；无信号回落「处理中...」
+// #918 技能事实面（活行条目 + 详情页汇总）续编：
+//   W8 技能条目跨步串场：streaming 项的 skills 只来自**在跑步**的 activity
+//      （W1 同一道 stepId 过滤）——陈旧步的技能条目不得挂到下一步头上。
+//   W9 汇总派生自落库 toolcall 行：首见序、同名去重、denied 粘滞（挡下的
+//      名字从读列移除，两列互斥）。
+//   W10 对照组：无技能命中的任务不产 skills 汇总条目、streaming 项不带
+//      skills 字段（空条目 = 噪声，验收明令禁止）。
+//   W11 半程行（无 result 的开始半 upsert）不计入汇总——读取完成才是事实；
+//      终态行同 id 覆盖后自然计入。
 
-import type { BuildRecord, StepActivity, StepJournalRow } from '@pacman/shared';
+import type { BuildRecord, StepActivity, StepJournalRow, ToolCallRecord } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { activityLabel } from '../src/api/activity.js';
 import { mapChief, mapTranscript } from '../src/api/mappers.js';
@@ -49,9 +58,10 @@ function render(overrides: {
   steps?: StepJournalRow[];
   stopping?: boolean;
   activity?: StepActivity | null;
+  messages?: import('../src/api/mappers.js').MessageRow[];
 }): TranscriptItem[] {
   return mapTranscript({
-    messages: [],
+    messages: overrides.messages ?? [],
     steps: overrides.steps ?? [],
     plans: [],
     build: BUILD,
@@ -133,6 +143,97 @@ describe('mapTranscript 活动相位（#905）', () => {
       const items = render({ steps: [running], activity: act(running.id, phase) });
       expect(tail(items)?.label).toBe(label);
     }
+  });
+});
+
+describe('mapTranscript 技能事实（#918）', () => {
+  function toolMsg(
+    id: string,
+    call: Partial<ToolCallRecord> & { name: string },
+    createdAt = NOW,
+  ): import('../src/api/mappers.js').MessageRow {
+    return {
+      id,
+      role: 'assistant',
+      content: { kind: 'toolcall', call: { id, arguments: {}, ...call } },
+      createdAt,
+    } as unknown as import('../src/api/mappers.js').MessageRow;
+  }
+
+  const readSkill = (id: string, name: string, at = NOW) =>
+    toolMsg(id, { name: 'read', arguments: { path: `/skills/${name}/SKILL.md` }, result: 'body', isError: false }, at);
+  const deniedSkill = (id: string, name: string, at = NOW) =>
+    toolMsg(
+      id,
+      {
+        name: 'read',
+        arguments: { path: `/skills/${name}/SKILL.md` },
+        result: `read denied: skill '${name}' is not in the agent allowlist`,
+        isError: true,
+      },
+      at,
+    );
+
+  function summary(items: TranscriptItem[]) {
+    return items.find((i) => i.kind === 'skills');
+  }
+
+  test('W8: 在跑步 activity 的 skills 随行；陈旧步（stepId 不匹配）不串场', () => {
+    const running = step('claimed');
+    const facts = [
+      { name: 'to-spec', denied: false },
+      { name: 'extra-skill', denied: true },
+    ];
+    const items = render({
+      steps: [running],
+      activity: act(running.id, 'tool', { tool: 'skill: to-spec', skills: facts }),
+    });
+    expect(tail(items)).toMatchObject({ kind: 'streaming', skills: facts });
+    // 陈旧步的 activity（上一跑步）：skills 不得挂到当前 streaming 项。
+    const stale = render({
+      steps: [running],
+      activity: act('step-previous-run', 'tool', { skills: facts }),
+    });
+    expect(tail(stale)?.skills).toBeUndefined();
+  });
+
+  test('W9: 汇总从落库行派生——首见序、去重、denied 粘滞两列互斥', () => {
+    const items = render({
+      messages: [
+        readSkill('c1', 'to-spec', NOW - 5_000),
+        deniedSkill('c2', 'extra-skill', NOW - 4_000),
+        readSkill('c3', 'to-spec', NOW - 3_000), // 重复读：去重
+        readSkill('c4', 'implement', NOW - 2_000),
+        deniedSkill('c5', 'implement', NOW - 1_000), // 先读后拒：denied 粘滞
+      ],
+    });
+    expect(summary(items)).toEqual({
+      kind: 'skills',
+      read: ['to-spec'],
+      denied: ['extra-skill', 'implement'],
+    });
+  });
+
+  test('W10: 对照组——无技能命中不产汇总条目；非技能工具行不算', () => {
+    const plain = render({
+      messages: [
+        toolMsg('c1', { name: 'bash', arguments: { command: 'ls' }, result: 'x', isError: false }),
+        toolMsg('c2', { name: 'read', arguments: { path: '/src/main.ts' }, result: 'y', isError: false }),
+      ],
+    });
+    expect(summary(plain)).toBeUndefined();
+    const running = step('claimed');
+    const noSkills = render({ steps: [running], activity: act(running.id, 'thinking') });
+    expect(tail(noSkills)?.skills).toBeUndefined();
+  });
+
+  test('W11: 半程行（无 result）不计入汇总；终态覆盖后计入', () => {
+    const pending = render({
+      messages: [toolMsg('c1', { name: 'read', arguments: { path: '/skills/x/SKILL.md' } })],
+    });
+    expect(summary(pending)).toBeUndefined();
+    const settled = render({ messages: [readSkill('c1', 'x')] });
+    expect(summary(settled)).toEqual({ kind: 'skills', read: ['x'], denied: [] });
   });
 });
 

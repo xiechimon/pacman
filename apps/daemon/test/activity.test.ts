@@ -14,10 +14,22 @@
 //      后续相位变化照常尝试发送。
 //   F7 重发携带的是当前 report（相位在两次重发之间变过则发新值，由 F3
 //      路径先行；重发本身不改变 report 内容）。
+// #918 技能事实面（累计清单随每份上报走，失败方式续编）：
+//   F8 技能事实到达立即发（不等相位变化、不等节流窗）——「实时冒一条」的
+//      daemon 半；skills 挂当前相位 report，相位本身不变。
+//   F9 去重与 denied 粘滞：同名同态重复 = 零重发（F2 同律）；先读后拒 =
+//      升级 denied 重发一次；先拒后读 = denied 不回退（挡下是既成事实，
+//      回退会把闸的价值抹掉）。
+//   F10 载荷有界：超过 SKILL_FACTS_CAP 个不同技能名后清单停长（已有名字的
+//      denied 升级仍然生效）——病态循环读技能不得把上报载荷撑爆。
+//   F11 累计集随后续每份上报走：相位变化与 noteEvent 节流重发都携带当前
+//      skills 全集（hub 单槽/订阅补发拿到的永远是全量）。
+//   F12 相位未起（current=null）时 noteSkill 不凭空发报——技能集搭下一份
+//      相位报的便车（runStep 先 setPhase('preparing')，此为防御性边界）。
 
 import { STEP_ACTIVITY_PHASES, type StepActivityReport } from '@pacman/shared';
 import { describe, expect, it } from 'vitest';
-import { createActivityTracker } from '../src/activity.js';
+import { createActivityTracker, SKILL_FACTS_CAP } from '../src/activity.js';
 
 function harness(opts: { repeatMs?: number } = {}) {
   const sent: { at: number; report: StepActivityReport }[] = [];
@@ -133,6 +145,83 @@ describe('activity tracker', () => {
     h.advance(5_000);
     h.tracker.noteEvent();
     expect(h.sent.at(-1)?.report).toEqual({ phase: 'retrying', attempt: 2 });
+  });
+
+  it('F8: skill fact sends immediately, riding the current phase report', () => {
+    const h = harness();
+    h.tracker.setPhase('tool', { tool: 'skill: to-spec' });
+    const before = h.sent.length;
+    h.tracker.noteSkill({ name: 'to-spec', denied: false });
+    expect(h.sent).toHaveLength(before + 1);
+    expect(h.sent.at(-1)?.report).toEqual({
+      phase: 'tool',
+      tool: 'skill: to-spec',
+      skills: [{ name: 'to-spec', denied: false }],
+    });
+  });
+
+  it('F9: dedupe by name; denied is sticky and upgrades once', () => {
+    const h = harness();
+    h.tracker.setPhase('thinking');
+    h.tracker.noteSkill({ name: 'a', denied: false });
+    const afterFirst = h.sent.length;
+    // 同名同态重复：零重发。
+    h.tracker.noteSkill({ name: 'a', denied: false });
+    expect(h.sent).toHaveLength(afterFirst);
+    // 先读后拒：升级 denied，重发一次。
+    h.tracker.noteSkill({ name: 'a', denied: true });
+    expect(h.sent).toHaveLength(afterFirst + 1);
+    expect(h.sent.at(-1)?.report.skills).toEqual([{ name: 'a', denied: true }]);
+    // 先拒后读：denied 粘滞不回退，零重发。
+    h.tracker.noteSkill({ name: 'a', denied: false });
+    expect(h.sent).toHaveLength(afterFirst + 1);
+    expect(h.sent.at(-1)?.report.skills).toEqual([{ name: 'a', denied: true }]);
+    // 首见序保持：新名字追加在尾。
+    h.tracker.noteSkill({ name: 'b', denied: false });
+    expect(h.sent.at(-1)?.report.skills).toEqual([
+      { name: 'a', denied: true },
+      { name: 'b', denied: false },
+    ]);
+  });
+
+  it('F10: skill list is capped; denied upgrades still apply past the cap', () => {
+    const h = harness();
+    h.tracker.setPhase('tool', { tool: 'read' });
+    for (let i = 0; i < SKILL_FACTS_CAP + 5; i++) {
+      h.tracker.noteSkill({ name: `s${i}`, denied: false });
+    }
+    expect(h.sent.at(-1)?.report.skills).toHaveLength(SKILL_FACTS_CAP);
+    // 已收录名字的 denied 升级不受 cap 影响。
+    h.tracker.noteSkill({ name: 's0', denied: true });
+    expect(h.sent.at(-1)?.report.skills?.[0]).toEqual({ name: 's0', denied: true });
+    expect(h.sent.at(-1)?.report.skills).toHaveLength(SKILL_FACTS_CAP);
+  });
+
+  it('F11: cumulative skills ride later phase changes and throttled re-sends', () => {
+    const h = harness({ repeatMs: 1_000 });
+    h.tracker.setPhase('thinking');
+    h.tracker.noteSkill({ name: 'kami', denied: false });
+    h.tracker.setPhase('responding');
+    expect(h.sent.at(-1)?.report).toEqual({
+      phase: 'responding',
+      skills: [{ name: 'kami', denied: false }],
+    });
+    h.advance(1_000);
+    h.tracker.noteEvent();
+    expect(h.sent.at(-1)?.report).toEqual({
+      phase: 'responding',
+      skills: [{ name: 'kami', denied: false }],
+    });
+  });
+
+  it('F12: skill fact before any phase does not fabricate a report', () => {
+    const h = harness();
+    h.tracker.noteSkill({ name: 'early', denied: false });
+    expect(h.sent).toHaveLength(0);
+    h.tracker.setPhase('preparing');
+    expect(h.sent).toEqual([
+      { at: 1_000, report: { phase: 'preparing', skills: [{ name: 'early', denied: false }] } },
+    ]);
   });
 
   it('phase vocabulary is closed: every phase is settable with its extras', () => {

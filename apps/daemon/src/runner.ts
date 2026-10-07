@@ -29,6 +29,7 @@ import {
   buildTaskPromptText,
   CHANGES_DIFF_MAX_BYTES,
   CONTINUE_PROMPTS,
+  classifySkillFact,
   composeTaskPromptWithInstruction,
   FIXED_TAGS,
   isBackendRuntimeId,
@@ -40,6 +41,7 @@ import {
   RESUME_FRESH_SESSION_NOTE,
   type ReviewGate,
   STREAM_TIMEOUTS_MS,
+  skillCallName,
   stepTakesSecrets,
   transcriptPromptRowId,
   transcriptResumeNoteRowId,
@@ -1039,10 +1041,21 @@ export async function runStep(
             // #905 两段发射（pi/claude-code 同律）：无 result = 调用块流完、
             // 工具开始执行（此前这半被丢，工具执行期 UI 静默）；带 result =
             // 执行终态。相位面据此显示「正在执行工具：<名>」。
+            // #918 技能入口调用的显示名换成 `skill: <名>`（分类单源 shared/
+            // skill-facts）——头标签不展开也读得出「此刻在读哪个技能」。
             if (ev.call.result === undefined) {
-              activity.toolStarted(ev.call.id, ev.call.name || 'tool');
+              const skillName = skillCallName(ev.call);
+              activity.toolStarted(
+                ev.call.id,
+                skillName !== null ? `skill: ${skillName}` : ev.call.name || 'tool',
+              );
             } else {
               activity.toolEnded(ev.call.id);
+              // #918 终态技能事实（读取完成才是事实；denied = isError，含
+              // #917 两后端的硬挡）：累计进本步 skills 清单立即上报——被挡下
+              // 的事件同线可见（闸的价值就在于看得见）。
+              const skillFact = classifySkillFact(ev.call);
+              if (skillFact !== null) activity.noteSkill(skillFact);
             }
             transcript.upsert({
               id: ev.call.id,

@@ -8,11 +8,15 @@
 //   - **fire-and-forget**：sink 抛错（旧 server 对第四形 400 / 网络断）被吞，
 //     活动是呈现信号不是数据面——终稿 transcript 与步状态另有正本。
 
-import type { StepActivityPhase, StepActivityReport } from '@pacman/shared';
+import type { SkillFact, StepActivityPhase, StepActivityReport } from '@pacman/shared';
 
 /** 事件 flowing 期的重发节流窗：browser 端「最近信号 Ns 前」的新鲜度上限
  *  ≈ repeatMs + 事件间隔。5s = 「在动」肉眼可辨、量级远低于 30s heartbeat。 */
 export const ACTIVITY_REPEAT_MS = 5_000;
+
+/** #918 技能事实累计上限（F10 载荷有界）：正常一步读个位数技能；到顶说明
+ *  模型在病态循环读技能目录，清单停长（已收录名字的 denied 升级不受限）。 */
+export const SKILL_FACTS_CAP = 24;
 
 export interface ActivityTrackerDeps {
   /** 上报出口（runner 接 client.activity 的 fire-and-forget 包装）。 */
@@ -33,6 +37,10 @@ export interface ActivityTracker {
   /** 工具终态（toolcall_end 带 result）：pending 空且当前相位是 tool 才回
    *  awaiting_model（F4/F5）；未知 id 静默（异机回放等）。 */
   toolEnded: (id: string) => void;
+  /** #918 技能事实（分类单源 shared/skill-facts）：累计进 skills 清单并立即
+   *  重发当前 report（F8）。去重按 name、denied 粘滞（F9）；cap 见
+   *  SKILL_FACTS_CAP（F10）；相位未起时只记不发（F12）。 */
+  noteSkill: (fact: SkillFact) => void;
 }
 
 export function createActivityTracker(deps: ActivityTrackerDeps): ActivityTracker {
@@ -40,11 +48,19 @@ export function createActivityTracker(deps: ActivityTrackerDeps): ActivityTracke
   const repeatMs = deps.repeatMs ?? ACTIVITY_REPEAT_MS;
   /** pending 工具：插入序 Map（末位 = 最近开始者；F4 的显示名来源）。 */
   const pendingTools = new Map<string, string>();
+  /** #918 技能事实累计集（首见序；去重按 name、denied 粘滞、cap 有界）。 */
+  const skills: SkillFact[] = [];
+  /** 相位基座（不含 skills）：noteSkill 重发时据此重建当前 report（F8）。 */
+  let base: Omit<StepActivityReport, 'skills'> | null = null;
   let current: StepActivityReport | null = null;
   let lastSent: StepActivityReport | null = null;
   let lastSentAt = Number.NEGATIVE_INFINITY;
   let lastEventAt = 0;
   let lastSentEventAt = 0;
+
+  function withSkills(report: Omit<StepActivityReport, 'skills'>): StepActivityReport {
+    return skills.length > 0 ? { ...report, skills: [...skills] } : report;
+  }
 
   function emit(report: StepActivityReport): void {
     current = report;
@@ -61,11 +77,12 @@ export function createActivityTracker(deps: ActivityTrackerDeps): ActivityTracke
 
   return {
     setPhase(phase, extra) {
-      emit({
+      base = {
         phase,
         ...(extra?.tool !== undefined ? { tool: extra.tool } : {}),
         ...(extra?.attempt !== undefined ? { attempt: extra.attempt } : {}),
-      });
+      };
+      emit(withSkills(base));
     },
     noteEvent() {
       lastEventAt = now();
@@ -94,10 +111,51 @@ export function createActivityTracker(deps: ActivityTrackerDeps): ActivityTracke
       }
       if (current?.phase === 'tool') this.setPhase('awaiting_model');
     },
+    noteSkill(fact) {
+      const idx = skills.findIndex((s) => s.name === fact.name);
+      const existing = idx === -1 ? undefined : skills[idx];
+      let changed = false;
+      if (existing === undefined) {
+        // cap 有界（F10）：到顶后新名字不收——清单停长。
+        if (skills.length < SKILL_FACTS_CAP) {
+          skills.push({ name: fact.name, denied: fact.denied });
+          changed = true;
+        }
+      } else if (fact.denied && !existing.denied && idx !== -1) {
+        // denied 粘滞（F9）：只升级不回退——挡下是既成事实。换对象不换槽
+        // （已发 report 的数组是浅拷贝、共享旧对象——原地改会把 lastSent
+        // 一起改掉，sameReport 就看不出这次变化了）。
+        skills[idx] = { name: fact.name, denied: true };
+        changed = true;
+      }
+      if (!changed) return;
+      // 相位未起不凭空发报（F12）：技能集搭下一份相位报的便车。
+      if (base === null) return;
+      emit(withSkills(base));
+    },
   };
 }
 
 function sameReport(a: StepActivityReport | null, b: StepActivityReport | null): boolean {
   if (a === null || b === null) return a === b;
-  return a.phase === b.phase && a.tool === b.tool && a.attempt === b.attempt;
+  return (
+    a.phase === b.phase &&
+    a.tool === b.tool &&
+    a.attempt === b.attempt &&
+    sameSkills(a.skills, b.skills)
+  );
+}
+
+function sameSkills(
+  a: readonly SkillFact[] | undefined,
+  b: readonly SkillFact[] | undefined,
+): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  return (
+    a.length === b.length &&
+    a.every((f, i) => {
+      const g = b[i];
+      return g !== undefined && f.name === g.name && f.denied === g.denied;
+    })
+  );
 }
