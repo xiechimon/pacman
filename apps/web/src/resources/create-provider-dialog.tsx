@@ -52,8 +52,7 @@ const FORM_CLS = 'flex flex-col gap-3 px-4 pt-4 pb-3';
  *  同方）：9/8 外距 + 18 行盒；字号/字距 = c.css 定版 --label-size 12px /
  *  --label-spacing 0.01em——token 落后改 text-(--label-size)
  *  tracking-(--label-spacing)（§4-4）。 */
-const LABEL_CLS =
-  'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--text-primary)';
+const LABEL_CLS = 'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--foreground)';
 
 /** .dlg-form-note 退役后的辅助说明行（正典表 §5.4）。 */
 const NOTE_CLS = 'text-xs leading-4 text-(--text-tertiary)';
@@ -62,7 +61,7 @@ const NOTE_CLS = 'text-xs leading-4 text-(--text-tertiary)';
  *  -custom 同规则）：outline 档 + surface/card-border 皮肤等值迁移；高
  *  36→32 = §2.6-1 单一控件高正本（D2），圆角随件 rounded-lg（D2 吸收）。 */
 const PICKER_ROW_CLS =
-  'justify-start gap-2 border-(--card-border) bg-(--surface) px-3 text-left font-normal text-(--text-primary) hover:bg-(--surface-secondary) hover:text-(--text-primary) dark:border-(--card-border) dark:bg-(--surface) dark:hover:bg-(--surface-secondary) disabled:opacity-60';
+  'justify-start gap-2 border-(--border) bg-(--card) px-3 text-left font-normal text-(--foreground) hover:bg-(--secondary) hover:text-(--foreground) dark:border-(--border) dark:bg-(--card) dark:hover:bg-(--secondary) disabled:opacity-60';
 
 /** 行右 chip 槽（OAuth 徽标 / 暂未开通注记，原 .dlg-provider-badge/-note）：
  *  20px 高对齐 Badge 正典档（原 18px，§5.2 D2），11px 三级墨。 */
@@ -284,7 +283,7 @@ export function CreateProviderDialog({
               错误行的一级载体（原 .dlg-provider-oauth-error 类名钩退役，
               #910/#944，与 dlg-skill-error 同律）。 */}
           {connectError != null && connectError !== '' && (
-            <div className="text-xs leading-4 text-(--danger)" role="alert">
+            <div className="text-xs leading-4 text-(--destructive)" role="alert">
               {connectError}
             </div>
           )}
@@ -314,9 +313,7 @@ export function CreateProviderDialog({
                     （#385）；xai 行不带后缀（负向钉）。视觉间距由 chip 的
                     margin-left:auto 承担。 */}
                 {row.wired && (
-                  <span
-                    className={`${ROW_CHIP_CLS} bg-(--surface-secondary) text-(--text-tertiary)`}
-                  >
+                  <span className={`${ROW_CHIP_CLS} bg-(--secondary) text-(--text-tertiary)`}>
                     {' (OAuth)'}
                   </span>
                 )}
@@ -325,7 +322,7 @@ export function CreateProviderDialog({
                     textContent 空格分隔（probe 名称节点等值断言的行文本形）。 */}
                 {row.oauth && !row.wired && (
                   <span
-                    className={`${ROW_CHIP_CLS} border border-(--border-default) text-(--text-tertiary)`}
+                    className={`${ROW_CHIP_CLS} border border-(--border) text-(--text-tertiary)`}
                   >
                     {' '}
                     {t('暂未开通')}
@@ -416,7 +413,7 @@ export function CreateProviderDialog({
               onCheckedChange={setAuthHeader}
               label={t('以 Authorization: Bearer 请求头发送 API 密钥')}
             >
-              <span className="text-[13px] text-(--text-primary)">
+              <span className="text-[13px] text-(--foreground)">
                 {t('以 Authorization: Bearer 请求头发送 API 密钥')}
               </span>
             </Checkbox>

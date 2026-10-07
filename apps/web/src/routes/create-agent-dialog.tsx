@@ -45,8 +45,7 @@ import {
  *  9/8 外距 + 18 行盒；字号/字距 = c.css 定版 --label-size 12px /
  *  --label-spacing 0.01em——#915 落 token 后改 text-(--label-size)
  *  tracking-(--label-spacing)（§4-4）。 */
-const LABEL_CLS =
-  'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--text-primary)';
+const LABEL_CLS = 'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--foreground)';
 
 /** POST agents body 的创建面字段（reason = 词表最小形 + #485 的模型槽）。 */
 export interface CreateAgentInput {
@@ -183,7 +182,7 @@ export function CreateAgentDialog({
           // card-border 描边 surface 底 8/12 垫 13/16 secondary 墨；外链
           // ml-auto 右锚（spec 载体 = link 文案一级，agent-create-model /
           // team-create-agent 同 PR 重钉）。
-          <div className="flex items-center gap-2 rounded-[8px] border border-(--card-border) bg-(--surface) px-3 py-2 text-[13px] leading-4 text-(--text-secondary)">
+          <div className="flex items-center gap-2 rounded-[8px] border border-(--border) bg-(--card) px-3 py-2 text-[13px] leading-4 text-(--text-secondary)">
             <span>{t('尚未配置模型服务商')}</span>
             <Link
               className="ml-auto text-[13px] leading-4"

@@ -141,7 +141,7 @@ export interface ModelRowSkin {
  *  （#910 裁定 3 状态类归行为）：行底 --pick-selected-bg、名/勾墨
  *  --pick-selected-fg（#751 单源律随基底走，skin 只做各面几何）。 */
 export const PICK_ROW_BTN_CLS =
-  "w-full cursor-pointer justify-start rounded-none border-none bg-transparent text-left font-normal whitespace-nowrap hover:bg-(--surface-secondary) hover:text-(--text-primary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-primary) aria-selected:bg-(--pick-selected-bg) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  "w-full cursor-pointer justify-start rounded-none border-none bg-transparent text-left font-normal whitespace-nowrap hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--foreground) aria-selected:bg-(--spot-soft) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
 interface ModelPickRowProps {
   skin: ModelRowSkin;
@@ -163,7 +163,7 @@ export function ModelPickRow({ skin, selected, label, providerLabel, onPick }: M
   const name = (
     <span
       data-testid="model-pick-name"
-      className={cn(skin.name, 'group-aria-selected:text-(--pick-selected-fg)')}
+      className={cn(skin.name, 'group-aria-selected:text-(--spot-text-on-tint)')}
     >
       {label}
     </span>
@@ -192,7 +192,7 @@ export function ModelPickRow({ skin, selected, label, providerLabel, onPick }: M
       {selected && (
         <span
           data-testid="model-pick-check"
-          className={cn(skin.check, 'group-aria-selected:text-(--pick-selected-fg)')}
+          className={cn(skin.check, 'group-aria-selected:text-(--spot-text-on-tint)')}
         >
           <Check width={14} height={14} />
         </span>
@@ -206,14 +206,14 @@ export function ModelPickRow({ skin, selected, label, providerLabel, onPick }: M
  *  两面同形单源在此；宿内横向缩进归各消费点（弹层壳行铺满律 #872：菜单壳
  *  零横垫、盒自带 mx-3；dialog 面骑自己的 p-4，不另缩）。 */
 export const SEARCH_BOX_CLS =
-  'flex h-8 items-center gap-2 border border-(--card-border) bg-(--surface) px-3 text-(--text-tertiary)';
+  'flex h-8 items-center gap-2 border border-(--border) bg-(--card) px-3 text-(--text-tertiary)';
 
 /** typeahead 搜索框 input 中和件单源（#756 续：用户裁决框不常驻、打字才
  *  现形）：框形由 SEARCH_BOX_CLS 承载，input 本体零装饰；focus 环走 #388
  *  家族律（RES_SEARCH_INPUT_CLS 同配方，#944 先例）——旧 #855「环清零」
  *  护栏随 per-face 退役，键盘可见环由全局律承接。 */
 export const SEARCH_INPUT_CLASS =
-  'h-auto min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-sm leading-5 text-(--text-primary) shadow-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) focus-visible:ring-0 dark:bg-transparent';
+  'h-auto min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-sm leading-5 text-(--foreground) shadow-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) focus-visible:ring-0 dark:bg-transparent';
 
 export interface ModelPickListProps {
   skin: ModelRowSkin;

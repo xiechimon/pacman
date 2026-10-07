@@ -346,13 +346,13 @@ export function BoardSidebar({
   const toggleResourceGroup = useCallback(() => toggleGroup('resource'), [toggleGroup]);
   if (collapsed) {
     return (
-      <aside className="board-sidebar board-sidebar--collapsed relative z-(--z-docked) flex w-10 flex-none flex-col border-r border-[var(--border-default)] bg-background">
+      <aside className="board-sidebar board-sidebar--collapsed relative z-(--z-docked) flex w-10 flex-none flex-col border-r border-[var(--border)] bg-background">
         {/* 展开钮的 hover 面是它骑 seam 行的本分（见展开态注释）；按压面与
             展开态折叠钮同律禁掉——同一个控件折叠前后的两张脸，按下去都只
             该是图标本身（XMON-69，律在 motion.css 的 sidebar toggles 段）。 */}
         <Button
           variant="ghost"
-          className="rail-toggle h-11 w-10 flex-none cursor-pointer rounded-none border-0 border-b border-[var(--border-default)] bg-transparent text-muted-foreground hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover dark:hover:text-muted-foreground active:not-aria-[haspopup]:translate-y-0"
+          className="rail-toggle h-11 w-10 flex-none cursor-pointer rounded-none border-0 border-b border-[var(--border)] bg-transparent text-muted-foreground hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover dark:hover:text-muted-foreground active:not-aria-[haspopup]:translate-y-0"
           aria-label={t('展开侧边栏')}
           onClick={onToggle}
         >
@@ -448,7 +448,7 @@ export function BoardSidebar({
   }
 
   return (
-    <aside className="board-sidebar relative z-(--z-docked) flex w-60 flex-none flex-col overflow-hidden border-r border-[var(--border-default)] bg-background">
+    <aside className="board-sidebar relative z-(--z-docked) flex w-60 flex-none flex-col overflow-hidden border-r border-[var(--border)] bg-background">
       {/* 头部几何与选中态无关（dogfood 2026-09-30）：--active 只换底色，不搬
           内容。pill 的 mx-2 内缩 8px，pl 补 11 让图标仍落在 x19——与非选中态
           pl-[19px] 同一条线；名字间距恒 11px。r7 12 探针钉的是 pill 盒子
@@ -513,7 +513,7 @@ export function BoardSidebar({
         </Button>
       </div>
 
-      <nav className="sidebar-nav flex min-h-0 flex-[0_1_auto] flex-col overflow-y-auto border-t border-[var(--border-default)] pt-[9.5px]">
+      <nav className="sidebar-nav flex min-h-0 flex-[0_1_auto] flex-col overflow-y-auto border-t border-[var(--border)] pt-[9.5px]">
         <Button
           variant="ghost"
           className={`sidebar-row ${ROW_BASE} ${ROW_HOVER} ${ROW_BTN} h-9 cursor-pointer pl-[18px]`}
@@ -643,7 +643,7 @@ export function BoardSidebar({
         trigger={
           <Button
             variant="ghost"
-            className="sidebar-user h-11 flex-none cursor-pointer justify-start gap-0 rounded-none border-0 border-t border-[var(--border-default)] bg-transparent px-2 font-normal hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent aria-expanded:text-muted-foreground outline-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+            className="sidebar-user h-11 flex-none cursor-pointer justify-start gap-0 rounded-none border-0 border-t border-[var(--border)] bg-transparent px-2 font-normal hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent aria-expanded:text-muted-foreground outline-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
             aria-label={user.displayName}
           >
             <SeededAvatar

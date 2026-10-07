@@ -17,13 +17,13 @@ import { expect, test } from '@playwright/test';
 //   键盘 focus 环由 app.css 全局 :focus-visible 规则承载 (#388, 2px
 //   --focus-ring + offset 2)——本 spec 断言该环在 res-back 上双主题生效
 //   （暗 #d89cfc / 亮 #7f2da7）。
-// - P5 danger 对：--destructive 两值（暗 #ffaab9 / 亮 #9d2c4c）+ 暗侧深字
-//   （--destructive-foreground 暗 #47242b / 亮 #ffffff），逐对拼
-//   对比度（文本 ≥4.5，§5.1 门）。
+// - P5 danger：--destructive 两值（E 定版暗 #ffabb7 / 亮 #9e2c49）压 --card
+//   面拼对比度（文本 ≥4.5，§5.1 门）。--destructive-foreground 已判死退役
+//   （#987 §3.1），destructive 改按 base-nova 形 text-destructive 消费。
 // - P4 行 hover：more-menu 普通行 hover = --accent-soft，删除行 =
 //   --danger-soft（与 token 值探针逐值比对，不估算）。
 // - P4 主钮提亮：brand 档 hover filter = brightness(1.07)（原型 L365）。
-// - 侧栏底 = 主区 --surface: 断言行放在 visual-polish.spec.ts (原 #123
+// - 侧栏底 = 主区 --card: 断言行放在 visual-polish.spec.ts (原 #123
 //   层级断言的翻转, 同票更新)。
 
 for (const theme of ['light', 'dark'] as const) {
@@ -246,18 +246,22 @@ async function contrastOf(
 }
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`P5 danger pair: destructive bg + fg resolve and pass 4.5 (${theme})`, async ({
+  test(`P5 danger: destructive resolves and reads on card, passes 4.5 (${theme})`, async ({
     page,
   }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=01');
-    const bg = await resolveToken(page, '--destructive');
-    const fg = await resolveToken(page, '--destructive-foreground');
-    // 定版红系两值（spec/22 §1.7/§1.8）：暗侧高明度粉底 + 深字（7.52:1），
-    // 亮侧深玫红底 + 白字（7.25:1）
-    expect(bg).toBe(theme === 'dark' ? 'rgb(255, 170, 185)' : 'rgb(157, 44, 76)');
-    expect(fg).toBe(theme === 'dark' ? 'rgb(71, 36, 43)' : 'rgb(255, 255, 255)');
-    expect(await contrastOf(page, fg, bg)).toBeGreaterThanOrEqual(4.5);
+    // --destructive-foreground 判死退役（#987 §3.1：官方 v4 集无此槽、base-nova
+    // 件 0 消费）。destructive 现按 base-nova 形消费——text-destructive 压
+    // bg-destructive/10 tint（button/badge），故钉 destructive 文字压 card 面
+    // 的可读对（tint 非 token，取承载面 --card 作不透明底，实测见 #1002）。
+    const destructive = await resolveToken(page, '--destructive');
+    const card = await resolveToken(page, '--card');
+    // E · 暖灰玫定版红系（#988 实审定版，docs/verify/988/）：暗侧高明度粉档、
+    // 亮侧深玫红档，均压 card 面过文本 4.5 门（暗 9.06 / 亮 6.06，#1002 实测）
+    expect(destructive).toBe(theme === 'dark' ? 'rgb(255, 171, 183)' : 'rgb(158, 44, 73)');
+    expect(card).toBe(theme === 'dark' ? 'rgb(38, 34, 31)' : 'rgb(240, 235, 230)');
+    expect(await contrastOf(page, destructive, card)).toBeGreaterThanOrEqual(4.5);
   });
 
   test(`P5 main-button pair passes 4.5 in both themes (${theme})`, async ({ page }) => {

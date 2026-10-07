@@ -25,7 +25,7 @@ import { ChevronLeft } from '../icons/index.js';
  *  配方在此。ghost 件默认的 hover/aria-expanded 底色与墨色就地并掉（原形
  *  无 hover 态；七通道律 #908 comment-6001887439 裁决 3，含 dark: 变体）。 */
 const SEC_FAB_CLS =
-  'absolute right-4 bottom-4 flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border-default) bg-(--surface) text-(--text-tertiary) shadow-(--fab-shadow) hover:bg-(--surface) hover:text-(--text-tertiary) dark:hover:bg-(--surface) aria-expanded:bg-(--surface) aria-expanded:text-(--text-tertiary)';
+  'absolute right-4 bottom-4 flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border) bg-(--card) text-(--text-tertiary) shadow-(--fab-shadow) hover:bg-(--card) hover:text-(--text-tertiary) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--text-tertiary)';
 
 interface SecondaryShellProps {
   /** data-route value, keeps debug selectors per page. */
@@ -65,9 +65,9 @@ export function SecondaryShell({
           钉 .secondary-main-col 的 docking 几何——三处消费点都住 chief 域
           （#950/#952 面），本票不动共享 JS/CSS，类名以零规则钩子形态存活，
           摘除归 chief 域票统一裁。 */}
-      <div className="secondary-main relative flex min-w-0 flex-1 bg-(--surface)">
+      <div className="secondary-main relative flex min-w-0 flex-1 bg-(--card)">
         <div className="secondary-main-col flex min-w-0 flex-1 flex-col">
-          <header className="relative h-11 flex-none border-b border-(--border-default)">
+          <header className="relative h-11 flex-none border-b border-(--border)">
             <Link
               className="absolute left-3 top-2 flex size-7 items-center justify-center rounded-[6px] text-(--text-tertiary)"
               to={{ pathname: '/app', search }}
@@ -82,7 +82,7 @@ export function SecondaryShell({
                 a ReactNode slot (a future dropdown trigger rides it) —
                 interactive children opt back in, the detail.css none+auto
                 pattern. */}
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1.5 text-sm font-medium text-(--text-primary) [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_svg]:text-(--text-tertiary)">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1.5 text-sm font-medium text-(--foreground) [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_svg]:text-(--text-tertiary)">
               {title}
             </div>
             {right != null && (

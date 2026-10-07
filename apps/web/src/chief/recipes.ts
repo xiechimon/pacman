@@ -11,7 +11,7 @@
  *  上指锚边描边 Arrow = 12×6 外三角压 10×5 内三角（clip-path utility，
  *  RES_SORT_MENU_CLS 同配方）；side 由消费点拼 LEFT/RIGHT 段。 */
 export const MENU_SHELL_CLS =
-  "relative flex w-auto flex-col gap-0 rounded-none border border-(--border-default) bg-(--popover-bg) px-0 py-3 shadow-(--plate-shadow) ring-0 before:absolute before:top-px before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+  "relative flex w-auto flex-col gap-0 rounded-none border border-(--border) bg-(--popover) px-0 py-3 shadow-(--plate-shadow) ring-0 before:absolute before:top-px before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** 锚边右上（设置面两盘：压缩模型 / 主力机，align=end）。 */
 export const MENU_ARROW_RIGHT_CLS = 'before:right-4 after:right-[17px]';
@@ -25,7 +25,7 @@ export const MENU_ARROW_LEFT_CLS = 'before:left-4 after:left-[17px]';
  *  per-face 恒压件配方，迁移后逐通道显式钉回 surface 皮肤。高度随件正典
  *  h-8（旧 30px，§2.6-1 D2 吸收）；min-w 差归消费点。 */
 export const SELECT_TRIGGER_CLS =
-  "h-8 max-w-50 cursor-pointer justify-between gap-2.5 rounded-none border border-(--border-default) bg-(--surface) px-2.5 font-normal text-[13px] text-(--text-primary) hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) dark:hover:text-(--text-primary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  "h-8 max-w-50 cursor-pointer justify-between gap-2.5 rounded-none border border-(--border) bg-(--card) px-2.5 font-normal text-[13px] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) dark:hover:text-(--foreground) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
 /** 触发钮值 span（#772 截断律：min-w-0 是省略号触发前提）。 */
 export const SELECT_VALUE_CLS = 'min-w-0 flex-auto truncate';
@@ -43,4 +43,4 @@ export const AVATAR_IMG_CLS =
  *  aria-selected 底色通道——#895 行形态沿 new-task machine chip 族，选中
  *  态只出 Check 勾不出底色，等值保留。 */
 export const HOST_ROW_BTN_CLS =
-  "h-8 w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-3 text-left text-xs leading-4 font-normal text-(--text-primary) whitespace-nowrap hover:bg-(--surface-secondary) hover:text-(--text-primary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  "h-8 w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-3 text-left text-xs leading-4 font-normal text-(--foreground) whitespace-nowrap hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";

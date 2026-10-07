@@ -29,13 +29,13 @@ const ROUTE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=md-toolout';
 const toggle = (page: import('@playwright/test').Page) =>
   page.getByRole('button', { name: /工具过程/ });
 
-/** Computed color of a `color: var(--text-primary)` probe — the "normal
+/** Computed color of a `color: var(--foreground)` probe — the "normal
  *  contrast" reference the tool output must match (and the note's dim
  *  ink must not). */
 async function primaryInk(page: import('@playwright/test').Page): Promise<string> {
   return page.evaluate(() => {
     const probe = document.createElement('span');
-    probe.style.color = 'var(--text-primary)';
+    probe.style.color = 'var(--foreground)';
     document.body.appendChild(probe);
     const c = getComputedStyle(probe).color;
     probe.remove();

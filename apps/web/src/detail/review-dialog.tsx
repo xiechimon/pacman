@@ -26,7 +26,7 @@ import { classifyReviewChoice } from './review-default.js';
  *  中和（#945 律）：field-sizing 回 fixed（rows=3 律）、过渡/ring 清零、
  *  占位墨回 UA 值、:focus 缝色对齐老 --focus-ring 律、dark 底并回 surface。 */
 export const FOCUS_TEXTAREA =
-  'min-h-[80px] resize-y rounded-none border-(--card-border) bg-(--surface) p-3 text-sm leading-5 text-(--text-primary) field-sizing-fixed transition-none placeholder:text-[color:revert] focus:border-(--focus-ring) focus-visible:border-(--focus-ring) focus-visible:ring-0 dark:bg-(--surface)';
+  'min-h-[80px] resize-y rounded-none border-(--border) bg-(--card) p-3 text-sm leading-5 text-(--foreground) field-sizing-fixed transition-none placeholder:text-[color:revert] focus:border-(--focus-ring) focus-visible:border-(--focus-ring) focus-visible:ring-0 dark:bg-(--card)';
 
 /** #951：标签 + 控件纵向行（原 .review-focus-row，6 gap）。 */
 export const FOCUS_ROW = 'flex flex-col gap-1.5';
@@ -153,14 +153,14 @@ export function ReviewDialog({
       {/* #951（overlays.css 清零）：review 面律等值迁 utility——body 12 gap
           16 垫；搜索行 36 高 card-border 描边方角 surface 底 12 横垫。 */}
       <div className="flex flex-col gap-3 p-4">
-        <div className="flex h-9 items-center rounded-none border border-(--card-border) bg-(--surface) px-3">
+        <div className="flex h-9 items-center rounded-none border border-(--border) bg-(--card) px-3">
           {/* XMON-24：搜索框切 registry Input；#951：.review-search-input
               per-face 皮律（flex1/无边框/无底/14px primary 墨/outline none）
               等值迁 utility。老面是 UA 裸 input：1px 2px 内边距、normal 行高、
               UA 占位灰——utilities 逐条还原（placeholder 用 revert 落回 UA
               值，focus ring 清零；dark 底并回 none）。 */}
           <Input
-            className="h-auto flex-1 rounded-none border-none bg-transparent px-[2px] py-px text-sm leading-normal text-(--text-primary) md:leading-normal placeholder:text-[color:revert] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
+            className="h-auto flex-1 rounded-none border-none bg-transparent px-[2px] py-px text-sm leading-normal text-(--foreground) md:leading-normal placeholder:text-[color:revert] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t('搜索 Agent…')}
@@ -188,20 +188,20 @@ export function ReviewDialog({
                 <Button
                   variant="ghost"
                   key={row.id}
-                  className="h-16 cursor-pointer justify-start gap-3 rounded-[8px] border border-(--card-border) bg-(--surface) px-4 text-left text-sm text-(--text-primary) font-normal hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) dark:hover:text-(--text-primary) data-[on=true]:bg-(--spot-soft) data-[on=true]:hover:bg-(--spot-soft) active:not-aria-[haspopup]:translate-y-0"
+                  className="h-16 cursor-pointer justify-start gap-3 rounded-[8px] border border-(--border) bg-(--card) px-4 text-left text-sm text-(--foreground) font-normal hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) dark:hover:text-(--foreground) data-[on=true]:bg-(--spot-soft) data-[on=true]:hover:bg-(--spot-soft) active:not-aria-[haspopup]:translate-y-0"
                   data-on={isSelected}
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => setSelected(row.id)}
                 >
                   <span
-                    className="grid size-9 flex-none place-items-center rounded-full border border-(--border-default) bg-(--surface-secondary) text-sm text-(--text-secondary)"
+                    className="grid size-9 flex-none place-items-center rounded-full border border-(--border) bg-(--secondary) text-sm text-(--text-secondary)"
                     aria-hidden="true"
                   >
                     {row.name.charAt(0).toUpperCase()}
                   </span>
                   <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-sm text-(--text-primary)">{row.name}</span>
+                    <span className="text-sm text-(--foreground)">{row.name}</span>
                     <span className="text-[length:12px] text-(--text-tertiary)">
                       {row.provider === null ? row.model : `${row.provider} · ${row.model}`}
                     </span>
@@ -217,10 +217,10 @@ export function ReviewDialog({
             badge-attention 左条 / 6 圆角 / surface-secondary 底 / 10+12 垫）。 */}
         {notice === null ? null : (
           <div
-            className="flex flex-col gap-1 rounded-[6px] border-l-[3px] border-(--badge-attention) bg-(--surface-secondary) px-3 py-2.5"
+            className="flex flex-col gap-1 rounded-[6px] border-l-[3px] border-(--badge-attention) bg-(--secondary) px-3 py-2.5"
             role="status"
           >
-            <span className="text-[13px] font-semibold text-(--text-primary)">
+            <span className="text-[13px] font-semibold text-(--foreground)">
               {notice === 'same-vendor' ? t('本次审核与产出同源') : t('无法判定审核独立性')}
             </span>
             <span className="text-[length:12px] leading-[1.5] text-(--text-secondary)">
@@ -235,7 +235,7 @@ export function ReviewDialog({
         <div className={FOCUS_ROW}>
           {/* #945（正典表 §5.4）：.dlg-form-label 别名退役——标签律 =
               --label-size/--label-spacing 定版 token utility。 */}
-          <span className="mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--text-primary)">
+          <span className="mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--foreground)">
             {t('希望 Agent 审核时重点关注什么？（可选）')}
           </span>
           {/* #945（#851 裸控件账）：裸 textarea 收编 components/ui

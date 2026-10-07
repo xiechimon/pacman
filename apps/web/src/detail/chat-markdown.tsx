@@ -170,7 +170,7 @@ function HeadingTag({ level, segments }: { level: number; segments: DocSegment[]
   const Tag = `h${clamped}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
   return (
     <Tag
-      className={`chat-md-head chat-md-head--${clamped} mt-3 mb-1 leading-[1.35] font-semibold text-(--text-primary) first:mt-0 ${HEAD_SIZE[clamped] ?? 'text-[13px]'}`}
+      className={`chat-md-head chat-md-head--${clamped} mt-3 mb-1 leading-[1.35] font-semibold text-(--foreground) first:mt-0 ${HEAD_SIZE[clamped] ?? 'text-[13px]'}`}
     >
       <Segments segments={segments} codeClassName="chat-code" />
     </Tag>
@@ -193,7 +193,7 @@ function attachmentIdFromKey(key: string): string {
 // 两属性、150ms 标准档（motion registry #73）。spec-chip--preview 的皮肤
 // 正本在 overlay/attachment-strip.css（overlay 域），类名照挂。
 export const SPEC_CHIP =
-  'inline-flex max-w-full items-center rounded-[6px] border border-(--border-default) bg-(--code-bg) px-2 py-[3px] text-xs leading-4 text-(--text-secondary) no-underline transition-[color,border-color] duration-(--dur-fast) ease-(--ease-standard) hover:border-(--border-strong) hover:text-(--text-primary)';
+  'inline-flex max-w-full items-center rounded-[6px] border border-(--border) bg-(--muted) px-2 py-[3px] text-xs leading-4 text-(--text-secondary) no-underline transition-[color,border-color] duration-(--dur-fast) ease-(--ease-standard) hover:border-(--input) hover:text-(--foreground)';
 export const SPEC_CHIP_IMAGE = 'border-none bg-transparent p-0.5 hover:bg-transparent';
 export const SPEC_CHIP_IMG = 'block max-h-40 max-w-full rounded-[4px]';
 
@@ -322,7 +322,7 @@ export function ChatMarkdown({ text }: { text: string }) {
               // 缝线，短行折行不横滚、长块 320px 封顶内滚。
               <pre
                 key={i}
-                className="chat-md-code my-2 max-h-80 overflow-auto rounded-[4px] border border-(--border-default) bg-(--code-bg) px-2.5 py-2 font-mono text-[11px] leading-4 break-words whitespace-pre-wrap text-(--text-primary) [word-break:break-word]"
+                className="chat-md-code my-2 max-h-80 overflow-auto rounded-[4px] border border-(--border) bg-(--muted) px-2.5 py-2 font-mono text-[11px] leading-4 break-words whitespace-pre-wrap text-(--foreground) [word-break:break-word]"
                 data-lang={block.lang ?? ''}
                 data-testid="md-code"
               >

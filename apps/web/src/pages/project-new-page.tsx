@@ -77,24 +77,24 @@ import { PageShell } from './shell.js';
  *  inset 阴影垫页面底色（--surface）+ 文本走 primary 墨，focus 叠加时 ring
  *  与基配方同值。 */
 const NAME_INPUT_CLS =
-  'h-10 rounded-none border border-(--border-default) bg-transparent px-3 py-0 text-sm leading-[inherit] text-(--text-primary) transition-none placeholder:text-(--text-tertiary) focus-visible:border-(--focus-ring) focus-visible:ring-1 focus-visible:ring-(--focus-ring) dark:bg-transparent md:leading-[inherit] [&:-webkit-autofill]:[-webkit-text-fill-color:var(--text-primary)] [&:-webkit-autofill]:shadow-[0_0_0_1000px_var(--surface)_inset] [&:-webkit-autofill]:focus-visible:shadow-[0_0_0_1000px_var(--surface)_inset,0_0_0_1px_var(--focus-ring)]';
+  'h-10 rounded-none border border-(--border) bg-transparent px-3 py-0 text-sm leading-[inherit] text-(--foreground) transition-none placeholder:text-(--text-tertiary) focus-visible:border-(--focus-ring) focus-visible:ring-1 focus-visible:ring-(--focus-ring) dark:bg-transparent md:leading-[inherit] [&:-webkit-autofill]:[-webkit-text-fill-color:var(--foreground)] [&:-webkit-autofill]:shadow-[0_0_0_1000px_var(--card)_inset] [&:-webkit-autofill]:focus-visible:shadow-[0_0_0_1000px_var(--card)_inset,0_0_0_1px_var(--focus-ring)]';
 
 /** 仓库触发行（原 .prj-new-repo）：40 高带框盒形，两端对齐。ghost 七通道
  *  只中和涂底通道——本面旧规则无 color 声明，ghost 的 hover/aria-expanded
  *  提亮墨本就生效，等值保留。 */
 const REPO_TRIGGER_CLS =
-  "h-10 flex-1 cursor-pointer justify-between rounded-none border border-(--border-default) bg-transparent px-3 font-normal leading-[inherit] hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "h-10 flex-1 cursor-pointer justify-between rounded-none border border-(--border) bg-transparent px-3 font-normal leading-[inherit] hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
 /** swap 钮（原 .prj-new-repo-swap）：40×40 带框图标钮，tertiary 弱化墨
  *  （#946 better-colors 换槽，全域 --text-dim 消费面同律）；
  *  aria-expanded 通道钉回静息值（Menu Trigger 面）。 */
 const SWAP_BTN_CLS =
-  "ml-2 size-10 cursor-pointer rounded-none border border-(--border-default) bg-transparent text-(--text-tertiary) font-normal leading-[inherit] hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  "ml-2 size-10 cursor-pointer rounded-none border border-(--border) bg-transparent text-(--text-tertiary) font-normal leading-[inherit] hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
 /** 浏览钮（原 .prj-new-browse，#440）：swap 钮同族 40 高带框文案钮；
  *  在飞 disabled 沿 0.55 淡化律。 */
 const BROWSE_BTN_CLS =
-  'ml-2 flex h-10 cursor-pointer items-center rounded-none border border-(--border-default) bg-transparent px-3 text-[13px] font-normal leading-[inherit] whitespace-nowrap text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent disabled:opacity-[0.55] active:not-aria-[haspopup]:translate-y-0';
+  'ml-2 flex h-10 cursor-pointer items-center rounded-none border border-(--border) bg-transparent px-3 text-[13px] font-normal leading-[inherit] whitespace-nowrap text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent disabled:opacity-[0.55] active:not-aria-[haspopup]:translate-y-0';
 
 /** 兜底链接钮（原 .prj-new-gh-link）：12/16 tertiary 下划线（#946 换槽），零内距；
  *  体级 mt-2 / picker 内 mt-0+px-1 的位差由消费点补。 */
@@ -107,23 +107,23 @@ const GH_LINK_CLS =
  *  判定与 e2e 的二级载体（无 role 结构容器——面板语义由内层 role=listbox
  *  承载）。 */
 const PICKER_PLATE_CLS =
-  "absolute top-[calc(100%+8px)] inset-x-0 z-(--z-popover) flex min-w-[220px] flex-col gap-2 rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+  "absolute top-[calc(100%+8px)] inset-x-0 z-(--z-popover) flex min-w-[220px] flex-col gap-2 rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** picker 仓库行（原 .prj-new-gh-row，#851 裸控件收编 Button ghost）：
  *  32 高透明行、13/18 字、左对齐；行面无 hover 涂底（旧面裸 button 无
  *  hover 规则），七通道中和；focus 环 = 件基类 #388 同配方（旧面走全局环，
  *  等值）。whitespace-normal 复原裸 button 的换行面（base nowrap 会禁掉）。 */
 const GH_ROW_CLS =
-  'h-8 w-full cursor-pointer justify-start rounded-[6px] border-none bg-transparent py-0 pr-2 pl-3 text-left text-[13px] font-normal leading-[18px] whitespace-normal text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'h-8 w-full cursor-pointer justify-start rounded-[6px] border-none bg-transparent py-0 pr-2 pl-3 text-left text-[13px] font-normal leading-[18px] whitespace-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 /** repo 种类菜单盘/行（原 .prj-new-repo-menu(-row)，plan-dropdown family
  *  plate）：shrink-to-fit ≥200、popover 底、radius 12、fab 影；行 28 高 /
  *  12 字 / 透明底 / 6 圆角，focus:bg 中和回透明 + #388 环补钉；勾色品牌紫
  *  走 indicator 槽选择器。 */
 const REPO_MENU_CLS =
-  'w-auto min-w-[200px] rounded-(--radius-popover) bg-(--popover-bg) p-1 shadow-(--fab-shadow) ring-0 [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button)';
+  'w-auto min-w-[200px] rounded-(--radius-popover) bg-(--popover) p-1 shadow-(--fab-shadow) ring-0 [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button)';
 const REPO_MENU_ROW_CLS =
-  "h-7 w-full cursor-pointer rounded-[6px] py-0 pr-2 pl-3 text-left text-xs leading-4 text-(--text-primary) focus:bg-transparent focus:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) [&_svg:not([class*='size-'])]:size-auto";
+  "h-7 w-full cursor-pointer rounded-[6px] py-0 pr-2 pl-3 text-left text-xs leading-4 text-(--foreground) focus:bg-transparent focus:text-(--foreground) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) [&_svg:not([class*='size-'])]:size-auto";
 
 /** repo 选择态：none = 未动（触发行持「选择仓库」占位；提交实效 = 无 repo
  *  普通项目，spec 12）；github / local = 用户已选的形态。 */
@@ -520,7 +520,7 @@ export function ProjectNewPage() {
   return (
     <PageShell fixture={fixture} selected="none" title="新建项目">
       <div className={`${PAGE_COL_CLS} flex flex-col pt-4`}>
-        <div className="mx-auto flex size-[72px] items-center justify-center rounded-none bg-(--surface-secondary) text-(--text-tertiary)">
+        <div className="mx-auto flex size-[72px] items-center justify-center rounded-none bg-(--secondary) text-(--text-tertiary)">
           <ImageFrame />
         </div>
         <div className="mt-3 text-center text-xs leading-4 text-(--text-tertiary)">
@@ -767,7 +767,7 @@ export function ProjectNewPage() {
                   边框槽/placeholder 墨迁 utility；leading-[inherit] 复刻
                   preflight 对裸 input 的继承行高（19.5px）。 */}
                 <Input
-                  className="border-(--border-default) text-[13px] leading-[inherit] text-(--text-primary) placeholder:text-(--text-tertiary) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-transparent md:leading-[inherit]"
+                  className="border-(--border) text-[13px] leading-[inherit] text-(--foreground) placeholder:text-(--text-tertiary) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-transparent md:leading-[inherit]"
                   type="text"
                   placeholder={t('搜索仓库')}
                   aria-label={t('搜索仓库')}
@@ -813,7 +813,7 @@ export function ProjectNewPage() {
                   </div>
                 )}
                 {live && reposQ.isError ? (
-                  <div className="px-1 text-xs leading-4 text-(--danger)" role="alert">
+                  <div className="px-1 text-xs leading-4 text-(--destructive)" role="alert">
                     {(reposQ.error as Error).message}
                   </div>
                 ) : null}
@@ -849,7 +849,7 @@ export function ProjectNewPage() {
         {/* github 非手动面的内联错误行（着陆 reason 三译 / authorize 400
             原文）与未认证面手动兜底链接（连接态未决时不出，随占位面收敛）。 */}
         {showGithubField && oauthError !== null && (
-          <div className="mt-2 text-xs leading-4 text-(--danger)" role="alert">
+          <div className="mt-2 text-xs leading-4 text-(--destructive)" role="alert">
             {oauthError}
           </div>
         )}
@@ -863,7 +863,7 @@ export function ProjectNewPage() {
           </Button>
         )}
         {localErrorText !== null && (
-          <div className="mt-2 text-xs leading-4 text-(--danger)" role="alert">
+          <div className="mt-2 text-xs leading-4 text-(--destructive)" role="alert">
             {localErrorText}
           </div>
         )}

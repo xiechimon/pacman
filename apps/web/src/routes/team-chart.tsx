@@ -86,7 +86,7 @@ function PlusGlyph(props: SVGProps<SVGSVGElement>) {
 /** 节点卡盒（成员卡与虚线创建卡同族）：220×56 / 圆角 8 / 1px
  *  --border-default / surface 底 / 内垫 0 10（参考产品实测）。 */
 const NODE_CLS =
-  'flex h-14 w-[220px] items-center gap-2 rounded-[8px] border border-(--border-default) bg-(--surface) px-2.5';
+  'flex h-14 w-[220px] items-center gap-2 rounded-[8px] border border-(--border) bg-(--card) px-2.5';
 
 /** 组织图节点卡：32 圆头像 + 两行文本（名字 12px/500，第二行 = 服务商徽标
  *  胶囊 + 10px mono 模型行）。参考产品的节点可点开编辑（本仓那条交互归
@@ -95,7 +95,7 @@ function ChartNode({ agent, crown }: { agent: TeamAgentCard; crown?: boolean }) 
   const { t } = useI18n();
   return (
     <div className={NODE_CLS} data-testid="team-chart-node">
-      <span className="flex size-8 flex-none items-center justify-center overflow-hidden rounded-full bg-(--agent-avatar-bg) [&_img]:size-8">
+      <span className="flex size-8 flex-none items-center justify-center overflow-hidden rounded-full bg-(--secondary) [&_img]:size-8">
         <SeededAvatar
           name={agent.displayName}
           src={agent.avatarUrl}
@@ -105,7 +105,7 @@ function ChartNode({ agent, crown }: { agent: TeamAgentCard; crown?: boolean }) 
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex h-[18px] min-w-0 items-center gap-1">
           <span
-            className="truncate text-xs font-medium text-(--text-primary)"
+            className="truncate text-xs font-medium text-(--foreground)"
             data-testid="team-chart-name"
           >
             {agent.displayName}
@@ -122,7 +122,7 @@ function ChartNode({ agent, crown }: { agent: TeamAgentCard; crown?: boolean }) 
         <span className="flex h-[18px] min-w-0 items-center gap-1">
           {agent.provider ? (
             <span
-              className="flex size-[18px] flex-none items-center justify-center rounded-full bg-(--surface-secondary) text-(--text-primary)"
+              className="flex size-[18px] flex-none items-center justify-center rounded-full bg-(--secondary) text-(--foreground)"
               data-testid="team-chart-provider"
             >
               <ProviderGlyph />
@@ -165,14 +165,14 @@ export function TeamChart({
   return (
     <div className="mt-[9px] flex items-center">
       <ChartNode agent={root} crown />
-      <div className="h-px w-11 flex-none bg-(--border-strong)" data-testid="team-chart-link" />
+      <div className="h-px w-11 flex-none bg-(--input)" data-testid="team-chart-link" />
       <div className="flex" data-testid="team-chart-children">
         {/* 括号列本身不画东西，只给绝对定位的括号当坐标架：高度随子列撑满，
             于是括号 top/bottom 各留半个卡片高（28），正好落在首/末子节点的
             垂直中心上。 */}
         <div className="relative w-7 flex-none">
           <div
-            className="absolute bottom-7 left-0 top-7 w-7 rounded-l-[7px] border border-r-0 border-(--border-strong)"
+            className="absolute bottom-7 left-0 top-7 w-7 rounded-l-[7px] border border-r-0 border-(--input)"
             data-testid="team-chart-bracket"
           />
         </div>
@@ -189,14 +189,14 @@ export function TeamChart({
               即件默认 font-medium，不归零。 */}
           <Button
             variant="ghost"
-            className={`${NODE_CLS} cursor-pointer justify-start border-dashed text-left text-xs font-medium text-(--text-tertiary) leading-[inherit] hover:bg-(--surface-secondary) hover:text-(--text-tertiary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0`}
+            className={`${NODE_CLS} cursor-pointer justify-start border-dashed text-left text-xs font-medium text-(--text-tertiary) leading-[inherit] hover:bg-(--secondary) hover:text-(--text-tertiary) dark:hover:bg-(--secondary) aria-expanded:bg-(--card) aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0`}
             onClick={onCreate}
           >
             {/* size-3 挂字形本体顶回 12px：件基类 [&_svg:not([class*='size-'])]:size-4
                 的 :not 守卫就是让位给自带 size-* 类的 svg（wrapper 上的
                 [&_svg]:size-3 特异性低于基类选择器，压不住——#952 实测 16px
                 后改挂字形本体；grid 创建槽同款并项）。 */}
-            <span className="flex size-6 flex-none items-center justify-center rounded-full border border-dashed border-(--border-strong)">
+            <span className="flex size-6 flex-none items-center justify-center rounded-full border border-dashed border-(--input)">
               <PlusGlyph className="size-3" />
             </span>
             {t('创建 Agent')}
