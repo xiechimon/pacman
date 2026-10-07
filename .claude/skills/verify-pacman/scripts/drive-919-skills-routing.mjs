@@ -417,7 +417,11 @@ async function phaseBehavior() {
 // —— phase: deny-ui（stub 腿：deny 事件 UI 可见面 + LLM 输入面）—————————————
 
 /** 内嵌脚本 stub（integration/test/stub-llm.ts 的 .mjs 最小移植）：轮次按
- *  数组序消费，末轮重复；捕获全部请求体供输入面断言。 */
+ *  数组序消费，末轮重复；捕获全部请求体供输入面断言。
+ *  ⚠️ call id 必须**跨进程唯一**（RUN_SALT）：message 行以 toolcall id 为
+ *  行 id 全局去重——两次 probe 进程都发 `call-stub-N` 时，后跑那次的行会被
+ *  server 静默判重丢弃（2026-10-07 实测：outbox 有行、DB 无行、UI 空等）。 */
+const RUN_SALT = Math.random().toString(36).slice(2, 10);
 function startScriptedStub(responses) {
   const requests = [];
   let next = 0;
@@ -444,7 +448,7 @@ function startScriptedStub(responses) {
       };
       res.write(chunk({ ...base, choices: [{ index: 0, delta: { role: 'assistant', content: '' }, finish_reason: null }] }));
       if (rsp.toolCall) {
-        const callId = `call-stub-${requests.length}`;
+        const callId = `call-stub-${RUN_SALT}-${requests.length}`;
         res.write(
           chunk({
             ...base,
@@ -482,7 +486,13 @@ function startScriptedStub(responses) {
   });
   return new Promise((resolveP) => {
     server.listen(STUB_PORT, '127.0.0.1', () =>
-      resolveP({ url: `http://127.0.0.1:${STUB_PORT}/v1`, requests, close: () => server.close() }),
+      resolveP({
+        url: `http://127.0.0.1:${STUB_PORT}/v1`,
+        requests,
+        // close 必须回调接 promise——裸 server.close() 不 settle，进程挂在
+        // unsettled top-level await 上（实测警告形）。
+        close: () => new Promise((r) => server.close(() => r(undefined))),
+      }),
     );
   });
 }
