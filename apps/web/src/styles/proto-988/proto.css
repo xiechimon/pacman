@@ -1,0 +1,12 @@
+/* PROTOTYPE #988 — 全局圆角基切换（throwaway 分支 ui/988-palette-reselect）。
+   地图 #980 裁决④：几何冲突 registry 默认赢。官方 radius 基 = 0.625rem
+   （colors/neutral.json --radius，乘数族仓内已与官方逐字一致，#987 §2-3）；
+   仓现行 = 0.875rem（D2 授权偏差）。切换器给 <html> 挂 data-radius=official
+   时翻到官方基，radius 乘数族（sm…4xl）随 calc 自动跟随——实审中「圆角」
+   这项 token 层微调裁决（#988 票面）由此双基现场对照。
+   胜者落 main 时本文件与 proto-988/ 全目录一并删除，--radius 定版值直接
+   翻进 shadcn.css。 */
+
+html[data-radius="official"] {
+  --radius: 0.625rem;
+}

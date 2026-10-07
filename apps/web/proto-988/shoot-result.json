@@ -1,0 +1,1428 @@
+{
+  "base": "http://localhost:5199",
+  "failures": 0,
+  "results": [
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "current",
+      "check": "data-variant",
+      "expected": null,
+      "actual": null,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "current",
+      "check": "data-radius",
+      "expected": null,
+      "actual": null,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "current",
+      "check": "light-class",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "current",
+      "check": "token --background",
+      "expected": "#1e1b16",
+      "actual": "#1e1b16",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "current",
+      "check": "probe background-color",
+      "expected": "rgb(30, 27, 22)",
+      "actual": "rgb(30, 27, 22)",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "current",
+      "check": "token --radius",
+      "expected": "0.875rem",
+      "actual": "0.875rem",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "current",
+      "check": "probe radius-lg px",
+      "expected": "14px",
+      "actual": "14px",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "current",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/now-dark-board-current.png"
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": null,
+      "actual": null,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "light-class",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#1e1b16",
+      "actual": "#1e1b16",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(30, 27, 22)",
+      "actual": "rgb(30, 27, 22)",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/now-dark-board-official.png"
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": null,
+      "actual": null,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "light-class",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#1e1b16",
+      "actual": "#1e1b16",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(30, 27, 22)",
+      "actual": "rgb(30, 27, 22)",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/now-dark-detail-official.png"
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "current",
+      "check": "data-variant",
+      "expected": null,
+      "actual": null,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "current",
+      "check": "data-radius",
+      "expected": null,
+      "actual": null,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "current",
+      "check": "light-class",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "current",
+      "check": "token --background",
+      "expected": "#f4efe7",
+      "actual": "#f4efe7",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "current",
+      "check": "probe background-color",
+      "expected": "rgb(244, 239, 231)",
+      "actual": "rgb(244, 239, 231)",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "current",
+      "check": "token --radius",
+      "expected": "0.875rem",
+      "actual": "0.875rem",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "current",
+      "check": "probe radius-lg px",
+      "expected": "14px",
+      "actual": "14px",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "current",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/now-light-board-current.png"
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": null,
+      "actual": null,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "light-class",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#f4efe7",
+      "actual": "#f4efe7",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(244, 239, 231)",
+      "actual": "rgb(244, 239, 231)",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/now-light-board-official.png"
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": null,
+      "actual": null,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "light-class",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#f4efe7",
+      "actual": "#f4efe7",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(244, 239, 231)",
+      "actual": "rgb(244, 239, 231)",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "now",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/now-light-detail-official.png"
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "d",
+      "actual": "d",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "light-class",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#181a1c",
+      "actual": "#181a1c",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(24, 26, 28)",
+      "actual": "rgb(24, 26, 28)",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/d-dark-board-official.png"
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "d",
+      "actual": "d",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "light-class",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#181a1c",
+      "actual": "#181a1c",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(24, 26, 28)",
+      "actual": "rgb(24, 26, 28)",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/d-dark-detail-official.png"
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "d",
+      "actual": "d",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "light-class",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#f1f4f7",
+      "actual": "#f1f4f7",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(241, 244, 247)",
+      "actual": "rgb(241, 244, 247)",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/d-light-board-official.png"
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "d",
+      "actual": "d",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "light-class",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#f1f4f7",
+      "actual": "#f1f4f7",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(241, 244, 247)",
+      "actual": "rgb(241, 244, 247)",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "d",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/d-light-detail-official.png"
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "e",
+      "actual": "e",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "light-class",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#1f1b18",
+      "actual": "#1f1b18",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(31, 27, 24)",
+      "actual": "rgb(31, 27, 24)",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/e-dark-board-official.png"
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "e",
+      "actual": "e",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "light-class",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#1f1b18",
+      "actual": "#1f1b18",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(31, 27, 24)",
+      "actual": "rgb(31, 27, 24)",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/e-dark-detail-official.png"
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "e",
+      "actual": "e",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "light-class",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#f6f1ec",
+      "actual": "#f6f1ec",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(246, 241, 236)",
+      "actual": "rgb(246, 241, 236)",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/e-light-board-official.png"
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "e",
+      "actual": "e",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "light-class",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#f6f1ec",
+      "actual": "#f6f1ec",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(246, 241, 236)",
+      "actual": "rgb(246, 241, 236)",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "e",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/e-light-detail-official.png"
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "f",
+      "actual": "f",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "light-class",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#161719",
+      "actual": "#161719",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(22, 23, 25)",
+      "actual": "rgb(22, 23, 25)",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "board",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/f-dark-board-official.png"
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "f",
+      "actual": "f",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "light-class",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#161719",
+      "actual": "#161719",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(22, 23, 25)",
+      "actual": "rgb(22, 23, 25)",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "dark",
+      "page": "detail",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/f-dark-detail-official.png"
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "f",
+      "actual": "f",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "light-class",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#f2f3f5",
+      "actual": "#f2f3f5",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(242, 243, 245)",
+      "actual": "rgb(242, 243, 245)",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "board",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/f-light-board-official.png"
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-variant",
+      "expected": "f",
+      "actual": "f",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "data-radius",
+      "expected": "official",
+      "actual": "official",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "light-class",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --background",
+      "expected": "#f2f3f5",
+      "actual": "#f2f3f5",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe background-color",
+      "expected": "rgb(242, 243, 245)",
+      "actual": "rgb(242, 243, 245)",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "token --radius",
+      "expected": "0.625rem",
+      "actual": "0.625rem",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "probe radius-lg px",
+      "expected": "10px",
+      "actual": "10px",
+      "ok": true
+    },
+    {
+      "variant": "f",
+      "mode": "light",
+      "page": "detail",
+      "radius": "official",
+      "check": "screenshot",
+      "ok": true,
+      "actual": "/Users/xmon/.herdr/worktrees/pacman/ui-988-palette-reselect/apps/web/proto-988/shots/f-light-detail-official.png"
+    }
+  ]
+}
