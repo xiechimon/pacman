@@ -26,14 +26,16 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-/** Strip JSX/TS comments, preserving line count. Same intent as the
- *  ui-drift-gate stripJsxComments helper, with the `m` flag added: without it
- *  `^` only matches the very start of the file and every standalone `//`
- *  comment line after the first survives stripping (measured: the kbd
- *  provenance header). A `//` preceded by `:` (a URL inside a string) still
- *  does not match — only line starts and space/tab-preceded `//` do. String
- *  literals are not parsed beyond that: both hash sides go through the same
- *  function, so equality semantics are unaffected. */
+/** Strip JSX/TS comments, preserving line count. The single implementation,
+ *  shared by ui-drift-gate (G4/G5 site matching) and the registry hash
+ *  pipeline — it replaced a local copy in the drift gate, which is how the
+ *  missing-`m`-flag bug once lived in two places at once. The `m` flag
+ *  matters: without it `^` only matches the very start of the file and every
+ *  standalone `//` comment line after the first survives stripping (measured:
+ *  the kbd provenance header). A `//` preceded by `:` (a URL inside a string)
+ *  still does not match — only line starts and space/tab-preceded `//` do.
+ *  String literals are not parsed beyond that: both hash sides go through the
+ *  same function, so equality semantics are unaffected. */
 export function stripCodeComments(source) {
   return source
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))

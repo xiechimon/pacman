@@ -43,6 +43,11 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+// G4/G5 comment stripping lives in ui-normalize.mjs — one implementation,
+// shared with the registry gate's hash pipeline (#989). It used to be a local
+// copy here; the copy is how the missing-`m`-flag bug (column-0 `//` lines
+// after the first surviving stripping) existed in two places at once.
+import { stripCodeComments as stripJsxComments } from './ui-normalize.mjs';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..');
 const WEB_SRC = join(REPO_ROOT, 'apps/web/src');
@@ -75,19 +80,6 @@ function walk(dir, extension, out = []) {
 // G1-G3 scan stylesheets, where only CSS block comments exist.
 function stripCssComments(text) {
   return text.replace(/\/\*[\s\S]*?\*\//g, '\n');
-}
-
-/** G4/G5 strip JSX block comments, TS block comments, and line comments so
- *  that `<input` mentioned in prose (e.g. api-key-create-dialog's XMON-75
- *  note) does not count as a site. String literals are left alone: a literal
- *  "<input" inside a string is rare and errs on the side of flagging. The `m`
- *  flag matters: without it `^` only matches the very start of the file and
- *  every column-0 `//` line after the first survives stripping (#989). */
-function stripJsxComments(source) {
-  return source
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))
-    .replace(/(^|[ \t])\/\/[^\n]*/gm, '$1');
 }
 
 const cssFiles = walk(WEB_SRC, '.css');

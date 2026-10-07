@@ -262,6 +262,26 @@ function currentSha() {
   }
 }
 
+/** The pristine/deviated/adapter tally shared by the check and --write
+ *  outputs. With snapshotItems (write mode) it also counts pristine entries
+ *  whose frozen hash no longer equals the pinned snapshot. */
+function tally(entries, snapshotItems = null) {
+  let pristine = 0;
+  let deviated = 0;
+  let adapters = 0;
+  let pristineBroken = 0;
+  for (const e of Object.values(entries)) {
+    if (e.kind === 'adapter') adapters++;
+    else if (e.status === 'pristine') {
+      pristine++;
+      if (snapshotItems?.[e.upstreamItem] && e.hash !== snapshotItems[e.upstreamItem].hash) {
+        pristineBroken++;
+      }
+    } else deviated++;
+  }
+  return { pristine, deviated, adapters, pristineBroken };
+}
+
 // --- check ----------------------------------------------------------------------
 
 function check(baseSha) {
@@ -361,13 +381,11 @@ function check(baseSha) {
   }
 
   // --- green output ------------------------------------------------------------
-  let pristine = 0;
-  let deviated = 0;
-  let adapters = 0;
-  for (const e of Object.values(entries)) {
-    if (e.kind === 'adapter') adapters++;
-    else if (e.status === 'pristine') pristine++;
-    else deviated++;
+  const { pristine, deviated, adapters } = tally(entries);
+  if (baseMode === 'in-tree only') {
+    console.log(
+      '[ui-registry-gate] note: no base sha on this run (push event or local check) — the S5 ratchet has nothing to compare against; a status downgrade landing straight on main is guarded by review only (same posture as debt-gate D3 on main).',
+    );
   }
   if (newcomers.length > 0) {
     console.log(
@@ -426,18 +444,7 @@ function write() {
   };
   writeFileSync(REGISTRY_PATH, `${JSON.stringify(doc, null, 2)}\n`);
 
-  let pristine = 0;
-  let deviated = 0;
-  let adapters = 0;
-  let pristineBroken = 0;
-  for (const e of Object.values(doc.files)) {
-    if (e.kind === 'adapter') adapters++;
-    else if (e.status === 'pristine') {
-      pristine++;
-      if (snapshot.items[e.upstreamItem] && e.hash !== snapshot.items[e.upstreamItem].hash)
-        pristineBroken++;
-    } else deviated++;
-  }
+  const { pristine, deviated, adapters, pristineBroken } = tally(doc.files, snapshot.items);
   console.log(
     `[ui-registry-gate] ledger frozen: ${Object.keys(doc.files).length} entries (${pristine} pristine / ${deviated} deviated / ${adapters} adapters) from ${(doc.frozenFrom.sha ?? 'unknown').slice(0, 12)}. Written to ${REGISTRY_REL}.`,
   );

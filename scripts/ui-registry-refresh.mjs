@@ -294,6 +294,7 @@ const contents = fetchItems(cliSpec, items);
 const droppedCnTokens = [];
 const rewriteWarnings = [];
 const probes = [];
+let doc = null;
 try {
   for (const name of items) {
     let content = contents.get(name);
@@ -328,7 +329,7 @@ try {
     snapshotItems[name] = { hash: normalizedHash(normalized), content: normalized };
   }
 
-  const doc = {
+  doc = {
     fetchedAt: new Date().toISOString(),
     cli: cliSpec,
     style: 'base-nova',
@@ -372,9 +373,8 @@ for (const [file, entry] of Object.entries(manifest?.files ?? {})) {
     entriesByItem.set(entry.upstreamItem, { file, entry });
 }
 console.log(`[ui-registry-refresh] wrote ${SNAPSHOT_REL}: ${items.length} item(s), cli ${cliSpec}`);
-const fresh = JSON.parse(readFileSync(SNAPSHOT_PATH, 'utf8'));
 for (const name of items) {
-  const snapshotHash = fresh.items[name].hash;
+  const snapshotHash = doc.items[name].hash;
   const registered = entriesByItem.get(name);
   if (!registered) {
     console.log(
@@ -392,7 +392,7 @@ for (const name of items) {
     console.log(`  ${name}: deviated ✓ (local file differs from snapshot, as registered)`);
   else if (matches && status === 'deviated') {
     console.log(
-      `  ${name}: WARNING local file now MATCHES the snapshot but is registered deviated — ratchet it up to pristine in ${'scripts/ui-registry.json'}`,
+      `  ${name}: WARNING local file now MATCHES the snapshot but is registered deviated — ratchet it up to pristine in ${REGISTRY_REL}`,
     );
   } else {
     console.log(
