@@ -466,3 +466,85 @@ test('机器槽默认面(101):无 resources → 清单仅「自动」行且选�
   await expect(menu.getByRole('option')).toHaveCount(1);
   await expect(menu.locator('[data-testid="chief-host-auto"]')).toHaveAttribute('aria-selected', 'true');
 });
+
+// —— #903 派发方式槽(ADR 0013):Agent tab「派发方式」行 ChiefDispatchSelect ——
+// 失败方式(先于实现固化):
+// 1. 槽缺位:plan/直执行选择权没有设定入口 → Agent tab 必须有「派发方式」行
+//    (标题 + 描述 + 触发钮);
+// 2. 默认档回显错:fixture 缺省必须 = 「先规划」(ADR 0013 默认档——缺省面
+//    不绕 confirm 闸);101-direct-dispatch 场景回显「直接执行」;
+// 3. 清单缺位:popover 必须有两行 先规划/直接执行(listbox 语义),选中行
+//    aria-selected;
+// 4. accept 律破坏:fixture 选定 = 关面(无 mutation,回显不变);
+// 5. 双选择器互扰:派发方式触发钮独立 aria-label,不与机器/压缩模型撞
+//    strict mode 选择器。
+// live PATCH 写读回归 + 服务端强制(run_builds clamp)归 live 真机验
+// (docs/verify/903/)。
+
+// 载体：触发钮 = role + aria-label「派发方式」；菜单 = dialog + 可及名（机器
+// 选择器同律）。
+const dispatchSelect = (page: Page) => page.getByRole('button', { name: '派发方式' });
+const dispatchMenu = (page: Page) => page.getByRole('dialog', { name: '派发方式' });
+
+async function openDispatchMenu(page: Page, scenario: string) {
+  await page.goto(`/app?scenario=${scenario}`);
+  const chip = dispatchSelect(page);
+  await expect(chip).toBeVisible();
+  await chip.click();
+  const menu = dispatchMenu(page);
+  await expect(menu).toBeVisible();
+  return { chip, menu };
+}
+
+test('派发方式槽在位:Agent tab 有「派发方式」标题 + 描述 + 默认回显「先规划」(#903)', async ({
+  page,
+}) => {
+  await page.goto(AGENT_TAB);
+  await expect(page.getByRole('heading', { name: '派发方式' })).toBeVisible();
+  await expect(page.getByText('总管派发任务时是否先出方案')).toContainText(
+    '总管派发任务时是否先出方案',
+  );
+  await expect(dispatchSelect(page)).toContainText('先规划');
+  // 互扰负向:机器/压缩模型触发钮仍各自唯一命名(strict mode 钉)。
+  await expect(machineSelect(page)).toHaveCount(1);
+  await expect(modelSelect(page)).toHaveCount(1);
+});
+
+test('派发方式 chip 开 popover:两行 + listbox 语义 + 选中态跟值(#903)', async ({ page }) => {
+  const { menu } = await openDispatchMenu(page, '101');
+  await expect(menu.getByRole('listbox')).toBeVisible();
+  await expect(menu.getByRole('option')).toHaveCount(2);
+  await expect(menu.getByRole('option').nth(0)).toContainText('先规划');
+  await expect(menu.getByRole('option').nth(0)).toHaveAttribute('aria-selected', 'true');
+  await expect(menu.getByRole('option').nth(1)).toContainText('直接执行');
+  await expect(menu.getByRole('option').nth(1)).toHaveAttribute('aria-selected', 'false');
+});
+
+test('派发方式直执行面(101-direct-dispatch):回显「直接执行」+ 选中态翻行(#903)', async ({
+  page,
+}) => {
+  const { chip, menu } = await openDispatchMenu(page, '101-direct-dispatch');
+  await expect(chip).toContainText('直接执行');
+  await expect(menu.getByRole('option').nth(0)).toHaveAttribute('aria-selected', 'false');
+  await expect(menu.getByRole('option').nth(1)).toHaveAttribute('aria-selected', 'true');
+});
+
+test('派发方式 popover family law: Escape / outside click dismiss(#903)', async ({ page }) => {
+  let menu = (await openDispatchMenu(page, '101')).menu;
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+
+  menu = (await openDispatchMenu(page, '101')).menu;
+  await page.mouse.click(20, 20);
+  await expect(menu).toBeHidden();
+});
+
+test('派发方式 fixture pick = accept 律:选择即关 + 回显不变(无 mutation)(#903)', async ({
+  page,
+}) => {
+  const { chip, menu } = await openDispatchMenu(page, '101');
+  await menu.locator('[data-testid="chief-dispatch-row"]').filter({ hasText: '直接执行' }).click();
+  await expect(dispatchMenu(page)).toBeHidden();
+  // fixture 面无 mutation:回显保持默认档。
+  await expect(chip).toContainText('先规划');
+});

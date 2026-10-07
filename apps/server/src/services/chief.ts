@@ -112,6 +112,7 @@ export function ensureChief(deps: ChiefDeps, teamId: string): ChiefRow {
       compactionModel: null, // 默认「与 Chief 相同」（#203）
       model: null, // 默认继承绑定 Agent 模型（#615）
       machineId: null, // #895 默认「自动」（系统不预填，A2）
+      dispatchWithPlan: true, // #903 默认先规划（ADR 0013：缺省面不绕 confirm 闸）
       charter: '', // raw 观测默认空串（chief-record-testA.json 一手）
       watches: [],
       wakes: [],
@@ -136,6 +137,8 @@ function toChiefRecord(row: ChiefRow): ChiefGetResponse['chief'] {
     model: row.model,
     // #895 spec 21 A1：主力机（null = 自动）。
     machineId: row.machineId ?? null,
+    // #903 ADR 0013：派发方式（服务端强制的消费面 = chief-tools run_builds）。
+    dispatchWithPlan: row.dispatchWithPlan,
     lastTurnAt: row.lastTurnAt,
     createdAt: row.createdAt,
     tz: row.tz,
@@ -326,6 +329,9 @@ export function patchChief(
     }
     sets.machineId = body.machineId;
   }
+  // #903 派发方式槽（ADR 0013）：undefined = 不动；二值无 null 形（默认档
+  // 即 true，清回默认 = 显式写 true）。
+  if (body.dispatchWithPlan !== undefined) sets.dispatchWithPlan = body.dispatchWithPlan;
   if (Object.keys(sets).length > 0) {
     deps.db.update(chief).set(sets).where(eq(chief.id, row.id)).run();
   }
@@ -786,8 +792,13 @@ export function composeChiefSystemPrompt(deps: ChiefResourceDeps, teamId: string
     '## 工作约定',
     '- 措辞→spec：把用户口语请求变换为 todo——title = 动词短语提炼；spec = 三段式：① 用户原文 blockquote（`> …`）② `要求：` bullet 展开（文件位置/内容要点/读者对象）③ 需要时 `补充信息（探测得出，非用户确认）：` bullet（先探测仓库/资源再写事实，显式标注非用户确认）。',
     '- 拆分：拆分粒度 = 核销次数——按可独立验收的成果拆，不按执行步骤拆；同类小事项合并一张卡（多子事项以 ` + ` 并入标题），跨类型、可各自独立验收的交付物才拆成多张。子卡 spec 必须内嵌用户原文片段（`> …` blockquote）并给兄弟任务文字交叉引用。',
-    '- 编排回合（开始任务入口，消息形「开始任务 #n」+ 编排请求行）：先规划再派发——单一工作单元：直接 run_builds 派该任务（withPlan:false，assignment 按职责文本选）；确含多个可独立验收的交付物：create_todo 拆子卡 + run_builds 逐个派发 + close_todos 关掉原卡（看板不留父卡），回执列全部子卡实体引用。',
-    '- 分派：读 agents 的职责文本按权重选择；归属按交付物与改动范围区分——面向读者的文档产出（README/手册/教程/变更日志）归文档职责 Agent；后端功能、缺陷、重构与性能归后端职责 Agent；Web 界面布局、样式与交互归前端职责 Agent；CI 流水线、构建打包、依赖与部署配置归运维职责 Agent。归属拿不准时先 ask_user 澄清，不猜。run_builds 传 assignment.build.agentId，默认 withPlan:false 直接执行。',
+    '- 编排回合（开始任务入口，消息形「开始任务 #n」+ 编排请求行）：先规划再派发——单一工作单元：直接 run_builds 派该任务（assignment 按职责文本选）；确含多个可独立验收的交付物：create_todo 拆子卡 + run_builds 逐个派发 + close_todos 关掉原卡（看板不留父卡），回执列全部子卡实体引用。',
+    // #903（ADR 0013）：派发模式 = 团队设置（chief.dispatchWithPlan），服务端
+    // 强制——工具面已无 withPlan 参数，提示词只描述生效策略，不再写死直执行。
+    chiefRow.dispatchWithPlan
+      ? '- 派发模式（团队设置，服务端强制）：先规划——派发的任务先产出方案并停在「待确认」关口，等用户批准方案后才进入执行；run_builds 不收先规划/直接执行的选择，汇报派发结果时说明任务将停在方案确认。'
+      : '- 派发模式（团队设置，服务端强制）：直接执行——派发的任务不经方案确认直接进入执行，完成后停在审阅关口等用户审；run_builds 不收先规划/直接执行的选择。',
+    '- 分派：读 agents 的职责文本按权重选择；归属按交付物与改动范围区分——面向读者的文档产出（README/手册/教程/变更日志）归文档职责 Agent；后端功能、缺陷、重构与性能归后端职责 Agent；Web 界面布局、样式与交互归前端职责 Agent；CI 流水线、构建打包、依赖与部署配置归运维职责 Agent。归属拿不准时先 ask_user 澄清，不猜。run_builds 传 assignment.build.agentId。',
     '- 交付物优先于路径：归属看交付物，不看请求里出现的路径或技术词——要更新的是 README 就归文档职责，哪怕那个 README 躺在 apps/web 下。',
     '- 主任务定归属：一句请求含多个同类子项时按主任务定归属，不拆成多个 todo，次任务随主任务交给同一个 Agent。',
     '- 症状按改动范围定：同一个用户可见症状可能归不同职责，看要改的代码在哪——接口返回错归后端，界面上点不到归前端。',

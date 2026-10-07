@@ -400,6 +400,34 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
     expect(after.chief.model).toBeNull();
   });
 
+  // #903 派发方式槽（ADR 0013）：失败方式——① 新 chief 默认不是 plan（选择权
+  // 没交还给人）；② 写 false 不落库/不回显；③ PATCH 别的槽把它冲掉。
+  test('PATCH /chief dispatchWithPlan 槽往返：默认 true；写→GET 回显同值；缺省不动（#903）', async () => {
+    type Env = { chief: { dispatchWithPlan?: boolean } };
+    // 默认 = plan（true）：两道闸是产品主张，缺省不撤销 confirm 闸（ADR 0013）。
+    const fresh = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(fresh.chief.dispatchWithPlan).toBe(true);
+    // 写 false → 响应回显同值。
+    const set = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      dispatchWithPlan: false,
+    });
+    expect(set.status).toBe(200);
+    expect(((await set.json()) as Env).chief.dispatchWithPlan).toBe(false);
+    // GET 回显同值 + 落库。
+    const got = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(got.chief.dispatchWithPlan).toBe(false);
+    const row = s.db.select().from(chiefTable).where(eq(chiefTable.id, chiefId)).get()!;
+    expect(row.dispatchWithPlan).toBe(false);
+    // 缺省不动：PATCH 别的槽不翻派发方式。
+    const other = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { charter: '不动它' });
+    expect(((await other.json()) as Env).chief.dispatchWithPlan).toBe(false);
+    // 翻回 true。
+    const back = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      dispatchWithPlan: true,
+    });
+    expect(((await back.json()) as Env).chief.dispatchWithPlan).toBe(true);
+  });
+
   test('chief 步 claim 载荷消费 model 覆盖：覆盖在 → 覆盖值；null → 绑定 Agent 模型（#615）', async () => {
     // 机器面（machine-wire 同配方）：发行 key → Bearer key enroll 拿 machine
     // token → Bearer token claim。pending step 在队时 claim 立即返回。
@@ -529,6 +557,27 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
     expect(prompt).toContain('agents:'); // 团队资源清单
     expect(prompt).toContain('措辞→spec'); // 策略指引
   });
+
+  // #903 派发模式行按设置合成（ADR 0013）：失败方式——① 提示词仍写死
+  // withPlan:false（8/8 直执行的提示词半没拆）；② 设置翻 false 后提示词
+  // 还说走 plan（LLM 对用户复述的行为与实际不符）。
+  test('systemPrompt 派发模式行按 dispatchWithPlan 合成，不再写死 withPlan:false（#903）', () => {
+    const deps = {
+      db: s.db,
+      hub: s.hub,
+      machineHub: s.machineHub,
+      user: s.user,
+      skillsDir: s.skillsDir,
+    };
+    const planPrompt = composeChiefSystemPrompt(deps, teamId);
+    expect(planPrompt).toContain('派发模式（团队设置，服务端强制）：先规划');
+    expect(planPrompt).not.toContain('withPlan:false');
+
+    patchChief(deps, teamId, { dispatchWithPlan: false });
+    const directPrompt = composeChiefSystemPrompt(deps, teamId);
+    expect(directPrompt).toContain('派发模式（团队设置，服务端强制）：直接执行');
+    expect(directPrompt).not.toContain('withPlan:false');
+  });
 });
 
 // —— AC r5 §3.2: 措辞→spec 三段变换（宿主机制：溯源落库）———————————————
@@ -617,26 +666,74 @@ describe('分派 + 单 todo 直派 + 双 Agent assignment（r5 §3.3/§3.4/§5�
     ]);
   });
 
-  test('run_builds 默认 withPlan:false 直派 + triggerSource:chief + assignment 落槽', async () => {
+  // #903：withPlan 不再是 chief 工具面的调用时选择——派发模式 = 团队设置
+  // （chief.dispatchWithPlan，默认 true 走 plan），服务端强制（ADR 0013）。
+  // 失败方式：① 默认仍直执行（选择权没交还）；② 设置 false 后仍走 plan
+  // （设置不生效）；③ 报文塞 withPlan 能推翻设置（LLM 保留单方撤销权）。
+  test('run_builds 按团队设置派发：默认 dispatchWithPlan=true 走 plan + triggerSource:chief + assignment 落槽（#903）', async () => {
     const todoRec = (await relay('create_todo', { projectId, title: '写文档', spec: 's' })) as {
       id: string;
     };
     const out = (await relay('run_builds', {
       todoIds: [todoRec.id],
       assignment: { build: { agentId: AGENT_ID } },
-    })) as { builds: { withPlan: boolean; triggerSource: string }[] };
-    expect(out.builds[0]!.withPlan).toBe(false); // 单请求单 todo 直派（跳过规划）
+    })) as { builds: { withPlan: boolean; triggerSource: string }[]; withPlan: boolean };
+    expect(out.withPlan).toBe(true); // 响应回报生效值 = 团队设置
+    expect(out.builds[0]!.withPlan).toBe(true); // 默认走 plan（方案停在确认闸）
     expect(out.builds[0]!.triggerSource).toBe('chief');
     const row = s.db.select().from(todoTable).where(eq(todoTable.id, todoRec.id)).get()!;
     expect(row.assignment?.build?.agentId).toBe(AGENT_ID);
     expect(row.phase).toBe('queued');
-    // 首步 = 执行步（withPlan:false → build，非 plan）
+    // 首步 = 规划步（dispatchWithPlan:true → plan）
+    const steps = s.db
+      .select()
+      .from(stepTable)
+      .where(eq(stepTable.buildId, row.latestBuildId!))
+      .all();
+    expect(steps[0]!.kind).toBe('plan');
+  });
+
+  test('run_builds 设置 dispatchWithPlan=false → 直执行（首步=build）（#903）', async () => {
+    patchChief({ db: s.db, hub: s.hub, machineHub: s.machineHub, user: s.user }, teamId, {
+      dispatchWithPlan: false,
+    });
+    const todoRec = (await relay('create_todo', { projectId, title: '直接干', spec: 's' })) as {
+      id: string;
+    };
+    const out = (await relay('run_builds', {
+      todoIds: [todoRec.id],
+      assignment: { build: { agentId: AGENT_ID } },
+    })) as { builds: { withPlan: boolean }[]; withPlan: boolean };
+    expect(out.withPlan).toBe(false);
+    expect(out.builds[0]!.withPlan).toBe(false);
+    const row = s.db.select().from(todoTable).where(eq(todoTable.id, todoRec.id)).get()!;
     const steps = s.db
       .select()
       .from(stepTable)
       .where(eq(stepTable.buildId, row.latestBuildId!))
       .all();
     expect(steps[0]!.kind).toBe('build');
+  });
+
+  test('run_builds 报文 withPlan 参数被忽略（服务端 clamp）：plan 设置下塞 false 仍走 plan（#903）', async () => {
+    // 默认设置即 plan（beforeEach 新世界）；本测试钉的是「报文参数推翻不了设置」。
+    const todoRec = (await relay('create_todo', { projectId, title: '想跳闸', spec: 's' })) as {
+      id: string;
+    };
+    const out = (await relay('run_builds', {
+      todoIds: [todoRec.id],
+      assignment: { build: { agentId: AGENT_ID } },
+      withPlan: false, // 工具面已无此参数；塞了也不生效
+    })) as { builds: { withPlan: boolean }[]; withPlan: boolean };
+    expect(out.withPlan).toBe(true);
+    expect(out.builds[0]!.withPlan).toBe(true);
+    const row = s.db.select().from(todoTable).where(eq(todoTable.id, todoRec.id)).get()!;
+    const steps = s.db
+      .select()
+      .from(stepTable)
+      .where(eq(stepTable.buildId, row.latestBuildId!))
+      .all();
+    expect(steps[0]!.kind).toBe('plan');
   });
 
   test('双 Agent 分派：assignment.plan ≠ assignment.build 两槽独立落库（r5 §5）', async () => {
@@ -648,12 +745,11 @@ describe('分派 + 单 todo 直派 + 双 Agent assignment（r5 §3.3/§3.4/§5�
     await relay('run_builds', {
       todoIds: [todoRec.id],
       assignment: { plan: { agentId: AGENT2_ID }, build: { agentId: AGENT_ID } },
-      withPlan: true,
     });
     const row = s.db.select().from(todoTable).where(eq(todoTable.id, todoRec.id)).get()!;
     expect(row.assignment?.plan?.agentId).toBe(AGENT2_ID); // 规划 = 代码 Agent
     expect(row.assignment?.build?.agentId).toBe(AGENT_ID); // 执行 = 文档 Agent
-    // 首步 = 规划步（withPlan:true）
+    // 首步 = 规划步（默认 dispatchWithPlan=true，#903）
     const steps = s.db
       .select()
       .from(stepTable)
@@ -904,7 +1000,7 @@ describe('驳回回路 plan v2 + unified diff（r5 §4/02 §4.2）', () => {
     const out = (await relay('run_builds', {
       todoIds: [todoRec.id],
       assignment: { plan: { agentId: AGENT_ID } },
-      withPlan: true,
+      // 默认 dispatchWithPlan=true 即走 plan（#903），无需报文参数。
     })) as { builds: { id: string }[] };
     const buildId = out.builds[0]!.id;
     // run_builds 已置 queued；模拟规划步成 → planning → confirm

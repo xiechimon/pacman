@@ -1586,6 +1586,20 @@ export const chiefSettingsMachines: FixtureSet = {
   },
 };
 
+/** #903 派发方式槽命名场景（无 capture，101-machines 先例）：settings
+ *  Agent tab + dispatchWithPlan=false——e2e 钉「直接执行」回显面（默认面
+ *  101 缺省 = 先规划，ADR 0013 默认档）。 */
+export const chiefSettingsDirectDispatch: FixtureSet = {
+  ...chiefSettings('agent'),
+  chief: {
+    view: 'settings',
+    tab: 'agent',
+    bound: false,
+    threadTitle: '新主题',
+    dispatchWithPlan: false,
+  },
+};
+
 /** Default drawer content for a FAB-opened drawer on a scenario without a
  *  chief surface (dev interactivity; fixture rows always carry a set). */
 export const chiefDefault: ChiefContent = {

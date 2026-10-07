@@ -1,0 +1,1 @@
+ALTER TABLE `chief` ADD `dispatchWithPlan` integer DEFAULT true NOT NULL;

@@ -471,8 +471,10 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   // —— 执行侧 5 ——
   {
     name: 'run_builds',
+    // #903（ADR 0013）：withPlan 参数除名——派发模式 = 团队设置
+    // （chief.dispatchWithPlan），服务端强制，不是调用时选择。
     description:
-      'Start builds for todos: assignment picks the executing agent per responsibility fit; withPlan defaults to false (chief dispatch runs directly).',
+      'Start builds for todos: assignment picks the executing agent per responsibility fit; plan-first vs direct execution follows the team dispatch-mode setting and cannot be overridden per call.',
     parameters: obj(
       {
         todoIds: idArr('Todo ids to start.'),
@@ -483,10 +485,6 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
           },
           [],
         ),
-        withPlan: {
-          type: 'boolean',
-          description: 'Plan first instead of executing directly; defaults to false.',
-        },
         machineId: str(
           'Optional pinned machine id for the builds; omit to inherit the todo machine (null = automatic).',
         ),

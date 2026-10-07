@@ -95,6 +95,11 @@ export const chiefRecordSchema = z.object({
    *  （todo.machineId → 本槽 → null）；钉选律同 todo.machineId（确定性、
    *  无自动回退、解除归用户）。 */
   machineId: recordId.nullable().optional(),
+  /** 派发方式（#903 ADR 0013 [设计]，加法契约：老 web 忽略即退化现状）：
+   *  chief run_builds 派发的任务是否先出方案——true = 先规划（停在确认闸
+   *  等用户批准），false = 直接执行。服务端强制（chief 工具面无 withPlan
+   *  参数，报文塞值不生效）；缺省 = true（旧响应面无此键时按默认读）。 */
+  dispatchWithPlan: z.boolean().optional(),
   lastTurnAt: epochMs.nullable(),
   createdAt: epochMs,
   /** 用户时区（raw chief-record-testA.json 一手 `tz:"Asia/Shanghai"`；
@@ -216,8 +221,9 @@ export const CHIEF_ENTITY_REF_SCHEMES = ['agent', 'todo'] as const;
  * 不判负）；`compactionModel` 槽 = 压缩模型长槽（#203 [设计]，undefined =
  * 不动 / null = 清空回默认）；`model` 槽 = 主模型覆盖长槽（#615 [设计]，
  * undefined = 不动 / null = 清空回绑定 Agent 继承）；`machineId` 槽 =
- * 主力机（#895 spec 21 A7 [设计]，undefined = 不动 / null = 清回自动）。
- * 五槽至少一位。 */
+ * 主力机（#895 spec 21 A7 [设计]，undefined = 不动 / null = 清回自动）；
+ * `dispatchWithPlan` 槽 = 派发方式（#903 ADR 0013 [设计]，undefined = 不动，
+ * 二值无 null 形）。六槽至少一位。 */
 export const patchChiefBodySchema = z
   .object({
     agent: z
@@ -232,6 +238,10 @@ export const patchChiefBodySchema = z
     /** 主力机槽（#895 spec 21 A7 [设计]）：undefined = 不动，null = 清回
      *  自动；值 = 本团队机器 id（队外 400，todos machineId 同律）。 */
     machineId: recordId.nullish(),
+    /** 派发方式槽（#903 ADR 0013 [设计]）：undefined = 不动；true = 先规划
+     *  （默认档），false = 直接执行。二值槽无 null 形——默认值即 true，
+     *  「清回默认」= 显式写 true。 */
+    dispatchWithPlan: z.boolean().optional(),
   })
   .refine(
     (b) =>
@@ -239,9 +249,11 @@ export const patchChiefBodySchema = z
       b.charter !== undefined ||
       b.compactionModel !== undefined ||
       b.model !== undefined ||
-      b.machineId !== undefined,
+      b.machineId !== undefined ||
+      b.dispatchWithPlan !== undefined,
     {
-      message: 'expected agent and/or charter and/or compactionModel and/or model and/or machineId',
+      message:
+        'expected agent and/or charter and/or compactionModel and/or model and/or machineId and/or dispatchWithPlan',
     },
   );
 export type PatchChiefBody = z.infer<typeof patchChiefBodySchema>;
