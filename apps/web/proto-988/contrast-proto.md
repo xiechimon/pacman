@@ -228,15 +228,27 @@ FIXED = 首测未过、按「只动感知明度」自动修正后复测通过（
 
 # Variant-C self-test (inline color math vs sealed canon)
 
-emitted literal slots compared: **166**
-byte-identical: **155**
+emitted literal slots compared: **218**
+byte-identical: **199**
 LSB-class (每通道 ±1，clamp/取整边界): **10**
+form-class (canon 字面值 vs var() 别名，解析值相等): **8**
 real diffs: **1**
+
+| mode | slot | canon (sealed C) | generated |
+| --- | --- | --- | --- |
+| dark | `--column` | #1e1b16 | var(--background) |
+| dark | `--col-bg` | #1e1b16 | var(--background) |
+| dark | `--surface-elevated` | #25221d | var(--surface) |
+| dark | `--surface-press` | #3f3c36 | var(--surface-tertiary) |
+| light | `--column` | #f4efe7 | var(--background) |
+| light | `--col-bg` | #f4efe7 | var(--background) |
+| light | `--surface-elevated` | #efe9e1 | var(--surface) |
+| light | `--surface-press` | #e0dbd2 | var(--surface-tertiary) |
 
 LSB-class residuals — canon 在 #909 实审中手调到 L≈0.3575（dark 控件档）
 等 curve 外位置，候选版按结构等价继承（n(5)），残差 ≤1/通道，不可见：
 
-| mode | slot | live (sealed) | generated |
+| mode | slot | canon (sealed C) | generated |
 | --- | --- | --- | --- |
 | dark | `--input` | #3f3c36 | #403d37 |
 | dark | `--surface-tertiary` | #3f3c36 | #403d37 |
@@ -249,6 +261,6 @@ LSB-class residuals — canon 在 #909 实审中手调到 L≈0.3575（dark 控�
 | dark | `--chief-tab-active` | #3f3c36 | #403d37 |
 | dark | `--notify-icon-bg` | #3f3c36 | #403d37 |
 
-| mode | slot | live (sealed) | generated |
+| mode | slot | canon (sealed C) | generated |
 | --- | --- | --- | --- |
 | light | `--project-avatar-fg` | #310a00 | #2d0800 |

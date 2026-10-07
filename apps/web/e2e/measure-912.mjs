@@ -25,7 +25,13 @@
 // sRGB relative luminance + (Lhi+0.05)/(Llo+0.05). Translucent overlays are
 // composited over their real base before measuring. No value is estimated.
 //
-// Run: node apps/web/e2e/measure-912.mjs [--out <dir>]   (default out: cwd)
+// Run: node apps/web/e2e/measure-912.mjs [--out <dir>]
+//        [--palette <file-in-this-dir>] [--variant <key>]
+//      Defaults: out = cwd, palette = palette-c.css, variant = c — the sealed
+//      #912 canon, default behavior unchanged. #988 (palette reselect) adds
+//      the parameterization: point the tool at a new frozen canon copy
+//      (palette-<x>.css, `:root[data-variant="<x>"]` selector shape) to
+//      measure the reselected palette at full scale before/while it lands.
 // Output: token-scale-912.json / token-scale-912-tables.md /
 // token-scale-912-fragment.md under <dir>.
 // Note: docs/spec/22 §1.5–1.8 froze the #912-era tables in place; post-seal
@@ -40,7 +46,13 @@ const root = join(here, '..', '..', '..'); // repo root (apps/web/e2e → root)
 const outIdx = process.argv.indexOf('--out');
 const outDir = outIdx >= 0 && process.argv[outIdx + 1] ? process.argv[outIdx + 1] : process.cwd();
 mkdirSync(outDir, { recursive: true });
-const cCss = readFileSync(join(here, 'palette-c.css'), 'utf8');
+function argOf(flag, fallback) {
+  const i = process.argv.indexOf(flag);
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
+}
+const paletteFile = argOf('--palette', 'palette-c.css');
+const variantKey = argOf('--variant', 'c');
+const cCss = readFileSync(join(here, paletteFile), 'utf8');
 const shadcnCss = readFileSync(join(root, 'apps', 'web', 'src', 'styles', 'shadcn.css'), 'utf8');
 const tokensCss = readFileSync(join(root, 'apps', 'web', 'src', 'styles', 'tokens.css'), 'utf8');
 
@@ -74,8 +86,11 @@ function decls(body) {
   return out;
 }
 
-const cDark = decls(block(cCss, ':root[data-variant="c"] {'));
-const cLight = { ...cDark, ...decls(block(cCss, ':root[data-variant="c"].light {')) };
+const cDark = decls(block(cCss, `:root[data-variant="${variantKey}"] {`));
+const cLight = {
+  ...cDark,
+  ...decls(block(cCss, `:root[data-variant="${variantKey}"].light {`)),
+};
 const sDark = { ...decls(block(tokensCss, ':root {')), ...decls(block(shadcnCss, ':root {')) };
 const sLight = {
   ...sDark,
@@ -384,7 +399,7 @@ function currentValues(mode) {
 
 const result = {
   generatedBy: 'apps/web/e2e/measure-912.mjs (migrated from library/t-0909 by #953)',
-  paletteCanon: 'apps/web/e2e/palette-c.css (frozen #909 version-C copy, sha1 beb289f6…)',
+  paletteCanon: `apps/web/e2e/${paletteFile} (variant "${variantKey}" frozen canon copy)`,
   slotFile: 'apps/web/src/styles/shadcn.css (+ tokens.css non-color)',
   modes: {},
 };

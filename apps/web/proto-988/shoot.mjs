@@ -151,7 +151,7 @@ try {
           });
 
           check(combo, 'data-variant', probe.dataVariant, variant === 'now' ? null : variant);
-          check(combo, 'data-radius', probe.dataRadius, radius === 'official' ? 'official' : null);
+          check(combo, 'data-radius', probe.dataRadius, radius);
           check(combo, 'light-class', probe.lightClass, mode === 'light');
           const expectedHex = expectedBackground(variant, mode);
           check(combo, 'token --background', probe.tokenBg.toLowerCase(), expectedHex.toLowerCase());

@@ -100,8 +100,9 @@ function SwitcherInner() {
     const root = document.documentElement;
     if (variant === 'now') delete root.dataset.variant;
     else root.dataset.variant = variant;
-    if (radius === 'official') root.dataset.radius = 'official';
-    else delete root.dataset.radius;
+    // 定版翻值后 base = 官方 0.625rem；data-radius=current 挂历史 14px 对照档
+    // （styles/proto-988/proto.css），official 与 base 等值（属性恒挂便于断言）。
+    root.dataset.radius = radius;
     try {
       sessionStorage.setItem(VARIANT_STORE, variant);
       sessionStorage.setItem(RADIUS_STORE, radius);

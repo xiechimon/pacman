@@ -18,8 +18,8 @@
       "page": "board",
       "radius": "current",
       "check": "data-radius",
-      "expected": null,
-      "actual": null,
+      "expected": "current",
+      "actual": "current",
       "ok": true
     },
     {
@@ -38,8 +38,8 @@
       "page": "board",
       "radius": "current",
       "check": "token --background",
-      "expected": "#1e1b16",
-      "actual": "#1e1b16",
+      "expected": "#1f1b18",
+      "actual": "#1f1b18",
       "ok": true
     },
     {
@@ -48,8 +48,8 @@
       "page": "board",
       "radius": "current",
       "check": "probe background-color",
-      "expected": "rgb(30, 27, 22)",
-      "actual": "rgb(30, 27, 22)",
+      "expected": "rgb(31, 27, 24)",
+      "actual": "rgb(31, 27, 24)",
       "ok": true
     },
     {
@@ -117,8 +117,8 @@
       "page": "board",
       "radius": "official",
       "check": "token --background",
-      "expected": "#1e1b16",
-      "actual": "#1e1b16",
+      "expected": "#1f1b18",
+      "actual": "#1f1b18",
       "ok": true
     },
     {
@@ -127,8 +127,8 @@
       "page": "board",
       "radius": "official",
       "check": "probe background-color",
-      "expected": "rgb(30, 27, 22)",
-      "actual": "rgb(30, 27, 22)",
+      "expected": "rgb(31, 27, 24)",
+      "actual": "rgb(31, 27, 24)",
       "ok": true
     },
     {
@@ -196,8 +196,8 @@
       "page": "detail",
       "radius": "official",
       "check": "token --background",
-      "expected": "#1e1b16",
-      "actual": "#1e1b16",
+      "expected": "#1f1b18",
+      "actual": "#1f1b18",
       "ok": true
     },
     {
@@ -206,8 +206,8 @@
       "page": "detail",
       "radius": "official",
       "check": "probe background-color",
-      "expected": "rgb(30, 27, 22)",
-      "actual": "rgb(30, 27, 22)",
+      "expected": "rgb(31, 27, 24)",
+      "actual": "rgb(31, 27, 24)",
       "ok": true
     },
     {
@@ -255,8 +255,8 @@
       "page": "board",
       "radius": "current",
       "check": "data-radius",
-      "expected": null,
-      "actual": null,
+      "expected": "current",
+      "actual": "current",
       "ok": true
     },
     {
@@ -275,8 +275,8 @@
       "page": "board",
       "radius": "current",
       "check": "token --background",
-      "expected": "#f4efe7",
-      "actual": "#f4efe7",
+      "expected": "#f6f1ec",
+      "actual": "#f6f1ec",
       "ok": true
     },
     {
@@ -285,8 +285,8 @@
       "page": "board",
       "radius": "current",
       "check": "probe background-color",
-      "expected": "rgb(244, 239, 231)",
-      "actual": "rgb(244, 239, 231)",
+      "expected": "rgb(246, 241, 236)",
+      "actual": "rgb(246, 241, 236)",
       "ok": true
     },
     {
@@ -354,8 +354,8 @@
       "page": "board",
       "radius": "official",
       "check": "token --background",
-      "expected": "#f4efe7",
-      "actual": "#f4efe7",
+      "expected": "#f6f1ec",
+      "actual": "#f6f1ec",
       "ok": true
     },
     {
@@ -364,8 +364,8 @@
       "page": "board",
       "radius": "official",
       "check": "probe background-color",
-      "expected": "rgb(244, 239, 231)",
-      "actual": "rgb(244, 239, 231)",
+      "expected": "rgb(246, 241, 236)",
+      "actual": "rgb(246, 241, 236)",
       "ok": true
     },
     {
@@ -433,8 +433,8 @@
       "page": "detail",
       "radius": "official",
       "check": "token --background",
-      "expected": "#f4efe7",
-      "actual": "#f4efe7",
+      "expected": "#f6f1ec",
+      "actual": "#f6f1ec",
       "ok": true
     },
     {
@@ -443,8 +443,8 @@
       "page": "detail",
       "radius": "official",
       "check": "probe background-color",
-      "expected": "rgb(244, 239, 231)",
-      "actual": "rgb(244, 239, 231)",
+      "expected": "rgb(246, 241, 236)",
+      "actual": "rgb(246, 241, 236)",
       "ok": true
     },
     {
