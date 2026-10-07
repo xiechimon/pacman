@@ -6,12 +6,11 @@
 //  1. 授权未知（无指派 / members 未到位）时误判为「缺」——用户被一个查不出
 //     执行者的弹层挡住，而 server 侧闸对同一情形是放行的（machines.ts
 //     agentForStep 无 agent = 无闸可查），前端拦下就是纯误伤；
-//  2. **空数组当成「全关」**——存量豁免：唯一权威存储是 `agent.tools`
-//     列，`json<string[]>('tools').notNull().default('[]')`（db/schema.ts）
-//     把「从未保存过权限 tab」与「显式全关」压成同一个值 `[]`，wire 分不
-//     出来。判缺 = 把所有存量 Agent（含 chief merge_builds 路径、m5 脊柱
-//     E2E 的执行 Agent）一刀切成禁按，是用户没要的破坏性回归（2026-10-01
-//     leader 裁决；PR #579 CI 红即此因）；
+//  2. **空数组被当成「没有意图可读」放行**（#994）——那是 0018 回填之前的
+//     语义：`agent.tools` 列 `notNull().default('[]')` 曾让「从未保存过权限
+//     tab」与「显式全关」同值。回填（PR #576）已把存量行补成含「推送分支」，
+//     此后 `[]` 只剩显式来路（权限 tab 关到最后一档 / API 显式传空），而
+//     server 侧 requestMerge 对 `[]` 一律拒——放行即「点得动、点了必被拒」；
 //  3. 全开仍报缺——用户明明有权限却点不动（比静默吞掉更糟：连绕都绕不过去）；
 //  4. 只缺一项时把两项都点名——文案指错开关，用户按提示开完还是点不动；
 //  5. 值域外的工具串（skills / mcp 的授权项混在同一个数组里）被当成开关；
@@ -31,8 +30,8 @@ describe('missingMergeTools', () => {
     expect(missingMergeTools(['远程 shell', '合并分支', '推送分支', '创建标签'])).toEqual([]);
   });
 
-  it('空数组放行——存量豁免：从未保存过权限 tab 的 Agent 在库里就是 []（不拦）', () => {
-    expect(missingMergeTools([])).toEqual([]);
+  it('空数组照报两项——显式全关 = 一无授权，与 server 侧闸同判（无空集豁免）', () => {
+    expect(missingMergeTools([])).toEqual(['合并分支', '推送分支']);
   });
 
   it('非空但两项都不含时两项都报，序 = MERGE_GATE_TOOLS 序（合并分支在前）', () => {
