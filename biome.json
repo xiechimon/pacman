@@ -132,8 +132,6 @@
     },
     {
       "includes": [
-        "apps/daemon/test/mcp-bridge.test.ts",
-        "apps/daemon/test/fixtures/**",
         "apps/daemon/test/**/*.test.ts",
         "apps/server/test/**/*.test.ts",
         "integration/test/**"

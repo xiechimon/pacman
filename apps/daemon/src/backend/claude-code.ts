@@ -16,7 +16,7 @@
 // pi 的 buildSkillsCatalog 通道）；A10 工具面已按 #647（T4）接线：host 注入
 // 工具（remoteTools relay + localTools 本地执行）包成一个 `pacman` in-process
 // MCP server（createSdkMcpServer）交给 SDK，McpEndpoint 映射 SDK 原生 config
-// （工具名 `mcp__<slug>__<tool>` 与 pi mcp-bridge 同形）；A11 model verbatim
+// （工具名 `mcp__<slug>__<tool>` 与 pi 原生 MCP 命名同形，#930）；A11 model verbatim
 // 透传；A13
 // bypassPermissions + readOnly → disallowedTools 收 Edit/Write（SDK 工具名）
 // + AskUserQuestion（非交互 daemon 面，Multica claude.go:1078-1092 同律）；
@@ -688,9 +688,9 @@ export function buildHostTools(sources: HostToolSources): SdkMcpToolDefinition[]
 }
 
 /** McpEndpoint → SDK 原生 config（T4 第三面）：http → {type:'http'}；stdio →
- *  {type:'stdio'}；字段残缺 fail-closed。alwaysLoad 钉 true——pi mcp-bridge
- *  是预连接 + 全量工具面（工具恒在 prompt），对齐该语义（代价 = 启动等连接
- *  上限 5s，与 pi 预连接同量级）。 */
+ *  {type:'stdio'}；字段残缺 fail-closed。alwaysLoad 钉 true——pi 原生 MCP
+ *  （#930）是预连接 + 全量工具面（工具恒在 prompt），对齐该语义（代价 = 启
+ *  动等连接上限 5s，与 pi 预连接同量级）。 */
 export function mapMcpEndpoint(endpoint: McpEndpoint): McpServerConfig {
   if (endpoint.transport === 'http') {
     if (typeof endpoint.url !== 'string' || endpoint.url === '') {

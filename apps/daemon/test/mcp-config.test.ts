@@ -1,7 +1,7 @@
 // spec 13 daemon 本机解析面（#368）：claim 载荷 mcpServers = slug 列表 →
 // 读本机 config（mcpConfigPath，默认 ~/.claude.json）解析 McpEndpoint[] →
-// 喂既有 connectMcpBridge。密钥值只活在执行机（config 文件 → 子进程/请求头），
-// 从不跨 wire。失败方式清单：
+// 喂 pi 原生 MCP（backend/pi.ts registerMcpServer，#930）。密钥值只活在执行机
+// （config 文件 → 子进程/请求头），从不跨 wire。失败方式清单：
 //   正常——http headers / stdio command+args+env 全保真；
 //   未知 slug——跳过 + onMissing 降级回调（canon 行「config 里找不到」）；
 //   坏条目——config 里有键但形状坏 = 跳过不炸；

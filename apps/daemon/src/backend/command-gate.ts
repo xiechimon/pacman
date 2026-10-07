@@ -1,20 +1,22 @@
-// 命令闸：bash 执行面门控（#866 T5 tracer：权限规则表最小版落地）。
-// 机制（pi-coding-agent 0.86 实测）：createAgentSession 的 customTools 与内建
-// 工具同名时按名覆盖（agent-session.js definitionRegistry/toolRegistry 两处
-// 后写胜出；执行经 _toolRegistry 分发；getToolDefinition 读同一覆盖后注册
-// 表；session 循环内无 isBashToolResult 特判）。本闸用 pi 自家的
-// createBashToolDefinition + 包一层 operations.exec 实现门控——放行命令的描
-// 述/schema/流式输出/截断/超时/exit 码文案与内建 bash 逐字节同行为（同一份定
-// 义，只换 operations），transcript 面零漂移（daemon 的 mapPiSessionEvent 本
-// 就忽略 bash_execution_update 流事件，只消费 toolcall/tool_execution_end）。
+// 命令闸：tool_call 阻断缝（#866 T5 落地 → #929 换挂点）。
+// 机制（pi-coding-agent 1.0.4 实测）：扩展的 tool_call handler 返回
+// {block: true, reason} 即阻断该次调用——agent-loop 把 reason 转成 error tool
+// result（模型可见，可照着改道）；放行 = 返回 undefined，执行面零参与（pi
+// 内建 bash 原样跑，描述/schema/流式/截断/超时/exit 码全为 pi 原生）。闸以
+// inline extension 注册在 DefaultResourceLoader 的 extensionFactories（挂点见
+// backend/pi.ts）。所有 MCP 工具调用与 codemode 嵌套调用都过这条管线
+// （docs/mcp.md Permissions 节），规则表对它们一体生效（#929 新获覆盖面）。
 // 裁决分两层（单真值，不存在"表说一套码做一套"）：
 // 1. 调用方自带规则（PermissionRule[]，shared 通用 glob 匹配器）：AMP 式可编
-//    程策略，首命中胜出；未命中回落第 2 层。将来服务端统一下发表即进此层。
-// 2. 默认不可逆形态（本文件 DEFAULT_BASH_PATTERNS，段级 token 判定）：glob 表
-//    达不了"rm 的操作数恰为 /"（`*rm*-rf /*` 会误伤 /tmp），精确判定必须做
-//    token 级，见各 pattern 注释。匹配严格度按 base rate 定：rm 普通路径是 agent
-//    日常（worktree 清理）→ 精确到根才拦；mkfs/dd→/dev/断电/fork 在 agent
-//    流量里几乎恒无合法用 → 宁可误拦（一次可改道的拒绝）不漏放。
+//    程策略，首命中胜出；未命中回落第 2 层（bash 面）或默认放行（其它工具）。
+//    规则表是通用工具面（tool 槽任意工具名 / `*`），将来服务端统一下发表即进
+//    此层。
+// 2. 默认不可逆形态（本文件 DEFAULT_BASH_PATTERNS，段级 token 判定，bash 专属
+//    形状）：glob 表达不了"rm 的操作数恰为 /"（`*rm*-rf /*` 会误伤 /tmp），
+//    精确判定必须做 token 级，见各 pattern 注释。匹配严格度按 base rate 定：
+//    rm 普通路径是 agent 日常（worktree 清理）→ 精确到根才拦；mkfs/dd→/dev/
+//    断电/fork 在 agent 流量里几乎恒无合法用 → 宁可误拦（一次可改道的拒绝）
+//    不漏放。
 // ask 在无人值守 daemon 面的执行语义 = 拒（附改道文案）。表里保留 ask 与
 // reject 的区分：ask = "有人在场就可批"，reject = "恒无合法用途"（fork 炸弹）；
 // 将来审批面（web UI）上线，ask 直接转人工，数据面零迁移。人的判断今天仍在
@@ -23,14 +25,18 @@
 // （echo 里提一句 rm -rf / 不该炸），变量展开/转义/编码绕行不在射程内（防误
 // 不防恶）。claude-code 后端仍跑 bypassPermissions（钩子在 bypass 下是否触发
 // 未验证，动 permissionMode 是全量行为变更，留给后续票），缺口见 PR 与报告。
-import type { BashOperations } from '@earendil-works/pi-coding-agent';
+import {
+  isToolCallEventType,
+  type ToolCallEvent,
+  type ToolCallEventResult,
+} from '@earendil-works/pi-coding-agent';
 import { matchPermissionRule, type PermissionAction, type PermissionRule } from '@pacman/shared';
 
 export type { PermissionRule };
 
 /** 裁决（ruleId 缺席 = 默认放行；表裁决 ask 与执行动作的区分：tracer 面两者
  * 同值，审批面上线后 ask 可转人工而不改表）。 */
-export interface BashGateDecision {
+export interface GateDecision {
   action: PermissionAction;
   ruleId?: string;
 }
@@ -217,7 +223,7 @@ export function splitBashSegments(command: string): string[] {
 export function decideBashCommand(
   command: string,
   customRules?: readonly PermissionRule[],
-): BashGateDecision {
+): GateDecision {
   const stripped = stripQuotedSpans(command);
   if (customRules !== undefined) {
     const params = { command: stripped };
@@ -242,35 +248,85 @@ export function decideBashCommand(
   return { action: 'allow' };
 }
 
+/** 拒绝动作档文案（bash/tool 两面共享；ask 在无人值守面 = 拒，reject = 恒拒
+ * ——档位语义见表头注）。 */
+function refusalActionNote(action: PermissionAction): string {
+  return action === 'reject'
+    ? 'rejected outright (this shape is never legitimate)'
+    : 'requires approval, and this daemon runs unattended (no approval surface), so it is denied';
+}
+
 /** 拒绝文案（进 tool result：agent 照着改道；规则 id 供人审计）。 */
-export function formatGateRefusal(command: string, decision: BashGateDecision): string {
+export function formatGateRefusal(command: string, decision: GateDecision): string {
   const ruleId = decision.ruleId ?? 'unknown';
-  const actionNote =
-    decision.action === 'reject'
-      ? 'rejected outright (this shape is never legitimate)'
-      : 'requires approval, and this daemon runs unattended (no approval surface), so it is denied';
   return [
-    `command gate (${ruleId}): ${actionNote}.`,
+    `command gate (${ruleId}): ${refusalActionNote(decision.action)}.`,
     `command: ${command}`,
     'replan without the irreversible shape (narrow the paths, drop the flags), or put the rationale in the plan and let a human approve it at the confirm/review gate.',
   ].join('\n');
 }
 
-/** 门控 operations：ask/reject 抛拒绝（pi 内建定义转成 tool error 结果，agent
- * 可见）；allow 原样委托本地 ops（signal/timeout/env 全透传，行为零差）。
+/** 门控 operations 退役说明（#929）：原「包 operations.exec 抛拒绝」的缝已删
+ * ——阻断改在 tool_call handler（下方 gateToolCallHandler），执行面回到 pi 内
+ * 建 bash 原生（超时/取消/截断/流式全为 pi 行为，闸不再复制）。 */
+
+/** 非 bash 工具调用的规则表裁决（#929 覆盖面：MCP 工具 `mcp__*`、resource
+ * 工具、内建读面——与 bash 同一张 PermissionRule 表、同一个匹配器；首命中胜
+ * 出，未命中 / 无表 = undefined（默认放行）。非 bash 无默认形态表
+ * （DEFAULT_BASH_PATTERNS 是 bash 命令形状，不适用于参数面）。参数槽取字符串
+ * 值匹配（非字符串/缺席按空串——与 bash 面缺席槽同律）。 */
+export function decideToolCall(
+  toolName: string,
+  params: Readonly<Record<string, unknown>>,
+  customRules?: readonly PermissionRule[],
+): GateDecision | undefined {
+  if (customRules === undefined || customRules.length === 0) return undefined;
+  const slots: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params)) {
+    slots[key] = typeof value === 'string' ? value : '';
+  }
+  const hit = matchPermissionRule(customRules, toolName, slots);
+  if (hit === undefined) return undefined;
+  return { action: hit.action, ruleId: hit.id };
+}
+
+/** 工具面拒绝文案（bash 面同族：规则 id 供人审计 + 改道指引；「command」位
+ * 换成被闸的工具名）。 */
+export function formatToolRefusal(toolName: string, decision: GateDecision): string {
+  const ruleId = decision.ruleId ?? 'unknown';
+  return [
+    `tool gate (${ruleId}): ${refusalActionNote(decision.action)}.`,
+    `tool: ${toolName}`,
+    'replan without the gated tool call, or put the rationale in the plan and let a human approve it at the confirm/review gate.',
+  ].join('\n');
+}
+
+/** tool_call 阻断 handler（#929 挂点；pi.ts 以 inline extension 注册进
+ * extensionFactories）。bash 面 = 全量裁决（规则表 + DEFAULT_BASH_PATTERNS）；
+ * 其它工具（含 MCP）= 规则表裁决。非放行 → {block, reason}（pi 转成 error
+ * tool result，模型可见改道文案）；放行 → undefined（执行面零参与）。
+ * 无人值守（F4）：签名只有 event——拒绝路径不依赖 ctx.ui 之类交互确认。
  * allow 静默（非常态不征税）；ask/reject 落一行 gate 日志（审计口径）。 */
-export function buildGatedBashOperations(
-  localOps: BashOperations,
-  opts?: { rules?: readonly PermissionRule[]; log?: (msg: string) => void },
-): BashOperations {
-  return {
-    exec: async (command, cwd, execOpts) => {
-      const decision = decideBashCommand(command, opts?.rules);
+export function gateToolCallHandler(opts: {
+  rules?: readonly PermissionRule[];
+  log?: (msg: string) => void;
+}): (event: ToolCallEvent) => Promise<ToolCallEventResult | undefined> {
+  const rules = opts.rules;
+  const log = opts.log;
+  return async (event) => {
+    if (isToolCallEventType('bash', event)) {
+      const decision = decideBashCommand(event.input.command, rules);
       if (decision.action !== 'allow') {
-        opts?.log?.(`${decision.action}: rule=${decision.ruleId} command=${command}`);
-        throw new Error(formatGateRefusal(command, decision));
+        log?.(`${decision.action}: rule=${decision.ruleId} command=${event.input.command}`);
+        return { block: true, reason: formatGateRefusal(event.input.command, decision) };
       }
-      return localOps.exec(command, cwd, execOpts);
-    },
+      return undefined;
+    }
+    const hit = decideToolCall(event.toolName, event.input, rules);
+    if (hit !== undefined && hit.action !== 'allow') {
+      log?.(`${hit.action}: rule=${hit.ruleId} tool=${event.toolName}`);
+      return { block: true, reason: formatToolRefusal(event.toolName, hit) };
+    }
+    return undefined;
   };
 }
