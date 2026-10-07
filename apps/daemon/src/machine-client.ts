@@ -13,7 +13,7 @@ import {
   type MachineRecoverResponse,
   type MachineShellPrecheckResponse,
   type MachineShellResultBody,
-  type MachineSkillsResponse,
+  type MachineSkillsManifestResponse,
   type MachineSteerResponse,
   type MachineStopResponse,
   type MachineStreamEvent,
@@ -29,7 +29,7 @@ import {
   machineRecoverResponseSchema,
   machineShellPrecheckResponseSchema,
   machineShellResultResponseSchema,
-  machineSkillsResponseSchema,
+  machineSkillsManifestResponseSchema,
   machineSteerResponseSchema,
   machineStopResponseSchema,
   machineStreamEventSchema,
@@ -100,10 +100,17 @@ export interface MachineApi {
     opts?: { replaySafe?: boolean; signal?: AbortSignal },
   ): Promise<string>;
   token(stepId: string): Promise<MachineTokenResponse>;
-  /** 按步技能包下发（XMON-109 S1 端点 / XMON-112 S2 消费）：worker 步 =
-   * agent.skills 白名单交集，chief 步 = 信任面全量；非本步凭证/未知步 = 404。
-   * 失败抛错由调用方降级（仅本机技能，会话不阻断）。 */
-  skills(stepId: string): Promise<MachineSkillsResponse>;
+  /** 按步技能分发清单（XMON-109 S1 端点，#920 清单 + 按需拉 / S2 消费）：
+   * worker 步 = agent.skills 白名单交集（selection='whitelist'），chief 步 =
+   * 信任面全量（selection='all'）；非本步凭证/未知步 = 404。失败抛错——
+   * runner 按 failed 收尾（旧 fail-open「仅本机技能」降级已退役，#920：
+   * 分发失败必须显式可观测，不许静默跑空）。 */
+  skillsManifest(stepId: string): Promise<MachineSkillsManifestResponse>;
+  /** 技能单文件按需拉取（#920）：GET /api/machine/skills/{stepId}/file
+   * ?dirName=&path= → 原始字节（sha256/sizeBytes 校验在物化器）。幂等 GET
+   * 带 attachment 同款重试预算：网络/5xx 按 REMOTE_TOOL_RETRY_DELAYS_MS
+   * 重试、4xx 单次即抛。 */
+  skillFile(stepId: string, dirName: string, path: string): Promise<Buffer>;
   /** 图片附件下载（#730）：GET /api/machine/attachment/{stepId}/{attachmentId}
    * → {fileName, mimeType, sizeBytes, contentBase64}。replaySafe 读面带
    * REMOTE_TOOL_RETRY_DELAYS_MS 重试预算（幂等 GET）；4xx = 协议事实
@@ -363,10 +370,38 @@ export class MachineClient implements MachineApi {
     });
   }
 
-  async skills(stepId: string): Promise<MachineSkillsResponse> {
+  async skillsManifest(stepId: string): Promise<MachineSkillsManifestResponse> {
     return this.request('GET', `/api/machine/skills/${stepId}`, {
-      parse: (raw) => machineSkillsResponseSchema.parse(raw),
+      parse: (raw) => machineSkillsManifestResponseSchema.parse(raw),
     });
+  }
+
+  async skillFile(stepId: string, dirName: string, path: string): Promise<Buffer> {
+    // 幂等 GET（attachment 同族）：网络/5xx 按预算重试；4xx = 协议事实
+    // （清单外/白名单外 404）单次即抛。响应 = 原始字节，非 JSON。
+    const query = new URLSearchParams({ dirName, path });
+    const url = this.url(`/api/machine/skills/${stepId}/file?${query.toString()}`);
+    const delays = [...REMOTE_TOOL_RETRY_DELAYS_MS];
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        const token = this.opts.getToken?.();
+        const res = await this.fetchImpl(url, {
+          method: 'GET',
+          ...(token ? { headers: { authorization: `Bearer ${token}` } } : {}),
+          signal: AbortSignal.timeout(REMOTE_TOOL_TIMEOUT_MS),
+        });
+        if (res.ok) return Buffer.from(await res.arrayBuffer());
+        throw new MachineApiError(res.status, await res.text());
+      } catch (err) {
+        lastErr = err;
+        if (err instanceof MachineApiError && err.status < 500) throw err;
+      }
+      const delay = delays[attempt];
+      if (delay === undefined) break;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+    throw lastErr instanceof Error ? lastErr : new Error('skill file download failed');
   }
 
   async attachment(stepId: string, attachmentId: string): Promise<MachineAttachmentResponse> {

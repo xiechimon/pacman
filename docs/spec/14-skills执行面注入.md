@@ -122,6 +122,28 @@ spec 13 定技能库 server 端写路径（XMON-109 S1：REST 写面 + machine-w
 - machine-wire 响应单源 = `machineSkillsResponseSchema`（客户端 zod parse 对拍，`MachineApi.skills(stepId)`）。
 - `[skills]` 日志族增四行形：`team: N skill(s) materialized → <dir>` / `team: N skill(s) cache hit → <dir>`、`team-invalid: …`、`team-fetch-failed: …`、`team-prune: failed …`。
 
+## 清单 + 按需拉回摆（#920，2026-10-07）
+
+S2 的「一次 GET 塞全量全文」分发形态对真实技能库从未成功过：两道字节闸（单文件 512,000 / 整包 2,000,000）对着实测数据（全库 104 技能 / 1353 文件 / 18.40MB；单个 archify 资产 727,976 字节超单文件闸）必超，daemon 的 fail-open 降级把 400 吞掉后，远端机器技能面恒空且无告警（本机 daemon 日志同一文本 43 次连续失败）。本节替换 S2 节的分发形态、缓存拓扑与失败语义三面；出包选择规则（worker = 白名单 ∩ 现扫、chief = 信任面全量）、合并与冲突裁决、`SessionOpts.teamSkillsDir` 契约、路径安全守卫与零回归判据不变。
+
+### 分发形态（清单 + 按需拉）
+
+- `GET /api/machine/skills/{stepId}` → 分发清单（响应单源 = `machineSkillsManifestResponseSchema`，客户端 `MachineApi.skillsManifest(stepId)` zod parse 对拍）：`selection`（`all` = chief 信任面全量 / `whitelist` = agent.skills 白名单交集）+ 每技能 record 三字段 + dirName + 文件清单（path / sizeBytes / sha256）。分发面不设字节闸——按需拉后单请求预算 = 单文件，库总量不再是约束；写面闸（REST/relay 的 MAX_SKILL_FILE_BYTES / MAX_SKILL_TOTAL_BYTES）不变。
+- `GET /api/machine/skills/{stepId}/file?dirName=&path=`（MACHINE_WIRE_EXTENSIONS 新登记位，客户端 `MachineApi.skillFile`）→ 清单内单文件原始字节（application/octet-stream，二进制诚实——旧 utf8 文本投影会损坏非文本资产）。选择面与清单端点同源（skillsSelection 重算，含 realpath/id 去重）：白名单外技能、清单外路径（未知文件 / 目录 / 符号链接 / 逃逸形）一律 404 不泄存在性。
+
+### daemon 缓存拓扑（双层内容寻址）
+
+- 缓存根 `<PACMAN_HOME>/team-skills/` 分两层：`blobs/<sha256>` 单文件内容库（一次写入、tmp+rename 原子落位、mtime LRU 上限 `TEAM_SKILLS_BLOB_MAX_ENTRIES = 4096`）+ `views/<sha256(清单确定性序列化)>` 运行时读取目录树（每技能一个 dirName/ 子目录，由 blobs hardlink 装配、跨设备回落 copy；mtime LRU 上限 `TEAM_SKILLS_CACHE_MAX_ENTRIES = 16`）。
+- 增量面（#920 验收）：只拉本地缺失或 hash 不同的文件——改一个文件只传一个文件；清单不变 = 视图命中、零请求。hardlink 使视图与 blob 生命周期解耦：blob 路径被 LRU 回收不损已装配视图，视图重建时缺失 blob 重新拉取。
+- 完整性：逐文件 sizeBytes + sha256 双校验后才落 blob，不符 = 显式报错（绝不带病物化）。
+- 写入原子性延续：视图 `.tmp-*` + rename，失败路径无半写视图；#920 前的旧形态残骸（缓存根顶层内容寻址目录）由 prune 一并回收。
+
+### 失败语义（显式报错，不许静默降级跑空）
+
+- 通道失败（server 不可达 / 4xx / 5xx / 非法清单 / 路径逃逸 / 完整性校验不符 / 文件按需拉取失败）→ 抛 `TeamSkillsError`，runner 按 failed 收尾：`done.errorMessage` 点名 `team skills distribution failed: <根因>`，零会话创建。S2 节的 fail-open 降级（含版本墙 404 形态）退役——静默降级正是 #920 要消灭的形态。
+- 空清单（200，`skills: []`）= 服务端无可分发技能的配置事实（白名单空 / server skillsDir 空），非通道故障：`team-manifest-empty` 显式行（点名 selection 语境）+ 零物化，会话以本机技能照常。
+- `[skills]` 日志族行形（替换 S2 节的 `team-invalid` / `team-fetch-failed` 两形）：`team: N skill(s), M file(s) materialized → <dir> (fetched K file(s) / B byte(s), reused R)` / `team: N skill(s) cache hit → <dir>` / `team-manifest-empty: … (selection=…) — running with local skills only` / `team-skills-failed: …` / `team-prune: failed …`。
+
 ## Further Notes
 
 ### Premortem（三大死因 + 护栏）

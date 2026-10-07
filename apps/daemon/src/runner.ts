@@ -557,23 +557,27 @@ export async function runStep(
       }`,
     );
   }
-  // 团队技能物化（XMON-112 S2，spec 14 增补）：按步拉技能包（server 按
-  // claim agent.skills 白名单交集出包；chief 步 = 信任面全量）→ 内容寻址
-  // 缓存目录。任何失败（server 不可达 / 4xx / 5xx / 非法包）= 仅本机技能 +
-  // `[skills]` 降级行，会话不阻断（spec 14 MCP 降级同律；老 server 无端点
-  // 404 同形 = 版本墙 fail-open）。
+  // 团队技能物化（#920 清单 + 按需拉；原 XMON-112 S2，spec 14 增补）：按步
+  // 拉清单 → 只传本地缺失或 hash 不同的文件 → 内容寻址缓存目录。通道失败
+  // （server 不可达 / 4xx / 5xx / 非法清单 / 完整性校验不符）= 步按 failed
+  // 收尾、根因直报——旧 fail-open「仅本机技能」降级退役（#920 本体：整包
+  // 字节闸 43 次静默失败无人察觉，远端机器技能面恒空）。空清单（server 无
+  // 可分发技能 / 白名单空）= 配置事实非故障：显式日志行 + 本机技能，会话
+  // 不阻断。
   let teamSkillsDir: string | null = null;
   try {
-    const skillsPkg = await client.skills(stepId);
-    teamSkillsDir = materializeTeamSkills({
+    const manifest = await client.skillsManifest(stepId);
+    teamSkillsDir = await materializeTeamSkills({
       cacheRoot: deps.paths.teamSkillsCacheDir,
-      pkg: skillsPkg,
+      manifest,
+      fetchFile: (dirName, path) => client.skillFile(stepId, dirName, path),
       log: (msg) => logger.skills(msg),
     });
   } catch (err) {
-    logger.skills(
-      `team-fetch-failed: ${err instanceof Error ? err.message : String(err)} — continuing with local skills only`,
-    );
+    const reason = err instanceof Error ? err.message : String(err);
+    logger.skills(`team-skills-failed: ${reason}`);
+    await failStep(deps, stepId, `team skills distribution failed: ${reason}`);
+    return;
   }
   // 团队密钥取用通道（02 §8 运行时层）：明文不经进程环境，只有真正需要密钥
   // 的步 kind 注册本地工具（records/step.ts stepTakesSecrets——规划/审核/总管

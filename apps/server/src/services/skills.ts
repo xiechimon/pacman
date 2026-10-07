@@ -149,13 +149,13 @@ export function listSkillFiles(skillDir: string): string[] {
   return out.sort((a, b) => a.localeCompare(b));
 }
 
-/** 技能目录内单文件读（文本投影）。fileName 逃逸/绝对路径/不在盘/非常规
- * 文件/符号链接出目录 = null（路由面 404，不泄露存在性）；超容量闸 = 400
- * （点名上限）。逃逸判定双道：文本 resolve 前缀闸 + realpath 解析后仍在
- * 技能目录内（文件级符号链接指向目录外时拒读——与 listSkillFiles「符号
- * 链接不入清单」同律；技能根级链接目录的信任语义在 scanLocalSkills S11，
- * 边界 = 用户亲手放进技能根的目录，不外溢到目录内文件链接）。 */
-export function readSkillFile(skillDir: string, fileName: string): string | null {
+/** 技能目录内单文件解析（双道守卫单源，readSkillFile / readSkillFileBytes
+ * 共用）：文本 resolve 前缀闸 + realpath 解析后仍在技能目录内（文件级符号
+ * 链接指向目录外时拒读——与 listSkillFiles「符号链接不入清单」同律；技能
+ * 根级链接目录的信任语义在 scanLocalSkills S11，边界 = 用户亲手放进技能根
+ * 的目录，不外溢到目录内文件链接）。fileName 逃逸/绝对路径/不在盘/非常规
+ * 文件 = null（路由面 404，不泄露存在性）；命中 = 解析后真实路径。 */
+function resolveSkillFileReal(skillDir: string, fileName: string): string | null {
   let root: string;
   try {
     root = realpathSync(resolve(skillDir)); // 根先 realpath（macOS /var → /private/var 族）
@@ -175,6 +175,15 @@ export function readSkillFile(skillDir: string, fileName: string): string | null
   }
   if (real !== root && !real.startsWith(root + sep)) return null; // 链接逃逸
   if (!st.isFile()) return null;
+  return real;
+}
+
+/** 技能目录内单文件读（文本投影，web 读面）。守卫见 resolveSkillFileReal；
+ * 超容量闸 = 400（点名上限）。 */
+export function readSkillFile(skillDir: string, fileName: string): string | null {
+  const real = resolveSkillFileReal(skillDir, fileName);
+  if (real === null) return null;
+  const st = statSync(real);
   if (st.size > MAX_SKILL_FILE_BYTES) {
     throw new HttpError(
       400,
@@ -182,6 +191,17 @@ export function readSkillFile(skillDir: string, fileName: string): string | null
     );
   }
   return readFileSync(real, 'utf8');
+}
+
+/** 技能目录内单文件原始字节读（machine-wire 分发面，#920）。守卫与
+ * readSkillFile 同源（resolveSkillFileReal），但无容量闸、无 utf8 解码：
+ * 分发是逐文件按需拉（清单带 sizeBytes/sha256，daemon 双校验），单请求
+ * 预算与库总量解耦，整包闸失去存在理由；二进制资产逐字节诚实下发
+ * （旧文本投影会把非 utf8 内容解码坏）。 */
+export function readSkillFileBytes(skillDir: string, fileName: string): Buffer | null {
+  const real = resolveSkillFileReal(skillDir, fileName);
+  if (real === null) return null;
+  return readFileSync(real);
 }
 
 /** agent.skills[] 授权勾选过滤（spec 13：校验源 = 现扫存在性；未知 id 静默

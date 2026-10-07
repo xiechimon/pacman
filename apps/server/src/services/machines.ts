@@ -6,6 +6,7 @@
 // - journal：heartbeat/tool/done/upload-urls/token（02 §5.4 词表）。
 // 载荷细形 r3 未采处 = [推断]/[设计]（04 §3 不判负口径），补采后回写 02 §11。
 
+import { createHash } from 'node:crypto';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import type {
@@ -16,7 +17,7 @@ import type {
   MachineDoneBody,
   MachineShellPrecheckBody,
   MachineShellResultBody,
-  MachineSkillsResponse,
+  MachineSkillsManifestResponse,
   MachineStreamEvent,
   MachineSyncCommand,
   MachineTokenResponse,
@@ -46,7 +47,6 @@ import {
   isChiefConversationId,
   LOCAL_TOOL_CREATE_TAG,
   LOCAL_TOOL_REMOTE_SHELL,
-  MAX_SKILL_TOTAL_BYTES,
   MCP_MIN_CLI_VERSION,
   machineRecordSchema,
   suggestSkillsForMessage,
@@ -112,10 +112,11 @@ import { SESSION_WEDGE_GRACE_MS, stepActivityAt } from './dispatch-timeouts.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { parseUnifiedDiff, projectRepoRef, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
+import type { LocalSkill } from './skills.js';
 import {
   createLocalSkill,
   listSkillFiles,
-  readSkillFile,
+  readSkillFileBytes,
   scanLocalSkills,
   updateLocalSkill,
 } from './skills.js';
@@ -1329,13 +1330,6 @@ async function executeWorkerSkillTool(
   return JSON.stringify(updateLocalSkill(opts, body.skillId, body));
 }
 
-/** GET /api/machine/skills/{stepId}（XMON-109 S1，MACHINE_WIRE_EXTENSIONS
- * 登记 [设计] 附加端点）：S2 daemon 物化消费契约——按步出技能包。chief 步
- * = 信任面全量现扫（#372 同律，不受白名单约束）；worker 步 = agentForStep
- * 解析 Agent 的 skills 白名单 ∩ 现扫。字节闸：单文件 ≤
- * MAX_SKILL_FILE_BYTES（readSkillFile 同闸，盘上字节数计）、包总量 ≤
- * MAX_SKILL_TOTAL_BYTES（utf8 字节数累计），超限 400 点名——写面同闸，
- * 超限技能/包不静默截断（调用方显式修白名单或文件）。 */
 /** GET /api/machine/attachment/{stepId}/{attachmentId} 服务层（#730）：daemon
  * 侧图片交付的下载面。三道闸——ownedStep（本机步，非本机 404）→ 附件 team
  * 归属（跨 team 404，requireAttachmentRow 单源）→ ready 状态（pending/failed
@@ -1363,39 +1357,50 @@ export function machineAttachmentDownload(
   };
 }
 
-export function machineSkillsPackage(
+/** 按步技能选择面（清单与文件下发共用单源，#920）：chief 步 = 信任面全量
+ * 现扫（#372 同律，不受白名单约束）；worker 步 = agentForStep 解析 Agent 的
+ * skills 白名单 ∩ 现扫（死引用静默脱落，filterKnownSkillIds 同律）。 */
+function skillsSelection(
+  deps: MachineDeps,
+  row: ReturnType<typeof ownedStep>,
+): { isChief: boolean; wanted: LocalSkill[] } {
+  const scanned = scanLocalSkills(deps.skillsDir);
+  if (row.kind === 'chief') return { isChief: true, wanted: scanned };
+  const buildRow = deps.db.select().from(build).where(eq(build.id, row.buildId)).get();
+  if (!buildRow) throw new NotFoundError(`build ${row.buildId}`);
+  const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+  if (!todoRow) throw new NotFoundError(`todo ${buildRow.todoId}`);
+  const agentRow = agentForStep(deps, todoRow, row.kind, row.prompt);
+  const whitelist = new Set(agentRow?.skills ?? []);
+  return { isChief: false, wanted: scanned.filter((s) => whitelist.has(s.id)) };
+}
+
+/** GET /api/machine/skills/{stepId}（XMON-109 S1 端点，#920 改「清单 +
+ * 按需拉」；MACHINE_WIRE_EXTENSIONS 登记 [设计]）：S2 daemon 物化消费契约
+ * ——按步出技能文件清单（path/sizeBytes/sha256），文件本体走
+ * machineSkillFile 按需拉。不设字节闸：旧「一次 GET 塞全量全文」的
+ * 512KB/2MB 整包闸对着真实技能库（104 技能 / 18.4MB）必超——分发通道
+ * 从未成功过（#920 根因）；按需拉后单请求预算 = 单文件，完整性由 daemon
+ * 逐文件 sha256 + sizeBytes 双校验兜底。 */
+export function machineSkillsManifest(
   deps: MachineDeps,
   machineId: string,
   stepId: string,
-): MachineSkillsResponse {
+): MachineSkillsManifestResponse {
   const row = ownedStep(deps, machineId, stepId); // 非本步凭证/未知步 = 404
-  const scanned = scanLocalSkills(deps.skillsDir);
-  let wanted = scanned;
-  if (row.kind !== 'chief') {
-    const buildRow = deps.db.select().from(build).where(eq(build.id, row.buildId)).get();
-    if (!buildRow) throw new NotFoundError(`build ${row.buildId}`);
-    const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
-    if (!todoRow) throw new NotFoundError(`todo ${buildRow.todoId}`);
-    const agentRow = agentForStep(deps, todoRow, row.kind, row.prompt);
-    const whitelist = new Set(agentRow?.skills ?? []);
-    wanted = scanned.filter((s) => whitelist.has(s.id));
-  }
-  const skills: MachineSkillsResponse['skills'] = [];
-  let total = 0;
+  const { isChief, wanted } = skillsSelection(deps, row);
+  const skills: MachineSkillsManifestResponse['skills'] = [];
   for (const skill of wanted) {
     const dir = join(deps.skillsDir, skill.dirName);
-    const files: { path: string; content: string }[] = [];
+    const files: MachineSkillsManifestResponse['skills'][number]['files'] = [];
     for (const path of listSkillFiles(dir)) {
-      const content = readSkillFile(dir, path); // 链接逃逸/缺位 = null（防御位跳过）
-      if (content === null) continue;
-      total += Buffer.byteLength(content, 'utf8');
-      if (total > MAX_SKILL_TOTAL_BYTES) {
-        throw new HttpError(
-          400,
-          `skill files too large: total ${total} bytes (limit ${MAX_SKILL_TOTAL_BYTES})`,
-        );
-      }
-      files.push({ path, content });
+      const bytes = readSkillFileBytes(dir, path); // 链接逃逸/缺位 = null（防御位跳过）
+      if (bytes === null) continue;
+      files.push({
+        path,
+        sizeBytes: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      });
     }
     skills.push({
       id: skill.id,
@@ -1405,7 +1410,32 @@ export function machineSkillsPackage(
       files,
     });
   }
-  return { skills };
+  return { selection: isChief ? 'all' : 'whitelist', skills };
+}
+
+/** GET /api/machine/skills/{stepId}/file?dirName=&path=（#920 按需拉取面，
+ * MACHINE_WIRE_EXTENSIONS 登记 [设计]）：下发清单内单文件原始字节。选择面
+ * 与清单端点同源（skillsSelection 重算——含 realpath/id 去重与白名单），
+ * 文件必须在该技能的 listSkillFiles 清单内：白名单外技能、清单外路径
+ * （未知文件/目录/符号链接/`..` 逃逸形）一律 404 不泄存在性，readSkillFile-
+ * Bytes 守卫再兜一道（纵深防御）。每请求全扫的成本（104 技能库 ~10ms 量级）
+ * 对分发可接受：daemon 内容寻址缓存保证每个内容版本每文件只拉一次。 */
+export function machineSkillFile(
+  deps: MachineDeps,
+  machineId: string,
+  stepId: string,
+  dirName: string,
+  filePath: string,
+): Buffer {
+  const row = ownedStep(deps, machineId, stepId); // 非本步凭证/未知步 = 404
+  const { wanted } = skillsSelection(deps, row);
+  const skill = wanted.find((s) => s.dirName === dirName);
+  if (!skill) throw new NotFoundError(`skill ${dirName}`);
+  const dir = join(deps.skillsDir, skill.dirName);
+  if (!listSkillFiles(dir).includes(filePath)) throw new NotFoundError(`file ${filePath}`);
+  const bytes = readSkillFileBytes(dir, filePath);
+  if (bytes === null) throw new NotFoundError(`file ${filePath}`);
+  return bytes;
 }
 
 /** set_task_meta（spec 15 #394 + #446/ADR 0005 分叉律 + #452 写向）：校验按

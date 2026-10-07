@@ -26,13 +26,15 @@ export const SKILL_ENTRY_FILE = 'SKILL.md';
  * 缺省路径单源在此。 */
 export const SKILLS_DIR_DEFAULT = '~/.agents/skills';
 
-/** 单文件字节上限（写面与读面共用一闸：REST/relay 写入按 content 字节计，
- * 现读按盘上 st.size 计——同一常量单源，XMON-109 前该值是 server 私有
- * 常量，写路径进 shared 后上提）。 */
+/** 单文件字节上限（写面与 web 文本读面共用一闸：REST/relay 写入按 content
+ * 字节计，web 现读按盘上 st.size 计——同一常量单源，XMON-109 前该值是
+ * server 私有常量，写路径进 shared 后上提。machine-wire 分发面自 #920 起
+ * 不受本闸约束：清单 + 按需拉，单文件单请求 + sha256 逐文件校验）。 */
 export const MAX_SKILL_FILE_BYTES = 512_000;
 
-/** 单技能（或 machine-wire 单包）总字节上限（XMON-109 写路径新设：批量
- * 文件写入/下发前总量闸；包面 = agent.skills 白名单交集的技能集合总量）。 */
+/** 单技能总字节上限（XMON-109 写路径新设：批量文件写入前总量闸。
+ * machine-wire 下发面自 #920 起不再设总量闸——旧「一次 GET 塞全量全文」
+ * 的整包预算约束随清单 + 按需拉解体）。 */
 export const MAX_SKILL_TOTAL_BYTES = 2_000_000;
 
 export const skillRecordSchema = z.object({

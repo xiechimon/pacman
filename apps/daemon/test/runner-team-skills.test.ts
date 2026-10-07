@@ -1,15 +1,21 @@
-// 团队技能物化的 runner 接线（XMON-112 S2，spec 14 增补）：步启动拉
-// GET /api/machine/skills/{stepId} → 物化缓存目录 → SessionOpts.teamSkillsDir
-// 透传 backend。失败方式清单先于实现固化（票面纪律）：
+// 团队技能物化的 runner 接线（#920 清单 + 按需拉；原 XMON-112 S2，spec 14
+// 增补）：步启动拉 GET /api/machine/skills/{stepId} 清单 → 按清单拉缺失
+// 文件 → 物化缓存目录 → SessionOpts.teamSkillsDir 透传 backend。失败方式
+// 清单先于实现固化（票面纪律；#920 口径 = 显式报错，不许静默降级跑空）：
 //   R1 拉取成功 → sessionOpts.teamSkillsDir = 缓存目录（SKILL.md 内容可读）
-//      + `[skills] team: N skill(s) materialized` 行 + done success
-//   R2 拉取抛错（server 不可达 / 4xx / 5xx 同形）→ 无 teamSkillsDir、
-//      `[skills] team-fetch-failed: … continuing with local skills only` 行、
-//      会话照常创建、done success（spec 14 MCP 降级同律，会话不阻断）
-//   R3 空包 {skills:[]}（白名单空）→ 无 teamSkillsDir，零物化目录创建
-//   R4 非法包（dirName 逃逸）→ 无 teamSkillsDir + `team-invalid` 行、步照常
-//   R5 老 server 无端点（404）→ 与 R2 同形降级（版本墙 fail-open）
+//      + `[skills] team: … materialized` 行 + done success
+//   R2 清单拉取抛错（server 不可达 / 4xx / 5xx 同形）→ done failed、
+//      errorMessage 点名 team skills 与根因、零会话创建、
+//      `[skills] team-skills-failed` 行——旧 fail-open 降级已退役
+//   R3 空清单（whitelist = 白名单空；all = server 信任面空）→ 配置事实非
+//      通道故障：无 teamSkillsDir、缓存根零创建、`team-manifest-empty`
+//      显式行（点名 selection）、会话照常、done success
+//   R4 非法清单（dirName 逃逸）→ done failed 显式报错、零会话创建
+//   R5 文件按需拉取失败（materialize 中途）→ done failed 显式报错
+//   R6 老 server 404（无端点）→ 与 R2 同形 failed（版本墙 fail-open 退役，
+//      #920：静默降级正是本票要消灭的形态）
 
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,7 +24,7 @@ import type {
   AgentSessionHandle,
   ClaimedStep,
   MachineDoneBody,
-  MachineSkillsResponse,
+  MachineSkillsManifestResponse,
   MachineStreamEvent,
   SessionOpts,
   ToolCallRecord,
@@ -52,7 +58,17 @@ function captureLogger(): { logger: DaemonLogger; lines: string[] } {
   return { logger, lines };
 }
 
-const DEMO_PKG: MachineSkillsResponse = {
+const DEMO_CONTENTS: Record<string, string> = {
+  'deploy-demo/SKILL.md':
+    '---\nname: deploy-demo\ndescription: 演示部署技能。\n---\n\n部署正文。\n',
+};
+
+function sha256(s: string): string {
+  return createHash('sha256').update(Buffer.from(s, 'utf8')).digest('hex');
+}
+
+const DEMO_MANIFEST: MachineSkillsManifestResponse = {
+  selection: 'whitelist',
   skills: [
     {
       id: 'deploy-demo',
@@ -62,7 +78,8 @@ const DEMO_PKG: MachineSkillsResponse = {
       files: [
         {
           path: 'SKILL.md',
-          content: '---\nname: deploy-demo\ndescription: 演示部署技能。\n---\n\n部署正文。\n',
+          sizeBytes: Buffer.byteLength(DEMO_CONTENTS['deploy-demo/SKILL.md']!, 'utf8'),
+          sha256: sha256(DEMO_CONTENTS['deploy-demo/SKILL.md']!),
         },
       ],
     },
@@ -89,15 +106,17 @@ function claimedBuildStep(): ClaimedStep {
   };
 }
 
+type SkillsOutcome =
+  | { kind: 'manifest'; manifest: MachineSkillsManifestResponse }
+  | { kind: 'manifestError'; error: Error }
+  | { kind: 'fileError'; error: Error };
+
 class FakeClient implements MachineApi {
   doneBodies: { stepId: string; body: MachineDoneBody }[] = [];
-  skillsCalls: string[] = [];
+  manifestCalls: string[] = [];
+  fileCalls: string[] = [];
 
-  constructor(
-    private readonly skillsOutcome:
-      | { kind: 'pkg'; pkg: MachineSkillsResponse }
-      | { kind: 'error'; error: Error },
-  ) {}
+  constructor(private readonly outcome: SkillsOutcome) {}
 
   async enroll(): Promise<never> {
     throw new Error('unused');
@@ -132,10 +151,18 @@ class FakeClient implements MachineApi {
       git: null,
     };
   }
-  async skills(stepId: string) {
-    this.skillsCalls.push(stepId);
-    if (this.skillsOutcome.kind === 'error') throw this.skillsOutcome.error;
-    return this.skillsOutcome.pkg;
+  async skillsManifest(stepId: string) {
+    this.manifestCalls.push(stepId);
+    if (this.outcome.kind === 'manifestError') throw this.outcome.error;
+    if (this.outcome.kind === 'fileError') return DEMO_MANIFEST;
+    return this.outcome.manifest;
+  }
+  async skillFile(stepId: string, dirName: string, path: string): Promise<Buffer> {
+    this.fileCalls.push(`${stepId}:${dirName}/${path}`);
+    if (this.outcome.kind === 'fileError') throw this.outcome.error;
+    const content = DEMO_CONTENTS[`${dirName}/${path}`];
+    if (content === undefined) throw new MachineApiError(404, `no such file ${path}`);
+    return Buffer.from(content, 'utf8');
   }
   async uploadUrls(_stepId: string, files: { name: string }[]) {
     return {
@@ -197,13 +224,11 @@ function recordingBackend(): { backend: AgentBackend; sessions: SessionOpts[] } 
   return { backend, sessions };
 }
 
-async function setup(
-  skillsOutcome: { kind: 'pkg'; pkg: MachineSkillsResponse } | { kind: 'error'; error: Error },
-) {
+async function setup(outcome: SkillsOutcome) {
   const home = mkdtempSync(join(tmpdir(), 'pacman-runner-team-'));
   const paths = statePaths(home, join(home, 'workspaces'));
   const { logger, lines } = captureLogger();
-  const client = new FakeClient(skillsOutcome);
+  const client = new FakeClient(outcome);
   const journal = new StepJournal(paths.outboxDir);
   const { backend, sessions } = recordingBackend();
   await runStep(
@@ -222,63 +247,96 @@ async function setup(
   return { client, lines, sessions, paths };
 }
 
-describe('runner 团队技能接线（XMON-112 S2）', () => {
+describe('runner 团队技能接线（#920 清单 + 按需拉）', () => {
   test('R1 拉取成功 → teamSkillsDir 透传会话 + 内容落盘可读 + materialized 行 + done success', async () => {
-    const { client, lines, sessions, paths } = await setup({ kind: 'pkg', pkg: DEMO_PKG });
-    expect(client.skillsCalls).toEqual(['s1']);
+    const { client, lines, sessions, paths } = await setup({
+      kind: 'manifest',
+      manifest: DEMO_MANIFEST,
+    });
+    expect(client.manifestCalls).toEqual(['s1']);
+    expect(client.fileCalls).toEqual(['s1:deploy-demo/SKILL.md']);
     const opts = sessions[0]!;
     expect(opts.teamSkillsDir).toBeDefined();
-    expect(opts.teamSkillsDir!.startsWith(paths.teamSkillsCacheDir)).toBe(true);
+    expect(opts.teamSkillsDir!.startsWith(join(paths.teamSkillsCacheDir, 'views'))).toBe(true);
     expect(readFileSync(join(opts.teamSkillsDir!, 'deploy-demo', 'SKILL.md'), 'utf8')).toContain(
       '部署正文。',
     );
-    expect(lines.some((l) => l.startsWith('[skills] team: 1 skill(s) materialized'))).toBe(true);
+    expect(
+      lines.some((l) => l.startsWith('[skills] team: 1 skill(s), 1 file(s) materialized')),
+    ).toBe(true);
     expect(client.doneBodies[0]!.body.status).toBe('success');
   });
 
-  test('R2 拉取抛错 → 无 teamSkillsDir + team-fetch-failed 行 + 会话照常 + done success', async () => {
+  test('R2 清单拉取抛错 → done failed 点名根因 + 零会话创建 + team-skills-failed 行', async () => {
     const { lines, sessions, client } = await setup({
-      kind: 'error',
+      kind: 'manifestError',
       error: new MachineApiError(500, 'boom'),
     });
-    expect(sessions[0]!.teamSkillsDir).toBeUndefined();
-    const failed = lines.find((l) => l.startsWith('[skills] team-fetch-failed:'));
-    expect(failed).toBeDefined();
-    expect(failed).toContain('continuing with local skills only');
-    expect(sessions.length).toBe(1);
-    expect(client.doneBodies[0]!.body.status).toBe('success');
+    expect(sessions.length).toBe(0);
+    expect(client.doneBodies[0]!.body.status).toBe('failed');
+    expect(client.doneBodies[0]!.body.errorMessage).toContain('team skills distribution failed');
+    expect(client.doneBodies[0]!.body.errorMessage).toContain('500');
+    expect(lines.some((l) => l.startsWith('[skills] team-skills-failed:'))).toBe(true);
   });
 
-  test('R3 空包（白名单空）→ 无 teamSkillsDir、缓存根零创建', async () => {
-    const { lines, sessions, paths } = await setup({ kind: 'pkg', pkg: { skills: [] } });
-    expect(sessions[0]!.teamSkillsDir).toBeUndefined();
-    expect(existsSync(paths.teamSkillsCacheDir)).toBe(false);
-    expect(lines.some((l) => l.startsWith('[skills] team:'))).toBe(false);
-  });
+  test.each(['whitelist', 'all'] as const)(
+    'R3 空清单 selection=%s → 无 teamSkillsDir、缓存根零创建、team-manifest-empty 显式行、会话照常',
+    async (selection) => {
+      const { lines, sessions, paths, client } = await setup({
+        kind: 'manifest',
+        manifest: { selection, skills: [] },
+      });
+      expect(sessions[0]!.teamSkillsDir).toBeUndefined();
+      expect(existsSync(paths.teamSkillsCacheDir)).toBe(false);
+      expect(client.fileCalls).toEqual([]);
+      const empty = lines.find((l) => l.startsWith('[skills] team-manifest-empty:'));
+      expect(empty).toBeDefined();
+      expect(empty).toContain(`selection=${selection}`);
+      expect(client.doneBodies[0]!.body.status).toBe('success');
+    },
+  );
 
-  test('R4 非法包（dirName 逃逸）→ 无 teamSkillsDir + team-invalid 行 + 步照常', async () => {
-    const evil: MachineSkillsResponse = {
-      skills: [{ ...DEMO_PKG.skills[0]!, dirName: '../evil' }],
+  test('R4 非法清单（dirName 逃逸）→ done failed 显式报错 + 零会话创建', async () => {
+    const evil: MachineSkillsManifestResponse = {
+      selection: 'whitelist',
+      skills: [{ ...DEMO_MANIFEST.skills[0]!, dirName: '../evil' }],
     };
-    const { lines, sessions, client } = await setup({ kind: 'pkg', pkg: evil });
-    expect(sessions[0]!.teamSkillsDir).toBeUndefined();
-    expect(lines.some((l) => l.startsWith('[skills] team-invalid:'))).toBe(true);
-    expect(client.doneBodies[0]!.body.status).toBe('success');
+    const { lines, sessions, client } = await setup({ kind: 'manifest', manifest: evil });
+    expect(sessions.length).toBe(0);
+    expect(client.doneBodies[0]!.body.status).toBe('failed');
+    expect(client.doneBodies[0]!.body.errorMessage).toContain('unsafe skill manifest');
+    expect(lines.some((l) => l.startsWith('[skills] team-skills-failed:'))).toBe(true);
   });
 
-  test('R5 老 server 404（无端点）→ 与 R2 同形降级', async () => {
+  test('R5 文件按需拉取失败 → done failed 点名文件与根因 + 零会话创建', async () => {
+    const { sessions, client } = await setup({
+      kind: 'fileError',
+      error: new MachineApiError(503, 'file upstream gone'),
+    });
+    expect(sessions.length).toBe(0);
+    expect(client.doneBodies[0]!.body.status).toBe('failed');
+    expect(client.doneBodies[0]!.body.errorMessage).toContain('team skills distribution failed');
+    expect(client.doneBodies[0]!.body.errorMessage).toContain('503');
+  });
+
+  test('R6 老 server 404（无端点）→ 与 R2 同形 failed（fail-open 退役）', async () => {
     const { lines, sessions, client } = await setup({
-      kind: 'error',
+      kind: 'manifestError',
       error: new MachineApiError(404, 'not found'),
     });
-    expect(sessions[0]!.teamSkillsDir).toBeUndefined();
-    expect(lines.some((l) => l.startsWith('[skills] team-fetch-failed:'))).toBe(true);
-    expect(client.doneBodies[0]!.body.status).toBe('success');
+    expect(sessions.length).toBe(0);
+    expect(lines.some((l) => l.startsWith('[skills] team-skills-failed:'))).toBe(true);
+    expect(client.doneBodies[0]!.body.status).toBe('failed');
   });
 
-  test('R2 补充：物化成功的缓存目录只含 hash 条目（无 .tmp 残留）', async () => {
-    const { sessions, paths } = await setup({ kind: 'pkg', pkg: DEMO_PKG });
-    expect(readdirSync(paths.teamSkillsCacheDir).filter((e) => e.includes('.tmp-'))).toEqual([]);
+  test('R1 补充：物化成功的缓存目录无 .tmp 残留（views/ blobs/ 双面）', async () => {
+    const { sessions, paths } = await setup({ kind: 'manifest', manifest: DEMO_MANIFEST });
+    expect(
+      readdirSync(join(paths.teamSkillsCacheDir, 'views')).filter((e) => e.includes('.tmp-')),
+    ).toEqual([]);
+    expect(
+      readdirSync(join(paths.teamSkillsCacheDir, 'blobs')).filter((e) => e.includes('.tmp-')),
+    ).toEqual([]);
     expect(sessions[0]!.teamSkillsDir).toBeDefined();
   });
 });

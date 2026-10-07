@@ -27,11 +27,15 @@
 //   公开 wire 构造不出来，与记忆三件套 409 同处境，不单测。）
 // K chief relay：K1 create_skill 免开关可用 + 审计行 / K2 update_skill 同律 /
 //   K3 未知 skillId → 404。
-// M machine-wire：M1 白名单技能包（agent.skills ∩ 现扫；含 dirName 与文件
-//   内容）/ M2 白名单外技能不返回 / M3 非本步凭证（他机 token）→ 404 /
-//   M4 未知 stepId → 404 / M5 超限拒绝（单文件超 512k / 包总量超上限 → 400）/
-//   M6 chief 步 = 全量目录（信任面）/ M7 白名单空集 = 空包不炸。
+// M machine-wire（#920 清单 + 按需拉）：M1 白名单技能清单（agent.skills ∩
+//   现扫；每文件 path/sizeBytes/sha256，selection=whitelist）/ M2 白名单外
+//   技能不列 / M3 非本步凭证（他机 token）→ 404 / M4 未知 stepId → 404 /
+//   M5 超限文件不再让整包失败（分发面无字节闸：真实 size 入清单、字节完整
+//   下发）/ M6 chief 步 = 全量信任面（selection=all）/ M7 白名单空集 = 空
+//   清单不炸 / M8 file 端点原始字节下发（含二进制诚实）/ M9 file 端点清单
+//   外·白名单外·逃逸形 404 不泄存在性 / M10 file 端点归属面 404。
 
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -49,7 +53,7 @@ import {
   type ClaimedStep,
   MAX_SKILL_FILE_BYTES,
   MAX_SKILL_TOTAL_BYTES,
-  machineSkillsResponseSchema,
+  machineSkillsManifestResponseSchema,
   skillRecordSchema,
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
@@ -732,9 +736,10 @@ describe('chief relay 技能写词（免开关，actor = 绑定 agent）', () =>
   });
 });
 
-// —— M machine-wire（GET /api/machine/skills/{stepId}：S2 daemon 消费契约）———
+// —— M machine-wire（#920 清单 + 按需拉：GET /api/machine/skills/{stepId} +
+// 同前缀 /file；S2 daemon 消费契约）———————————————————————————————————————
 
-describe('machine-wire 技能包（GET /api/machine/skills/{stepId}）', () => {
+describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{stepId}[/file]）', () => {
   async function claimWorld(opts: { skills?: string[]; root?: string } = {}) {
     const skillsDir = opts.root ?? makeRoot();
     if (opts.root === undefined) {
@@ -787,23 +792,41 @@ describe('machine-wire 技能包（GET /api/machine/skills/{stepId}）', () => {
   const pkg = (app: Hono, cred: string, stepId: string) =>
     call(app, 'GET', `/api/machine/skills/${stepId}`, { cred });
 
-  test('M1/M2：白名单交集出包（含 dirName + 文件内容）；白名单外不返回', async () => {
-    const { s, token, step } = await claimWorld({ skills: ['alpha', 'ghost'] });
+  const fileGet = (app: Hono, cred: string, stepId: string, dirName: string, path: string) =>
+    call(
+      app,
+      'GET',
+      `/api/machine/skills/${stepId}/file?${new URLSearchParams({ dirName, path }).toString()}`,
+      { cred },
+    );
+
+  function sha256Hex(bytes: Buffer): string {
+    return createHash('sha256').update(bytes).digest('hex');
+  }
+
+  test('M1/M2：白名单交集出清单（dirName + 逐文件 path/sizeBytes/sha256）；白名单外不列', async () => {
+    const { s, token, step, skillsDir } = await claimWorld({ skills: ['alpha', 'ghost'] });
     try {
       const res = await pkg(s.app, token, step.step.id);
       expect(res.status).toBe(200);
-      const body = machineSkillsResponseSchema.parse(await res.json());
+      const body = machineSkillsManifestResponseSchema.parse(await res.json());
+      expect(body.selection).toBe('whitelist');
       expect(body.skills).toHaveLength(1);
       const alpha = body.skills[0]!;
       expect(alpha).toMatchObject({ id: 'alpha', name: 'alpha', dirName: 'alpha' });
       expect(alpha.files.map((f) => f.path).sort()).toEqual(['SKILL.md', 'helper.md']);
-      expect(alpha.files.find((f) => f.path === 'helper.md')?.content).toBe('alpha 助手文件\n');
+      // 清单三元组 = 盘上真值（sizeBytes/sha256 逐文件对拍）。
+      for (const f of alpha.files) {
+        const onDisk = readFileSync(join(skillsDir, 'alpha', f.path));
+        expect(f.sizeBytes).toBe(onDisk.byteLength);
+        expect(f.sha256).toBe(sha256Hex(onDisk));
+      }
     } finally {
       s.dispose();
     }
   });
 
-  test('M3/M4：非本步凭证（他机 token）→ 404；未知 stepId → 404', async () => {
+  test('M3/M4/M10：非本步凭证（他机 token）→ 404；未知 stepId → 404（清单与 file 双面）', async () => {
     const { s, token, step } = await claimWorld({ skills: ['alpha'] });
     try {
       // 同 apiKey 重注册会复用 machineId（r3 §1.2），他机须另发一把 key。
@@ -817,27 +840,47 @@ describe('machine-wire 技能包（GET /api/machine/skills/{stepId}）', () => {
       expect(notYours.status).toBe(404);
       const unknown = await pkg(s.app, token, 'no-such-step');
       expect(unknown.status).toBe(404);
+      // file 端点同闸（ownedStep 单源）。
+      const fileNotYours = await fileGet(s.app, token2, step.step.id, 'alpha', 'SKILL.md');
+      expect(fileNotYours.status).toBe(404);
+      const fileUnknown = await fileGet(s.app, token, 'no-such-step', 'alpha', 'SKILL.md');
+      expect(fileUnknown.status).toBe(404);
     } finally {
       s.dispose();
     }
   });
 
-  test('M5：超限拒绝——单文件超 512k → 400 点名；包总量超上限 → 400 点名', async () => {
-    // fat：白名单内技能带一个超单文件上限的文件
+  test('M5：超限文件不再让整包失败——超单文件闸的资产真实 size 入清单、字节完整下发；总量超旧包闸照常出清单', async () => {
+    // fat：白名单内技能带一个超旧单文件上限（512,000）的文件——#920 根因
+    // 形态（archify/assets/template.html 727,976 字节同形）。
     const fatRoot = makeRoot();
     mkdirSync(join(fatRoot, 'fat'));
     writeFileSync(join(fatRoot, 'fat', 'SKILL.md'), skillMd('fat', '大'));
-    writeFileSync(join(fatRoot, 'fat', 'big.txt'), 'x'.repeat(MAX_SKILL_FILE_BYTES + 1));
+    const big = Buffer.from('x'.repeat(MAX_SKILL_FILE_BYTES + 1), 'utf8');
+    writeFileSync(join(fatRoot, 'fat', 'big.txt'), big);
     const fatWorld = await claimWorld({ skills: ['fat'], root: fatRoot });
     try {
       const res = await pkg(fatWorld.s.app, fatWorld.token, fatWorld.step.step.id);
-      expect(res.status).toBe(400);
-      expect(await errorText(res)).toContain('big.txt');
+      expect(res.status).toBe(200);
+      const body = machineSkillsManifestResponseSchema.parse(await res.json());
+      const bigEntry = body.skills[0]!.files.find((f) => f.path === 'big.txt');
+      expect(bigEntry).toBeDefined();
+      expect(bigEntry!.sizeBytes).toBe(big.byteLength);
+      expect(bigEntry!.sha256).toBe(sha256Hex(big));
+      const fileRes = await fileGet(
+        fatWorld.s.app,
+        fatWorld.token,
+        fatWorld.step.step.id,
+        'fat',
+        'big.txt',
+      );
+      expect(fileRes.status).toBe(200);
+      expect(Buffer.from(await fileRes.arrayBuffer())).toEqual(big);
     } finally {
       fatWorld.s.dispose();
     }
 
-    // heavy：每文件均在单文件限内、总量超包上限
+    // heavy：总量超旧整包上限（2,000,000）——分发面不再设总量闸，照常出清单。
     const heavyRoot = makeRoot();
     mkdirSync(join(heavyRoot, 'heavy'));
     writeFileSync(join(heavyRoot, 'heavy', 'SKILL.md'), skillMd('heavy', '重'));
@@ -846,9 +889,15 @@ describe('machine-wire 技能包（GET /api/machine/skills/{stepId}）', () => {
     }
     const heavyWorld = await claimWorld({ skills: ['heavy'], root: heavyRoot });
     try {
+      const totalOnDisk = 5 * 450_000;
+      expect(totalOnDisk).toBeGreaterThan(MAX_SKILL_TOTAL_BYTES);
       const res = await pkg(heavyWorld.s.app, heavyWorld.token, heavyWorld.step.step.id);
-      expect(res.status).toBe(400);
-      expect(await errorText(res)).toContain('total');
+      expect(res.status).toBe(200);
+      const body = machineSkillsManifestResponseSchema.parse(await res.json());
+      expect(body.skills[0]!.files).toHaveLength(6); // SKILL.md + p0..p4
+      expect(body.skills[0]!.files.reduce((n, f) => n + f.sizeBytes, 0)).toBeGreaterThan(
+        MAX_SKILL_TOTAL_BYTES,
+      );
     } finally {
       heavyWorld.s.dispose();
     }
@@ -895,19 +944,84 @@ describe('machine-wire 技能包（GET /api/machine/skills/{stepId}）', () => {
       expect(step.step.kind).toBe('chief');
       const res = await pkg(s.app, token, step.step.id);
       expect(res.status).toBe(200);
-      const body = machineSkillsResponseSchema.parse(await res.json());
+      const body = machineSkillsManifestResponseSchema.parse(await res.json());
+      expect(body.selection).toBe('all');
       expect(body.skills.map((sk) => sk.id)).toEqual(['alpha', 'beta']);
     } finally {
       s.dispose();
     }
   });
 
-  test('M7：白名单空集 = 空包不炸（{skills: []}）', async () => {
+  test('M7：白名单空集 = 空清单不炸（selection=whitelist + skills: []）', async () => {
     const { s, token, step } = await claimWorld({ skills: [] });
     try {
       const res = await pkg(s.app, token, step.step.id);
       expect(res.status).toBe(200);
-      expect(((await res.json()) as { skills: unknown[] }).skills).toEqual([]);
+      const body = machineSkillsManifestResponseSchema.parse(await res.json());
+      expect(body).toEqual({ selection: 'whitelist', skills: [] });
+    } finally {
+      s.dispose();
+    }
+  });
+
+  test('M8：file 端点原始字节下发——文本逐字节、二进制诚实（非 utf8 不损坏）', async () => {
+    const root = makeRoot();
+    mkdirSync(join(root, 'bin'));
+    writeFileSync(join(root, 'bin', 'SKILL.md'), skillMd('bin', '二进制'));
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff, 0xfe]);
+    mkdirSync(join(root, 'bin', 'assets'));
+    writeFileSync(join(root, 'bin', 'assets', 'logo.png'), png);
+    const { s, token, step } = await claimWorld({ skills: ['bin'], root });
+    try {
+      const res = await fileGet(s.app, token, step.step.id, 'bin', 'assets/logo.png');
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('application/octet-stream');
+      expect(Buffer.from(await res.arrayBuffer())).toEqual(png);
+      // 清单侧同真值：sizeBytes/sha256 按盘上原始字节计。
+      const manifestRes = await pkg(s.app, token, step.step.id);
+      const body = machineSkillsManifestResponseSchema.parse(await manifestRes.json());
+      const entry = body.skills[0]!.files.find((f) => f.path === 'assets/logo.png');
+      expect(entry).toEqual({
+        path: 'assets/logo.png',
+        sizeBytes: png.byteLength,
+        sha256: sha256Hex(png),
+      });
+    } finally {
+      s.dispose();
+    }
+  });
+
+  test('M9：file 端点 404 面——白名单外技能 / 清单外路径（未知文件、目录、符号链接）/ 逃逸形，一律不泄存在性', async () => {
+    const root = makeRoot();
+    for (const name of ['alpha', 'beta']) {
+      mkdirSync(join(root, name));
+      writeFileSync(join(root, name, 'SKILL.md'), skillMd(name, `${name} 技能`));
+    }
+    mkdirSync(join(root, 'alpha', 'refs'));
+    writeFileSync(join(root, 'alpha', 'refs', 'inner.md'), 'inner\n');
+    writeFileSync(join(root, 'outside-secret.txt'), 'server 侧技能根外的秘密\n');
+    symlinkSync(join(root, 'outside-secret.txt'), join(root, 'alpha', 'leak.txt'));
+    const { s, token, step } = await claimWorld({ skills: ['alpha'], root });
+    const stepId = step.step.id;
+    try {
+      const cases: [string, string][] = [
+        ['beta', 'SKILL.md'], // 白名单外技能
+        ['alpha', 'no-such.md'], // 清单外未知文件
+        ['alpha', 'refs'], // 目录不是文件
+        ['alpha', 'refs/inner.md/../SKILL.md'], // 穿越形（规范化后也不受理）
+        ['alpha', '../beta/SKILL.md'], // 逃逸技能目录
+        ['alpha', '/etc/hosts'], // 绝对路径
+        ['../alpha', 'SKILL.md'], // dirName 逃逸
+        ['alpha', 'leak.txt'], // 符号链接不入清单（listSkillFiles 语义）
+      ];
+      for (const [dirName, path] of cases) {
+        const res = await fileGet(s.app, token, stepId, dirName, path);
+        expect(res.status, `${dirName}/${path}`).toBe(404);
+      }
+      // 清单内正路照常 200（对照面）。
+      const ok = await fileGet(s.app, token, stepId, 'alpha', 'refs/inner.md');
+      expect(ok.status).toBe(200);
+      expect(Buffer.from(await ok.arrayBuffer()).toString('utf8')).toBe('inner\n');
     } finally {
       s.dispose();
     }

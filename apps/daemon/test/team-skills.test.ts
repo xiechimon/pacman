@@ -1,47 +1,113 @@
-// 团队技能物化（XMON-112 S2，spec 14）：GET /api/machine/skills/{stepId}
-// 响应包 → 本机内容寻址缓存目录。失败方式清单先于实现固化（票面纪律）：
-//   M1 正常包 → 返回缓存目录；每技能 dirName 子目录 + 文件落盘、内容逐字节
-//      （含嵌套相对路径）；`team: N skill(s) materialized` 日志行
-//   M2 空包 {skills:[]} → null，cacheRoot 下不创建任何目录（零回归判据的
-//      物化侧：白名单空 = 无团队目录 = catalog 走纯本机路径）
-//   M3 同包重物化（跨步复用）→ 返回同一目录且不重写（文件 mtime 探针不变）
-//      + `cache hit` 日志行
-//   M4 内容变化 → 新 hash 目录，旧目录并存（由 pruning 管生命周期）
-//   M5 dirName 不安全（../evil、绝对路径、含分隔符、. / ..）→ 整包拒绝：
-//      null + `team-invalid` 日志行，cacheRoot 内外零写入
-//   M6 file path 不安全（../escape.txt、绝对路径、空段）→ 同 M5 拒绝
-//   M7 原子写：成功后 cacheRoot 下无 `.tmp-` 残留目录
-//   M8 pruning：条目超过 maxEntries → 只留最新（mtime LRU），最旧被删
-//   M9 复用触摸 mtime：cache hit 目录在 pruning 排序中视为最新使用
+// 团队技能物化（#920 清单 + 按需拉；原 XMON-112 S2，spec 14）：清单 +
+// fetchFile 按需拉 → blobs 内容库 + views 装配目录。失败方式清单先于实现
+// 固化（票面纪律）：
+//   M1 正常清单 → 返回视图目录；每技能 dirName 子目录 + 文件逐字节落盘
+//      （含嵌套相对路径）；`team: N skill(s), M file(s) materialized` 行
+//   M2 空清单（whitelist / all 两形）→ null + `team-manifest-empty` 显式行
+//      （点名 selection 语境），cacheRoot 零创建——配置事实不阻断、不静默
+//   M3 同清单重物化（跨步复用）→ 同一目录、零 fetch（fetcher 计数不变、
+//      文件 mtime 探针不变）+ `cache hit` 行
+//   M4 内容变化 → 新视图目录，旧目录并存；增量面（#920 验收）：只拉变了
+//      的文件（fetch 计数 = 变化数），未变文件命中 blob（reused 计数）
+//   M5 dirName 不安全（../evil、绝对路径、含分隔符、. / ..）→ 整清单拒绝：
+//      抛 TeamSkillsError，零写入
+//   M6 file path 不安全（../escape.txt、绝对路径、空段）→ 同 M5 抛错
+//   M7 原子写：成功后 views/ blobs/ 无 `.tmp-` 残留；失败路径无半写视图
+//   M8 views pruning：条目超 maxEntries → 只留最新（mtime LRU）
+//   M9 默认上限为常量值；cache hit 触摸视图目录 mtime（LRU 视为最新）
+//   M10 sha256 不符 → 抛 TeamSkillsError 点名文件，视图不落盘
+//   M11 sizeBytes 不符 → 抛 TeamSkillsError 点名文件
+//   M12 fetchFile 抛错（网络/4xx 同形）→ TeamSkillsError 上抛（根因在
+//       message 内），视图不落盘
+//   M13 二进制内容逐字节落盘（非 utf8 不损坏——旧文本投影面的修复位）
+//   M14 blob 缺失（LRU 回收/手工删）+ 视图缺失 → 只重拉缺失文件
+//   M15 旧形态残骸（cacheRoot 顶层 #920 前内容寻址目录）被 prune 回收
+//   M16 blobs pruning：条目超 maxBlobEntries → 只留最新
 
-import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, utimesSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { MachineSkillsResponse } from '@pacman/shared';
+import type { MachineSkillsManifestResponse } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
-import { materializeTeamSkills, TEAM_SKILLS_CACHE_MAX_ENTRIES } from '../src/team-skills.js';
+import {
+  materializeTeamSkills,
+  TEAM_SKILLS_BLOB_MAX_ENTRIES,
+  TEAM_SKILLS_CACHE_MAX_ENTRIES,
+  TeamSkillsError,
+} from '../src/team-skills.js';
 
 function cacheRoot(tag: string): string {
   return join(mkdtempSync(join(tmpdir(), `pacman-team-skills-${tag}-`)), 'team-skills');
 }
 
-function skillPkg(skills: MachineSkillsResponse['skills']): MachineSkillsResponse {
-  return { skills };
+function sha256(bytes: Buffer): string {
+  return createHash('sha256').update(bytes).digest('hex');
 }
 
-function demoSkill(marker: string): MachineSkillsResponse['skills'][number] {
+function fileEntry(
+  path: string,
+  content: string | Buffer,
+): MachineSkillsManifestResponse['skills'][number]['files'][number] {
+  const bytes = typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
+  return { path, sizeBytes: bytes.byteLength, sha256: sha256(bytes) };
+}
+
+function manifest(
+  skills: MachineSkillsManifestResponse['skills'],
+  selection: MachineSkillsManifestResponse['selection'] = 'whitelist',
+): MachineSkillsManifestResponse {
+  return { selection, skills };
+}
+
+function demoSkill(marker: string): MachineSkillsManifestResponse['skills'][number] {
   return {
     id: 'deploy-demo',
     name: 'deploy-demo',
     description: '演示部署技能。',
     dirName: 'deploy-demo',
     files: [
-      {
-        path: 'SKILL.md',
-        content: `---\nname: deploy-demo\ndescription: 演示部署技能。\n---\n\n${marker}\n`,
-      },
-      { path: 'refs/runbook.md', content: `${marker} runbook\n` },
+      fileEntry(
+        'SKILL.md',
+        `---\nname: deploy-demo\ndescription: 演示部署技能。\n---\n\n${marker}\n`,
+      ),
+      fileEntry('refs/runbook.md', `${marker} runbook\n`),
     ],
+  };
+}
+
+/** fetchFile 桩：按 `${dirName}/${path}` 查内容表；记录每次调用。 */
+function fetcherFrom(contents: Record<string, string | Buffer>): {
+  fetchFile: (dirName: string, path: string) => Promise<Buffer>;
+  calls: string[];
+} {
+  const calls: string[] = [];
+  return {
+    calls,
+    fetchFile: async (dirName, path) => {
+      const key = `${dirName}/${path}`;
+      calls.push(key);
+      const content = contents[key];
+      if (content === undefined) throw new Error(`no stub content for ${key}`);
+      return typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
+    },
+  };
+}
+
+function demoContents(marker: string): Record<string, string> {
+  return {
+    'deploy-demo/SKILL.md': `---\nname: deploy-demo\ndescription: 演示部署技能。\n---\n\n${marker}\n`,
+    'deploy-demo/refs/runbook.md': `${marker} runbook\n`,
   };
 }
 
@@ -50,38 +116,72 @@ function collectLogs(): { logs: string[]; log: (msg: string) => void } {
   return { logs, log: (msg) => logs.push(msg) };
 }
 
-describe('materializeTeamSkills（M1–M9）', () => {
-  test('M1 正常包 → 缓存目录 + 文件逐字节落盘（含嵌套路径）+ materialized 日志行', () => {
+describe('materializeTeamSkills（M1–M16，#920 清单 + 按需拉）', () => {
+  test('M1 正常清单 → 视图目录 + 文件逐字节落盘（含嵌套路径）+ materialized 日志行', async () => {
     const root = cacheRoot('m1');
     const { logs, log } = collectLogs();
-    const dir = materializeTeamSkills({ cacheRoot: root, pkg: skillPkg([demoSkill('v1')]), log });
+    const fetcher = fetcherFrom(demoContents('v1'));
+    const dir = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: manifest([demoSkill('v1')]),
+      fetchFile: fetcher.fetchFile,
+      log,
+    });
     expect(dir).not.toBeNull();
     expect(readFileSync(join(dir!, 'deploy-demo', 'SKILL.md'), 'utf8')).toContain('v1');
     expect(readFileSync(join(dir!, 'deploy-demo', 'refs', 'runbook.md'), 'utf8')).toBe(
       'v1 runbook\n',
     );
-    expect(logs.some((l) => l.startsWith('team: 1 skill(s) materialized'))).toBe(true);
+    expect(fetcher.calls.sort()).toEqual(['deploy-demo/SKILL.md', 'deploy-demo/refs/runbook.md']);
+    expect(logs.some((l) => l.startsWith('team: 1 skill(s), 2 file(s) materialized'))).toBe(true);
+    expect(logs.some((l) => l.includes('fetched 2 file(s)') && l.includes('reused 0'))).toBe(true);
   });
 
-  test('M2 空包 → null 且 cacheRoot 零创建', () => {
-    const root = cacheRoot('m2');
-    const { logs, log } = collectLogs();
-    const dir = materializeTeamSkills({ cacheRoot: root, pkg: skillPkg([]), log });
-    expect(dir).toBeNull();
-    expect(existsSync(root)).toBe(false);
-    expect(logs).toEqual([]);
-  });
+  test.each(['whitelist', 'all'] as const)(
+    'M2 空清单 selection=%s → null + team-manifest-empty 显式行 + cacheRoot 零创建',
+    async (selection) => {
+      const root = cacheRoot('m2');
+      const { logs, log } = collectLogs();
+      const fetcher = fetcherFrom({});
+      const dir = await materializeTeamSkills({
+        cacheRoot: root,
+        manifest: manifest([], selection),
+        fetchFile: fetcher.fetchFile,
+        log,
+      });
+      expect(dir).toBeNull();
+      expect(existsSync(root)).toBe(false);
+      expect(fetcher.calls).toEqual([]);
+      expect(
+        logs.some(
+          (l) => l.startsWith('team-manifest-empty:') && l.includes(`selection=${selection}`),
+        ),
+      ).toBe(true);
+    },
+  );
 
-  test('M3 同包重物化 → 同一目录、不重写（文件 mtime 探针不变）+ cache hit 行', () => {
+  test('M3 同清单重物化 → 同一目录、零 fetch（mtime 探针不变）+ cache hit 行', async () => {
     const root = cacheRoot('m3');
-    const pkg = skillPkg([demoSkill('v1')]);
-    const first = materializeTeamSkills({ cacheRoot: root, pkg });
-    const probe = join(first!, 'deploy-demo', 'SKILL.md');
+    const m = manifest([demoSkill('v1')]);
+    const first = fetcherFrom(demoContents('v1'));
+    const dirA = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: m,
+      fetchFile: first.fetchFile,
+    });
+    const probe = join(dirA!, 'deploy-demo', 'SKILL.md');
     const old = new Date(Date.now() - 60_000);
     utimesSync(probe, old, old);
+    const second = fetcherFrom(demoContents('v1'));
     const { logs, log } = collectLogs();
-    const second = materializeTeamSkills({ cacheRoot: root, pkg, log });
-    expect(second).toBe(first);
+    const dirB = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: m,
+      fetchFile: second.fetchFile,
+      log,
+    });
+    expect(dirB).toBe(dirA);
+    expect(second.calls).toEqual([]); // 增量面：命中 = 零传输
     expect(readFileSync(probe, 'utf8')).toContain('v1');
     // 未被重写：mtime 仍是探针设置的旧值（容差 1s = 文件系统时间粒度）。
     const mtime = statSync(probe).mtime;
@@ -89,14 +189,36 @@ describe('materializeTeamSkills（M1–M9）', () => {
     expect(logs.some((l) => l.startsWith('team: 1 skill(s) cache hit'))).toBe(true);
   });
 
-  test('M4 内容变化 → 新目录；两包目录并存', () => {
+  test('M4 单文件变化 → 新视图目录并存；只拉变化的文件（fetch=1 / reused=1）', async () => {
     const root = cacheRoot('m4');
-    const dirA = materializeTeamSkills({ cacheRoot: root, pkg: skillPkg([demoSkill('v1')]) });
-    const dirB = materializeTeamSkills({ cacheRoot: root, pkg: skillPkg([demoSkill('v2')]) });
+    const dirA = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: manifest([demoSkill('v1')]),
+      fetchFile: fetcherFrom(demoContents('v1')).fetchFile,
+    });
+    // v2：SKILL.md 变、runbook 不变。
+    const v2Skill: MachineSkillsManifestResponse['skills'][number] = {
+      ...demoSkill('v1'),
+      files: [fileEntry('SKILL.md', 'changed entry\n'), demoSkill('v1').files[1]!],
+    };
+    const { logs, log } = collectLogs();
+    const second = fetcherFrom({ 'deploy-demo/SKILL.md': 'changed entry\n' });
+    const dirB = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: manifest([v2Skill]),
+      fetchFile: second.fetchFile,
+      log,
+    });
     expect(dirB).not.toBe(dirA);
     expect(readFileSync(join(dirA!, 'deploy-demo', 'SKILL.md'), 'utf8')).toContain('v1');
-    expect(readFileSync(join(dirB!, 'deploy-demo', 'SKILL.md'), 'utf8')).toContain('v2');
-    expect(readdirSync(root).length).toBe(2);
+    expect(readFileSync(join(dirB!, 'deploy-demo', 'SKILL.md'), 'utf8')).toBe('changed entry\n');
+    expect(readFileSync(join(dirB!, 'deploy-demo', 'refs', 'runbook.md'), 'utf8')).toBe(
+      'v1 runbook\n',
+    );
+    // 增量判据（#920 验收）：只传变化的文件。
+    expect(second.calls).toEqual(['deploy-demo/SKILL.md']);
+    expect(logs.some((l) => l.includes('fetched 1 file(s)') && l.includes('reused 1'))).toBe(true);
+    expect(readdirSync(join(root, 'views')).length).toBe(2);
   });
 
   test.each([
@@ -106,20 +228,21 @@ describe('materializeTeamSkills（M1–M9）', () => {
     ['.', 'dot'],
     ['..', 'dotdot'],
     ['', 'empty'],
-  ])('M5 dirName 不安全 %s → 整包拒绝 null + team-invalid 行 + 零写入', (dirName) => {
+  ])('M5 dirName 不安全 %s → 整清单拒绝抛 TeamSkillsError + 零写入', async (dirName) => {
     const root = cacheRoot('m5');
     const sentinel = join(root, '..', 'sentinel-escape');
-    const { logs, log } = collectLogs();
-    const dir = materializeTeamSkills({
-      cacheRoot: root,
-      pkg: skillPkg([{ ...demoSkill('x'), dirName }]),
-      log,
-    });
-    expect(dir).toBeNull();
-    expect(logs.some((l) => l.startsWith('team-invalid:'))).toBe(true);
+    const fetcher = fetcherFrom(demoContents('x'));
+    await expect(
+      materializeTeamSkills({
+        cacheRoot: root,
+        manifest: manifest([{ ...demoSkill('x'), dirName }]),
+        fetchFile: fetcher.fetchFile,
+      }),
+    ).rejects.toThrow(TeamSkillsError);
+    expect(fetcher.calls).toEqual([]); // 预检先于任何拉取
     expect(existsSync(sentinel)).toBe(false);
     if (existsSync(root)) {
-      expect(readdirSync(root).filter((e) => !e.startsWith('.tmp-'))).toEqual([]);
+      expect(readdirSync(root)).toEqual([]);
     }
   });
 
@@ -129,32 +252,48 @@ describe('materializeTeamSkills（M1–M9）', () => {
     ['a//b.md', 'empty-segment'],
     ['./SKILL.md', 'dot-segment'],
     ['..\\SKILL.md', 'backslash-escape'],
-  ])('M6 file path 不安全 %s → 整包拒绝 null + team-invalid 行', (path) => {
+  ])('M6 file path 不安全 %s → 整清单拒绝抛 TeamSkillsError', async (path) => {
     const root = cacheRoot('m6');
-    const { logs, log } = collectLogs();
-    const dir = materializeTeamSkills({
-      cacheRoot: root,
-      pkg: skillPkg([{ ...demoSkill('x'), files: [{ path, content: 'x' }] }]),
-      log,
-    });
-    expect(dir).toBeNull();
-    expect(logs.some((l) => l.startsWith('team-invalid:'))).toBe(true);
+    await expect(
+      materializeTeamSkills({
+        cacheRoot: root,
+        manifest: manifest([
+          { ...demoSkill('x'), files: [{ path, sizeBytes: 1, sha256: sha256(Buffer.from('x')) }] },
+        ]),
+        fetchFile: fetcherFrom({}).fetchFile,
+      }),
+    ).rejects.toThrow(TeamSkillsError);
   });
 
-  test('M7 原子写：成功后无 .tmp- 残留', () => {
+  test('M7 原子写：成功后 views/ blobs/ 无 .tmp- 残留', async () => {
     const root = cacheRoot('m7');
-    materializeTeamSkills({ cacheRoot: root, pkg: skillPkg([demoSkill('v1')]) });
-    expect(readdirSync(root).filter((e) => e.includes('.tmp-'))).toEqual([]);
+    await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: manifest([demoSkill('v1')]),
+      fetchFile: fetcherFrom(demoContents('v1')).fetchFile,
+    });
+    expect(readdirSync(join(root, 'views')).filter((e) => e.includes('.tmp-'))).toEqual([]);
+    expect(readdirSync(join(root, 'blobs')).filter((e) => e.includes('.tmp-'))).toEqual([]);
   });
 
-  test('M8 pruning：超过 maxEntries → 只留最新，最旧被删', () => {
+  test('M8 views pruning：超过 maxEntries → 只留最新，最旧被删', async () => {
     const root = cacheRoot('m8');
     const max = 3;
     const dirs: string[] = [];
     for (let i = 0; i < max + 2; i++) {
-      const d = materializeTeamSkills({
+      const entry = `content ${i}\n`;
+      const d = await materializeTeamSkills({
         cacheRoot: root,
-        pkg: skillPkg([{ ...demoSkill(`v${i}`), id: `s${i}`, name: `s${i}`, dirName: `s${i}` }]),
+        manifest: manifest([
+          {
+            id: `s${i}`,
+            name: `s${i}`,
+            description: null,
+            dirName: `s${i}`,
+            files: [fileEntry('SKILL.md', entry)],
+          },
+        ]),
+        fetchFile: fetcherFrom({ [`s${i}/SKILL.md`]: entry }).fetchFile,
         maxEntries: max,
       });
       dirs.push(d!);
@@ -162,21 +301,169 @@ describe('materializeTeamSkills（M1–M9）', () => {
       const t = new Date(Date.now() - (max + 2 - i) * 10_000);
       utimesSync(d!, t, t);
     }
-    const left = readdirSync(root);
+    const left = readdirSync(join(root, 'views'));
     expect(left.length).toBeLessThanOrEqual(max);
-    // 最新写入的目录还在；最早的两个已被 pruning 删除。
     expect(existsSync(dirs[dirs.length - 1]!)).toBe(true);
     expect(existsSync(dirs[0]!)).toBe(false);
   });
 
-  test('M9 默认保留上限为常量值；cache hit 触摸目录 mtime（LRU 视为最新）', () => {
+  test('M9 默认上限为常量值；cache hit 触摸视图 mtime（LRU 视为最新）', async () => {
     expect(TEAM_SKILLS_CACHE_MAX_ENTRIES).toBeGreaterThan(0);
+    expect(TEAM_SKILLS_BLOB_MAX_ENTRIES).toBeGreaterThan(TEAM_SKILLS_CACHE_MAX_ENTRIES);
     const root = cacheRoot('m9');
-    const pkg = skillPkg([demoSkill('v1')]);
-    const dir = materializeTeamSkills({ cacheRoot: root, pkg })!;
+    const m = manifest([demoSkill('v1')]);
+    const dir = (await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: m,
+      fetchFile: fetcherFrom(demoContents('v1')).fetchFile,
+    }))!;
     const old = new Date(Date.now() - 60_000);
     utimesSync(dir, old, old);
-    materializeTeamSkills({ cacheRoot: root, pkg });
+    await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: m,
+      fetchFile: fetcherFrom({}).fetchFile,
+    });
     expect(statSync(dir).mtime.getTime()).toBeGreaterThan(old.getTime() + 30_000);
+  });
+
+  test('M10 sha256 不符 → TeamSkillsError 点名文件，视图不落盘', async () => {
+    const root = cacheRoot('m10');
+    const m = manifest([demoSkill('v1')]);
+    // 桩内容与清单 hash 不一致（传输损坏/清单漂移同形）。
+    const dir = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: m,
+      fetchFile: async (dirName, path) => {
+        const good = Buffer.from(demoContents('v1')[`${dirName}/${path}`]!, 'utf8');
+        if (path.endsWith('SKILL.md')) good[0] = good[0]! ^ 0xff; // 同长度、异 hash
+        return good;
+      },
+    }).catch((err: unknown) => err);
+    expect(dir).toBeInstanceOf(TeamSkillsError);
+    expect((dir as Error).message).toContain('sha256 mismatch');
+    expect((dir as Error).message).toContain('deploy-demo/SKILL.md');
+    expect(readdirSync(join(root, 'views'))).toEqual([]);
+  });
+
+  test('M11 sizeBytes 不符 → TeamSkillsError 点名文件', async () => {
+    const root = cacheRoot('m11');
+    const skill = demoSkill('v1');
+    const m = manifest([
+      {
+        ...skill,
+        files: [{ ...skill.files[0]!, sizeBytes: skill.files[0]!.sizeBytes + 1 }, skill.files[1]!],
+      },
+    ]);
+    await expect(
+      materializeTeamSkills({
+        cacheRoot: root,
+        manifest: m,
+        fetchFile: fetcherFrom(demoContents('v1')).fetchFile,
+      }),
+    ).rejects.toThrow(/size mismatch for deploy-demo\/SKILL\.md/);
+  });
+
+  test('M12 fetchFile 抛错（网络/4xx 同形）→ TeamSkillsError 上抛带根因，视图不落盘', async () => {
+    const root = cacheRoot('m12');
+    const err = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: manifest([demoSkill('v1')]),
+      fetchFile: async () => {
+        throw new Error('machine api 503: upstream gone');
+      },
+    }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(TeamSkillsError);
+    expect((err as Error).message).toContain('machine api 503');
+    expect(readdirSync(join(root, 'views')).filter((e) => !e.startsWith('.tmp-'))).toEqual([]);
+    // 失败路径也清 .tmp（M7 的另一半）。
+    expect(readdirSync(join(root, 'views')).filter((e) => e.includes('.tmp-'))).toEqual([]);
+  });
+
+  test('M13 二进制内容逐字节落盘（非 utf8 不损坏）', async () => {
+    const root = cacheRoot('m13');
+    const binary = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0xfe, 0xd0, 0xa5]);
+    const skill: MachineSkillsManifestResponse['skills'][number] = {
+      id: 'bin',
+      name: 'bin',
+      description: null,
+      dirName: 'bin',
+      files: [fileEntry('assets/logo.png', binary), fileEntry('SKILL.md', '# bin\n')],
+    };
+    const dir = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: manifest([skill]),
+      fetchFile: fetcherFrom({ 'bin/assets/logo.png': binary, 'bin/SKILL.md': '# bin\n' })
+        .fetchFile,
+    });
+    expect(readFileSync(join(dir!, 'bin', 'assets', 'logo.png'))).toEqual(binary);
+  });
+
+  test('M14 blob 缺失 + 视图缺失 → 只重拉缺失文件，命中 blob 零传输', async () => {
+    const root = cacheRoot('m14');
+    const m = manifest([demoSkill('v1')]);
+    const dirA = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: m,
+      fetchFile: fetcherFrom(demoContents('v1')).fetchFile,
+    });
+    // 模拟 blob LRU 回收 runbook + 视图整体回收（新机器/清理后同形）。
+    const runbookEntry = demoSkill('v1').files[1]!;
+    rmSync(join(root, 'blobs', runbookEntry.sha256), { force: true });
+    rmSync(dirA!, { recursive: true, force: true });
+    const second = fetcherFrom(demoContents('v1'));
+    const dirB = await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: m,
+      fetchFile: second.fetchFile,
+    });
+    expect(second.calls).toEqual(['deploy-demo/refs/runbook.md']);
+    expect(readFileSync(join(dirB!, 'deploy-demo', 'SKILL.md'), 'utf8')).toContain('v1');
+  });
+
+  test('M15 旧形态残骸（cacheRoot 顶层内容寻址目录）被 prune 回收', async () => {
+    const root = cacheRoot('m15');
+    mkdirSync(join(root, 'legacydigest0000'), { recursive: true });
+    writeFileSync(join(root, 'legacydigest0000', 'SKILL.md'), 'old layout');
+    mkdirSync(join(root, '.tmp-legacy'), { recursive: true });
+    await materializeTeamSkills({
+      cacheRoot: root,
+      manifest: manifest([demoSkill('v1')]),
+      fetchFile: fetcherFrom(demoContents('v1')).fetchFile,
+    });
+    expect(readdirSync(root).sort()).toEqual(['blobs', 'views']);
+  });
+
+  test('M16 blobs pruning：超过 maxBlobEntries → 只留最新', async () => {
+    const root = cacheRoot('m16');
+    // 三个单文件技能依次物化，blob 上限 2 → 最旧 blob 被回收；视图仍在
+    // （hardlink 数据不随 blob 路径回收而损坏）。
+    const dirs: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const skill: MachineSkillsManifestResponse['skills'][number] = {
+        id: `s${i}`,
+        name: `s${i}`,
+        description: null,
+        dirName: `s${i}`,
+        files: [fileEntry('SKILL.md', `content ${i}\n`)],
+      };
+      const d = await materializeTeamSkills({
+        cacheRoot: root,
+        manifest: manifest([skill]),
+        fetchFile: fetcherFrom({ [`s${i}/SKILL.md`]: `content ${i}\n` }).fetchFile,
+        maxBlobEntries: 2,
+      });
+      dirs.push(d!);
+      // 整体老化现存 blob（i 越小越旧）：LRU 排序确定，下一轮 prune 删最旧。
+      const age = new Date(Date.now() - (3 - i) * 10_000);
+      for (const b of readdirSync(join(root, 'blobs'))) {
+        utimesSync(join(root, 'blobs', b), age, age);
+      }
+    }
+    expect(readdirSync(join(root, 'blobs')).length).toBeLessThanOrEqual(2);
+    // 全部视图仍可读（hardlink 与 blob 路径生命周期解耦）。
+    for (let i = 0; i < 3; i++) {
+      expect(readFileSync(join(dirs[i]!, `s${i}`, 'SKILL.md'), 'utf8')).toBe(`content ${i}\n`);
+    }
   });
 });

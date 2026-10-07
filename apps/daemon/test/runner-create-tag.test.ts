@@ -109,9 +109,12 @@ class FakeClient implements MachineApi {
       git: this.git,
     };
   }
-  async skills() {
-    // XMON-112 S2：空包 = 零团队技能，本测试的注册面断言不受技能物化影响。
-    return { skills: [] };
+  async skillsManifest() {
+    // #920：空清单 = 零团队技能，本测试的注册面断言不受技能物化影响。
+    return { selection: 'whitelist' as const, skills: [] };
+  }
+  async skillFile(): Promise<Buffer> {
+    throw new Error('unexpected skillFile call');
   }
   async attachment(): Promise<never> {
     throw new Error('unused');

@@ -4,8 +4,9 @@
 // token（64hex，服务端存哈希比对）。错误形状 {error}（r5 §1 族）。
 // 附加端点（[设计] 登记，非词表外扩协议面）：PUT /api/machine/upload/{uploadId}
 // = upload-urls 预签名的落地点（self-host 无对象存储，server 自出一次性 PUT）；
-// GET /api/machine/skills/{stepId} = 按步技能包下发（XMON-109 S1，S2 daemon
-// 物化消费契约）。全量登记表 = shared MACHINE_WIRE_EXTENSIONS。
+// GET /api/machine/skills/{stepId} = 按步技能分发清单 + 同前缀 /file 单文件
+// 按需拉取（XMON-109 S1，#920 清单 + 按需拉；S2 daemon 物化消费契约）。
+// 全量登记表 = shared MACHINE_WIRE_EXTENSIONS。
 
 import type { ToolCallRecord } from '@pacman/shared';
 import {
@@ -48,7 +49,8 @@ import {
   finishStep,
   heartbeatStep,
   machineAttachmentDownload,
-  machineSkillsPackage,
+  machineSkillFile,
+  machineSkillsManifest,
   markOffline,
   markPresence,
   precheckShellCommand,
@@ -367,12 +369,31 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   });
 
   // —— GET /api/machine/skills/{stepId}（XMON-109 S1 [设计] 附加端点，
-  // MACHINE_WIRE_EXTENSIONS 登记位）：按步技能包下发（S2 daemon 物化消费
-  // 契约）——worker 步 = agent.skills 白名单交集、chief 步 = 信任面全量；
-  // 字节闸超限 400 点名。非本步凭证/未知步 = 404（ownedStep 同 token 面）。 ———
+  // MACHINE_WIRE_EXTENSIONS 登记位；#920 改清单 + 按需拉）：按步技能分发
+  // 清单（S2 daemon 物化消费契约）——worker 步 = agent.skills 白名单交集
+  // （selection='whitelist'）、chief 步 = 信任面全量（selection='all'）；
+  // 每文件 path/sizeBytes/sha256，本体走下方 /file 端点。非本步凭证/未知步
+  // = 404（ownedStep 同 token 面）。
+  // —— GET /api/machine/skills/{stepId}/file?dirName=&path=（#920 [设计]
+  // 登记位）：清单内单文件原始字节（application/octet-stream，二进制诚实
+  // 下发）；白名单外/清单外/逃逸形 = 404 不泄存在性。 ————————————————
   app.get('/api/machine/skills/:stepId', (c) => {
     const row = me(c);
-    return c.json(machineSkillsPackage(deps, row.id, c.req.param('stepId')));
+    return c.json(machineSkillsManifest(deps, row.id, c.req.param('stepId')));
+  });
+  app.get('/api/machine/skills/:stepId/file', (c) => {
+    const row = me(c);
+    const bytes = machineSkillFile(
+      deps,
+      row.id,
+      c.req.param('stepId'),
+      c.req.query('dirName') ?? '',
+      c.req.query('path') ?? '',
+    );
+    return c.body(new Uint8Array(bytes), 200, {
+      'content-type': 'application/octet-stream',
+      'content-length': String(bytes.length),
+    });
   });
 
   // —— GET /api/machine/attachment/{stepId}/{attachmentId}（#730 [设计]
