@@ -19,6 +19,7 @@ import {
   type ProjectRepoKind,
   type ProviderRecord,
   type SecretRecord,
+  type SkillFact,
   type TagRecord,
 } from '@pacman/shared';
 
@@ -501,7 +502,16 @@ export type TranscriptItem =
        *  Ns 前」的走表起点。缺省 = 无活动信号（fixture 捕获 / 旧 server /
        *  静默窗口），该行不渲染（#471：缺席的数，不是冻结的数）。 */
       signalAt?: number;
+      /** #918：本步累计技能事实（activity 事件随行，mapper 已按在跑步 stepId
+       *  过滤）——披露面逐条渲染 `▶ skill: <名>`（denied = `✕ …（已挡下）`）。
+       *  缺省/空 = 本步尚无技能命中，不产任何条目（对照组）。 */
+      skills?: SkillFact[];
     }
+  /** #918 技能事实汇总行（详情页的持久一份）：从落库 toolcall 行派生
+   *  （分类单源 shared/skill-facts，与活行判定永不漂移），read = 读到的
+   *  技能名（首见序），denied = 被挡下的（同名 denied 粘滞，两列互斥）。
+   *  两列全空 = 不产本条目（无技能命中的任务零噪声）。 */
+  | { kind: 'skills'; read: string[]; denied: string[] }
   /** Collapsed plan card: `方案 · v1` row, clamped preview, action row
    *  `完成 Ns` (r7 17). `seconds` absent renders the bare `完成`
    *  (reused-plan card, r8 76). The r8 captures' trailing `›` is gone:

@@ -462,6 +462,11 @@ export const EN: Record<string, string> = {
   '正在压缩上下文...': 'Compacting context...',
   '等待模型响应...': 'Waiting for the model...',
   '最近信号：{n}s 前': 'Last signal {n}s ago',
+  // #918 skill facts: live-panel entries (read / denied) + the detail summary.
+  '▶ skill: {n}': '▶ skill: {n}',
+  '✕ skill: {n}（已挡下）': '✕ skill: {n} (blocked)',
+  '技能：{n}': 'Skills: {n}',
+  '挡下：{n}': 'Blocked: {n}',
   已取消: 'Cancelled',
   [PROBE_TOOL_CALL_LABEL]: `Calling tool: ${PROBE_TOOL_PILLS[1]}`,
   '方案 · v1': 'Plan · v1',

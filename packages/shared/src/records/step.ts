@@ -4,6 +4,7 @@
 // 合并步语义），实现期重放补采后回写 02 §11 收紧（04 §3 不判负口径）。
 
 import { z } from 'zod';
+import { skillFactSchema } from '../skill-facts.js';
 import { epochMs, recordId } from './common.js';
 
 /** 三类步（02 §4.2 中文语义名的 wire 投影 [推断]）+ `chief`（M4a [设计]：
@@ -130,6 +131,13 @@ export const stepActivityReportSchema = z.object({
   tool: z.string().optional(),
   /** phase='retrying' 时在位：auto_retry 轮次（1 起）。 */
   attempt: z.number().int().optional(),
+  /** #918 技能事实（本步累计，首见序，去重按 name、denied 粘滞）：daemon 从
+   *  工具调用流识别的「读了哪些技能」，被 deny 挡下的同样在列（判定源 =
+   *  工具事实，分类单源 skill-facts.ts）。每份上报都携带当前累计集——hub
+   *  单槽天然保住全集，订阅进场补发即拿到完整清单。缺省 = 本步尚无技能
+   *  事实（旧 daemon 恒缺省，零回归）。上限见 daemon activity.ts 的
+   *  SKILL_FACTS_CAP（载荷有界）。 */
+  skills: z.array(skillFactSchema).optional(),
 });
 export type StepActivityReport = z.infer<typeof stepActivityReportSchema>;
 

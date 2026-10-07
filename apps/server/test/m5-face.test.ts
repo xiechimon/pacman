@@ -199,6 +199,37 @@ describe('conversation stream（02 §1.2 会话流，M5 live streaming 服务端
       });
       expect(badPhase.status).toBe(400);
 
+      // ④c #918 技能事实累计集：第四形原样透传（server 只盖 {stepId, at}，
+      //     不动清单内容）；畸形条目（缺 denied 位）= 400。
+      const skillsRes = await call(s.app, 'POST', `/api/machine/tool/${stepId}`, {
+        cred: token,
+        body: {
+          kind: 'activity',
+          activity: {
+            phase: 'tool',
+            tool: 'skill: to-spec',
+            skills: [
+              { name: 'extra-skill', denied: true },
+              { name: 'demo-skill', denied: false },
+            ],
+          },
+        },
+      });
+      expect(skillsRes.status).toBe(200);
+      const skillsEv = await stream.next((ev) => ev.type === 'activity');
+      const parsedSkills = conversationStreamEventSchema.parse(skillsEv);
+      expect(parsedSkills.type === 'activity' && parsedSkills.activity.skills).toEqual([
+        { name: 'extra-skill', denied: true },
+        { name: 'demo-skill', denied: false },
+      ]);
+      expect(parsedSkills.type === 'activity' && parsedSkills.activity.stepId).toBe(stepId);
+
+      const badSkillFact = await call(s.app, 'POST', `/api/machine/tool/${stepId}`, {
+        cred: token,
+        body: { kind: 'activity', activity: { phase: 'tool', skills: [{ name: 'x' }] } },
+      });
+      expect(badSkillFact.status).toBe(400);
+
       // ⑤ 非本机 step 的 delta/activity = 404（所有权校验与 tool 面同款）。
       const foreign = await call(s.app, 'POST', '/api/machine/tool/no-such-step', {
         cred: token,

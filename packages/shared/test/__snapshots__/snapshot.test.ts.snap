@@ -1390,6 +1390,26 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
               ],
               "type": "string",
             },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "denied": {
+                    "type": "boolean",
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "name",
+                  "denied",
+                ],
+                "type": "object",
+              },
+              "type": "array",
+            },
             "tool": {
               "type": "string",
             },
@@ -2434,6 +2454,26 @@ exports[`body/封套 schema 快照 > conversationStreamEvent > conversationStrea
                 "awaiting_model",
               ],
               "type": "string",
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "denied": {
+                    "type": "boolean",
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "name",
+                  "denied",
+                ],
+                "type": "object",
+              },
+              "type": "array",
             },
             "stepId": {
               "type": "string",

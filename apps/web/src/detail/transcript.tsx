@@ -506,6 +506,20 @@ function Row({
                     {t('执行机器：{n}', { n: liveStep.machine })}
                   </span>
                 )}
+                {/* #918：本步技能事实（activity 事件随行，mapper 已按在跑步
+                    stepId 过滤）——每条一行 `▶ skill: <名>`；被 deny 挡下的
+                    同线可见（`✕ …（已挡下）`），与「看不见」可区分。 */}
+                {(item.skills ?? []).map((s) => (
+                  <span
+                    key={`${s.name}:${s.denied ? 'x' : 'r'}`}
+                    className="chat-live-line [overflow-wrap:anywhere]"
+                    data-testid="skill-line"
+                  >
+                    {s.denied
+                      ? t('✕ skill: {n}（已挡下）', { n: s.name })
+                      : t('▶ skill: {n}', { n: s.name })}
+                  </span>
+                ))}
                 {/* #905：「在动 vs 卡住」判据——最近活动信号的走表新鲜度；
                     无信号（fixture / 旧 server / 静默期）整行缺席不摆死数。 */}
                 <LiveSignal
@@ -558,6 +572,20 @@ function Row({
       );
     case 'tools':
       return <ToolsRow item={item} t={t} />;
+    case 'skills':
+      // #918 技能事实汇总行（详情页的持久一份）：活行披露面的 activity 事实
+      // 是瞬态（步终态即清），本行从落库 toolcall 行派生、随消息重取常在。
+      // note 行同视觉族（居中 tertiary 小字），独立 testid 供探针定位。
+      return (
+        <div
+          className="chat-note chat-skills-summary mx-auto mt-5 flex max-w-[68ch] flex-wrap items-baseline justify-center gap-x-1.5 text-center text-xs leading-4 text-(--text-tertiary)"
+          data-testid="skills-summary"
+        >
+          {item.read.length > 0 && <span>{t('技能：{n}', { n: item.read.join(', ') })}</span>}
+          {item.read.length > 0 && item.denied.length > 0 && <span aria-hidden="true">·</span>}
+          {item.denied.length > 0 && <span>{t('挡下：{n}', { n: item.denied.join(', ') })}</span>}
+        </div>
+      );
     case 'elapsed':
       return <ActionRow seconds={item.seconds} t={t} />;
     case 'review':
