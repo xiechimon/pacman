@@ -21,11 +21,11 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 const PROJ = '/app/project/ZAQczKCu0MOAzC1ZqcFlX';
 
 const HOVER_DARK = 'rgba(255, 252, 248, 0.05)'; // --seg-hover dark
-const HOVER_LIGHT = 'rgba(28, 25, 20, 0.05)'; // --seg-hover light
-const CHIP_DARK = 'rgb(37, 34, 29)'; // --tab-chip-bg dark
-const CHIP_LIGHT = 'rgb(239, 233, 225)'; // --tab-chip-bg light
-const GROUP_DARK = 'rgb(45, 42, 36)'; // --surface-secondary dark
-const GROUP_LIGHT = 'rgb(232, 227, 218)'; // --surface-secondary light
+const HOVER_LIGHT = 'rgba(28, 25, 21, 0.05)'; // --seg-hover light
+const CHIP_DARK = 'rgb(38, 34, 31)'; // --card dark (tab-chip-bg merged → card, #1002)
+const CHIP_LIGHT = 'rgb(240, 235, 230)'; // --card light (tab-chip-bg merged → card, #1002)
+const GROUP_DARK = 'rgb(45, 41, 38)'; // --secondary dark (surface-secondary merged → secondary, #1002)
+const GROUP_LIGHT = 'rgb(234, 228, 224)'; // --secondary light (surface-secondary merged → secondary, #1002)
 
 const bg = (loc: Locator) =>
   loc.evaluate((el) => getComputedStyle(el).backgroundColor);

@@ -42,7 +42,7 @@ const SECTION_ROWS: Array<{ view: PaneView; label: PaneRowLabel }> = [
  *  多出一圈 1px 环）。定位正本仍在 Positioner 参数（side=bottom align=end
  *  sideOffset=8）；面板是 Positioner 的静态子级（relative 承 Arrow 伪元）。 */
 const DROPDOWN_PANEL =
-  "relative flex min-w-[220px] flex-col rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--plate-shadow) ring-0 origin-top-right before:absolute before:top-px before:right-5 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[21px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+  "relative flex min-w-[220px] flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--plate-shadow) ring-0 origin-top-right before:absolute before:top-px before:right-5 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[21px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** #949: 旧 .plan-dropdown-row 规则等值迁 utility——36px 行 / 直角（#854
  *  参考站实测：选中行底四角满色）/ 16px 左垫 4px 右垫 / 12px 一级墨。
@@ -60,7 +60,7 @@ const DROPDOWN_PANEL =
  *  per-face 选择器；focus 态勾色随底座 ** 家族走一级墨 = 迁移前 layered
  *  focus tint 的同值中和，见 PR 对照表）。 */
 const DROPDOWN_ROW =
-  "h-9 w-full flex-none cursor-pointer justify-start rounded-none py-0 pl-4 pr-1 text-left text-xs leading-4 font-normal whitespace-normal text-(--text-primary) transition-[background-color] duration-150 hover:bg-(--accent-soft) hover:focus:bg-(--accent-soft) data-checked:bg-(--spot-soft) data-checked:hover:bg-(--accent-soft) data-checked:hover:focus:bg-(--accent-soft) focus:bg-transparent focus:text-(--text-primary) focus:**:text-(--text-primary) data-checked:focus:bg-(--spot-soft) data-checked:focus:**:text-(--text-primary) focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button) [&_svg:not([class*='size-'])]:size-auto";
+  "h-9 w-full flex-none cursor-pointer justify-start rounded-none py-0 pl-4 pr-1 text-left text-xs leading-4 font-normal whitespace-normal text-(--foreground) transition-[background-color] duration-150 hover:bg-(--accent-soft) hover:focus:bg-(--accent-soft) data-checked:bg-(--spot-soft) data-checked:hover:bg-(--accent-soft) data-checked:hover:focus:bg-(--accent-soft) focus:bg-transparent focus:text-(--foreground) focus:**:text-(--foreground) data-checked:focus:bg-(--spot-soft) data-checked:focus:**:text-(--foreground) focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button) [&_svg:not([class*='size-'])]:size-auto";
 
 /** Type-select button + dropdown, shared by the doc-pane head and the three
  *  section heads (#366). #854 收编到 components/ui/dropdown-menu（Base UI

@@ -26,7 +26,7 @@ import { Check, Settings } from '../icons/index.js';
 const POPOVER_ROW =
   'flex h-[26px] items-center gap-2.5 pr-1 text-xs leading-4 text-(--text-tertiary) transition-[background-color] duration-150 hover:bg-(--accent-soft) [&_img]:size-3 [&_img]:flex-none [&_img]:rounded-full';
 
-const SECTION_LABEL = 'p-0 text-[11px] leading-3 font-medium text-(--text-primary)';
+const SECTION_LABEL = 'p-0 text-[11px] leading-3 font-medium text-(--foreground)';
 
 export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
   const { t } = useI18n();
@@ -36,7 +36,7 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
   const agentAvatarUrl = useAgentAvatarUrlById();
   return (
     <div
-      className="absolute top-[calc(100%+8px)] -left-[18px] z-(--z-popover) flex h-[193px] w-[298px] flex-col overflow-visible rounded-none border border-(--border-default) bg-(--popover-bg) p-3 text-left shadow-(--fab-shadow) origin-top-left before:absolute before:top-px before:left-6 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[25px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']"
+      className="absolute top-[calc(100%+8px)] -left-[18px] z-(--z-popover) flex h-[193px] w-[298px] flex-col overflow-visible rounded-none border border-(--border) bg-(--popover) p-3 text-left shadow-(--fab-shadow) origin-top-left before:absolute before:top-px before:left-6 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[25px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']"
       role="dialog"
       aria-label={t('任务分配')}
     >
@@ -49,8 +49,8 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
             时间列同判：--text-dim × --popover-bg 亮模 2.89 < 地板 3） */}
         <span className="text-[11px] leading-3 text-(--text-tertiary)">#{todo.seqNum}</span>
       </div>
-      <div className="pt-[5px] pb-2 text-xs leading-4 text-(--text-primary)">{todo.title}</div>
-      <div className="h-px flex-none bg-(--overlay-divider)" />
+      <div className="pt-[5px] pb-2 text-xs leading-4 text-(--foreground)">{todo.title}</div>
+      <div className="h-px flex-none bg-(--border)" />
       <div className="flex-none pt-2">
         <div className={SECTION_LABEL}>{t('任务')}</div>
         <div className={POPOVER_ROW} data-row-kind="owner">
@@ -58,7 +58,7 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
           {user.displayName}
         </div>
       </div>
-      <div className="flex-none bg-(--overlay-select-indigo) pt-2" data-selected="">
+      <div className="flex-none bg-(--spot-soft) pt-2" data-selected="">
         <div className={SECTION_LABEL}>{t('执行对话')}</div>
         <div className={POPOVER_ROW} data-row-kind="agent">
           <SeededAvatar
@@ -73,7 +73,7 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
           </span>
         </div>
       </div>
-      <div className="h-px flex-none bg-(--overlay-divider)" />
+      <div className="h-px flex-none bg-(--border)" />
       {/* #949: 旧 .chip-popover-edit 规则等值迁 utility——ghost 件配方全
           通道中和（hover/aria-expanded 涂底与墨色钉回三级墨、press 位移
           禁掉、1px 透明边归零、font-medium 归 normal），flex-1 吃满壳垫

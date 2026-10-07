@@ -61,10 +61,10 @@ export function ResetConfirmDialog({
             {t('任务在你打开确认框后发生了变化，下面是最新状态，请重新确认。')}
           </p>
         )}
-        <p className="m-0 mb-1.5 text-[13px] leading-[18px] text-(--text-primary)">
+        <p className="m-0 mb-1.5 text-[13px] leading-[18px] text-(--foreground)">
           {t('以下内容将被清空，无法恢复：')}
         </p>
-        <ul className="m-0 mb-1.5 list-disc pl-[18px] text-[13px] leading-5 text-(--text-primary)">
+        <ul className="m-0 mb-1.5 list-disc pl-[18px] text-[13px] leading-5 text-(--foreground)">
           <li>{t('中断运行中的构建（在线的执行机即时中断；离线机器的残留进程够不着）')}</li>
           <li>{t('清空对话记录')}</li>
           <li>{t('清空方案版本')}</li>

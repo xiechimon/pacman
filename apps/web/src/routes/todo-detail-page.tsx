@@ -856,7 +856,7 @@ export function TodoDetailPage() {
         onSearch={() => search.setOpen(true)}
       />
       <div
-        className="detail-main group/detail-main relative flex min-w-0 flex-1 flex-col bg-(--surface)"
+        className="detail-main group/detail-main relative flex min-w-0 flex-1 flex-col bg-(--card)"
         data-testid="detail-main"
       >
         <DetailHead
@@ -1146,7 +1146,7 @@ export function TodoDetailPage() {
           <ChiefWakePanel surface={chief} onSettings={chiefSettingsNav} />
         </div>
         {ui.placeholder != null && composerReject != null && (
-          <div className="composer-reject absolute bottom-[104px] left-4 right-[calc(var(--detail-pane-right)+16px)] text-center text-xs leading-4 text-(--stop)">
+          <div className="composer-reject absolute bottom-[104px] left-4 right-[calc(var(--detail-pane-right)+16px)] text-center text-xs leading-4 text-(--destructive)">
             {composerReject}
           </div>
         )}
@@ -1154,7 +1154,7 @@ export function TodoDetailPage() {
             层的 chief surface——#443 的 unreadOnly 门控原样保留。 */}
         <ChiefWakeFab
           surface={chief}
-          fabClassName={`detail-fab absolute bottom-4 right-[calc(var(--detail-pane-right)+16px)] flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border-default) bg-(--surface) text-(--text-tertiary) shadow-(--fab-shadow) hover:bg-(--surface) hover:text-(--text-tertiary) dark:hover:bg-(--surface) dark:hover:text-(--text-tertiary) group-has-[.composer]/detail-main:bottom-[104px] in-data-[chief-open]:max-md:hidden`}
+          fabClassName={`detail-fab absolute bottom-4 right-[calc(var(--detail-pane-right)+16px)] flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border) bg-(--card) text-(--text-tertiary) shadow-(--fab-shadow) hover:bg-(--card) hover:text-(--text-tertiary) dark:hover:bg-(--card) dark:hover:text-(--text-tertiary) group-has-[.composer]/detail-main:bottom-[104px] in-data-[chief-open]:max-md:hidden`}
           unreadOnly
         />
       </div>

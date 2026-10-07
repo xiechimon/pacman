@@ -33,7 +33,7 @@ const RES_NEW_ANCHOR_CLS =
  *  resources 族的 per-face 正本随 resources.css 退役，配方在此。ghost 件
  *  默认的 hover/aria-expanded 底色就地并掉（原形无 hover 态）。 */
 const RES_FAB_CLS =
-  'absolute right-4 bottom-4 flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border-default) bg-(--surface) shadow-(--fab-shadow) hover:bg-(--surface) aria-expanded:bg-(--surface)';
+  'absolute right-4 bottom-4 flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border) bg-(--card) shadow-(--fab-shadow) hover:bg-(--card) aria-expanded:bg-(--card)';
 
 interface ResourceShellProps {
   /** Centered topbar title (`技能` / `MCP 服务器` / …). */
@@ -100,7 +100,7 @@ export function ResourceShell({
         <div className="res-main-col flex min-w-0 flex-1 flex-col">
           <header
             data-testid="resource-topbar"
-            className="relative flex h-11 flex-none items-center border-b border-(--border-default)"
+            className="relative flex h-11 flex-none items-center border-b border-(--border)"
           >
             <a
               className="absolute top-2 left-3 flex size-7 items-center justify-center text-(--text-tertiary)"
@@ -109,7 +109,7 @@ export function ResourceShell({
             >
               <ChevronLeft width={16} height={16} />
             </a>
-            <h1 className="pointer-events-none absolute inset-x-0 text-center text-base leading-[22px] font-medium text-(--text-primary)">
+            <h1 className="pointer-events-none absolute inset-x-0 text-center text-base leading-[22px] font-medium text-(--foreground)">
               {t(title)}
             </h1>
             {newAction}

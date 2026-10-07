@@ -23,7 +23,7 @@ import { ChevronLeft, X } from '../icons/index.js';
 const OVERLAY_BTN =
   'h-[30px] px-3 text-[13px] leading-[18px] font-normal border-none cursor-pointer active:not-aria-[haspopup]:translate-y-0';
 const OVERLAY_GHOST =
-  'h-[30px] px-3 text-[13px] leading-[18px] font-normal border-(--card-border) text-(--text-secondary) cursor-pointer hover:bg-transparent dark:hover:bg-transparent hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0';
+  'h-[30px] px-3 text-[13px] leading-[18px] font-normal border-(--border) text-(--text-secondary) cursor-pointer hover:bg-transparent dark:hover:bg-transparent hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0';
 
 // #168: the rerun/reuse pair joins the dialog family close law (DialogShell
 // #68) — Esc, backdrop click, and the X head button all carry the same
@@ -52,7 +52,7 @@ function Overlay({ onClose, children }: { onClose: () => void; children: React.R
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="overlay-panel w-[448px] rounded-(--radius-popover) bg-(--popover-bg) shadow-[0_12px_32px_rgb(0_0_0/0.25)]">
+      <div className="overlay-panel w-[448px] rounded-(--radius-popover) bg-(--popover) shadow-[0_12px_32px_rgb(0_0_0/0.25)]">
         {children}
       </div>
     </div>
@@ -72,7 +72,7 @@ function PanelHead({
 }) {
   const { t } = useI18n();
   return (
-    <div className="overlay-head flex h-12 items-center gap-1 border-b border-(--border-default) pl-4 pr-3">
+    <div className="overlay-head flex h-12 items-center gap-1 border-b border-(--border) pl-4 pr-3">
       {/* XMON-24：back/close 切 shadcn ghost；#945：per-face 皮肤退役，
           老 computed 逐项搬 utilities——ghost 七通道中和（#908 裁决 3）：
           hover/aria-expanded 底与墨钉回透明 + tertiary，尺寸/内边距/边框
@@ -87,7 +87,7 @@ function PanelHead({
           <ChevronLeft width={16} height={16} />
         </Button>
       )}
-      <span className="overlay-title text-sm leading-5 font-medium text-(--text-primary)">
+      <span className="overlay-title text-sm leading-5 font-medium text-(--foreground)">
         {title}
       </span>
       <Button

@@ -71,7 +71,7 @@ export function ToolActivityRow({
         {running === true ? t('正在调用 {n}', { n: name }) : name}
       </span>
       {shown != null && <span className="tabular-nums">{shown}s</span>}
-      {error === true && <span className="text-[var(--danger)]">{t('失败')}</span>}
+      {error === true && <span className="text-[var(--destructive)]">{t('失败')}</span>}
     </span>
   );
 }

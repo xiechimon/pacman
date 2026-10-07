@@ -16,34 +16,26 @@
    勿按常规「默认浅色 + dark: 前缀」做。 */
 @custom-variant dark (&:where(:not(.light):not(.light *)));
 
-/* Token 消费面（v3 theme.extend.colors/fontFamily 的 @theme 语义迁移，#106）。
-   inline 模式让 utility 声明直引 tokens.css 变量（v4 官方「引用其他变量必须用
-   inline」），产出与 v3 逐字符等价，如 .text-content { color: var(--text-primary) }；
-   .light 双主题覆写继续走 tokens.css 级联，不经 --color-* 间接层。
-   r1 §4.2 语义族：变量名 --text-*，类名 content-*。 */
+/* 仓扩展 utility 的 @theme 映射（v3 theme.extend.colors 的 v4 语义迁移，#106；
+   inline 模式让 utility 声明直引 shadcn.css 变量，v4 官方「引用其他变量必须用
+   inline」）。官方 18 槽 + spot 族 + sidebar 梯的映射住在 shadcn.css 的 @theme
+   inline；本文件只留官方词表无对口的仓扩展类名面：
+   - content-secondary/tertiary/dim = 文本三阶（--text-secondary/tertiary/dim，
+     #987 §3.4-C 留类；r1 §4.2 语义族「变量名 --text-*，类名 content-*」）；
+   - surface-tertiary = 嵌入控件底独有档（§3.4-D 留类）。
+   #1002 收敛（#987 §3.3）退役了曾在此的并流别名 utility（content / line /
+   line-strong / surface / surface-secondary / surface-inset / surface-elevated /
+   surface-hover / card-bg / card-border / col-bg / col-head-text）与 5 条零消费
+   Tailwind 原色映射（accent-blue/amber/green/gray/rose）——消费点已改直引官方
+   utility（text-foreground / border-border / border-input / bg-card / bg-secondary
+   / bg-background / text-destructive），accent-rose 的 2 处 error 文案并入
+   text-destructive（裸 rose-500 绕过色板体系，§3.5-1）。
+   .light 双主题覆写走 shadcn.css/tokens.css 级联，不经 --color-* 间接层。 */
 @theme inline {
-  --color-content: var(--text-primary);
   --color-content-secondary: var(--text-secondary);
   --color-content-tertiary: var(--text-tertiary);
   --color-content-dim: var(--text-dim);
-  --color-line: var(--border-default);
-  --color-line-strong: var(--border-strong);
-  --color-surface: var(--surface);
-  --color-surface-secondary: var(--surface-secondary);
   --color-surface-tertiary: var(--surface-tertiary);
-  --color-surface-inset: var(--surface-inset);
-  --color-surface-elevated: var(--surface-elevated);
-  --color-surface-hover: var(--surface-hover);
-  /* board palette sampled in prototype #42 (replica.css) */
-  --color-col-bg: var(--col-bg);
-  --color-card-bg: var(--card-bg);
-  --color-card-border: var(--card-border);
-  --color-col-head-text: var(--col-head-text);
-  --color-accent-blue: var(--blue-500);
-  --color-accent-amber: var(--amber-500);
-  --color-accent-green: var(--green-500);
-  --color-accent-rose: var(--rose-500);
-  --color-accent-gray: var(--gray-400);
   /* 自指是有意的：theme key 名即 utility 名（font-sans/font-mono），值直引
      tokens.css 的同名消费栈变量（--font-sans/--font-mono），inline 不下发
      theme 变量定义，无循环 */
@@ -59,8 +51,8 @@
   }
   body {
     margin: 0;
-    background: var(--surface);
-    color: var(--text-primary);
+    background: var(--card);
+    color: var(--foreground);
     font-family: var(--font-sans);
     font-size: 14px;
     /* 字重基线（#390，DESIGN.md §Typography 三档锚点）：正文显式 400。

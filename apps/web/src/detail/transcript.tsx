@@ -162,7 +162,7 @@ function ActionRow({
         </span>
       )}
       {(seconds != null || bare === true) && (
-        <span className="chat-foot-elapsed border-l border-(--border-strong) pl-[9px] text-xs leading-4 whitespace-nowrap text-(--text-tertiary)">
+        <span className="chat-foot-elapsed border-l border-(--input) pl-[9px] text-xs leading-4 whitespace-nowrap text-(--text-tertiary)">
           {seconds != null ? formatElapsed(seconds, t) : t('完成')}
         </span>
       )}
@@ -228,7 +228,7 @@ function Para({ para, gap = false }: { para: RobotPara; gap?: boolean }) {
   // background-clip 到 content box（缝留透明）；悬挂序号 = relative +
   // 19px 左内距 + 绝对序号位。
   const quoteSkin =
-    'chat-para--quote border-l-4 border-(--border-default) bg-(--code-bg) pt-1.5 pr-2 pb-1.5 pl-[15px] [background-clip:content-box] text-(--text-secondary)';
+    'chat-para--quote border-l-4 border-(--border) bg-(--muted) pt-1.5 pr-2 pb-1.5 pl-[15px] [background-clip:content-box] text-(--text-secondary)';
   if (para.quote === true) {
     return (
       <p className={`${PARA} ${quoteSkin}${gap ? ` ${PARA_GAP}` : ''}`}>
@@ -381,7 +381,7 @@ function Row({
                 min-height 保单行药丸 24px、多行随文长；12px 位圆角与
                 composer 同层（页面上两个用户说话的面同材质）。 */}
             <span
-              className={`chat-bubble ml-[11px] mt-1 min-h-6 min-w-0 max-w-[68ch] rounded-none bg-(--surface-secondary) px-[13px] text-[15px] leading-6 break-words text-(--text-primary) ${
+              className={`chat-bubble ml-[11px] mt-1 min-h-6 min-w-0 max-w-[68ch] rounded-none bg-(--secondary) px-[13px] text-[15px] leading-6 break-words text-(--foreground) ${
                 item.markdown != null
                   ? 'chat-bubble--md whitespace-normal [&>:first-child]:mt-0 [&>:last-child]:mb-0'
                   : 'whitespace-pre-wrap'
@@ -397,10 +397,10 @@ function Row({
               className="chat-taskline mt-1.5 flex items-center pl-[49px]"
               data-testid="taskline"
             >
-              <span className="chat-taskline-seq flex h-[18px] flex-none items-center rounded-[4px] bg-(--code-bg) px-[7px] text-[11px] leading-4 text-(--text-secondary)">
+              <span className="chat-taskline-seq flex h-[18px] flex-none items-center rounded-[4px] bg-(--muted) px-[7px] text-[11px] leading-4 text-(--text-secondary)">
                 #{item.seq}
               </span>
-              <span className="chat-taskline-title ml-[5px] min-w-0 break-words text-[15px] leading-5 font-semibold text-(--text-primary)">
+              <span className="chat-taskline-title ml-[5px] min-w-0 break-words text-[15px] leading-5 font-semibold text-(--foreground)">
                 {item.title}
               </span>
             </div>
@@ -416,7 +416,7 @@ function Row({
         <div className={`${ROW_BASE} chat-row--agent ${margin}`} data-row="agent">
           <AgentRowAvatar agent={agent} />
           <span
-            className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--text-primary)"
+            className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--foreground)"
             data-testid="agent-text"
           >
             {item.markdown != null ? (
@@ -450,7 +450,7 @@ function Row({
         <div className={`${ROW_BASE} chat-row--agent ${margin}`} data-row="agent">
           <AgentRowAvatar agent={agent} />
           <span
-            className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--text-primary)"
+            className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--foreground)"
             data-testid="agent-text"
           >
             <p className={`${PARA} chat-para--fail text-(--fail-fg)`}>{item.title}</p>
@@ -593,7 +593,7 @@ function Row({
         <div className={`${ROW_BASE} chat-row--agent ${margin}`} data-row="agent">
           <AgentRowAvatar agent={agent} />
           <span
-            className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--text-primary)"
+            className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--foreground)"
             data-testid="agent-text"
           >
             {/* 结论先行（r8 §3.1 60）：单段总结 — paragraph chip "审核结论"
@@ -629,7 +629,7 @@ function Row({
                     ? '[border-left-color:var(--destructive)]'
                     : f.severity === 'suggestion'
                       ? '[border-left-color:var(--badge-attention)]'
-                      : '[border-left-color:var(--border-default)]'
+                      : '[border-left-color:var(--border)]'
                 }`}
               >
                 <p
@@ -657,7 +657,7 @@ function Row({
                 )}
                 {(f.file !== undefined || f.line !== undefined) && (
                   <p
-                    className={`${PARA} ${PARA_GAP} chat-para--quote chat-review-quote border-l-4 border-(--border-default) bg-(--code-bg) pt-1.5 pr-2 pb-1.5 pl-[15px] text-xs [background-clip:content-box] text-(--text-secondary)`}
+                    className={`${PARA} ${PARA_GAP} chat-para--quote chat-review-quote border-l-4 border-(--border) bg-(--muted) pt-1.5 pr-2 pb-1.5 pl-[15px] text-xs [background-clip:content-box] text-(--text-secondary)`}
                   >
                     <Segments
                       segments={inlineSegments(
@@ -669,7 +669,7 @@ function Row({
                 )}
                 {f.suggestion !== undefined && f.suggestion !== '' && (
                   <p
-                    className={`${PARA} ${PARA_GAP} chat-para--quote chat-review-suggestion border-l-4 border-(--border-default) bg-(--code-bg) pt-1.5 pr-2 pb-1.5 pl-[15px] text-xs [background-clip:content-box] text-(--text-secondary)`}
+                    className={`${PARA} ${PARA_GAP} chat-para--quote chat-review-suggestion border-l-4 border-(--border) bg-(--muted) pt-1.5 pr-2 pb-1.5 pl-[15px] text-xs [background-clip:content-box] text-(--text-secondary)`}
                   >
                     <Segments
                       segments={inlineSegments(t('建议：{body}', { body: f.suggestion }))}
@@ -744,7 +744,7 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
               return (
                 <div key={`${i}-${pill}`} className="chat-tool flex min-w-0 flex-col gap-1">
                   <div
-                    className="chat-tool-pill flex h-[18px] items-center gap-2 overflow-hidden rounded-[3px] border border-(--border-default) bg-(--surface-secondary) pl-2.5 font-mono text-[11px] leading-4 whitespace-nowrap text-(--text-tertiary) [&_svg]:flex-none"
+                    className="chat-tool-pill flex h-[18px] items-center gap-2 overflow-hidden rounded-[3px] border border-(--border) bg-(--secondary) pl-2.5 font-mono text-[11px] leading-4 whitespace-nowrap text-(--text-tertiary) [&_svg]:flex-none"
                     data-testid="tool-pill"
                   >
                     <Terminal width={12} height={12} />
@@ -755,7 +755,7 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
                     // 对比度——.chat-code 的终端内容孪生；pre-wrap 保留换行
                     // 不横滚，240px 封顶内滚。
                     <pre
-                      className="chat-tool-output m-0 max-h-60 overflow-auto rounded-[3px] border border-(--border-default) bg-(--code-bg) px-2.5 py-2 text-left font-mono text-[11px] leading-4 break-words whitespace-pre-wrap text-(--text-primary) [word-break:break-word]"
+                      className="chat-tool-output m-0 max-h-60 overflow-auto rounded-[3px] border border-(--border) bg-(--muted) px-2.5 py-2 text-left font-mono text-[11px] leading-4 break-words whitespace-pre-wrap text-(--foreground) [word-break:break-word]"
                       data-testid="tool-output"
                     >
                       {output}

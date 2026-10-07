@@ -25,7 +25,13 @@
 // sRGB relative luminance + (Lhi+0.05)/(Llo+0.05). Translucent overlays are
 // composited over their real base before measuring. No value is estimated.
 //
-// Run: node apps/web/e2e/measure-912.mjs [--out <dir>]   (default out: cwd)
+// Run: node apps/web/e2e/measure-912.mjs [--out <dir>]
+//        [--palette <file-in-this-dir>] [--variant <key>]
+//      Defaults: out = cwd, palette = palette-c.css, variant = c — the sealed
+//      #912 canon, default behavior unchanged. #988 (palette reselect) adds
+//      the parameterization: point the tool at a new frozen canon copy
+//      (palette-<x>.css, `:root[data-variant="<x>"]` selector shape) to
+//      measure the reselected palette at full scale before/while it lands.
 // Output: token-scale-912.json / token-scale-912-tables.md /
 // token-scale-912-fragment.md under <dir>.
 // Note: docs/spec/22 §1.5–1.8 froze the #912-era tables in place; post-seal
@@ -40,7 +46,13 @@ const root = join(here, '..', '..', '..'); // repo root (apps/web/e2e → root)
 const outIdx = process.argv.indexOf('--out');
 const outDir = outIdx >= 0 && process.argv[outIdx + 1] ? process.argv[outIdx + 1] : process.cwd();
 mkdirSync(outDir, { recursive: true });
-const cCss = readFileSync(join(here, 'palette-c.css'), 'utf8');
+function argOf(flag, fallback) {
+  const i = process.argv.indexOf(flag);
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
+}
+const paletteFile = argOf('--palette', 'palette-c.css');
+const variantKey = argOf('--variant', 'c');
+const cCss = readFileSync(join(here, paletteFile), 'utf8');
 const shadcnCss = readFileSync(join(root, 'apps', 'web', 'src', 'styles', 'shadcn.css'), 'utf8');
 const tokensCss = readFileSync(join(root, 'apps', 'web', 'src', 'styles', 'tokens.css'), 'utf8');
 
@@ -74,8 +86,11 @@ function decls(body) {
   return out;
 }
 
-const cDark = decls(block(cCss, ':root[data-variant="c"] {'));
-const cLight = { ...cDark, ...decls(block(cCss, ':root[data-variant="c"].light {')) };
+const cDark = decls(block(cCss, `:root[data-variant="${variantKey}"] {`));
+const cLight = {
+  ...cDark,
+  ...decls(block(cCss, `:root[data-variant="${variantKey}"].light {`)),
+};
 const sDark = { ...decls(block(tokensCss, ':root {')), ...decls(block(shadcnCss, ':root {')) };
 const sLight = {
   ...sDark,
@@ -384,18 +399,64 @@ function currentValues(mode) {
 
 const result = {
   generatedBy: 'apps/web/e2e/measure-912.mjs (migrated from library/t-0909 by #953)',
-  paletteCanon: 'apps/web/e2e/palette-c.css (frozen #909 version-C copy, sha1 beb289f6…)',
+  paletteCanon: `apps/web/e2e/${paletteFile} (variant "${variantKey}" frozen canon copy)`,
   slotFile: 'apps/web/src/styles/shadcn.css (+ tokens.css non-color)',
   modes: {},
 };
 
-// Slots retired for real: their only consumers were per-face CSS that D3
-// zeroed, and #952 (the sole unfreeze window, spec/22 §1.6/§4-2) dropped the
-// slots from the live files. They remain in the frozen canon palette, so the
-// name-level diff would read them as "new" — force the honest status.
+// Slots retired for real: they remain in the frozen canon palette (which is
+// name-complete at the pre-convergence universe), so the name-level diff would
+// read them as "new" — force the honest status. Two retirement waves:
+//   #952 — the toggle slots (consumers died with the per-face CSS D3 zeroed).
+//   #1002 — the #987 §3 convergence: 7 dead slots (0 consumers) + 30 merged
+//     slots (value-equal to an official/canonical slot, consumers repointed).
+//     The merges were proven value-preserving (both modes, 0 divergence) before
+//     execution, so retiring them changes no rendered color. PAIRS is NOT
+//     pruned: it measures the frozen canon (still 109 slots) and the ticket
+//     acceptance wants the 109-pair canon read reproduced; RETIRED_SLOTS is the
+//     honest-status mechanism, per the #952 precedent.
 const RETIRED_SLOTS = {
   '--toggle-track': 'retired by #952 (consumer .dlg-toggle died with detail/overlays.css; → shadcn Switch)',
   '--toggle-knob': 'retired by #952 (consumers .dlg-toggle-knob + secondary.css died; → shadcn Switch)',
+  // #1002 dead slots (#987 §3.1–3.2, 0 consumers):
+  '--destructive-foreground': 'retired by #1002 (#987 §3.1: official v4 set has no such slot, base-nova 0 consumers; destructive now text-destructive on tint)',
+  '--col-bg': 'retired by #1002 (#987 §3.2: dead, 0 consumers; was var(--background))',
+  '--col-head-text': 'retired by #1002 (#987 §3.2: dead, 0 consumers)',
+  '--dialog-row-bg': 'retired by #1002 (#987 §3.2: dead, 0 consumers)',
+  '--tile-indigo-bg': 'retired by #1002 (#987 §3.2: dead, 0 consumers; was var(--spot-soft))',
+  '--tile-indigo-fg': 'retired by #1002 (#987 §3.2: dead, 0 consumers; was var(--spot-text-on-tint))',
+  '--primary-disabled': 'retired by #1002 (#987 §3.2: dead, 0 consumers; was var(--spot-disabled))',
+  // #1002 merged slots (#987 §3.3 A/B/C, value-equal → official/canonical):
+  '--surface-inset': 'merged by #1002 into --background (#987 §3.3-A)',
+  '--card-bg': 'merged by #1002 into --card (#987 §3.3-A)',
+  '--popover-bg': 'merged by #1002 into --popover (#987 §3.3-A)',
+  '--text-primary': 'merged by #1002 into --foreground (#987 §3.3-A)',
+  '--code-bg': 'merged by #1002 into --muted (#987 §3.3-A)',
+  '--danger': 'merged by #1002 into --destructive (#987 §3.3-A)',
+  '--card-border': 'merged by #1002 into --border (#987 §3.3-A, via --border-default)',
+  '--column': 'merged by #1002 into --background (#987 §3.3-B)',
+  '--surface': 'merged by #1002 into --card (#987 §3.3-B)',
+  '--surface-elevated': 'merged by #1002 into --card (#987 §3.3-B)',
+  '--dialog-bg': 'merged by #1002 into --card (#987 §3.3-B)',
+  '--dialog-box-bg': 'merged by #1002 into --card (#987 §3.3-B)',
+  '--tab-chip-bg': 'merged by #1002 into --card (#987 §3.3-B)',
+  '--surface-secondary': 'merged by #1002 into --secondary (#987 §3.3-B)',
+  '--surface-hover': 'merged by #1002 into --secondary (#987 §3.3-B)',
+  '--agent-avatar-bg': 'merged by #1002 into --secondary (#987 §3.3-B)',
+  '--pill-idle-bg': 'merged by #1002 into --secondary (#987 §3.3-B)',
+  '--row-selected': 'merged by #1002 into --secondary (#987 §3.3-B)',
+  '--chief-tab-bg': 'merged by #1002 into --secondary (#987 §3.3-B)',
+  '--range-chip-bg': 'merged by #1002 into --secondary (#987 §3.3-B)',
+  '--border-default': 'merged by #1002 into --border (#987 §3.3-B)',
+  '--overlay-divider': 'merged by #1002 into --border (#987 §3.3-B)',
+  '--border-strong': 'merged by #1002 into --input (#987 §3.3-B)',
+  '--dash-border': 'merged by #1002 into --input (#987 §3.3-B)',
+  '--dialog-ring': 'merged by #1002 into --input (#987 §3.3-B)',
+  '--range-chip-border': 'merged by #1002 into --input (#987 §3.3-B)',
+  '--stop': 'merged by #1002 into --destructive (#987 §3.3-B)',
+  '--overlay-select-indigo': 'merged by #1002 into --spot-soft (#987 §3.3-C)',
+  '--pick-selected-bg': 'merged by #1002 into --spot-soft (#987 §3.3-C)',
+  '--pick-selected-fg': 'merged by #1002 into --spot-text-on-tint (#987 §3.3-C)',
 };
 
 // Geometry / motion / font tokens are not color slots — keep them out of the

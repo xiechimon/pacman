@@ -31,7 +31,7 @@ export const ACCEPT_CANCEL_BTN =
 export const ACCEPT_DONE_SIZE = 'w-[50px] p-0';
 
 /** 勾选行文字：13px primary（原 .dlg-accept-label）。 */
-export const ACCEPT_LABEL = 'text-[13px] text-(--text-primary)';
+export const ACCEPT_LABEL = 'text-[13px] text-(--foreground)';
 
 /** 勾选行下方说明行（XMON-89 缺项/拒绝行共用形：10px 顶距 + 16 横缩、
  *  12/16；墨色由消费面给——缺项 tertiary、server 拒绝 --danger）。 */
@@ -108,7 +108,7 @@ export function AcceptDialog({
       {rejectReason != null && (
         // XMON-89 server 拒绝行：--danger 与其余面级错误文案同色；role=alert
         // 是 e2e/读屏一级载体（#910 裁定 1）。
-        <p className={`${ACCEPT_NOTE_LINE} text-(--danger)`} role="alert">
+        <p className={`${ACCEPT_NOTE_LINE} text-(--destructive)`} role="alert">
           {rejectReason}
         </p>
       )}

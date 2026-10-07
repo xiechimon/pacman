@@ -154,7 +154,7 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
             </Button>
           </span>
         </div>
-        <div className="max-h-[264px] overflow-y-auto rounded-none border border-(--border-default) px-2 py-1">
+        <div className="max-h-[264px] overflow-y-auto rounded-none border border-(--border) px-2 py-1">
           <div className="flex items-center gap-2 py-[3px] text-xs text-(--text-tertiary)">
             <span className="flex-1" />
             <span className="w-8 text-center">{t('读')}</span>

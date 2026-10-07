@@ -69,7 +69,7 @@ export function FreshBlock({ todo, tags, action, onAction, hasSpec }: FreshBlock
   const { t } = useI18n();
   return (
     <div className="fresh-block mx-auto max-w-[720px] px-4 pt-[72px]" data-testid="fresh-block">
-      <h2 className="fresh-title m-0 text-[22px] leading-[30px] font-semibold break-words text-(--text-primary)">
+      <h2 className="fresh-title m-0 text-[22px] leading-[30px] font-semibold break-words text-(--foreground)">
         {todo.title}
       </h2>
       {/* #394：chips 只读，无标签时整行不渲染（原静态添加 affordance 移除） */}

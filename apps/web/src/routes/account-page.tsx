@@ -68,19 +68,19 @@ import { SecondaryShell } from '../secondary/shell.js';
  *  归零到带框皮肤：hover/aria-expanded 回 surface 底 + primary 墨（原形
  *  无 hover、开态无换装），含 dark: 变体。 */
 const LANG_TRIGGER_CLS =
-  "h-[30px] cursor-pointer gap-1.5 rounded-none border border-(--border-default) bg-(--surface) px-2.5 text-xs font-normal leading-[inherit] text-(--text-primary) hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
+  "h-[30px] cursor-pointer gap-1.5 rounded-none border border-(--border) bg-(--card) px-2.5 text-xs font-normal leading-[inherit] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
 
 /** 语言盘（V2 弹层壳 #790 P3：最小宽 220 / 12px 内垫 / 1px 墨线框 / 直角 /
  *  顶部锚距 8px / fab-shadow）+ 上指锚边右上的描边 Arrow（12×6 外三角压
  *  10×5 内三角，clip-path utility 承载，RES_SORT_MENU_CLS 同配方）。 */
 const LANG_MENU_CLS =
-  "absolute right-0 top-[calc(100%+8px)] z-(--z-popover) flex min-w-[220px] flex-col rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:right-4 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+  "absolute right-0 top-[calc(100%+8px)] z-(--z-popover) flex min-w-[220px] flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:right-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** 语言盘选项行（Button ghost 底座）：32px 行 / 8px 圆角 / 12px 字
  *  （壳垫 12px 后行内横缩 4，字墨 inset 落 16）。原形无 hover 态，件配方
  *  按七通道律归零到透明。 */
 const LANG_ROW_CLS =
-  "h-8 w-full cursor-pointer justify-start gap-0 rounded-[8px] border-0 px-1 text-left text-xs leading-4 font-normal text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5";
+  "h-8 w-full cursor-pointer justify-start gap-0 rounded-[8px] border-0 px-1 text-left text-xs leading-4 font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5";
 
 export function AccountPage() {
   const { locale, setLocale, t } = useI18n();

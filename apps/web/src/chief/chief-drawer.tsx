@@ -104,7 +104,7 @@ const DOCK_ROWS = ['board-shell', 'page-main', 'res-main', 'secondary-main', 'de
  *  类名 chief-drawer 保留为零规则机制钩子：overlays/hotkeys.ts 的 ⌘J
  *  守卫走 closest('.chief-drawer')，e2e 以它做抽屉 scope 锚。 */
 const DRAWER_CLS =
-  'chief-drawer flex w-[min(418px,100%)] flex-none flex-col border-l border-l-(--border-default) bg-(--surface) z-(--z-docked)';
+  'chief-drawer flex w-[min(418px,100%)] flex-none flex-col border-l border-l-(--border) bg-(--card) z-(--z-docked)';
 
 /** 退场腿（D4 内容瞬时贴合）：关态离流，absolute 落在刚腾出的槽位上播
  *  slide-out（旧 .chief-drawer[data-closed] 等值；Base UI keepMounted 缺席，
@@ -124,7 +124,7 @@ const HEAD_ICON_BTN_CLS =
  *  light 2.89:1 低于正典对 --text-dim 槽自钉的 3:1 下限（spec/22 §1.8），
  *  按 #908 裁决 2 换消费面槽引用（token 值不动）。 */
 const MSG_TOOL_BTN_CLS =
-  "size-5 cursor-pointer rounded-none border-none bg-transparent text-(--text-tertiary) hover:bg-(--surface-secondary) hover:text-(--text-secondary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-muted aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  "size-5 cursor-pointer rounded-none border-none bg-transparent text-(--text-tertiary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) aria-expanded:bg-muted aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
 /** composer 工具钮（旧 .chief-tool 几何等值：20×20 / hover 只升墨——底色
  *  hover 是 ghost 件既有行为，旧面未覆写，保留；圆角随件档）。墨槽
@@ -143,8 +143,7 @@ const SEND_ON_CLS =
 
 /** 回合过程折叠面（旧 .chief-turn-tools 等值：foot 下挂工具行表，
  *  surface-secondary 底 6/8 内垫，mono 名 + 秒数 + 失败徽标 dim 墨压底）。 */
-const TURN_TOOLS_CLS =
-  'mt-1.5 flex flex-col gap-[3px] rounded-none bg-(--surface-secondary) px-2 py-1.5';
+const TURN_TOOLS_CLS = 'mt-1.5 flex flex-col gap-[3px] rounded-none bg-(--secondary) px-2 py-1.5';
 const TURN_TOOL_ROW_CLS = 'flex items-center gap-2 font-mono text-[11px] text-(--text-tertiary)';
 const TURN_TOOL_NAME_CLS = 'min-w-0 flex-auto truncate';
 
@@ -156,9 +155,9 @@ const TURN_TOOL_NAME_CLS = 'min-w-0 flex-auto truncate';
  *  layered utility，important 修饰是 utility 层赢过 unlayered 正典的唯一
  *  出口（important 声明的层序优先于一切 normal 声明）。 */
 const MSG_COL_CLS =
-  'min-w-0 flex-1 text-sm leading-6 text-(--text-primary) [&_.chat-para+.chat-para]:mt-0.5!';
+  'min-w-0 flex-1 text-sm leading-6 text-(--foreground) [&_.chat-para+.chat-para]:mt-0.5!';
 const BUBBLE_CLS =
-  'rounded-(--radius-popover) bg-(--surface-secondary) px-3 py-2.5 text-sm leading-6 text-(--text-primary)';
+  'rounded-(--radius-popover) bg-(--secondary) px-3 py-2.5 text-sm leading-6 text-(--foreground)';
 const BUBBLE_MD_CLS = '[&>:first-child]:mt-0! [&>:last-child]:mb-0!';
 
 const EXAMPLE_ICONS = {
@@ -226,7 +225,7 @@ function Segments({ segments }: { segments: ChiefSegment[] }) {
           );
         if (s.code)
           return (
-            <code key={i} className="rounded-[4px] bg-(--code-bg) px-[5px] py-px font-mono text-xs">
+            <code key={i} className="rounded-[4px] bg-(--muted) px-[5px] py-px font-mono text-xs">
               {s.text}
             </code>
           );
@@ -573,7 +572,7 @@ export function ChiefDrawer({
                   onClick={() => setThreadsOpen((v) => !v)}
                 >
                   <ChiefHash />
-                  <span className="max-w-[210px] truncate text-[15px] font-semibold text-(--text-primary)">
+                  <span className="max-w-[210px] truncate text-[15px] font-semibold text-(--foreground)">
                     {t(chief.threadTitle)}
                   </span>
                   <ChevronDown width={12} height={12} />
@@ -638,7 +637,7 @@ export function ChiefDrawer({
                       trigger={
                         <Button
                           variant="ghost"
-                          className="h-auto min-w-0 max-w-full shrink cursor-pointer justify-start gap-[5px] rounded-none border-none bg-transparent px-1 py-px leading-[inherit] font-normal text-(--text-tertiary) hover:bg-(--surface-secondary) hover:text-(--text-secondary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                          className="h-auto min-w-0 max-w-full shrink cursor-pointer justify-start gap-[5px] rounded-none border-none bg-transparent px-1 py-px leading-[inherit] font-normal text-(--text-tertiary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                           aria-label={t('总管主模型')}
                         >
                           {/* #615 返工（用户裁决）：行首 = 运行时标记，不是 Agent 头像
@@ -669,7 +668,7 @@ export function ChiefDrawer({
                 // 位、262 宽、popover 底、drawer-local z 5——#688 阶梯外，
                 // 收编于抽屉 stacking context 只压内部内容）。
                 <div
-                  className="absolute top-8 left-3 z-[5] w-[262px] rounded-none bg-(--popover-bg) p-1 shadow-(--chief-shadow)"
+                  className="absolute top-8 left-3 z-[5] w-[262px] rounded-none bg-(--popover) p-1 shadow-(--chief-shadow)"
                   role="menu"
                 >
                   {(chief.threads ?? []).map((thread, index) => (
@@ -682,7 +681,7 @@ export function ChiefDrawer({
                       role="menuitem"
                       key={thread.title}
                       aria-current={thread.active ? 'true' : undefined}
-                      className="h-[30px] w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-2 text-left text-[13px] font-normal text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-[current=true]:bg-(--surface-hover) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                      className="h-[30px] w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-2 text-left text-[13px] font-normal text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-[current=true]:bg-(--secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                       onClick={
                         onThread != null
                           ? () => {
@@ -708,7 +707,7 @@ export function ChiefDrawer({
                 上方 useChatFollow（打开/切线程落底、近底才跟随）。 */}
             <div className="min-h-0 flex-1 overflow-y-auto" data-testid="chief-body" ref={bodyRef}>
               {!chief.bound && (
-                <div className="mx-[17px] flex h-[54px] items-center rounded-none bg-(--surface-secondary) pr-3 pl-5 text-[13px] text-(--text-secondary)">
+                <div className="mx-[17px] flex h-[54px] items-center rounded-none bg-(--secondary) pr-3 pl-5 text-[13px] text-(--text-secondary)">
                   <span>{t('请先为总管选择一个 Agent。')}</span>
                   {/* XMON-23 收编：brand 档 = A3 primary 等价位（--card-button
                   实底 + on-accent 墨）。中和件对齐 A6 实测形（50×26、12px 字、
@@ -729,7 +728,7 @@ export function ChiefDrawer({
                   {/* 旧 .chief-hero + gate 兄弟选择器等值：gate 在位（= 未
                       绑定）时上距 62，否则 54——条件类随 JSX 状态切换。 */}
                   <h2
-                    className={`text-center text-[15px] font-semibold text-(--text-primary) ${
+                    className={`text-center text-[15px] font-semibold text-(--foreground) ${
                       chief.bound ? 'mt-[54px]' : 'mt-[62px]'
                     }`}
                   >
@@ -756,7 +755,7 @@ export function ChiefDrawer({
                         // 14px 属性尺寸）。
                         <Button
                           variant="ghost"
-                          className="h-16 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--surface-secondary) px-3 text-left whitespace-normal font-normal hover:bg-(--surface-secondary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                          className="h-16 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--secondary) px-3 text-left whitespace-normal font-normal hover:bg-(--secondary) dark:hover:bg-(--secondary) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                           key={ex.text}
                           onClick={onSend != null ? () => void onSend(ex.text) : undefined}
                         >
@@ -784,7 +783,7 @@ export function ChiefDrawer({
                       return (
                         <div
                           key={i}
-                          className="my-2.5 text-center text-xs text-(--danger)"
+                          className="my-2.5 text-center text-xs text-(--destructive)"
                           role="alert"
                         >
                           {t('总管本轮执行失败')}
@@ -971,7 +970,9 @@ export function ChiefDrawer({
                                       <span className="flex-none">{tool.seconds}s</span>
                                     )}
                                     {tool.error === true && (
-                                      <span className="flex-none text-(--danger)">{t('失败')}</span>
+                                      <span className="flex-none text-(--destructive)">
+                                        {t('失败')}
+                                      </span>
                                     )}
                                   </div>
                                 ))}
@@ -1124,7 +1125,9 @@ export function ChiefDrawer({
                                     <span className="flex-none">{tool.seconds}s</span>
                                   )}
                                   {tool.error === true && (
-                                    <span className="flex-none text-(--danger)">{t('失败')}</span>
+                                    <span className="flex-none text-(--destructive)">
+                                      {t('失败')}
+                                    </span>
                                   )}
                                 </div>
                               ))}
@@ -1145,7 +1148,7 @@ export function ChiefDrawer({
                 chief-composer 以零规则钩子存活：#948 把外域规则内联进本 div
                 后，余下消费者 = spec 容器 scope（chief-panel.spec 的
                 composer bar 定位）；摘除归 #952 终账。 */}
-            <div className="chief-composer [&>.attachment-strip]:mt-2 mx-[17px] my-2.5 rounded-none bg-(--surface-secondary) px-3 pt-3 pb-2.5 shadow-[var(--edge-ring),var(--card-shadow)] transition-shadow duration-(--dur-fast) ease-(--ease-out)">
+            <div className="chief-composer [&>.attachment-strip]:mt-2 mx-[17px] my-2.5 rounded-none bg-(--secondary) px-3 pt-3 pb-2.5 shadow-[var(--edge-ring),var(--card-shadow)] transition-shadow duration-(--dur-fast) ease-(--ease-out)">
               {/* #624：占位双态随回合态（r5 §3.6，截图 113）——活动线程 activeRun
               在位（chief.running，mapChief 单点投影）= steer canon「执行过程中
               即可送达」，空闲 / 新主题 / 回合收尾 = 空闲 canon。两值经 t() 消费
@@ -1170,7 +1173,7 @@ export function ChiefDrawer({
                 <Textarea
                   ref={attachComposer}
                   data-testid="chief-composer-input"
-                  className="h-[60px] max-h-[120px] min-h-0 resize-none overflow-y-auto rounded-none border-none bg-transparent p-0 font-sans text-[13px] leading-5 text-(--text-primary) tabular-nums shadow-none field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent"
+                  className="h-[60px] max-h-[120px] min-h-0 resize-none overflow-y-auto rounded-none border-none bg-transparent p-0 font-sans text-[13px] leading-5 text-(--foreground) tabular-nums shadow-none field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent"
                   readOnly={onSend == null}
                   value={wire.draft}
                   onChange={wire.handleChange}
@@ -1365,7 +1368,7 @@ export function ChiefDrawer({
               }
             >
               <div className="flex flex-col gap-4 p-4">
-                <p className="text-[13px] leading-5 text-(--text-primary)">
+                <p className="text-[13px] leading-5 text-(--foreground)">
                   {t('恢复到此处？该条之后的 {n} 条消息会移除，总管从这条重发开新回合。', {
                     n: Math.max(0, (chief.stream?.length ?? 0) - (rewindConfirm?.index ?? 0) - 1),
                   })}

@@ -141,7 +141,7 @@ export function MachinesPage() {
       fixture={fixture}
     >
       {shellSaveFailed && (
-        <p className="mt-0 mb-2 text-xs leading-4 text-(--danger)" role="alert">
+        <p className="mt-0 mb-2 text-xs leading-4 text-(--destructive)" role="alert">
           {t('保存失败，请重试。')}
         </p>
       )}
@@ -210,7 +210,7 @@ export function MachinesPage() {
                 <span className="ml-auto flex flex-none items-center gap-2">
                   {chief.host && (
                     <span
-                      className="inline-flex h-5 items-center rounded-[4px] border border-(--border-default) bg-(--surface-secondary) px-1.5 text-[11px] leading-5 whitespace-nowrap text-(--text-primary)"
+                      className="inline-flex h-5 items-center rounded-[4px] border border-(--border) bg-(--secondary) px-1.5 text-[11px] leading-5 whitespace-nowrap text-(--foreground)"
                       data-orchestration="host"
                     >
                       {t('总管主机')}
@@ -265,7 +265,7 @@ export function MachinesPage() {
           件默认的 hover 底色就地并掉（原形无 hover 态）。 */}
       <Button
         variant="ghost"
-        className="mt-4 h-[46px] w-full gap-2 border-dashed border-(--dash-border) text-[13px] leading-4 font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5"
+        className="mt-4 h-[46px] w-full gap-2 border-dashed border-(--input) text-[13px] leading-4 font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5"
         onClick={() => setAddOpen(true)}
       >
         <ServerThin width={14} height={14} />
