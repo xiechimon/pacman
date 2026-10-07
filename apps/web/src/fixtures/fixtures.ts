@@ -2981,6 +2981,36 @@ export const mdToolout: FixtureSet = {
   },
 };
 
+/** #919 named scenario（无 capture，mdToolout 先例）：技能路由行为验收的
+ *  UI 面钉扎 #918 落地的那张脸（并行票先合，本票 seam 4 的验收对象即它）：
+ *  活行披露面的技能事实行（▶ 命中 / ✕ 挡下）+ 持久汇总行（技能/挡下两列）。
+ *  场景词表与行为证据腿同款（haiku 命中 + secret 挡下）。 */
+const SKILLS_ROUTING_TRANSCRIPT: TranscriptItem[] = [
+  { kind: 'run', at: '13:35', machine: 'xmonsMac-3574' },
+  {
+    kind: 'user',
+    text: '写一首深夜写代码主题的三行俳句，保存到 haiku.txt',
+    seq: 9,
+    title: '写一首俳句并保存',
+  },
+  { kind: 'skills', read: ['haiku-helper'], denied: ['secret-local'] },
+  {
+    kind: 'robot',
+    paragraphs: [[{ text: '已把俳句写进 haiku.txt。' }]],
+    footer: { seconds: 12 },
+  },
+];
+
+export const skillsRouting: FixtureSet = {
+  todos: [probeTodo('review', r7(13, 37))],
+  now: r7(13, 40),
+  detail: {
+    transcript: SKILLS_ROUTING_TRANSCRIPT,
+    doc: DOC_V2,
+    changes: probeChanges(true),
+  },
+};
+
 /** r8 63: version dropdown open on the v2 surface. */
 export const versionMenuV2: FixtureSet = withDetail(detailV2(r8(23, 54)), {
   versionMenu: 'versions',

@@ -376,6 +376,25 @@ export function createSkillReadGate(
   };
 }
 
+/** #919 before 侧对照探针：pi 原生技能发现面（DefaultResourceLoader **不带**
+ * noSkills——与 createAgentSession 的关断形只差这一个键）在同 agentDir/cwd
+ * 下会发现哪些技能名。会话面恒 noSkills: true（spec 14 §技能可见面收归 3），
+ * 本探针让「原生清单消失」的 after 断言在 CI 里永久保有可对照的 before 腿：
+ * 探针返回空 = fixture 种植无效，after 侧「LLM 输入面不出现」即空转断言。
+ * 只读，不建会话、不产副作用。 */
+export async function discoverNativeSkills(opts: {
+  agentDir: string;
+  cwd: string;
+}): Promise<string[]> {
+  const loader = new DefaultResourceLoader({
+    cwd: opts.cwd,
+    agentDir: opts.agentDir,
+    settingsManager: SettingsManager.inMemory({ compaction: { enabled: true } }),
+  });
+  await loader.reload();
+  return loader.getSkills().skills.map((s) => s.name);
+}
+
 /** models.json custom provider 占位 key（真 key 走 setRuntimeApiKey 内存态）。 */
 const MODELS_JSON_KEY_PLACEHOLDER = 'per-step';
 

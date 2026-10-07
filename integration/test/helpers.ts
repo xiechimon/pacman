@@ -33,6 +33,10 @@ export interface RealServer {
   db: ReturnType<typeof openMemoryDb>;
   /** 托管 bare repo 存储根（M3b git 面断言用）。 */
   reposDir: string;
+  /** server 侧团队技能库根（spec 13 #367 现扫面 / #920 分发清单的来源目录）。
+   *  隔离空目录——需要团队技能的用例显式往里写 `<dirName>/SKILL.md`（#919
+   *  行为验收的远端分发面）。 */
+  skillsDir: string;
   /** POST /api/machine/tasks/claim 请求计数（cadence 时序实测面）。 */
   claimCount: () => number;
   todoPhase(todoId: string): string;
@@ -163,6 +167,7 @@ export async function bootRealServer(opts: {
     apiKey: issuedKey.plaintext,
     db,
     reposDir,
+    skillsDir,
     claimCount: () => claims,
     todoPhase(todoId: string) {
       return db.select().from(todoTable).where(eq(todoTable.id, todoId)).get()?.phase ?? '';
