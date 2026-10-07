@@ -49,12 +49,12 @@ export interface SlashMenuProps {
 
 /** 面板壳（原 .slash-menu）：与 .mention-inline 同锚同皮（r9 §2.2/§3.2）。 */
 const MENU_CLS =
-  'slash-menu absolute inset-x-0 bottom-[calc(100%+6px)] z-40 max-h-[220px] overflow-auto rounded-(--radius-popover) border border-(--border-default) bg-(--popover-bg) p-1 shadow-[0_12px_32px_rgb(0_0_0/0.18)]';
+  'slash-menu absolute inset-x-0 bottom-[calc(100%+6px)] z-40 max-h-[220px] overflow-auto rounded-(--radius-popover) border border-(--border) bg-(--popover) p-1 shadow-[0_12px_32px_rgb(0_0_0/0.18)]';
 
 /** 行钮基底（原 .slash-menu-row，Button ghost 七通道中和 + h-auto——旧行
  *  高随内容，不吃件 size 档的 32px）。 */
 const ROW_CLS =
-  'slash-menu-row flex h-auto w-full cursor-pointer items-baseline justify-start gap-2 rounded-[6px] border-0 px-2 py-1.5 text-left text-sm font-normal text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+  'slash-menu-row flex h-auto w-full cursor-pointer items-baseline justify-start gap-2 rounded-[6px] border-0 px-2 py-1.5 text-left text-sm font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** 命令行名（mono 13px）与描述（12px tertiary 截断）——menu 行与 /help 行
  *  共用（原 .slash-menu-name / .slash-menu-desc）。 */
@@ -115,7 +115,7 @@ export function SlashMenu({
                     tabIndex={-1}
                     role="option"
                     aria-selected={index === highlight}
-                    className={`${ROW_CLS}${index === highlight ? ' slash-menu-row--active bg-(--surface-hover)' : ''}`}
+                    className={`${ROW_CLS}${index === highlight ? ' slash-menu-row--active bg-(--secondary)' : ''}`}
                     onMouseDown={(event) => event.preventDefault()}
                     onMouseEnter={() => onHover(index)}
                     onClick={() => onPick(row)}
@@ -149,7 +149,7 @@ export function SlashHelp({ open, onClose, commands, skillCount }: SlashHelpProp
     <FloatingShell open={open} onClose={onClose} className="slash-help-shell">
       <ClickCatcher onClose={onClose} />
       <div
-        className={`slash-help fixed top-[228px] left-1/2 z-(--z-picker) ml-[-200px] max-h-[70vh] w-[400px] max-w-[calc(100vw-32px)] overflow-auto rounded-[12px] border border-(--border-default) bg-(--popover-bg) p-3 text-(--text-primary) shadow-[0_18px_48px_rgb(0_0_0/0.22)] ${FLOATING_POP_ANIM}`}
+        className={`slash-help fixed top-[228px] left-1/2 z-(--z-picker) ml-[-200px] max-h-[70vh] w-[400px] max-w-[calc(100vw-32px)] overflow-auto rounded-[12px] border border-(--border) bg-(--popover) p-3 text-(--foreground) shadow-[0_18px_48px_rgb(0_0_0/0.22)] ${FLOATING_POP_ANIM}`}
         role="dialog"
         aria-modal="true"
         aria-label={t('命令说明')}
@@ -165,7 +165,7 @@ export function SlashHelp({ open, onClose, commands, skillCount }: SlashHelpProp
             </div>
           ))}
         </div>
-        <div className="slash-help-foot mt-2 border-t border-(--border-default) pt-2 text-xs text-(--text-tertiary)">
+        <div className="slash-help-foot mt-2 border-t border-(--border) pt-2 text-xs text-(--text-tertiary)">
           {t('团队技能来自技能页面（共 {count} 个）', { count: skillCount })}
         </div>
       </div>

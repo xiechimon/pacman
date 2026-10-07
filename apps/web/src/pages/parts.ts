@@ -14,7 +14,7 @@
  *  1 border（#138 发丝环 idiom），方角，surface-secondary 底。
  *  定位差（topbar 的 pointer-events-auto、freq 的 w-fit/mt-3 等）由消费点补。 */
 export const SEG_GROUP_CLS =
-  'flex h-[30px] items-center rounded-none border border-(--border-default) bg-(--surface-secondary) p-[2px]';
+  'flex h-[30px] items-center rounded-none border border-(--border) bg-(--secondary) p-[2px]';
 
 /** 分段 chip 基皮（原 .page-tab 族）：24px 高、13/24 字、secondary 墨、
  *  透明底、方角、150ms 标准步的背景过渡（#138 家族律；旧规的
@@ -33,7 +33,7 @@ export const SEG_TAB_IDLE_CLS =
  *  primary 墨；hover 保持自身填充不被洗浅（旧规 :not(--active) 闸的等值——
  *  选中分支不挂 idle 的 hover tint，且显式压回 chip 底）。 */
 export const SEG_TAB_ACTIVE_CLS =
-  'bg-(--tab-chip-bg) text-(--text-primary) hover:bg-(--tab-chip-bg) hover:text-(--text-primary) dark:hover:bg-(--tab-chip-bg)';
+  'bg-(--card) text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card)';
 
 /** 禁用 chip（原 .page-tab--disabled）：弱化但保留可见（占位语义，spec 12 /
  *  #362 G2-T2 v1）；hover 微光是现行为（disabled:pointer-events-auto 保留），

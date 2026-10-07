@@ -25,9 +25,9 @@ const STATE_FILTERS: { id: GithubIssueState; label: string }[] = [
  *  律中和（hover 无涂底面——旧 per-face bg 简写恒压 hover 档）。选中态
  *  （原 --active）= 品牌描边 + tab-chip 填充，载体 aria-pressed。 */
 const FILTER_CLS =
-  'h-6 cursor-pointer rounded-none border border-(--border-default) bg-transparent px-2.5 text-xs font-normal leading-[inherit] text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'h-6 cursor-pointer rounded-none border border-(--border) bg-transparent px-2.5 text-xs font-normal leading-[inherit] text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 const FILTER_ACTIVE_CLS =
-  'border-(--card-button) bg-(--tab-chip-bg) text-(--text-primary) hover:bg-(--tab-chip-bg) hover:text-(--text-primary) dark:hover:bg-(--tab-chip-bg)';
+  'border-(--card-button) bg-(--card) text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card)';
 
 /** 翻页钮（原 .prj-issues-prev/-next，老 ui/Button quiet 皮肤）：零内距 /
  *  无边框 / 透明底 / 13 字号 / 弱化墨；禁用态无降档（quiet 无
@@ -156,7 +156,7 @@ export function GithubIssuesDialog({
               <span className="flex-none text-xs text-(--text-tertiary) tabular-nums">
                 #{issue.number}
               </span>
-              <span className="min-w-0 text-[13px] leading-[18px] text-(--text-primary) [overflow-wrap:anywhere]">
+              <span className="min-w-0 text-[13px] leading-[18px] text-(--foreground) [overflow-wrap:anywhere]">
                 {issue.title}
               </span>
               {issue.labels.length > 0 && (
@@ -173,7 +173,9 @@ export function GithubIssuesDialog({
           ))}
         </div>
       )}
-      {error !== null && <div className="mx-4 mb-3 text-xs leading-4 text-(--danger)">{error}</div>}
+      {error !== null && (
+        <div className="mx-4 mb-3 text-xs leading-4 text-(--destructive)">{error}</div>
+      )}
     </DialogShell>
   );
 }

@@ -669,7 +669,7 @@ export function BoardPage() {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute right-4 bottom-4 size-12 cursor-pointer rounded-full border-none bg-(--surface) font-normal shadow-(--fab-shadow) hover:bg-(--surface) dark:hover:bg-(--surface) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+        className="absolute right-4 bottom-4 size-12 cursor-pointer rounded-full border-none bg-(--card) font-normal shadow-(--fab-shadow) hover:bg-(--card) dark:hover:bg-(--card) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
         aria-label={t('总管')}
         onClick={() => setChiefView('drawer')}
       >

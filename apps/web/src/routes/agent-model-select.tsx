@@ -49,13 +49,13 @@ import { useI18n } from '../i18n/provider.js';
  *  （spec/22 §5.0）：本钮是带框盒形，hover/aria-expanded 回 surface 皮肤
  *  而非透明（RES_SORT_TRIGGER_CLS 同律），无按下位移。 */
 export const AGENT_SELECT_TRIGGER_CLS =
-  'h-8 cursor-pointer gap-1.5 rounded-none border border-(--card-border) bg-(--surface) px-2.5 text-[13px] text-(--text-primary) hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+  'h-8 cursor-pointer gap-1.5 rounded-none border border-(--border) bg-(--card) px-2.5 text-[13px] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** 创建弹窗触发钮（原 .dlg-agent-model-select / .dlg-agent-runtime-select）：
  *  36 高、撑满行宽、文案贴左值贴右（space-between）、12px 横垫；皮肤与中和
  *  同概览档。 */
 export const DLG_AGENT_SELECT_TRIGGER_CLS =
-  'h-9 w-full cursor-pointer justify-between gap-1.5 rounded-none border border-(--card-border) bg-(--surface) px-3 text-[13px] text-(--text-primary) hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+  'h-9 w-full cursor-pointer justify-between gap-1.5 rounded-none border border-(--border) bg-(--card) px-3 text-[13px] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** 概览 tab 菜单锚边（原 `.ui-select-menu.agent-*-menu { left:auto; right:0 }`）：
  *  触发钮在模板行的值槽位（行右缘），贴右缘向下展开——锚错边菜单就往**外**长，

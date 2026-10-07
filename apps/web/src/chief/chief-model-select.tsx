@@ -52,7 +52,7 @@ const DEFAULT_OPTIONS: ModelOption[] = [
  *  族等值：32 行 / 12px 字 16 行盒 / px-12 / name 弹性截断 / provider 与
  *  check 钉右缘）。name/provider 直挂行下(无 col 列容器)。 */
 const ROW_SKIN: ModelRowSkin = {
-  row: 'h-8 gap-2 px-3 text-xs leading-4 text-(--text-primary)',
+  row: 'h-8 gap-2 px-3 text-xs leading-4 text-(--foreground)',
   name: 'min-w-0 flex-auto truncate',
   provider: 'flex-none text-(--text-tertiary)',
   check: 'inline-flex flex-none text-(--text-tertiary)',

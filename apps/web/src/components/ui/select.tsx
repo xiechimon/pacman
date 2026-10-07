@@ -33,13 +33,13 @@ import { EXIT_BRIDGE_CLS, FLOATING_POP_ANIM, FloatingShell } from './floating-sh
  *  clip-path utility 承载；落进壳垫区，随内容滚动，不碰 overflow 机制）。
  *  #688 阶梯 --z-popover 压 --z-catcher 的 29（overlays/dismiss.tsx）。 */
 export const SELECT_MENU_CLS =
-  "absolute top-[calc(100%+8px)] left-0 z-(--z-popover) flex max-h-[300px] w-max min-w-[220px] max-w-[360px] flex-col overflow-y-auto rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--edge-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+  "absolute top-[calc(100%+8px)] left-0 z-(--z-popover) flex max-h-[300px] w-max min-w-[220px] max-w-[360px] flex-col overflow-y-auto rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--edge-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** 选项行（原 .ui-select-row）：壳垫 12px 后行内横缩清零——字墨 inset 仍是
  *  12；纵向 6px。ghost 底座按七通道律中和（spec/22 §5.0），hover 回
  *  --surface-secondary 皮肤（原行 hover 同值）。 */
 export const SELECT_ROW_CLS =
-  'h-auto w-full cursor-pointer justify-start gap-2 rounded-[6px] border-none bg-transparent px-0 py-1.5 text-left text-[13px] font-normal leading-[inherit] text-(--text-primary) hover:bg-(--surface-secondary) hover:text-(--text-primary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+  'h-auto w-full cursor-pointer justify-start gap-2 rounded-[6px] border-none bg-transparent px-0 py-1.5 text-left text-[13px] font-normal leading-[inherit] text-(--foreground) hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** 一行候选。`meta` 是行右侧次级文本（模型面的 provider 位用得到），缺省不出。 */
 export interface SelectOption {

@@ -115,7 +115,7 @@ test('hover tints the row pill — dark default + light theme', async ({ page })
   const lightRow = page.getByRole('link', { name: '定时' });
   await lightRow.hover();
   // --sidebar-hover light = 5% warm ink
-  await expect.poll(() => pillBg(lightRow)).toBe('rgba(28, 25, 20, 0.05)');
+  await expect.poll(() => pillBg(lightRow)).toBe('rgba(28, 25, 21, 0.05)');
 });
 
 test('rail hover tints the 24px pill', async ({ page }) => {

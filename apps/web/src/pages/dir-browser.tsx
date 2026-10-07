@@ -42,25 +42,25 @@ const LAST_DIR_KEY = 'pacman.dirBrowser.lastDir';
  *  承载，#944 RES_SORT_MENU_CLS 同形、此面锚左）。geometry [设计]——上游无
  *  像素采集，贴仓内锚定弹层词汇。 */
 const PLATE_CLS =
-  "absolute top-[calc(100%+8px)] inset-x-0 z-(--z-popover) flex min-w-[220px] flex-col gap-1.5 rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+  "absolute top-[calc(100%+8px)] inset-x-0 z-(--z-popover) flex min-w-[220px] flex-col gap-1.5 rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** 面包屑段钮（原 .dir-browser-crumb，ghost 底座七通道中和）。 */
 const CRUMB_CLS =
-  'h-auto max-w-40 shrink cursor-pointer truncate rounded-none border-none bg-transparent p-0 text-xs font-normal leading-4 text-(--text-secondary) hover:bg-transparent hover:text-(--text-primary) hover:underline dark:hover:bg-transparent aria-[current=location]:font-medium aria-[current=location]:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+  'h-auto max-w-40 shrink cursor-pointer truncate rounded-none border-none bg-transparent p-0 text-xs font-normal leading-4 text-(--text-secondary) hover:bg-transparent hover:text-(--foreground) hover:underline dark:hover:bg-transparent aria-[current=location]:font-medium aria-[current=location]:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** dotfiles toggle 钮（原 .dir-browser-dots，pill 带框形 + aria-pressed
  *  品牌态；pressed×hover 叠态钉品牌墨 = 旧 unlayered 规则序的等值）。 */
 const DOTS_CLS =
-  'h-auto flex-none cursor-pointer rounded-full border border-(--border-default) bg-transparent px-2 py-0.5 text-[11px] font-normal leading-4 whitespace-nowrap text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-pressed:border-(--card-button) aria-pressed:text-(--card-button) aria-pressed:hover:text-(--card-button) active:not-aria-[haspopup]:translate-y-0';
+  'h-auto flex-none cursor-pointer rounded-full border border-(--border) bg-transparent px-2 py-0.5 text-[11px] font-normal leading-4 whitespace-nowrap text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-pressed:border-(--card-button) aria-pressed:text-(--card-button) aria-pressed:hover:text-(--card-button) active:not-aria-[haspopup]:translate-y-0';
 
 /** 行名钮（原 .dir-browser-name，ghost 底座；行钮自身无 hover 涂底）。 */
 const ROW_NAME_CLS =
-  'h-auto min-w-0 flex-1 cursor-pointer justify-start truncate rounded-none border-none bg-transparent px-1 text-[13px] font-normal leading-[18px] text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'h-auto min-w-0 flex-1 cursor-pointer justify-start truncate rounded-none border-none bg-transparent px-1 text-[13px] font-normal leading-[18px] text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 /** 「选择」钮（原 .dir-browser-pick）：静息隐身，行 hover（group）/自身
  *  focus-visible 现身。 */
 const PICK_CLS =
-  'h-auto flex-none cursor-pointer rounded-[6px] border border-(--border-default) bg-transparent px-2.5 py-0.5 text-xs font-normal leading-4 text-(--text-secondary) opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'h-auto flex-none cursor-pointer rounded-[6px] border border-(--border) bg-transparent px-2.5 py-0.5 text-xs font-normal leading-4 text-(--text-secondary) opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 function readLastDir(): string | null {
   try {
@@ -210,7 +210,7 @@ export function DirBrowser({
             </div>
             <ul className="flex max-h-72 flex-col overflow-y-auto">
               {listQ.isError ? (
-                <div className="px-3 py-2 text-xs leading-4 text-(--danger)" role="alert">
+                <div className="px-3 py-2 text-xs leading-4 text-(--destructive)" role="alert">
                   {(listQ.error as Error).message}
                 </div>
               ) : (
@@ -220,7 +220,7 @@ export function DirBrowser({
                   const child = base === '/' ? `/${entry.name}` : `${base}/${entry.name}`;
                   return (
                     <li
-                      className="group flex h-8 items-center gap-1.5 rounded-[6px] px-1 hover:bg-(--surface)"
+                      className="group flex h-8 items-center gap-1.5 rounded-[6px] px-1 hover:bg-(--card)"
                       key={entry.name}
                     >
                       {/* XMON-25 收编：ghost；justify-start 对齐位（text-align:left
@@ -263,7 +263,7 @@ export function DirBrowser({
                 )}
             </ul>
             {listQ.data?.truncated === true && (
-              <div className="border-t border-(--border-default) p-1 text-[11px] leading-4 text-(--text-tertiary)">
+              <div className="border-t border-(--border) p-1 text-[11px] leading-4 text-(--text-tertiary)">
                 {t('目录条目过多，只列出前 {n} 条', { n: FS_LIST_MAX_ENTRIES })}
               </div>
             )}

@@ -32,7 +32,7 @@ export function SpecBlock({ spec, fresh = false }: SpecBlockProps) {
   return (
     <section
       className={cn(
-        'spec-block mt-4 mx-4 rounded-none border border-(--border-default) bg-(--surface-secondary) px-[15px] py-[13px] text-[15px] leading-[1.6] break-words text-(--text-primary) [&>*]:max-w-[68ch]',
+        'spec-block mt-4 mx-4 rounded-none border border-(--border) bg-(--secondary) px-[15px] py-[13px] text-[15px] leading-[1.6] break-words text-(--foreground) [&>*]:max-w-[68ch]',
         fresh && 'mx-auto max-w-[720px]',
       )}
     >

@@ -7,7 +7,8 @@
 //      landLocalFastForward(用户仓库, conv 分支)，序在 push 之后；done success
 //   2. landing 抛错（git 自拒）→ done failed，errorMessage 含 git 拒绝原文
 //   3. github merge 步：prepare 开 worktree（https clone）→ push 消费 per-step
-//      凭证 {x-access-token, token}；不触发 landing（v1 done = conv 分支已推上）
+//      凭证 {x-access-token, token}；收尾探测同消费 per-step token（#966：
+//      探测经 mock，真实网络面不进单测）；不触发 landing（v1 done = conv 分支已推上）
 //   4. local build 步：push 照常，不触发 landing（落地仅 merge 步）
 //   5. 无 repo 项目（repo null）：不开 worktree，裸任务目录退化形不变
 //   6.（XMON-77 权限闸）merge 步 tools 携带但缺任一开关 → 会话/工作区之前
@@ -32,13 +33,28 @@ import type {
   TranscriptUpload,
   WorktreeOps,
 } from '@pacman/shared';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { PI_CAPABILITIES } from '../src/backend/pi.js';
 import { StepJournal } from '../src/journal.js';
 import type { DaemonLogger } from '../src/log.js';
 import type { MachineApi } from '../src/machine-client.js';
 import { runStep } from '../src/runner.js';
 import { statePaths } from '../src/state.js';
+
+// #966 flake 根因：github 形态步成功收尾时 runStep 会调 probeGithubPr——真
+// gh CLI + api.github.com 双梯，各带 10s 预算。本文件只有失败方式 3 命中它：
+// 真实网络往返实测 ~2.1s（同文件其余用例 1–6ms），5s 默认超时只剩 ~2.9s
+// 余量，高载 CI（168 workers）上被吃满——签名恒为「恰好跑满 5000ms」而非
+// 断言红（shim `gh` sleep 6s 可稳定复现同款超时）。真实网络面不进单测：
+// 探测梯行为钉在 github-probe.test.ts，本文件改钉「探测消费 per-step 凭证」
+// 语义边界；mock 形态与 runner-delivery.test.ts（#704）同款。
+const probeMock = vi.fn();
+vi.mock('../src/github-probe.js', async (importOriginal) => {
+  const real = (await importOriginal<typeof import('../src/github-probe.js')>()) as {
+    githubRepoRefOf: unknown;
+  };
+  return { ...real, probeGithubPr: (...args: unknown[]) => probeMock(...args) };
+});
 
 const USER_REPO = '/tmp/pacman-user-repo-probe';
 const GITHUB_TOKEN: GitCredentials = { username: 'x-access-token', password: 'ghp_steptoken' };
@@ -241,6 +257,9 @@ async function setup(
   claimed: ClaimedStep,
   opts: { landError?: string; git?: GitCredentials | null } = {},
 ) {
+  probeMock.mockReset();
+  // 不存在的仓库（o/r）的真值：gh / REST 双梯 404 → null（面板 PR 槽留空）。
+  probeMock.mockResolvedValue(null);
   const home = mkdtempSync(join(tmpdir(), 'pacman-runner-local-'));
   const paths = statePaths(home, join(home, 'workspaces'));
   const { logger, lines } = captureLogger();
@@ -290,13 +309,26 @@ describe('runner repo 形态接线（spec 12 G2-T2）', () => {
     expect(client.doneBodies[0]!.body.errorMessage).toContain('Not possible to fast-forward');
   });
 
-  test('失败方式 3：github merge 步 → worktree（https clone）+ push 消费 per-step 凭证；不触发 landing', async () => {
+  // #966 双保险：探测 mock 后本用例回到毫秒级，显式预算留给高载 CI 的调度
+  // 噪音——「偶发慢」不再误报，「真挂」仍会在上限处失败。
+  test('失败方式 3：github merge 步 → worktree（https clone）+ push 消费 per-step 凭证；不触发 landing', {
+    timeout: 20_000,
+  }, async () => {
     const { client, calls, pushes } = await setup(
       claimedStep('merge', { kind: 'github', cloneUrl: 'https://github.com/o/r.git' }),
       { git: GITHUB_TOKEN },
     );
     expect(calls).toContain('prepare:https://github.com/o/r.git');
     expect(pushes[0]!.cred).toEqual(GITHUB_TOKEN);
+    // 探测面同消费 per-step 凭证：token 进 gh/REST 梯（#704 同款钉法）。
+    expect(probeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: 'o',
+        repo: 'r',
+        branch: 'pacman/conv-conv-1',
+        token: GITHUB_TOKEN.password,
+      }),
+    );
     expect(calls.some((c) => c.startsWith('landLocalFastForward'))).toBe(false);
     expect(client.doneBodies[0]!.body.status).toBe('success');
   });

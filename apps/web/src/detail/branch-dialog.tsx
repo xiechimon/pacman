@@ -34,21 +34,21 @@ import { ChevronDown, Copy } from '../icons/index.js';
  *  行盒）+ c.css 定版 --label-size/--label-spacing token。branch-dialog
  *  与 right-pane 两消费面共用。 */
 export const FIELD_LABEL =
-  'mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--text-primary)';
+  'mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--foreground)';
 
 /** #951（detail/overlays.css 清零）：只读目录/PR 槽 box 律（原 .dlg-dir，
  *  r7 31 实测 32 高 / 16 横垫 / card-border 描边 / surface 底 / mono 12
  *  tertiary 墨；line-height 32 垂直居中）。div / anchor / live Input 三形
  *  共用；branch-dialog 与 right-pane 两消费面。 */
 export const DIR_BOX =
-  'h-8 rounded-none border border-(--card-border) bg-(--surface) px-4 font-mono text-xs leading-8 text-(--text-tertiary) dark:bg-(--surface)';
+  'h-8 rounded-none border border-(--border) bg-(--card) px-4 font-mono text-xs leading-8 text-(--text-tertiary) dark:bg-(--card)';
 
 /** #951：机器 pill 律（原 .dlg-machine，r7 31 实测 30 高 / 11+14 横垫 /
  *  8 gap / card-border 描边方角 / surface 漆底 / 13px primary 墨）。漆底
  *  恒压 hover 与 aria-expanded 档（ghost 七通道中和，#908 裁决 3）；chevron
  *  走 tertiary（原 .dlg-machine svg 律）。fixture 占位与 live picker 共用。 */
 export const MACHINE_PILL =
-  'h-[30px] cursor-pointer gap-2 rounded-none border border-(--card-border) bg-(--surface) pl-[11px] pr-[14px] text-[13px] leading-[calc(20/14)] font-normal text-(--text-primary) hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) dark:hover:text-(--text-primary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) [&_svg]:text-(--text-tertiary) [&_svg:not([class*=size-])]:size-auto';
+  'h-[30px] cursor-pointer gap-2 rounded-none border border-(--border) bg-(--card) pl-[11px] pr-[14px] text-[13px] leading-[calc(20/14)] font-normal text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) dark:hover:text-(--foreground) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) [&_svg]:text-(--text-tertiary) [&_svg:not([class*=size-])]:size-auto';
 
 /** #951：机器状态点（原 .dlg-machine-dot，6px 圆 / done 绿）。data-on 是
  *  在线态行为载体（无 CSS 消费，读面语义保留）。 */
@@ -105,15 +105,15 @@ export function BranchBox({ info }: { info: BranchInfoContent }) {
   // tertiary；值 mono 12 primary 省略号。
   const row = 'flex h-[42px] items-center pr-3 pl-[15px]';
   const label = 'w-[76px] flex-none text-[length:12px] text-(--text-tertiary)';
-  const value = 'min-w-0 flex-1 truncate font-mono text-[length:12px] text-(--text-primary)';
+  const value = 'min-w-0 flex-1 truncate font-mono text-[length:12px] text-(--foreground)';
   return (
-    <div className="rounded-none border border-(--card-border) bg-(--dialog-box-bg)">
+    <div className="rounded-none border border-(--border) bg-(--card)">
       <div className={row}>
         <span className={label}>{t('构建分支')}</span>
         <span className={value}>{info.branch}</span>
         <CopyButton value={info.branch} />
       </div>
-      <div className={`${row} border-t border-t-(--card-border)`}>
+      <div className={`${row} border-t border-t-(--border)`}>
         <span className={label}>{t('目标提交')}</span>
         <span className={value}>{info.commit}</span>
         <CopyButton value={info.commit} />
@@ -182,14 +182,14 @@ export function BranchSyncFields({
         // 恒压底座，迁移后同层冲突类并掉 base 的 px/py/border-input/dark 底）。
         // 老面是 UA 裸 input：固有宽度（w-auto 还原）、focus 时 UA outline 环
         // （outline:auto 复刻，底座的 ring/border 变色清零——border 恒 card-border，
-        // 原 unlayered 律下 focus 也不变色，focus-visible:border-(--card-border)
+        // 原 unlayered 律下 focus 也不变色，focus-visible:border-(--border)
         // 是其等值形）。aria-label = e2e/读屏一级载体（m7 集成钉，#910 裁定 1）。
         <Input
           type="text"
           aria-label={t('同步目录')}
           className={cn(
             DIR_BOX,
-            'w-auto py-0 focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:auto]',
+            'w-auto py-0 focus-visible:border-(--border) focus-visible:ring-0 focus-visible:[outline:auto]',
           )}
           value={directory}
           onChange={(event) => onDirectory(event.target.value)}

@@ -38,14 +38,14 @@ const PROFILE_CARD_CLS =
  *  行自带的 border-top 是行间分隔线；做首件时上方没有行可分，那条线只会与卡
  *  的描边叠成 2px、且是直线不吃圆角——first: 档摘掉。 */
 const PROFILE_ROW_CLS =
-  'profile-row flex h-[41px] items-center justify-between gap-4 border-t border-(--border-default) bg-(--surface-secondary) px-4 first:border-t-0';
+  'profile-row flex h-[41px] items-center justify-between gap-4 border-t border-(--border) bg-(--secondary) px-4 first:border-t-0';
 
 /** 带副文案的行（原 .profile-row--auto）：高度随内容（label 列两行时行自然
  *  变高），上下 8px 内垫保住行与行的呼吸，与固定档的 41/49/57 同一节奏。
  *  raw div 消费面（agent 记忆行 / 权限空态行）与 ProfileRow 的 hint 档共用
  *  本配方。 */
 export const PROFILE_ROW_AUTO_CLS =
-  'profile-row flex h-auto min-h-[41px] items-center justify-between gap-4 border-t border-(--border-default) bg-(--surface-secondary) px-4 py-2 first:border-t-0';
+  'profile-row flex h-auto min-h-[41px] items-center justify-between gap-4 border-t border-(--border) bg-(--secondary) px-4 py-2 first:border-t-0';
 
 /** 名称行档（原 .profile-row--name，r7 13 探测 49）。 */
 export const PROFILE_ROW_NAME_CLS = 'h-[49px]';
@@ -81,7 +81,7 @@ export function ProfileHead({ className, children }: { className?: string; child
   return (
     <div
       className={cn(
-        'profile-head flex h-[120px] flex-col items-center rounded-t-[11px] bg-(--surface) pt-4',
+        'profile-head flex h-[120px] flex-col items-center rounded-t-[11px] bg-(--card) pt-4',
         className,
       )}
     >
@@ -103,7 +103,7 @@ export function ProfileAvatar({
   return (
     <span
       className={cn(
-        'profile-avatar size-16 overflow-hidden rounded-full bg-(--card-bg) [&_img]:block [&_img]:size-16',
+        'profile-avatar size-16 overflow-hidden rounded-full bg-(--card) [&_img]:block [&_img]:size-16',
         className,
       )}
     >
@@ -159,7 +159,7 @@ export function ProfileRow({
       </span>
       <span
         className={cn(
-          'profile-value flex items-center gap-3.5 text-[14px] text-(--text-primary) [&_svg]:text-(--text-tertiary)',
+          'profile-value flex items-center gap-3.5 text-[14px] text-(--foreground) [&_svg]:text-(--text-tertiary)',
           auto && 'flex-none',
           valueClassName,
         )}

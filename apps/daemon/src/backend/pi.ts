@@ -11,8 +11,9 @@
 //   toolcall_end（含 result，同 id 幂等 upsert 覆盖）
 // - message_end → message_end；stopReason=aborted → message_stop；error → error
 // - compaction_start/end、auto_retry_start/end → 同名事件
-// - agent_end(!willRetry) → done(usage)；裸 compaction 事件本映射不产生
-//   （词表位保留给引擎侧压缩归档消息 [推断]）。
+// - agent_settled → done(usage)（#926：收敛权威信号，取代旧 agent_end(!willRetry)
+//   猜测——agent_end 后仍可能有排队工作/溢出恢复继续，settled 才是「不再自动继续」）；
+//   裸 compaction 事件本映射不产生（词表位保留给引擎侧压缩归档消息 [推断]）。
 //
 // per-step 凭证纪律（02 §8 运行时层）：apiKey 只走 ModelRuntime.setRuntimeApiKey
 // （内存态，不持久化）；models.json 落盘的 apiKey 恒为占位符。
@@ -64,6 +65,7 @@ import { ENV_VARS, THINKING_LEVELS } from '@pacman/shared';
 import { buildGatedBashOperations } from './command-gate.js';
 import { SessionNotResumableError } from './errors.js';
 import { connectFailedLine, connectMcpBridge } from './mcp-bridge.js';
+import { PI_RETRY_SETTINGS } from './pi-retry.js';
 import {
   enrichProviderError,
   type ProviderResponseSink,
@@ -143,7 +145,10 @@ export const PI_DAEMON_SETTINGS: PiSettingsSeed = {
 /** 会话 SettingsManager 单源（D1+D3）：声明 settings + projectTrusted:false。
  * open() 与测试共用同一构造——「策略声明」与「会话行为」不可能是两份。 */
 export function daemonSettingsManager(): SettingsManager {
-  return SettingsManager.inMemory(PI_DAEMON_SETTINGS, { projectTrusted: false });
+  return SettingsManager.inMemory(
+    { ...buildPiSessionSettings(), ...PI_DAEMON_SETTINGS },
+    { projectTrusted: false },
+  );
 }
 
 /** file-backed settings 绕过清单（D3 验收面：配置/文档可见的声明）。每条 =
@@ -155,7 +160,8 @@ export const PI_SETTINGS_BYPASS = [
   },
   {
     setting: 'retry',
-    policy: 'pi 默认流级重试（auto_retry 事件面）+ 宿主步级纪律：失败无自动重跑',
+    policy:
+      'retry 预算由宿主显式钉死（PI_RETRY_SETTINGS，#926），文件位不参与；步级纪律：失败无自动重跑',
   },
   {
     setting: 'modelOverrides',
@@ -222,6 +228,14 @@ export function piSessionPolicyLine(env: NodeJS.ProcessEnv): string {
   const versionCheck = effective.PI_SKIP_VERSION_CHECK ? 'off' : 'on';
   const retention = effective.PI_CACHE_RETENTION === 'long' ? 'long' : 'short';
   return `pi policy: trust=deny telemetry=${telemetry} version-check=${versionCheck} cache-retention=${retention} settings=in-memory (bypass list: PI_SETTINGS_BYPASS, spec 26)`;
+}
+
+/** 会话 SettingsManager.inMemory 的设置位（#926）：compaction 开 + retry 面显式值
+ *  （不吃 pi 内建默认）。抽成导出纯函数 = 可测缝——单测断言 retry 确实接到了
+ *  PI_RETRY_SETTINGS（而非摆设/漂移回默认），pi 包不进测试面。retry 单源在
+ *  backend/pi-retry.ts，runner 的 RETRY_STORM_MAX 同源派生（护栏与设置不脱钩）。 */
+export function buildPiSessionSettings() {
+  return { compaction: { enabled: true }, retry: PI_RETRY_SETTINGS };
 }
 
 // —— #730 图片交付（pi 面原生支持：prompt(text, {images}) / steer(text,
@@ -843,11 +857,18 @@ export function mapPiSessionEvent(event: AgentSessionEventLike, state: MapState)
       return [{ type: 'auto_retry_start', attempt: event.attempt ?? 1 }];
     case 'auto_retry_end':
       return [{ type: 'auto_retry_end', attempt: event.attempt ?? 1 }];
-    case 'agent_end': {
-      if (event.willRetry) return [];
+    // 收敛判定（#926）：agent_settled 是「pi 不会再自动继续」的权威信号
+    // （docs/sdk.md §Subscribing）。agent_end 只标记一次低层 run 结束，其后仍可能
+    // 有排队工作 / 溢出恢复继续（_handlePostAgentRun → agent.continue），故 agent_end
+    // 一律不发 done——旧 agent_end(!willRetry) 推断只覆盖错误重试一条继续路径，
+    // 会在排队工作继续时提前发 done 并 dispose 会话（时序赌博）。done 携 state 累积
+    // usage（agent_settled 在所有 message_end 之后，usage 比 agent_end 时刻更完整）。
+    case 'agent_settled': {
       const usage: ModelUsage[] = [...state.usage.values()];
       return [{ type: 'done', usage }];
     }
+    case 'agent_end':
+      return [];
     default:
       return [];
   }

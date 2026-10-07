@@ -29,7 +29,7 @@ export function DeleteConfirm({
       {/* #948 per-face 清零：summary 行规则迁 utility（16px 侧距/7px gap/单行
           截断，r7 25 实测值 1:1）；.delete-confirm-seq 的 tertiary 墨随消费点
           （schedules-page / todo-detail-page）各自的 utility 走。 */}
-      <div className="delete-confirm-summary mx-4 mt-4 flex h-4 items-center gap-[7px] overflow-hidden text-[13px] leading-4 whitespace-nowrap text-(--text-primary)">
+      <div className="delete-confirm-summary mx-4 mt-4 flex h-4 items-center gap-[7px] overflow-hidden text-[13px] leading-4 whitespace-nowrap text-(--foreground)">
         {summary}
       </div>
       <AlertDialogActions
