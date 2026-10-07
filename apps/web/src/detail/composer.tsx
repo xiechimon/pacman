@@ -48,7 +48,7 @@ import { ComposerChips } from './composer-chips.js';
 // --surface-secondary 底 + --card-shadow 卡级抬升（#775 阴影管层次），
 // 16px 侧/底 margin = 列 inset 律（#472 in-flow）。
 const COMPOSER_CARD =
-  'composer relative mx-4 mb-4 flex-none rounded-none border border-(--border-default) bg-(--surface-secondary) shadow-(--card-shadow) transition-shadow duration-(--dur-fast) ease-(--ease-out)';
+  'composer relative mx-4 mb-4 flex-none rounded-none border border-(--border) bg-(--secondary) shadow-(--card-shadow) transition-shadow duration-(--dur-fast) ease-(--ease-out)';
 // 占位行/输入行共用几何：13px/15px 内衬 + 14px/16px 墨（#470：一档压正文
 // 15px）。min-h-[84px] 走卡片本体。
 const COMPOSER_PLACEHOLDER = 'px-[15px] pt-[13px] text-[14px] leading-4';
@@ -59,7 +59,7 @@ const COMPOSER_PLACEHOLDER = 'px-[15px] pt-[13px] text-[14px] leading-4';
 // 差额逐条中和：方角已同形，field-sizing 回 fixed（JS grow 律），边框/
 // focus 环/暗底/过渡清零到老 UA 裸面形。
 const COMPOSER_INPUT =
-  "field-sizing-fixed h-12 min-h-0 max-h-24 overflow-y-auto resize-none border-none bg-transparent px-[15px] pt-[13px] pb-0 [font-family:var(--font-inter),Inter,system-ui,-apple-system,'PingFang_SC','Microsoft_YaHei',sans-serif] text-[14px] leading-4 text-(--text-primary) tabular-nums transition-none outline-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent";
+  "field-sizing-fixed h-12 min-h-0 max-h-24 overflow-y-auto resize-none border-none bg-transparent px-[15px] pt-[13px] pb-0 [font-family:var(--font-inter),Inter,system-ui,-apple-system,'PingFang_SC','Microsoft_YaHei',sans-serif] text-[14px] leading-4 text-(--foreground) tabular-nums transition-none outline-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent";
 // 工具钮（30px 盒，XMON-55 P5 光学左缘 10px 由 toolbar 锚承载）：ghost
 // 七通道中和 + #860 hover 增亮律（tertiary → secondary，只动墨色）。
 const COMPOSER_TOOL =
@@ -359,7 +359,7 @@ export function Composer({
         // P5 同胞律）；红只住 10px glyph（--stop 墨）。
         <Button
           variant="ghost"
-          className={`composer-stop ${COMPOSER_SQUARE} right-[53px] bg-(--seg-active) text-(--stop) hover:bg-(--seg-active) hover:text-(--stop) dark:hover:bg-(--seg-active) dark:hover:text-(--stop) [&_svg:not([class*='size-'])]:size-auto`}
+          className={`composer-stop ${COMPOSER_SQUARE} right-[53px] bg-(--seg-active) text-(--destructive) hover:bg-(--seg-active) hover:text-(--destructive) dark:hover:bg-(--seg-active) dark:hover:text-(--destructive) [&_svg:not([class*='size-'])]:size-auto`}
           aria-label={t('停止')}
           onClick={onStop}
         >

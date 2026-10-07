@@ -24,8 +24,8 @@ import type * as React from 'react';
 const panelVariants = cva('rounded-[12px]', {
   variants: {
     variant: {
-      quiet: 'bg-surface-secondary',
-      outlined: 'border border-line bg-surface',
+      quiet: 'bg-secondary',
+      outlined: 'border border-border bg-card',
     },
   },
   defaultVariants: {
@@ -57,7 +57,7 @@ function PanelRow({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="panel-row"
-      className={cn('flex items-center justify-between border-t border-line', className)}
+      className={cn('flex items-center justify-between border-t border-border', className)}
       {...props}
     />
   );
@@ -79,7 +79,7 @@ function PanelValue({ className, ...props }: React.ComponentProps<'span'>) {
   return (
     <span
       data-slot="panel-value"
-      className={cn('flex items-center text-content', className)}
+      className={cn('flex items-center text-foreground', className)}
       {...props}
     />
   );

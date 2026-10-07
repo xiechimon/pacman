@@ -71,19 +71,19 @@ import { PageShell } from './shell.js';
  *  docs/verify/946/contrast-946.md）；ghost 七通道中和 +
  *  aria-expanded 通道（触发钮有 haspopup 面，底色/墨色钉回静息值）。 */
 const TOOLBAR_CHIP_CLS =
-  "h-7 cursor-pointer gap-1.5 rounded-none border border-(--border-default) bg-transparent px-3 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:last-of-type]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "h-7 cursor-pointer gap-1.5 rounded-none border border-(--border) bg-transparent px-3 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:last-of-type]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
 /** 菜单盘（原 .prj-tasks-menu，plan-dropdown family plate）：shrink-to-fit
  *  ≥148（w-auto 中和 base 的 w-(--anchor-width)）、popover 底、radius 12、
  *  fab 影；勾色品牌紫走 indicator 槽选择器（#944 RES_SORT_ROW_CLS 同形）。 */
 const TASKS_MENU_CLS =
-  'w-auto min-w-[148px] rounded-(--radius-popover) bg-(--popover-bg) p-1 shadow-(--fab-shadow) ring-0 [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button)';
+  'w-auto min-w-[148px] rounded-(--radius-popover) bg-(--popover) p-1 shadow-(--fab-shadow) ring-0 [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button)';
 
 /** 菜单行（原 .prj-tasks-menu-row）：28 高 / 12 字 / 透明底——行面无 hover
  *  涂底（focus:bg 中和回透明，与收编前一致）；键盘 roving focus 的可见环按
  *  #388 同配方补钉（行是 div[role=menuitemradio]，不在全局环名单）。 */
 const TASKS_MENU_ROW_CLS =
-  'h-7 w-full cursor-pointer rounded-[8px] py-0 pr-2 pl-3 text-left text-xs leading-4 text-(--text-primary) focus:bg-transparent focus:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring)';
+  'h-7 w-full cursor-pointer rounded-[8px] py-0 pr-2 pl-3 text-left text-xs leading-4 text-(--foreground) focus:bg-transparent focus:text-(--foreground) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring)';
 
 /** 视图切换钮（原 .prj-tasks-view-btn，#138 seg 家族成员）：28×24 图标盒，
  *  选中 = tab-chip 填充 + primary 墨（载体 aria-selected），未选 hover =
@@ -93,14 +93,13 @@ const VIEW_BTN_CLS =
 const VIEW_BTN_IDLE_CLS =
   'hover:bg-(--seg-hover) hover:text-(--text-tertiary) dark:hover:bg-(--seg-hover)';
 const VIEW_BTN_ACTIVE_CLS =
-  'bg-(--tab-chip-bg) text-(--text-primary) hover:bg-(--tab-chip-bg) hover:text-(--text-primary) dark:hover:bg-(--tab-chip-bg)';
+  'bg-(--card) text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card)';
 
 /** 文件树行钮（原 .prj-file-row）：30 高透明行，选中 = surface-hover 填充
  *  （载体 aria-current；--active 类名留存 = dead-buttons 跨域别名）。 */
 const FILE_ROW_CLS =
   'h-[30px] w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-1 font-normal leading-[inherit] hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg]:flex-none [&_svg]:text-(--text-tertiary)';
-const FILE_ROW_ACTIVE_CLS =
-  'bg-(--surface-hover) hover:bg-(--surface-hover) dark:hover:bg-(--surface-hover)';
+const FILE_ROW_ACTIVE_CLS = 'bg-(--secondary) hover:bg-(--secondary) dark:hover:bg-(--secondary)';
 
 function FilesPane({
   branch,
@@ -124,12 +123,12 @@ function FilesPane({
 }) {
   const { t } = useI18n();
   return (
-    <div className="flex w-[276px] flex-none flex-col border-r border-(--border-default) py-2 pr-2 pl-4">
+    <div className="flex w-[276px] flex-none flex-col border-r border-(--border) py-2 pr-2 pl-4">
       <div className="flex items-center justify-between pr-2">
         {/* 分支 chip = 静态展示（#149 裁决，[设计]）：托管 repo 读面固定
             defaultBranch（tree?ref=main），无切分支行为预期；chevron 保
             r2 07e 捕获形状。非交互元素——不再是死钮。 */}
-        <span className="prj-branch-chip flex h-7 items-center gap-1.5 rounded-[6px] bg-(--surface-secondary) px-2.5 font-mono text-xs text-(--text-secondary) [&_svg]:text-(--text-tertiary)">
+        <span className="prj-branch-chip flex h-7 items-center gap-1.5 rounded-[6px] bg-(--secondary) px-2.5 font-mono text-xs text-(--text-secondary) [&_svg]:text-(--text-tertiary)">
           {branch}
           <ChevronDown width={12} height={12} />
         </span>
@@ -193,9 +192,7 @@ function FilesPane({
             >
               <GitCommit width={14} height={14} />
               <span className="flex min-w-0 flex-col gap-px">
-                <span className="truncate text-xs leading-4 text-(--text-primary)">
-                  {c.message}
-                </span>
+                <span className="truncate text-xs leading-4 text-(--foreground)">{c.message}</span>
                 <span className="font-mono text-[11px] leading-[14px] text-(--text-tertiary)">
                   {c.authorName} · {relativeTime(c.at, now, t)} · {c.shortSha}
                 </span>
@@ -405,7 +402,7 @@ function TasksPane({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-none items-center gap-3 px-4 py-3">
-        <div className="flex h-7 flex-1 items-center gap-2 rounded-none border border-(--border-default) px-2.5 text-(--text-tertiary)">
+        <div className="flex h-7 flex-1 items-center gap-2 rounded-none border border-(--border) px-2.5 text-(--text-tertiary)">
           <Search width={14} height={14} />
           {/* XMON-25 收编：Input 原语；#946：本面 focus 皮肤 = 无环面
               （#388 前的既有行为）——件基类 outline-none + ring-0 掐掉
@@ -415,7 +412,7 @@ function TasksPane({
               行高会抬高）；p-0 钉零内距（盒形由外层搜索盒承载）。 */}
           <Input
             type="text"
-            className="h-auto min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-[13px] leading-[inherit] text-(--text-primary) placeholder:text-(--text-tertiary) focus-visible:ring-0 dark:bg-transparent md:leading-[inherit]"
+            className="h-auto min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-[13px] leading-[inherit] text-(--foreground) placeholder:text-(--text-tertiary) focus-visible:ring-0 dark:bg-transparent md:leading-[inherit]"
             placeholder={t('搜索任务…')}
             aria-label={t('搜索任务')}
             value={query}
@@ -476,10 +473,10 @@ function TasksPane({
       </div>
       {todos.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center">
-          <div className="flex size-12 items-center justify-center rounded-none bg-(--surface-secondary) text-(--text-secondary)">
+          <div className="flex size-12 items-center justify-center rounded-none bg-(--secondary) text-(--text-secondary)">
             <ListLines width={20} height={20} />
           </div>
-          <div className="mt-4 text-sm font-semibold leading-5 text-(--text-primary)">
+          <div className="mt-4 text-sm font-semibold leading-5 text-(--foreground)">
             {t('暂无内容')}
           </div>
           <div className="mt-1 text-xs leading-4 text-(--text-tertiary)">
@@ -510,16 +507,16 @@ function TasksPane({
             <div
               key={todo.id}
               data-testid="task-row"
-              className="prj-task-row relative flex h-9 items-center gap-3 rounded-none bg-(--surface-secondary) px-3"
+              className="prj-task-row relative flex h-9 items-center gap-3 rounded-none bg-(--secondary) px-3"
             >
               <span
-                className="size-4 flex-none rounded-none border border-(--border-strong)"
+                className="size-4 flex-none rounded-none border border-(--input)"
                 aria-hidden="true"
               />
               {/* #318: 标题是真 <a>,after: 拉伸盖满整行 = 点行开详情
                   (todo-card-link #58 同款,行内无其它交互件无需抬 z) */}
               <Link
-                className="prj-task-title prj-task-link min-w-0 flex-1 truncate text-[13px] leading-5 text-(--text-primary) no-underline after:absolute after:inset-0 after:content-['']"
+                className="prj-task-title prj-task-link min-w-0 flex-1 truncate text-[13px] leading-5 text-(--foreground) no-underline after:absolute after:inset-0 after:content-['']"
                 to={{ pathname: `/app/todo/${todo.id}`, search }}
               >
                 {todo.title}
@@ -527,7 +524,7 @@ function TasksPane({
               <span className="flex-none text-xs text-(--text-tertiary)">
                 {relativeTime(todo.phaseAt, now, t)}
               </span>
-              <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--surface) after:bg-(--badge-idle) after:content-['']">
+              <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--card) after:bg-(--badge-idle) after:content-['']">
                 <SeededAvatar
                   name={user.displayName}
                   src={user.avatarUrl}
@@ -545,14 +542,14 @@ function TasksPane({
             <div
               key={todo.id}
               data-testid="task-card"
-              className="prj-task-card relative flex flex-col items-start gap-2 rounded-none bg-(--surface-secondary) p-3"
+              className="prj-task-card relative flex flex-col items-start gap-2 rounded-none bg-(--secondary) p-3"
             >
               <div className="flex items-center justify-between self-stretch">
                 <span
-                  className="size-4 flex-none rounded-none border border-(--border-strong)"
+                  className="size-4 flex-none rounded-none border border-(--input)"
                   aria-hidden="true"
                 />
-                <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--surface) after:bg-(--badge-idle) after:content-['']">
+                <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--card) after:bg-(--badge-idle) after:content-['']">
                   <SeededAvatar
                     name={user.displayName}
                     src={user.avatarUrl}
@@ -563,7 +560,7 @@ function TasksPane({
               {/* #318: 同列表行——标题 <a> 的 after: 拉伸盖满整卡；两行截断 =
                   max-height 40 idiom（detail.css chat-preview 注同源）。 */}
               <Link
-                className="prj-task-card-title prj-task-link max-h-10 overflow-hidden text-[13px] leading-5 text-(--text-primary) no-underline after:absolute after:inset-0 after:content-['']"
+                className="prj-task-card-title prj-task-link max-h-10 overflow-hidden text-[13px] leading-5 text-(--foreground) no-underline after:absolute after:inset-0 after:content-['']"
                 to={{ pathname: `/app/todo/${todo.id}`, search }}
               >
                 {todo.title}
@@ -755,7 +752,7 @@ export function ProjectPage() {
           />
           {fileView.kind === 'text' ? (
             <div className="block min-w-0 flex-1 overflow-auto px-4 py-3 text-[13px] text-(--text-tertiary)">
-              <pre className="m-0 font-mono text-xs leading-[18px] whitespace-pre text-(--text-primary)">
+              <pre className="m-0 font-mono text-xs leading-[18px] whitespace-pre text-(--foreground)">
                 {fileView.content}
               </pre>
             </div>

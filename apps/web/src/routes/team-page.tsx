@@ -68,14 +68,14 @@ const BASE_DELTA = 'active:not-aria-[haspopup]:translate-y-0 font-normal px-0 le
  *  值（§3.1(a)）；ghost 件配方按七通道律就地归零（原形无 hover、方角族
  *  8px 圆角随虚线卡语言保留，与 chart 布局的虚线创建卡同族）。 */
 const CREATE_SLOT_CLS =
-  'h-[76px] cursor-pointer gap-2 rounded-[8px] border border-dashed border-(--border-strong) bg-transparent text-[13px] text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary)';
+  'h-[76px] cursor-pointer gap-2 rounded-[8px] border border-dashed border-(--input) bg-transparent text-[13px] text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary)';
 
 /** Agent 卡（#485：进详情面的链接）：76px 卡盒 + radius-popover 圆角 +
  *  surface-secondary 底（#886 卡底抬档配方），hover 边框亮一档——旧规则引
  *  未定义槽 --card-border-hover 的 fallback（= --text-tertiary），等值迁移
  *  取实算值。过渡沿旧形 150ms（= --dur-fast）border-color。 */
 const AGENT_CARD_CLS =
-  'flex h-[76px] items-center gap-3 rounded-(--radius-popover) border border-(--border-default) bg-(--surface-secondary) px-4 text-inherit no-underline transition-[border-color] duration-(--dur-fast) ease-[ease] hover:border-(--text-tertiary)';
+  'flex h-[76px] items-center gap-3 rounded-(--radius-popover) border border-(--border) bg-(--secondary) px-4 text-inherit no-underline transition-[border-color] duration-(--dur-fast) ease-[ease] hover:border-(--text-tertiary)';
 
 /** 布局切换片的两个 chip（XMON-103）：底座 = components/ui/tabs 的分段档；
  *  #946：皮肤正本 = pages/parts 的 SEG_* 配方（原 pages.css
@@ -200,7 +200,7 @@ export function TeamPage() {
                 data-testid="team-agent-card"
                 to={{ pathname: `${AGENTS_HREF}/${agent.id}`, search }}
               >
-                <span className="flex size-[52px] flex-none items-center justify-center overflow-hidden rounded-full bg-(--agent-avatar-bg) [&_img]:size-[52px]">
+                <span className="flex size-[52px] flex-none items-center justify-center overflow-hidden rounded-full bg-(--secondary) [&_img]:size-[52px]">
                   <SeededAvatar
                     name={agent.displayName}
                     src={agent.avatarUrl}
@@ -208,7 +208,7 @@ export function TeamPage() {
                   />
                 </span>
                 <span className="flex min-w-0 flex-col">
-                  <span className="text-sm leading-[18px] font-medium text-(--text-primary)">
+                  <span className="text-sm leading-[18px] font-medium text-(--foreground)">
                     {agent.displayName}
                   </span>
                   <span className="text-[11px] leading-[18px] text-(--text-tertiary)">

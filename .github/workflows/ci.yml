@@ -130,8 +130,13 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      # `apt-get update` 去掉了（2026-10-07 夜实测）：它本身不是装 ffmpeg 必需的——
+      # 镜像的 apt 列表在构建时就烤好了，直接的 install 走的是现成索引。而 update
+      # 要遍历所有源，慢起来单步能爬 11m42s（实测），4 个分片同时卡在这一步、测试
+      # 一步没跑，是当晚 CI 拖成「分片挂死」的真凶。删掉它把这一步的失败面收窄成
+      # 「装不上包」这一种真故障。
       - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

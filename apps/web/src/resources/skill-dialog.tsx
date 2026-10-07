@@ -37,15 +37,14 @@ import { useI18n } from '../i18n/provider.js';
  *  同方）：9/8 外距 + 18 行盒；字号/字距 = c.css 定版 --label-size 12px /
  *  --label-spacing 0.01em——token 落后改 text-(--label-size)
  *  tracking-(--label-spacing)（§4-4）。 */
-const LABEL_CLS =
-  'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--text-primary)';
+const LABEL_CLS = 'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--foreground)';
 
 /** 表单容器（.dlg-form 等值，§5.4）：flex 列 gap 12、16/16/12 垫。 */
 const FORM_CLS = 'flex flex-col gap-3 px-4 pt-4 pb-3';
 
 /** 错误行（prj-new-error / dlg-provider-oauth-error 同族配方）：
  *  12px/16px/--danger，role=alert 在元素侧；server 原文 detail 行次级色。 */
-const ERROR_CLS = 'text-xs leading-4 break-words text-(--danger)';
+const ERROR_CLS = 'text-xs leading-4 break-words text-(--destructive)';
 
 /** 编辑目标（行数据投影）；undefined = 新建。 */
 export interface SkillEditTarget {

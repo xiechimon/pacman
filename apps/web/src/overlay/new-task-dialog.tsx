@@ -85,21 +85,21 @@ import { usePendingAttachments } from './pending-attachments.js';
 /** head 项目 chip（原 .new-task-project）：透明无框触发钮，Button ghost
  *  七通道中和（#908 裁决 3）；svg 墨 tertiary（chevron 12px 属性原值）。 */
 const PROJECT_CHIP_CLS =
-  "new-task-project flex h-auto min-w-0 cursor-pointer items-center justify-start gap-2 rounded-none border-none bg-transparent p-0 font-normal text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "new-task-project flex h-auto min-w-0 cursor-pointer items-center justify-start gap-2 rounded-none border-none bg-transparent p-0 font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
 /** 底栏机器 chip（原 .new-task-machine）：有边界控件（方角选择触发钮，
  *  .dlg-machine 惯用法）；30px 高对齐工具钮（光学同排，better-ui 对齐律）；
  *  hover 吃 #791 家族同值 --accent-soft；shrink=0（机器标签是派发关键短
  *  数据，永不截断）。 */
 const MACHINE_CHIP_CLS =
-  "new-task-machine flex h-[30px] flex-none cursor-pointer items-center justify-start gap-2 rounded-none border border-(--card-border) bg-(--surface) pl-2.5 pr-3 text-[13px] font-normal text-(--text-primary) hover:bg-(--accent-soft) hover:text-(--text-primary) dark:hover:bg-(--accent-soft) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "new-task-machine flex h-[30px] flex-none cursor-pointer items-center justify-start gap-2 rounded-none border border-(--border) bg-(--card) pl-2.5 pr-3 text-[13px] font-normal text-(--foreground) hover:bg-(--accent-soft) hover:text-(--foreground) dark:hover:bg-(--accent-soft) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
 /** 项目/机器 popover（原 .new-task-project-menu）：V2 弹层壳（#790 P3——
  *  12px 内垫 / 1px 墨线框 / 直角 / 顶部锚距 8px）+ 上指触发 chip 左上的
  *  描边 Arrow（12×6 外三角压 10×5 内三角）；z 档 --z-popover（#688 家族
  *  catcher 之上），落对话框内不被 overflow:hidden 裁。 */
 const PROJECT_MENU_CLS =
-  "new-task-project-menu absolute left-0 top-[calc(100%+8px)] z-(--z-popover) flex w-[220px] flex-col rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+  "new-task-project-menu absolute left-0 top-[calc(100%+8px)] z-(--z-popover) flex w-[220px] flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** 机器 popover（原 .new-task-machine-menu）：自底栏向上开（footer 在底，
  *  向下开会出对话框边界被裁），Arrow 翻到底边下指。 */
@@ -111,14 +111,14 @@ const MACHINE_MENU_CLS = cn(
 /** popover 选项行（原 .new-task-project-row）：32px 行、8px 圆角；hover
  *  tint 归 motion.css #73 家族律（此处不写 hover bg，件配方被家族压掉）。 */
 const OPTION_ROW_CLS =
-  'new-task-project-row flex h-8 w-full cursor-pointer items-center justify-start gap-2 rounded-[8px] border-none bg-transparent pr-1 pl-0 text-left text-xs leading-4 font-normal text-(--text-primary) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto';
+  'new-task-project-row flex h-8 w-full cursor-pointer items-center justify-start gap-2 rounded-[8px] border-none bg-transparent pr-1 pl-0 text-left text-xs leading-4 font-normal text-(--foreground) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto';
 
 /** 未保存闸确认层（原 .new-task-discard，#318 r9 §3.4）：delete-confirm
  *  家族形——448 居中（translate 独立属性居中，#656：tw enter/exit keyframe
  *  独占 transform，复合不闪位）、12px 圆角、dialog 底与投影；z 档
  *  --z-confirm（压低档面板 21 与家族 catcher 29）。 */
 const DISCARD_PANEL_CLS =
-  'new-task-discard fixed left-1/2 top-1/2 z-(--z-confirm) w-[448px] -translate-x-1/2 -translate-y-1/2 rounded-[12px] bg-(--dialog-bg) px-4 pt-5 pb-4 shadow-(--dialog-shadow)';
+  'new-task-discard fixed left-1/2 top-1/2 z-(--z-confirm) w-[448px] -translate-x-1/2 -translate-y-1/2 rounded-[12px] bg-(--card) px-4 pt-5 pb-4 shadow-(--dialog-shadow)';
 
 /** Spec textarea template lines, verbatim r2 §5.2 / r7 04 placeholder
  *  block — dict keys so the en fallback carries them too. */
@@ -647,7 +647,7 @@ export function NewTaskDialog({
             计数、newtask 组的面板锚都吃这些 testid（#943 的 online-dot /
             column-count 同律）。 */}
         <div
-          className="new-task-head relative flex h-11 flex-none items-center border-b border-(--border-default) bg-(--popover-bg) pr-1 pl-3"
+          className="new-task-head relative flex h-11 flex-none items-center border-b border-(--border) bg-(--popover) pr-1 pl-3"
           data-testid="new-task-head"
         >
           {/* #682 第三轮（用户三审）：标题行回归抓拍形态——项目 chip + 居中
@@ -669,7 +669,7 @@ export function NewTaskDialog({
               <span className="new-task-project-avatar size-5 rounded-[6px] bg-(--project-avatar-bg) text-[11px] leading-5 text-center uppercase text-(--project-avatar-fg)">
                 {projectName.charAt(0).toLowerCase()}
               </span>
-              <span className="new-task-project-name min-w-0 max-w-[220px] truncate text-[13px] leading-4 text-(--text-primary)">
+              <span className="new-task-project-name min-w-0 max-w-[220px] truncate text-[13px] leading-4 text-(--foreground)">
                 {projectName}
               </span>
               <ChevronDown width={12} height={12} />
@@ -715,7 +715,7 @@ export function NewTaskDialog({
                     <span className="new-task-project-row-avatar size-4 flex-none rounded-[5px] bg-(--project-avatar-bg) text-[9px] leading-4 text-center uppercase text-(--project-avatar-fg)">
                       {row.name.charAt(0).toLowerCase()}
                     </span>
-                    <span className="new-task-project-row-name text-xs leading-4 text-(--text-primary)">
+                    <span className="new-task-project-row-name text-xs leading-4 text-(--foreground)">
                       {row.name}
                     </span>
                     {row.id === selected?.id && (
@@ -728,7 +728,7 @@ export function NewTaskDialog({
               </div>
             </FloatingShell>
           </span>
-          <div className="new-task-title-label pointer-events-none absolute inset-x-0 text-center text-[13px] leading-4 font-medium text-(--text-primary)">
+          <div className="new-task-title-label pointer-events-none absolute inset-x-0 text-center text-[13px] leading-4 font-medium text-(--foreground)">
             {t('新建任务')}
           </div>
           {/* A4-deep 收编：icon 变体皮肤；#948：28×28 + margin-left:auto 几何
@@ -746,7 +746,7 @@ export function NewTaskDialog({
             <X />
           </Button>
         </div>
-        <div className="new-task-body flex min-h-0 flex-1 flex-col bg-(--surface) px-4 pt-4 [&>.attachment-strip]:flex-none [&>.attachment-strip]:pb-2">
+        <div className="new-task-body flex min-h-0 flex-1 flex-col bg-(--card) px-4 pt-4 [&>.attachment-strip]:flex-none [&>.attachment-strip]:pb-2">
           {/* spec 15 #394：单字段正文——标题输入位移除,占位提示 = 五行模板族
               （首行即任务一句话,占位标题派生取它）。
               #948：裸 textarea 收编 Textarea 件（§5.3），件配方逐位中和回
@@ -758,7 +758,7 @@ export function NewTaskDialog({
           <Textarea
             ref={focusSpecRef}
             data-testid="new-task-spec"
-            className="new-task-spec min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent p-0 text-sm leading-5 tabular-nums text-(--text-primary) field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent md:text-sm"
+            className="new-task-spec min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent p-0 text-sm leading-5 tabular-nums text-(--foreground) field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent md:text-sm"
             placeholder={SPEC_TEMPLATE_LINES.map((line) => t(line)).join('\n')}
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
@@ -785,7 +785,7 @@ export function NewTaskDialog({
               列，strip 挂正文与 footer 之间、空时零节点。 */}
           <AttachmentStrip draft={spec} pending={pendingAttachments} />
         </div>
-        <div className="new-task-footer flex-none border-t border-(--border-default) bg-(--surface-secondary) pt-[11px] pr-3 pb-3 pl-4">
+        <div className="new-task-footer flex-none border-t border-(--border) bg-(--secondary) pt-[11px] pr-3 pb-3 pl-4">
           <div className="new-task-actions flex h-[30px] items-center">
             {/* A4-deep 收编：icon 变体皮肤；#948：30×30 几何迁 size-[30px]
                 （原 .new-task-tools button 元素选择器，阶梯外一次性尺寸）。 */}
@@ -843,7 +843,7 @@ export function NewTaskDialog({
                   data-on={machineSelected?.online ?? true}
                   aria-hidden="true"
                 />
-                <span className="new-task-machine-name min-w-0 max-w-[120px] truncate text-[13px] leading-4 text-(--text-primary)">
+                <span className="new-task-machine-name min-w-0 max-w-[120px] truncate text-[13px] leading-4 text-(--foreground)">
                   {machineLabel}
                 </span>
                 <ChevronDown width={12} height={12} />
@@ -885,7 +885,7 @@ export function NewTaskDialog({
                       data-on={true}
                       aria-hidden="true"
                     />
-                    <span className="new-task-project-row-name text-xs leading-4 text-(--text-primary)">
+                    <span className="new-task-project-row-name text-xs leading-4 text-(--foreground)">
                       {t('自动')}
                     </span>
                     {machinePin === null && (
@@ -914,7 +914,7 @@ export function NewTaskDialog({
                         data-on={row.online ?? true}
                         aria-hidden="true"
                       />
-                      <span className="new-task-project-row-name text-xs leading-4 text-(--text-primary)">
+                      <span className="new-task-project-row-name text-xs leading-4 text-(--foreground)">
                         {row.name}
                       </span>
                       {row.id === machinePin && (
@@ -990,7 +990,7 @@ export function NewTaskDialog({
           aria-modal="true"
           aria-label={t('放弃新建任务？未保存的内容将丢失。')}
         >
-          <div className="new-task-discard-title text-sm leading-5 font-medium text-(--text-primary)">
+          <div className="new-task-discard-title text-sm leading-5 font-medium text-(--foreground)">
             {t('放弃新建任务？未保存的内容将丢失。')}
           </div>
           <div className="new-task-discard-actions mt-5 flex h-[30px] items-center justify-end gap-2.5">

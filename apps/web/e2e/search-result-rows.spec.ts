@@ -31,7 +31,7 @@ const rowBg = (locator: Locator) =>
 const isLit = (locator: Locator) =>
   locator.evaluate((el) => {
     const probe = document.createElement('span');
-    probe.style.color = 'var(--row-selected)';
+    probe.style.color = 'var(--secondary)';
     document.documentElement.append(probe);
     const lit = getComputedStyle(probe).color;
     probe.remove();

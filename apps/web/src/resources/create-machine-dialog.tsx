@@ -25,10 +25,10 @@ import { useI18n } from '../i18n/provider.js';
 
 /** 命令块(原 .dlg-enroll-cmd):带描边的 code + 复制钮行。 */
 const CMD_CLS =
-  'flex items-center justify-between gap-2 rounded-lg border border-(--card-border) bg-(--surface-secondary) px-3 py-2';
+  'flex items-center justify-between gap-2 rounded-lg border border-(--border) bg-(--secondary) px-3 py-2';
 
 /** 命令块内 code(原 .dlg-enroll-cmd code):等宽 12px,长命令任意断行。 */
-const CMD_CODE_CLS = 'font-mono text-xs text-(--text-primary) [overflow-wrap:anywhere]';
+const CMD_CODE_CLS = 'font-mono text-xs text-(--foreground) [overflow-wrap:anywhere]';
 
 /** disclosure / 链接行(原 .dlg-enroll-toggle 与 keylink/browserlink 共同
  *  形):贴左 13px/16 secondary 墨。 */
