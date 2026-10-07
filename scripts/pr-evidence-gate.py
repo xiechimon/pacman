@@ -1,26 +1,51 @@
 #!/usr/bin/env python3
-"""PR evidence gate (#750): image links in the PR body must be embedded and reachable.
+"""PR evidence gate (#750; widened by #939/#940).
 
-Two checks, either failing turns the job red:
+Section checks (#939): the PR body must answer two template sections,
+"Upstream equivalent" and "Failure-path evidence". The gate checks that
+an answer exists, not that the answer is good: a missing heading, or a
+heading whose text is empty after stripping HTML comments, fails and
+names the section. Headings inside fenced code blocks do not count (a
+quoted template is not an answer), and the template ships its guidance
+as HTML comments so an untouched template fails.
 
-1. Embedded: every `raw.githubusercontent.com` link pointing at an image
-   (`png|gif|jpe?g|webp`) must use the inline-image form `![label](url)`.
-   A plain `[label](url)` renders as a link, and a bare URL with no markdown
-   around it renders as an autolink or as plain text -- either way the image
-   never appears, so the evidence is invisible.
-2. Reachable: every such link must answer HTTP 200 (catches bad SHAs).
+Link checks (#750): image links in the PR body must be embedded
+(`![label](url)`) and must answer HTTP 200 (catches bad SHAs).
 
-Scope note: only `raw.githubusercontent.com` image links are checked.
-Links on other hosts (attachments, user-images, ...) are ignored by design,
-as are links to non-image evidence files (`.json`, `.md`, `.txt`): those
-cannot be embedded as images, so they are read as references, not evidence.
-See Merge Danger in the PR body.
+A URL is an image link under two parallel rules (#940):
+
+1. Extension: any https URL ending in png|gif|jpe?g|webp|svg, on any
+   host.
+2. Media host: any https URL on a host that serves nothing but uploaded
+   media (user-images.githubusercontent.com, github.com/user-attachments)
+   whose last path segment carries no file extension -- the shape
+   drag-and-drop uploads produce.
+
+raw.githubusercontent.com is judged by rule 1 alone: it serves every
+committed file type, so an extensionless raw path (LICENSE, a directory
+permalink) is a reference, and non-image evidence files (.json, .md,
+.txt) cannot be embedded as images -- they are read as references, not
+evidence (#750 scope). Measured on the 25 most recently merged bodies
+at the time of the change, extending rule 2 to raw flagged 79 reference
+links, every one a false positive (docs/verify/939/).
+
+Fenced code blocks do not exempt image links: agents list evidence in
+code fences, and an image link in a fence renders nowhere (#940 keeps
+this a non-goal).
+
+The link criteria are shared with the coordinator's reference
+implementation `scratch/pr-evidence-check.py` (outside this repo): same
+MD_LINK, IMG_EXT, IMG_URL, MEDIA_HOST_URL, TAIL_EXT,
+is_media_host_image, same curl probe, same verdicts. Change one, change
+the other. The section check lives only in this gate -- the reference
+scanner sweeps PRs that predate the template.
 
 Usage:
   PR_BODY='<pr body>' python3 scripts/pr-evidence-gate.py   # CI entry point
   python3 scripts/pr-evidence-gate.py path/to/body.md        # local testing
 
-Exit 0 when the body passes, 1 otherwise. All findings name the URL.
+Exit 0 when the body passes, 1 otherwise. Findings name the section or
+the URL (with its line for bare URLs).
 """
 import os
 import re
@@ -28,11 +53,71 @@ import subprocess
 import sys
 import concurrent.futures as cf
 
-# Rule shared with the coordinator's reference implementation,
-# `scratch/pr-evidence-check.py` (outside this repo): same link pattern,
-# same curl probe, same verdicts. Change one, change the other.
+# Shared with scratch/pr-evidence-check.py -- keep byte-identical.
 MD_LINK = re.compile(r'(?P<bang>!?)\[(?P<label>[^\]]*)\]\((?P<url>[^)\s]+)\)')
-IMG_URL = re.compile(r'https://raw\.githubusercontent\.com/[^\s)\]>]+\.(?:png|gif|jpe?g|webp)')
+IMG_EXT = r'(?:png|gif|jpe?g|webp|svg)'
+IMG_URL = re.compile(r'https://[^\s)\]>"`]+\.' + IMG_EXT)
+MEDIA_HOST_URL = re.compile(
+    r'https://(?:user-images\.githubusercontent\.com'
+    r'|github\.com/user-attachments)/[^\s)\]>"`]*')
+TAIL_EXT = re.compile(r'\.[A-Za-z0-9]+$')
+
+
+def is_media_host_image(url):
+    """True when a media-host URL is extensionless: an uploaded asset.
+
+    A media-host URL that does carry an extension is judged by rule 1
+    instead (an image extension) or ignored (anything else), so the two
+    rules never double-count one URL.
+    """
+    path = url.split('?', 1)[0].split('#', 1)[0]
+    last = path.rsplit('/', 1)[-1]
+    return bool(last) and not TAIL_EXT.search(last)
+
+
+REQUIRED_SECTIONS = ('Upstream equivalent', 'Failure-path evidence')
+H2 = re.compile(r'^##[ \t]+(.+?)[ \t]*$', re.M)
+HTML_COMMENT = re.compile(r'<!--.*?-->', re.S)
+FENCE = re.compile(r'^ {0,3}(?:```|~~~)')
+
+
+def without_fences(body):
+    """Blank out fenced code blocks, keeping the line count."""
+    out = []
+    inside = False
+    for line in body.split('\n'):
+        if FENCE.match(line):
+            inside = not inside
+            out.append('')
+            continue
+        out.append('' if inside else line)
+    return '\n'.join(out)
+
+
+def section_verdicts(body):
+    """Per required section: 'answered', 'empty', or 'missing'.
+
+    HTML comments never count as an answer, so the template's own
+    guidance (shipped as comments) cannot pass the gate untouched.
+    """
+    text = without_fences(body)
+    headers = [(m.start(), m.end(), m.group(1).strip())
+               for m in H2.finditer(text)]
+    verdicts = {}
+    for name in REQUIRED_SECTIONS:
+        content = None
+        for i, (_, hend, heading) in enumerate(headers):
+            if heading.lower() == name.lower():
+                nxt = headers[i + 1][0] if i + 1 < len(headers) else len(text)
+                content = text[hend:nxt]
+                break
+        if content is None:
+            verdicts[name] = 'missing'
+        elif HTML_COMMENT.sub('', content).strip():
+            verdicts[name] = 'answered'
+        else:
+            verdicts[name] = 'empty'
+    return verdicts
 
 
 def http_code(url):
@@ -43,11 +128,12 @@ def http_code(url):
 
 
 def find_links(body):
-    """Every raw image URL in the body, tagged with its rendering form.
+    """Every image URL in the body, tagged with its rendering form.
 
-    A URL is embedded only as the target of `![label](url)`. As the target
-    of `[label](url)` it renders as a link, and standing on its own it
-    renders as an autolink or as text; none of those show the image.
+    A URL is embedded only as the target of `![label](url)`. As the
+    target of `[label](url)` it renders as a link, and standing on its
+    own it renders as an autolink or as text; none of those show the
+    image.
     """
     targets = {}
     for m in MD_LINK.finditer(body):
@@ -60,9 +146,14 @@ def find_links(body):
                 return m
         return None
 
+    matches = list(IMG_URL.finditer(body))
+    matches += [m for m in MEDIA_HOST_URL.finditer(body)
+                if is_media_host_image(m.group(0))]
+    matches.sort(key=lambda m: m.start())
+
     links = []
     seen = set()
-    for m in IMG_URL.finditer(body):
+    for m in matches:
         md = markdown_target(m.start(), m.end())
         if md is None:
             links.append({'form': 'bare', 'embedded': False, 'label': None,
@@ -96,11 +187,22 @@ def main():
     if body is None:
         body = ''
 
+    failures = []
+
+    verdicts = section_verdicts(body)
+    answered = sum(1 for v in verdicts.values() if v == 'answered')
+    print(f"pr-evidence: sections: {answered}/{len(REQUIRED_SECTIONS)} answered")
+    for name in REQUIRED_SECTIONS:
+        if verdicts[name] == 'missing':
+            failures.append(name)
+            print(f"FAIL missing-section: {name}")
+        elif verdicts[name] == 'empty':
+            failures.append(name)
+            print(f"FAIL empty-section: {name}")
+
     links = find_links(body)
 
     print(f"pr-evidence: scanned {len(links)} image link(s)")
-    failures = []
-
     for link in links:
         if not link['embedded']:
             failures.append(link)

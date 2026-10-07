@@ -1,7 +1,9 @@
 name: pr-evidence
 
-# PR body evidence gate (#750): image links in the PR body must be embedded
-# (`![...]()`, not `[...]()`) and must answer HTTP 200.
+# PR body evidence gate (#750, #939, #940): the body must answer the
+# "Upstream equivalent" and "Failure-path evidence" template sections, and
+# image links (any host by extension; media hosts by URL shape) must be
+# embedded (`![...]()`, not `[...]()`) and must answer HTTP 200.
 #
 # Separate file from ci.yml on purpose: the default `pull_request` activity
 # types are only opened/synchronize/reopened, and the body is editable, so
@@ -19,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check PR evidence links (embedded + reachable)
+      - name: Check PR body evidence (sections + links embedded + reachable)
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: python3 scripts/pr-evidence-gate.py
