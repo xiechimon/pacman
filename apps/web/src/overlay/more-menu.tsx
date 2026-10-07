@@ -51,7 +51,7 @@ const SHELL_CLS =
  *  内三角）+ frozen-anchor 坐标（#366：actions 组首 icon 右沿 1343.5 @1440
  *  → right 96.5）。 */
 const PANEL_CLS =
-  "more-menu fixed top-[39.5px] right-[96.5px] z-(--z-panel-low) w-[220px] origin-top-right rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:right-6 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[25px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+  "more-menu fixed top-[39.5px] right-[96.5px] z-(--z-panel-low) w-[220px] origin-top-right rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:right-6 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[25px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** 行钮基底（ghost 七通道中和，#943 ROW_BTN / #944 GHOST_ROW_BTN_CLS 同形）：
  *  行带高由消费点按行序补；分隔线 = 首行外 border-t（旧 nth-child(2..n)）；
@@ -59,7 +59,7 @@ const PANEL_CLS =
  *  挡件基类 size-4 强制）；disabled 墨 text-dim + cursor default（#318 相位
  *  禁用心智），opacity 中性化（旧面无降透明）。 */
 const ITEM_CLS =
-  "more-menu-item flex w-full cursor-pointer justify-start gap-4 rounded-none border-0 px-1 text-left text-xs leading-4 font-normal text-(--text-primary) hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:cursor-default disabled:opacity-100 disabled:text-(--text-dim) disabled:[&_svg]:text-(--text-dim) [&_svg]:flex-none [&_svg]:text-(--menu-icon) [&_svg:not([class*='size-'])]:size-auto";
+  "more-menu-item flex w-full cursor-pointer justify-start gap-4 rounded-none border-0 px-1 text-left text-xs leading-4 font-normal text-(--foreground) hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:cursor-default disabled:opacity-100 disabled:text-(--text-dim) disabled:[&_svg]:text-(--text-dim) [&_svg]:flex-none [&_svg]:text-(--menu-icon) [&_svg:not([class*='size-'])]:size-auto";
 
 export function MoreMenu({
   open,
@@ -135,7 +135,7 @@ export function MoreMenu({
           低档衬底，菜单压衬底一档——#688 阶梯）。 */}
       <Button
         variant="ghost"
-        className="more-menu-catcher fixed inset-0 z-(--z-backdrop-low) cursor-default rounded-none border-0 bg-transparent p-0 hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0"
+        className="more-menu-catcher fixed inset-0 z-(--z-backdrop-low) cursor-default rounded-none border-0 bg-transparent p-0 hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0"
         aria-label={t('关闭菜单')}
         onClick={onClose}
       />
@@ -145,10 +145,10 @@ export function MoreMenu({
             key={row.key}
             variant="ghost"
             role="menuitem"
-            className={`${ITEM_CLS} ${row.band}${index > 0 ? ' border-t border-t-(--border-default)' : ''}${
+            className={`${ITEM_CLS} ${row.band}${index > 0 ? ' border-t border-t-(--border)' : ''}${
               row.danger === true
-                ? ' text-(--stop) hover:text-(--stop) aria-expanded:text-(--stop) [&_svg]:text-(--stop)'
-                : ' hover:text-(--text-primary) aria-expanded:text-(--text-primary)'
+                ? ' text-(--destructive) hover:text-(--destructive) aria-expanded:text-(--destructive) [&_svg]:text-(--destructive)'
+                : ' hover:text-(--foreground) aria-expanded:text-(--foreground)'
             }`}
             {...('action' in row ? { 'data-action': row.action } : {})}
             disabled={row.disabled}

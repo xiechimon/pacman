@@ -230,7 +230,7 @@ export function BoardSurface({
     <div
       className={`board-main relative flex min-w-0 flex-1 flex-col bg-background ${banner == null ? '' : 'board-main--banner'}`}
     >
-      <header className="board-topbar relative flex h-11 flex-none items-center border-b border-[var(--border-default)]">
+      <header className="board-topbar relative flex h-11 flex-none items-center border-b border-[var(--border)]">
         <div className="board-topbar-title pointer-events-none absolute inset-x-0 text-center text-sm leading-[22px] font-medium text-foreground">
           {t('工作台')}
         </div>
@@ -319,7 +319,7 @@ export function BoardSurface({
                      原位保留（e2e 与 a11y 载体）；cn 合并保证 hover 档压过
                      base 档（同组工具类后者胜，等价旧 CSS 的规则序）。 */
                   className={cn(
-                    'board-column relative flex h-full flex-col rounded-none border border-border bg-column',
+                    'board-column relative flex h-full flex-col rounded-none border border-border bg-background',
                     isValidDropTarget(column.id) &&
                       'border-(--drop-tint-border) bg-(--drop-tint-base)',
                     dropColumnId === column.id &&

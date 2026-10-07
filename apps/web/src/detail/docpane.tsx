@@ -97,7 +97,7 @@ interface DocPaneProps {
 /** pane 头带（36px + 发丝缝，#366）——docpane 与 right-pane 三 section 头
  *  共用单源（#945：老 .doc-pane-head 规则族的两消费面防漂移律不变）。 */
 export const PANE_HEAD =
-  'doc-pane-head flex h-9 flex-none items-center border-b border-(--border-default) pl-[17px] text-xs leading-4 text-(--text-secondary) [&>svg]:text-(--text-tertiary)';
+  'doc-pane-head flex h-9 flex-none items-center border-b border-(--border) pl-[17px] text-xs leading-4 text-(--text-secondary) [&>svg]:text-(--text-tertiary)';
 const PANE_SELECT =
   'ml-0 flex h-auto cursor-pointer items-center justify-start gap-[3px] rounded-none border-none bg-transparent p-0 text-xs leading-4 text-inherit font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary)';
 const DIFF_LINE = 'flex items-center font-mono text-[11px] leading-[17px] text-(--text-secondary)';
@@ -164,7 +164,7 @@ function DiffFileBlock({
     <div className="diff-file">
       {/* 文件行骑 surface-secondary（r7 27 双模）：chevron + 路径 + 👁 +
           右对齐 +N（mono，−N 走 danger 墨）。 */}
-      <div className="doc-file-row flex h-8 flex-none items-center gap-1.5 bg-(--surface-secondary) pl-[13px] text-[13px] leading-4 text-(--text-secondary) [&_svg]:text-(--text-tertiary)">
+      <div className="doc-file-row flex h-8 flex-none items-center gap-1.5 bg-(--secondary) pl-[13px] text-[13px] leading-4 text-(--text-secondary) [&_svg]:text-(--text-tertiary)">
         {expanded ? (
           <ChevronDown width={10} height={10} />
         ) : (
@@ -178,7 +178,7 @@ function DiffFileBlock({
         <span className="doc-file-add ml-auto pr-[17px] font-mono text-xs leading-4 text-(--diff-add-fg)">
           +{file.added}
           {file.removed != null && file.removed > 0 && (
-            <span className="doc-file-del text-(--danger)"> −{file.removed}</span>
+            <span className="doc-file-del text-(--destructive)"> −{file.removed}</span>
           )}
         </span>
       </div>
@@ -187,7 +187,7 @@ function DiffFileBlock({
           {full.kind === 'hidden' &&
             file.hunks.map((hunk) => (
               <div key={hunk.header} className="diff-hunk">
-                <div className="diff-hunk-head border-y border-(--border-default) bg-(--surface-secondary) pl-[53px] font-mono text-[11px] leading-[22px] text-(--text-tertiary)">
+                <div className="diff-hunk-head border-y border-(--border) bg-(--secondary) pl-[53px] font-mono text-[11px] leading-[22px] text-(--text-tertiary)">
                   {hunk.header}
                 </div>
                 {hunk.lines.map((line, i) => (
@@ -252,7 +252,7 @@ function DiffFileBlock({
               svg 免底座 16px 强制（属性 12px）。 */}
           <Button
             variant="ghost"
-            className="diff-expand flex h-[27px] w-full cursor-pointer items-center justify-start gap-1.5 rounded-none border-none bg-(--surface-secondary) pr-0 pl-[13px] text-xs leading-4 font-normal text-(--text-primary) hover:bg-(--surface-secondary) hover:text-(--text-primary) dark:hover:bg-(--surface-secondary) dark:hover:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            className="diff-expand flex h-[27px] w-full cursor-pointer items-center justify-start gap-1.5 rounded-none border-none bg-(--secondary) pr-0 pl-[13px] text-xs leading-4 font-normal text-(--foreground) hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) dark:hover:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             onClick={() => setShowFull((v) => !v)}
           >
             <UnfoldVertical width={12} height={12} />
@@ -295,12 +295,12 @@ function VersionMenu({
   // （单引号）——twMerge 按字面识别冲突组。菜单盘：212 宽右对齐 chip
   // （r8 §2.7），--radius-popover + edge 投影（0 8 24 @14%）。
   const ROW_BASE =
-    "version-menu-row flex h-[37px] w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-(--border-default) bg-transparent text-left text-xs leading-4 font-normal last:border-b-0 hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto [&_svg]:text-(--text-tertiary)";
-  const rowClass = `${ROW_BASE} px-[7px] text-(--text-primary) hover:text-(--text-primary) dark:hover:text-(--text-primary)`;
+    "version-menu-row flex h-[37px] w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-(--border) bg-transparent text-left text-xs leading-4 font-normal last:border-b-0 hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto [&_svg]:text-(--text-tertiary)";
+  const rowClass = `${ROW_BASE} px-[7px] text-(--foreground) hover:text-(--foreground) dark:hover:text-(--foreground)`;
   // 子菜单行（与其他版本对比 ▸ 上一版本）：8px 侧衬 + secondary 墨。
   const subRowClass = `${ROW_BASE} px-2 text-(--text-secondary) hover:text-(--text-secondary) dark:hover:text-(--text-secondary)`;
   const MENU_PANEL =
-    'version-menu absolute top-[30px] -right-0.5 z-(--z-popover) w-53 rounded-(--radius-popover) bg-(--popover-bg) py-1 shadow-[0_8px_24px_rgb(0_0_0/0.14)]';
+    'version-menu absolute top-[30px] -right-0.5 z-(--z-popover) w-53 rounded-(--radius-popover) bg-(--popover) py-1 shadow-[0_8px_24px_rgb(0_0_0/0.14)]';
   if (menu === 'compare') {
     return (
       <div className={`${MENU_PANEL} version-menu--sub w-auto min-w-[69px]`}>
@@ -374,7 +374,7 @@ function VersionControl({
       {range != null ? (
         <Button
           variant="ghost"
-          className="doc-range-chip flex h-6 cursor-pointer items-center gap-1 rounded-[8px] border border-(--range-chip-border) bg-(--range-chip-bg) px-2 text-xs leading-4 font-normal text-(--text-secondary) hover:bg-(--range-chip-bg) hover:text-(--text-secondary) dark:hover:bg-(--range-chip-bg) dark:hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          className="doc-range-chip flex h-6 cursor-pointer items-center gap-1 rounded-[8px] border border-(--input) bg-(--secondary) px-2 text-xs leading-4 font-normal text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) dark:hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
           onClick={toggle}
         >
           {range.from} → {range.to}
@@ -410,7 +410,7 @@ function VersionControl({
  *  归零）；bullet 悬挂 17/−12；节标签 = 12px/500 tertiary 上 22px 下 6px
  *  （是 label 不是 title——它引导的散文是 15px，节边界由更宽的上带标出）。 */
 function docBlockClass(kind: string, first: boolean): string {
-  const base = 'text-[15px] leading-6 break-words text-(--text-primary)';
+  const base = 'text-[15px] leading-6 break-words text-(--foreground)';
   if (kind === 'para') return `${base}${first ? '' : ' mt-2'}`;
   if (kind === 'bullet') return `${base} pl-[17px] [text-indent:-12px]`;
   return `${base} ${first ? 'mt-0' : 'mt-[22px]'} mb-1.5 text-xs leading-4 font-medium tracking-[0.02em] text-(--text-tertiary)`;
@@ -490,7 +490,7 @@ export function DocPane({
                 {t('· {n} 个文件改动', { n: fileCount })}{' '}
                 <span className="doc-changes-add text-(--diff-add-fg)">+{added}</span>
                 {removed > 0 && (
-                  <span className="doc-changes-del text-(--danger)"> −{removed}</span>
+                  <span className="doc-changes-del text-(--destructive)"> −{removed}</span>
                 )}
               </span>
               {/* XMON-24 shadcn ghost 底座不变；#945 皮肤迁 utilities

@@ -160,7 +160,7 @@ export function TodoCard({
                     ? 'bg-(--badge-attention)'
                     : badge === 'done'
                       ? 'bg-(--badge-done)'
-                      : 'bg-(--stop) text-white'
+                      : 'bg-(--destructive) text-white'
               }`}
             >
               {badge === 'failed' ? (

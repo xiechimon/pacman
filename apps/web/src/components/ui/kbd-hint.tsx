@@ -43,7 +43,7 @@ export function KbdHint({
         'kbd-hint',
         PLACEMENT[placement],
         // registry 档 → 仓内 chip 档（tailwind-merge 逐组覆盖）
-        'absolute invisible z-(--z-hint) h-auto min-w-0 gap-0 rounded-[3px] border border-border bg-(--surface) px-[3px] py-px text-[11px] leading-4 whitespace-nowrap opacity-0 shadow-[0_1px_4px_rgb(0_0_0_/_0.12)] transition-[opacity,visibility] duration-[120ms] ease-[ease]',
+        'absolute invisible z-(--z-hint) h-auto min-w-0 gap-0 rounded-[3px] border border-border bg-(--card) px-[3px] py-px text-[11px] leading-4 whitespace-nowrap opacity-0 shadow-[0_1px_4px_rgb(0_0_0_/_0.12)] transition-[opacity,visibility] duration-[120ms] ease-[ease]',
         // 显示律 = 直接父级（承载快捷键的控件本身）hover 或 focus-visible
         '[:is(:hover,:focus-visible)>&]:visible [:is(:hover,:focus-visible)>&]:opacity-100',
       )}

@@ -110,7 +110,8 @@ describe('mapPiSessionEvent（AgentSessionEvent → StepEvent 投影）', () => 
       },
       state,
     );
-    const done = map({ type: 'agent_end', willRetry: false }, state);
+    // 收敛信号 = agent_settled（#926）：pi 不再自动继续时才发 done，携累积 usage。
+    const done = map({ type: 'agent_settled' }, state);
     expect(done).toEqual([
       {
         type: 'done',
@@ -121,8 +122,68 @@ describe('mapPiSessionEvent（AgentSessionEvent → StepEvent 投影）', () => 
     ]);
   });
 
-  test('agent_end(willRetry) 不发 done（pi 流级自动重试吸收）', () => {
+  // —— #926 收敛判定：agent_settled 取代 agent_end(!willRetry) 猜测 ——————————
+  // pi docs/sdk.md §Subscribing：agent_end 标记「一次低层 run 结束」，但自动恢复
+  // 或排队工作（steering/followUp/overflow 恢复）可能随后继续；agent_settled 才是
+  // 「pi 不会再自动继续」的权威信号。旧映射用 agent_end(!willRetry) 猜收敛 =
+  // 时序赌博：willRetry 只覆盖「错误重试」一条继续路径，排队工作/溢出恢复继续时
+  // willRetry=false 仍会提前发 done（并 dispose 会话、掐死后续 run）。
+
+  test('agent_end 恒不发 done（无论 willRetry——收敛已移 agent_settled）', () => {
     expect(map({ type: 'agent_end', willRetry: true })).toEqual([]);
+    expect(map({ type: 'agent_end', willRetry: false })).toEqual([]);
+  });
+
+  test('「模型还会继续」路径：agent_end(!willRetry) 后仍有 run，done 不提前发', () => {
+    const state = newMapState();
+    // 首轮 assistant 收尾 → 一次低层 run 结束（willRetry=false，但排队工作随后继续）。
+    map(
+      {
+        type: 'message_end',
+        message: { role: 'assistant', provider: 'gw', model: 'm', stopReason: 'stop' },
+      },
+      state,
+    );
+    // 旧映射在此发 done（提前）；新映射不发——收敛尚未到达。
+    expect(map({ type: 'agent_end', willRetry: false }, state)).toEqual([]);
+    // 排队工作驱动的第二轮 run（旧映射已 dispose 会话，这段本不会发生）。
+    const continued = map(
+      {
+        type: 'message_end',
+        message: { role: 'assistant', provider: 'gw', model: 'm', stopReason: 'stop' },
+      },
+      state,
+    );
+    expect(continued.some((e) => e.type === 'done')).toBe(false);
+    // 真正收敛：agent_settled 才发 done（本例 message_end 不带 usage，累积面为空——
+    // 本测钉的是收敛时机，usage 累积由上一用例覆盖）。
+    const done = map({ type: 'agent_settled' }, state);
+    expect(done).toEqual([{ type: 'done', usage: [] }]);
+  });
+
+  test('「确实结束」路径：agent_settled 按时发 done（反向构造）', () => {
+    const state = newMapState();
+    map(
+      {
+        type: 'message_end',
+        message: {
+          role: 'assistant',
+          provider: 'gw',
+          model: 'm',
+          stopReason: 'stop',
+          usage: { input: 5, output: 7, cacheRead: 0, cacheWrite: 0 },
+        },
+      },
+      state,
+    );
+    map({ type: 'agent_end', willRetry: false }, state);
+    const done = map({ type: 'agent_settled' }, state);
+    expect(done).toEqual([
+      {
+        type: 'done',
+        usage: [{ model: 'gw/m', input: 5, output: 7, cacheRead: 0, cacheWrite: 0 }],
+      },
+    ]);
   });
 
   test('stopReason=error → message_end + error{retryable 判定}；aborted → message_stop', () => {

@@ -42,10 +42,10 @@ import { expect, type Page, test } from '@playwright/test';
 const NEW_PROJECT = '/app/project/new?scenario=01';
 const NEW_PROJECT_LIVE = '/app/project/new';
 
-/** shadcn.css 值正本: --focus-ring 暗 #d89cfc / --destructive 暗 #ffaab9
- *  （--danger 是它在 tokens.css 的并流别名）. */
-const FOCUS_RING = 'rgb(216, 156, 252)';
-const DANGER = 'rgb(255, 170, 185)';
+/** shadcn.css 值正本: --focus-ring 暗 #f294d8 / --destructive 暗 #ffabb7
+ *  （E 定版；--danger 并流别名已退役，消费直引 --destructive，#1002）. */
+const FOCUS_RING = 'rgb(242, 148, 216)';
+const DANGER = 'rgb(255, 171, 183)';
 
 // #946/#910 载体：#prj-new-name / #prj-new-repo 的 id 与 label 配对是语义
 // 资产（原样保留）；菜单 = role=menu（aria-label 仓库），行 = menuitemradio；

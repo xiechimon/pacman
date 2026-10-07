@@ -9,9 +9,10 @@
 //      不做字符串猜测——断言的 errorMessage 全部来自事件载荷原文。
 // 事件形态坑（真 pi 流 vs #654 脚本流的差异，实测代码路径 pi 0.86.0）：
 //   - 真 400 的事件序 = message_end(assistant, stopReason=error) + error +
-//     agent_end(willRetry=false) → done；#654 脚本只喂 error 时，
-//     sawProgress / sawDone 两处闭锁会让回落闸在真流上永不开启——本文件
-//     用真形态脚本钉住回落闸对真 400 开闸。
+//     agent_end(willRetry=false) + agent_settled → done（#926：done 由 agent_settled
+//     触发，不再由 agent_end 猜测；settled 在 finally 恒发，错误流也带）；#654 脚本
+//     只喂 error 时，sawProgress / sawDone 两处闭锁会让回落闸在真流上永不开启——
+//     本文件用真形态脚本钉住回落闸对真 400 开闸。
 
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';

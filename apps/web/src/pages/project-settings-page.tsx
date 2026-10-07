@@ -47,7 +47,7 @@ const VALUE_CLS =
  *  规则，实底不随 hover 变）；compact 几何 28/12/13 等值；ring-0 掐掉
  *  destructive 的 focus 附加环（本面 focus = #388 全局环/件基类单源）。 */
 const DELETE_BTN_CLS =
-  'mt-3 h-7 cursor-pointer rounded-none border-none bg-(--danger) px-3 text-[13px] font-normal leading-[inherit] text-(--text-on-accent) hover:bg-(--danger) dark:bg-(--danger) dark:hover:bg-(--danger) active:not-aria-[haspopup]:translate-y-0 focus-visible:ring-0';
+  'mt-3 h-7 cursor-pointer rounded-none border-none bg-(--destructive) px-3 text-[13px] font-normal leading-[inherit] text-(--text-on-accent) hover:bg-(--destructive) dark:bg-(--destructive) dark:hover:bg-(--destructive) active:not-aria-[haspopup]:translate-y-0 focus-visible:ring-0';
 
 export function ProjectSettingsPage() {
   const { t } = useI18n();
@@ -117,7 +117,7 @@ export function ProjectSettingsPage() {
               {/* 分支 chip = 静态展示(#177 裁决,#149 分支 chip 同律): schema
                   无 defaultBranch 列、无 PATCH 端点,读面固定 main;chevron 保
                   r2 24c 捕获形状。非交互元素——不再是死钮。 */}
-              <span className="prj-set-branch flex h-7 items-center gap-1.5 rounded-none border border-(--border-default) bg-(--surface-elevated) px-2.5 font-mono text-xs text-(--text-primary) [&_svg]:text-(--text-tertiary)">
+              <span className="prj-set-branch flex h-7 items-center gap-1.5 rounded-none border border-(--border) bg-(--card) px-2.5 font-mono text-xs text-(--foreground) [&_svg]:text-(--text-tertiary)">
                 {project?.defaultBranch ?? 'main'}
                 <ChevronDown width={12} height={12} />
               </span>
@@ -135,9 +135,7 @@ export function ProjectSettingsPage() {
             卡面 = #177 整除前形状原样归位(r2 24c),钮接真确认流。 */}
         <div className="mt-4 mb-2 text-xs leading-4 text-(--text-secondary)">{t('危险操作')}</div>
         <Panel variant="quiet" className="mt-4 overflow-hidden p-4">
-          <div className="text-sm font-semibold leading-5 text-(--text-primary)">
-            {t('删除项目')}
-          </div>
+          <div className="text-sm font-semibold leading-5 text-(--foreground)">{t('删除项目')}</div>
           <div className="mt-1 text-[13px] leading-5 text-(--text-tertiary)">
             {t('将永久删除所有任务与执行记录，此操作不可恢复。')}
           </div>

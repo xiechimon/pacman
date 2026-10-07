@@ -14,7 +14,7 @@ const SCHED = '/app/schedules?scenario=r3-92';
 /** UA (Chromium) default focus ring: outline auto + this blue. */
 const UA_BLUE = 'rgb(0, 95, 204)';
 /** --focus-ring (shadcn.css 值正本) — the family :focus-visible ring color. */
-const RING = 'rgb(216, 156, 252)';
+const RING = 'rgb(242, 148, 216)';
 
 async function focusedOutline(page: Page) {
   return page.evaluate(() => {

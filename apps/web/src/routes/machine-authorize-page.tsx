@@ -153,7 +153,7 @@ export function MachineAuthorizePage() {
           <p className={DESC_CLASS}>{t('授权链接已失效，请在执行机上重新发起。')}</p>
         )}
         {error !== null && phase !== 'authorized' && (
-          <p className="authorize-error text-xs text-accent-rose" role="alert">
+          <p className="authorize-error text-xs text-destructive" role="alert">
             {error}
           </p>
         )}

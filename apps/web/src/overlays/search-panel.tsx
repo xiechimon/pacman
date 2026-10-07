@@ -88,10 +88,9 @@ const ROW_RESULT = 'gap-2.5 pl-2';
  *  恒亮。dark: 双写中和 ghost 件的 dark:hover:bg-muted/50（--row-selected
  *  自带主题翻转，值同源）。 */
 function rowLitClasses(selected: boolean, kbd: boolean): string {
-  if (selected)
-    return 'bg-(--row-selected) hover:bg-(--row-selected) dark:hover:bg-(--row-selected)';
+  if (selected) return 'bg-(--secondary) hover:bg-(--secondary) dark:hover:bg-(--secondary)';
   if (kbd) return 'hover:bg-transparent dark:hover:bg-transparent';
-  return 'hover:bg-(--row-selected) dark:hover:bg-(--row-selected)';
+  return 'hover:bg-(--secondary) dark:hover:bg-(--secondary)';
 }
 
 /** 28px icon tile（结果行首列）：--row-icon-bg 底 + 8px 圆角；项目/agent
@@ -175,7 +174,7 @@ function TodoRow({
         <FileCheck width={16} height={16} />
       </span>
       <span className="flex w-[358px] min-w-0 flex-none flex-col">
-        <span className="truncate text-xs leading-4 text-(--text-primary)">
+        <span className="truncate text-xs leading-4 text-(--foreground)">
           #{todo.seqNum} {todo.title}
         </span>
         <span className="text-[10px] leading-3 text-(--text-tertiary)">
@@ -342,7 +341,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
       zIndex="var(--z-modal)"
     >
       <div
-        className={`fixed top-[146px] left-1/2 z-(--z-modal) flex h-[440px] w-[520px] -ml-[260px] flex-col overflow-hidden rounded-(--edge-radius) bg-(--popover-bg) shadow-(--fab-shadow) origin-top transition-[opacity,scale] group-data-closed/dlgvp:scale-[0.98] group-data-closed/dlgvp:opacity-0 motion-reduce:transition-none ${VIEWPORT_POP_ANIM}`}
+        className={`fixed top-[146px] left-1/2 z-(--z-modal) flex h-[440px] w-[520px] -ml-[260px] flex-col overflow-hidden rounded-(--edge-radius) bg-(--popover) shadow-(--fab-shadow) origin-top transition-[opacity,scale] group-data-closed/dlgvp:scale-[0.98] group-data-closed/dlgvp:opacity-0 motion-reduce:transition-none ${VIEWPORT_POP_ANIM}`}
         role="dialog"
         aria-label={t('搜索')}
         // entering the panel (incl. a synthetic pointer jump straight onto
@@ -358,7 +357,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
             setCursor(null);
         }}
       >
-        <div className="flex h-10 flex-none items-center gap-[3px] border-b border-(--card-border) pl-[17px] pr-4 text-(--text-tertiary)">
+        <div className="flex h-10 flex-none items-center gap-[3px] border-b border-(--border) pl-[17px] pr-4 text-(--text-tertiary)">
           <Search width={13} height={13} />
           {/* A5 收编：palette 裸输入形态（r7 05 canon）；e2e search-focus
               钉面板 scope 的 textbox 语义载体——Input 渲染的 input 元素
@@ -371,7 +370,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
             // 透明 + 13px 字；行容器几何（40px/垫距/分隔线）已随 #949 迁
             // 上方行 utility。
             ref={attachInput}
-            className="flex-1 h-auto border-none p-0 text-[13px] md:text-[13px] leading-4 rounded-none bg-transparent dark:bg-transparent text-(--text-primary) placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:!ring-0"
+            className="flex-1 h-auto border-none p-0 text-[13px] md:text-[13px] leading-4 rounded-none bg-transparent dark:bg-transparent text-(--foreground) placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:!ring-0"
             value={query}
             placeholder={t('搜索任务、项目、成员…')}
             onChange={(event) => onQuery(event.target.value)}
@@ -473,7 +472,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
                       {project.name.charAt(0).toLowerCase() || PROJECT_INITIAL}
                     </span>
                     <span className="flex w-[358px] min-w-0 flex-none flex-col">
-                      <span className="truncate text-xs leading-4 text-(--text-primary)">
+                      <span className="truncate text-xs leading-4 text-(--foreground)">
                         {project.name}
                       </span>
                     </span>
@@ -509,7 +508,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
                         />
                       </span>
                       <span className="flex w-[358px] min-w-0 flex-none flex-col">
-                        <span className="truncate text-xs leading-4 text-(--text-primary)">
+                        <span className="truncate text-xs leading-4 text-(--foreground)">
                           {agent.displayName}
                         </span>
                       </span>

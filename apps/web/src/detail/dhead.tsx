@@ -77,7 +77,7 @@ export function DetailHead({
   const [chipWrap, setChipWrap] = useState<HTMLSpanElement | null>(null);
   return (
     <header
-      className="detail-head relative flex h-11 flex-none items-center border-b border-(--border-default) pl-3"
+      className="detail-head relative flex h-11 flex-none items-center border-b border-(--border) pl-3"
       data-testid="detail-head"
     >
       <Link
@@ -162,7 +162,7 @@ export function DetailHead({
           attach them to. Ellipsised, never wrapped: the head is a fixed 44px
           band. */}
       <span
-        className="detail-title ml-3.5 min-w-0 flex-1 truncate text-[15px] leading-5 font-semibold text-(--text-primary)"
+        className="detail-title ml-3.5 min-w-0 flex-1 truncate text-[15px] leading-5 font-semibold text-(--foreground)"
         title={todo.title}
         data-testid="detail-title"
       >
