@@ -16,7 +16,7 @@ import { expect, test } from '@playwright/test';
 // - .res-back: hover 无背景变化 (现状即无 hover 面, 此处把律钉死防回潮);
 //   键盘 focus 环由 app.css 全局 :focus-visible 规则承载 (#388, 2px
 //   --focus-ring + offset 2)——本 spec 断言该环在 res-back 上双主题生效
-//   （暗 #d89cfc / 亮 #7f2da7）。
+//   （E 定版暗 #f294d8 / 亮 #97227e）。
 // - P5 danger：--destructive 两值（E 定版暗 #ffabb7 / 亮 #9e2c49）压 --card
 //   面拼对比度（文本 ≥4.5，§5.1 门）。--destructive-foreground 已判死退役
 //   （#987 §3.1），destructive 改按 base-nova 形 text-destructive 消费。
@@ -198,8 +198,8 @@ for (const theme of ['light', 'dark'] as const) {
     });
     expect(ring.style).toBe('solid');
     expect(ring.w).toBe('2px');
-    // the codebase ring recipe rides --focus-ring (dark #d89cfc / light #7f2da7)
-    expect(ring.color).toBe(theme === 'dark' ? 'rgb(216, 156, 252)' : 'rgb(127, 45, 167)');
+    // the codebase ring recipe rides --focus-ring (E canon dark #f294d8 / light #97227e)
+    expect(ring.color).toBe(theme === 'dark' ? 'rgb(242, 148, 216)' : 'rgb(151, 34, 126)');
   });
 }
 
@@ -269,8 +269,8 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app?scenario=01');
     const bg = await resolveToken(page, '--card-button');
     const fg = await resolveToken(page, '--text-on-accent');
-    expect(bg).toBe(theme === 'dark' ? 'rgb(216, 156, 252)' : 'rgb(127, 45, 167)');
-    expect(fg).toBe(theme === 'dark' ? 'rgb(30, 27, 22)' : 'rgb(255, 255, 255)');
+    expect(bg).toBe(theme === 'dark' ? 'rgb(242, 148, 216)' : 'rgb(151, 34, 126)');
+    expect(fg).toBe(theme === 'dark' ? 'rgb(31, 27, 24)' : 'rgb(255, 255, 255)');
     expect(await contrastOf(page, fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 
