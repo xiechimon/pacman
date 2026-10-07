@@ -1,7 +1,8 @@
 scenario: clean tree at the mechanism commit passes all three UI gates
-scratch worktree: /tmp/registry-gate-989-scenarios @ e5a8d3c9
+scratch worktree: /tmp/registry-gate-989-scenarios @ 91c3f789
 
-$ node scripts/ui-registry-gate.mjs   # (run in the lane worktree, clean at e5a8d3c9)
+$ node scripts/ui-registry-gate.mjs   # (run in the lane worktree, clean at 91c3f789)
+[ui-registry-gate] note: no base sha on this run (push event or local check) — the S5 ratchet has nothing to compare against; a status downgrade landing straight on main is guarded by review only (same posture as debt-gate D3 on main).
 [ui-registry-gate] PASS: 25 file(s) in apps/web/src/components/ui = 16 registry (6 pristine vs pinned snapshot / 10 registered deviations) + 9 adapters; snapshot shadcn@4.21.3 fetched 2026-10-07; ledger frozen from e9253388fc08; comparison: in-tree only.
 exit=0
 

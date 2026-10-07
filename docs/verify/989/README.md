@@ -54,7 +54,7 @@ rewrites proved fully mechanical.
 ## Scenario transcripts
 
 `run-scenarios.sh <mechanism-sha>` replays every verdict path in a detached
-scratch worktree at `e5a8d3c9` and regenerates the transcripts below
+scratch worktree at `91c3f789` and regenerates the transcripts below
 verbatim (scenario 13 runs in the lane worktree and is the only one needing
 network + node_modules):
 
@@ -73,12 +73,14 @@ network + node_modules):
 | `11-write-idempotent.txt` | re-freezing an unchanged tree reports no change, twice |
 | `12-g5-raw-color.txt` | `bg-red-500` + `text-[#fff]` injected into a ui file → drift-gate G5 red |
 | `13-refresh-deterministic.txt` | refresh re-run against unchanged upstream: all 16 statuses confirm, only `fetchedAt` moves in the snapshot (1-line git diff), restore leaves the tree clean |
+| `14-ci-red-on-runner.txt` | **acceptance 1 on a real runner**: throwaway draft PR #997 (mechanism branch + one unregistered file, closed + deleted after capture, #851 precedent) — the actual `check` job reddens at the gate step in 24s, S1 reason line verbatim in the runner log, `Process completed with exit code 1` |
 
-CI-side proof: this PR's `check` job runs the `UI registry gate (#989)` step
-green on the head sha (pre-install slot, next to the #851 debt gate); the
-red path on a real runner is the same script/exit code as `02`, which the
-scratch worktree replays verbatim.
+CI-side proof, both directions on real runners: the red path is `14` (draft
+PR #997's failed check job); the green path is this PR's own `check` job
+running the `UI registry gate (#989)` step in the pre-install slot (runner
+log: PASS, 25 files, bootstrap mode against the manifest-less base, <60ms).
 
 Full-suite e2e (`e2e:affected` falls back to full for shared surfaces —
 components/ui is consumed everywhere): **811 passed / 104 specs, 1.8m**,
-port 8398, at the mechanism commit.
+port 8398, at mechanism commit `e5a8d3c9`; the follow-up `91c3f789` touches
+only the gate scripts, and CI re-runs the full e2e shards on the new head.

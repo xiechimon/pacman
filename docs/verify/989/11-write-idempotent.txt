@@ -1,13 +1,13 @@
 scenario: re-freezing an unchanged tree reports no change (idempotent)
-scratch worktree: /tmp/registry-gate-989-scenarios @ e5a8d3c9
+scratch worktree: /tmp/registry-gate-989-scenarios @ 91c3f789
 
 $ node scripts/ui-registry-gate.mjs --write
-[ui-registry-gate] ledger frozen: 25 entries (6 pristine / 10 deviated / 9 adapters) from e5a8d3c9e2f8. Written to scripts/ui-registry.json.
+[ui-registry-gate] ledger frozen: 25 entries (6 pristine / 10 deviated / 9 adapters) from 91c3f789d39f. Written to scripts/ui-registry.json.
 [ui-registry-gate] no change vs previous ledger (idempotent).
 exit=0
 
 $ node scripts/ui-registry-gate.mjs --write
-[ui-registry-gate] ledger frozen: 25 entries (6 pristine / 10 deviated / 9 adapters) from e5a8d3c9e2f8. Written to scripts/ui-registry.json.
+[ui-registry-gate] ledger frozen: 25 entries (6 pristine / 10 deviated / 9 adapters) from 91c3f789d39f. Written to scripts/ui-registry.json.
 [ui-registry-gate] no change vs previous ledger (idempotent).
 exit=0
 

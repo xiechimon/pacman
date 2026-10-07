@@ -1,5 +1,5 @@
 scenario: refresh re-run against the same upstream regenerates identical item hashes — only fetchedAt metadata moves (git diff + restore prove it)
-scratch worktree: /tmp/registry-gate-989-scenarios @ e5a8d3c9
+scratch worktree: /tmp/registry-gate-989-scenarios @ 91c3f789
 
 $ node scripts/ui-registry-refresh.mjs
 [ui-registry-refresh] fetching 16 item(s) via shadcn@4.21.3: alert-dialog, avatar, badge, button, card, checkbox, dialog, dropdown-menu, empty, input, kbd, popover, select, switch, tabs, textarea
@@ -41,7 +41,7 @@ exit=0
 
 $ git diff scripts/ui-upstream-snapshots.json | grep -E '^[+-]' | grep -vE '^[+-]{3}' | head -8
 -  "fetchedAt": "2026-10-07T10:19:17.293Z",
-+  "fetchedAt": "2026-10-07T10:48:29.993Z",
++  "fetchedAt": "2026-10-07T11:25:08.681Z",
 exit=0
 
 $ git restore scripts/ui-upstream-snapshots.json && git status --porcelain scripts/

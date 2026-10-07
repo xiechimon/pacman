@@ -1,5 +1,5 @@
 scenario: S6 — corrupt manifest, a deviated entry without reason, and a missing snapshot file all fail closed (exit 2), never silently green
-scratch worktree: /tmp/registry-gate-989-scenarios @ e5a8d3c9
+scratch worktree: /tmp/registry-gate-989-scenarios @ 91c3f789
 
 $ printf 'not json' > scripts/ui-registry.json
 exit=0

@@ -1,5 +1,5 @@
 scenario: S3 — editing a registered file without re-freezing the ledger in the same PR goes red
-scratch worktree: /tmp/registry-gate-989-scenarios @ e5a8d3c9
+scratch worktree: /tmp/registry-gate-989-scenarios @ 91c3f789
 
 $ echo 'export const CardDemo = Card;' >> apps/web/src/components/ui/card.tsx
 exit=0
