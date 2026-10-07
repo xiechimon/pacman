@@ -16,10 +16,24 @@ export const providerApiSchema = z.enum([
 ]);
 export type ProviderApi = z.infer<typeof providerApiSchema>;
 
+/** custom 端点模型价格声明（#927）：USD / 1M tokens（pi 目录价语义，pi-ai
+ * ModelCostRates 同形——不含 tiers，档位价留给 pi 内建目录）。写入 models.json
+ * 条目后由 pi calculateCost 算 per-message cost——宿主不自造价格表、不重算；
+ * 缺省 = 零价（该端点 cost 恒 0，如实反映「无价格来源」）。 */
+export const modelCostRatesSchema = z.object({
+  input: z.number().nonnegative(),
+  output: z.number().nonnegative(),
+  cacheRead: z.number().nonnegative(),
+  cacheWrite: z.number().nonnegative(),
+});
+export type ModelCostRates = z.infer<typeof modelCostRatesSchema>;
+
 export const providerModelSchema = z.object({
   id: z.string(),
   name: z.string(),
+  cost: modelCostRatesSchema.optional(),
 });
+export type ProviderModel = z.infer<typeof providerModelSchema>;
 
 /** custom provider 兼容旋钮（#654，B-C2c 面）：pi models.json provider 级
  * compat 的记录投影。缺省位 = pi 按端点探测的默认行为（对未知自定义端点

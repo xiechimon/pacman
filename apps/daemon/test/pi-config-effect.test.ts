@@ -111,3 +111,44 @@ describe('materializeProvider 配置变更即时生效（#708 失败方式 3）'
     expect(loadCompat(path, 'cfg-rewrite')?.maxTokensField).toBe('max_completion_tokens');
   });
 });
+
+// —— #927 成本声明位：custom 端点的模型价格（USD / 1M tokens，pi 目录价
+// 语义）由 server 配置下发、物化进 models.json 条目——pi calculateCost 据此
+// 算 per-message cost（宿主不自造价格表、不重算）。无价格声明维持零价
+// （cost 恒 0 = 如实反映「该端点无价格来源」）。
+describe('materializeProvider cost 声明位（#927）', () => {
+  function providerWith(providerId: string, models: ProviderConfig['models']): ProviderConfig {
+    return { ...gateway(providerId), models };
+  }
+  function loadModels(path: string, providerId: string): Record<string, unknown>[] {
+    const raw = JSON.parse(readFileSync(path, 'utf8')) as {
+      providers: Record<string, { models?: Record<string, unknown>[] }>;
+    };
+    return raw.providers[providerId]?.models ?? [];
+  }
+
+  test('模型声明 cost → models.json 条目 = 声明价（覆盖零默认）', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pacman-cost-'));
+    const path = join(dir, 'models.json');
+    materializeProvider(
+      path,
+      providerWith('cost-gw', [
+        { id: 'm1', name: 'M1', cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 } },
+      ]),
+    );
+    expect(loadModels(path, 'cost-gw')[0]).toMatchObject({
+      id: 'm1',
+      cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+    });
+  });
+
+  test('未声明价格 → 零价默认同形（既有物化产物零回归）', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pacman-cost-'));
+    const path = join(dir, 'models.json');
+    materializeProvider(path, providerWith('cost-none', [{ id: 'm2', name: 'M2' }]));
+    expect(loadModels(path, 'cost-none')[0]).toMatchObject({
+      id: 'm2',
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    });
+  });
+});

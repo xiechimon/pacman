@@ -1849,8 +1849,11 @@ export async function finishStep(
       : null;
   const outcome: MachineDoneBody =
     landingError !== null ? { ...body, status: 'failed', errorMessage: landingError } : body;
-  // token 记账（02 §6.2：build × model × 四维）。
+  // token 记账（02 §6.2：build × model × 四维；成本五列 = #927——pi 报的
+  // cost 原样累积，缺省按 0 记：旧 daemon / claude-code 行不带 cost 位，
+  // 四维行为零变化）。
   for (const u of outcome.usage ?? []) {
+    const cost = u.cost;
     db.insert(tokenUsage)
       .values({
         buildId: stepRow.buildId,
@@ -1859,6 +1862,11 @@ export async function finishStep(
         output: u.output,
         cacheRead: u.cacheRead,
         cacheWrite: u.cacheWrite,
+        costInput: cost?.input ?? 0,
+        costOutput: cost?.output ?? 0,
+        costCacheRead: cost?.cacheRead ?? 0,
+        costCacheWrite: cost?.cacheWrite ?? 0,
+        costTotal: cost?.total ?? 0,
       })
       .onConflictDoUpdate({
         target: [tokenUsage.buildId, tokenUsage.model],
@@ -1867,6 +1875,11 @@ export async function finishStep(
           output: sql`${tokenUsage.output} + ${u.output}`,
           cacheRead: sql`${tokenUsage.cacheRead} + ${u.cacheRead}`,
           cacheWrite: sql`${tokenUsage.cacheWrite} + ${u.cacheWrite}`,
+          costInput: sql`${tokenUsage.costInput} + ${cost?.input ?? 0}`,
+          costOutput: sql`${tokenUsage.costOutput} + ${cost?.output ?? 0}`,
+          costCacheRead: sql`${tokenUsage.costCacheRead} + ${cost?.cacheRead ?? 0}`,
+          costCacheWrite: sql`${tokenUsage.costCacheWrite} + ${cost?.cacheWrite ?? 0}`,
+          costTotal: sql`${tokenUsage.costTotal} + ${cost?.total ?? 0}`,
         },
       })
       .run();

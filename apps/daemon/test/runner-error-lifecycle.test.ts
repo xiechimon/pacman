@@ -54,6 +54,7 @@ function captureLogger(): { logger: DaemonLogger; lines: string[] } {
     wake: (msg) => push('wake', msg),
     skills: (msg) => push('skills', msg),
     gate: (msg) => push('gate', msg),
+    trust: (msg) => push('trust', msg),
     mcp: (msg) => push('mcp', msg),
   };
   return { logger, lines };
@@ -376,5 +377,53 @@ describe('真 pi 事件形态：message_end(stopReason=error) + error + done', (
       supportsStore: false,
     });
     expect(client.doneBodies[0]?.body.status).toBe('success');
+  });
+});
+
+// —— #927 per-message usage 追溯面：pi 报的 usage（含 cost）随 assistant
+// 消息逐条落 [step] 行——「落库成本 ← 哪次请求算出来的」的对账链在
+// daemon.log 运行时可读（票面「能追溯到具体的 per-message usage」）。
+
+describe('runner per-message usage 追溯行（#927）', () => {
+  test('message_end 携 usage → [step] message usage 行（含 cost）；done 体保 cost 位', async () => {
+    const usage = {
+      input: 0,
+      output: 980,
+      cacheRead: 100,
+      cacheWrite: 0,
+      cost: { input: 0, output: 1960, cacheRead: 50, cacheWrite: 0, total: 2010 },
+    };
+    const events: StepEvent[] = [
+      ...sessionOpenEcho(),
+      {
+        type: 'message_end',
+        message: { role: 'assistant', content: '', stopReason: 'stop', usage },
+      },
+      {
+        type: 'done',
+        usage: [{ model: 'gw-lc-usage/stub-model', ...usage }],
+      },
+    ];
+    const { client, lines } = await runLifecycleCase([events], { providerId: 'gw-lc-usage' });
+    const usageLines = lines.filter((l) => l.includes('message usage:'));
+    // system/user 回声行不产 usage 行——仅携 usage 的 assistant 行落。
+    expect(usageLines).toHaveLength(1);
+    expect(usageLines[0]).toContain('gw-lc-usage/stub-model');
+    expect(usageLines[0]).toContain('input=0');
+    expect(usageLines[0]).toContain('output=980');
+    expect(usageLines[0]).toContain('cacheRead=100');
+    expect(usageLines[0]).toContain('cacheWrite=0');
+    expect(usageLines[0]).toContain('cost=2010');
+    expect(client.doneBodies[0]?.body.usage?.[0]?.cost?.total).toBe(2010);
+  });
+
+  test('无 usage 的消息（claude-code 面 / 旧投影）→ 零 usage 行（静默零回归）', async () => {
+    const events: StepEvent[] = [
+      ...sessionOpenEcho(),
+      { type: 'message_end', message: { role: 'assistant', content: 'ok', stopReason: 'stop' } },
+      { type: 'done', usage: [] },
+    ];
+    const { lines } = await runLifecycleCase([events], { providerId: 'gw-lc-nousage' });
+    expect(lines.filter((l) => l.includes('message usage:'))).toHaveLength(0);
   });
 });

@@ -35,14 +35,29 @@ export const toolCallRecordSchema = z.object({
 });
 export type ToolCallRecord = z.infer<typeof toolCallRecordSchema>;
 
+/** per-message 成本分项（#927）：USD，pi `calculateCost` 按模型目录价/声明价
+ * 算出的产物——宿主**原样透传不自造价格表**（票面口径）。溯源面 = message_end
+ * 行携的 per-message usage（messageRecordSchema loose 位）。 */
+export const modelCostSchema = z.object({
+  input: z.number(),
+  output: z.number(),
+  cacheRead: z.number(),
+  cacheWrite: z.number(),
+  total: z.number(),
+});
+export type ModelCost = z.infer<typeof modelCostSchema>;
+
 /** per-model 四维计数（02 §6.2 tokenUsage 分项；`<provider>/<modelId>` 串
- * r3 §1.5）。build 维由宿主落库时补全（token_usage 表主键 buildId×model）。 */
+ * r3 §1.5）。build 维由宿主落库时补全（token_usage 表主键 buildId×model）。
+ * cost = 成本维（#927）：可选位——旧 daemon 与 claude-code 后端的行不带
+ * （mixed-version / 双后端零回归，server 侧缺省按 0 记账）。 */
 export const modelUsageSchema = z.object({
   model: z.string(),
   input: z.number().int(),
   output: z.number().int(),
   cacheRead: z.number().int(),
   cacheWrite: z.number().int(),
+  cost: modelCostSchema.optional(),
 });
 export type ModelUsage = z.infer<typeof modelUsageSchema>;
 

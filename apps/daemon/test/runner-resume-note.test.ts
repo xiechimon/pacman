@@ -47,6 +47,7 @@ function captureLogger(): DaemonLogger {
     skills: noop,
     mcp: noop,
     gate: noop,
+    trust: noop,
   };
 }
 

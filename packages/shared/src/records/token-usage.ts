@@ -18,5 +18,14 @@ export const tokenUsageSchema = z.object({
   output: z.number().int(),
   cacheRead: z.number().int(),
   cacheWrite: z.number().int(),
+  /** 成本维（#927）：USD，pi calculateCost 产物按 per-message usage 累积
+   * （溯源面 = message_end 行携的 usage）。daemon done 上报的
+   * modelUsage.cost 五分项在此落平铺列；无价格来源（旧 daemon /
+   * claude-code 行 / 未声明价的 custom 端点）= 恒 0，如实可判。 */
+  costInput: z.number(),
+  costOutput: z.number(),
+  costCacheRead: z.number(),
+  costCacheWrite: z.number(),
+  costTotal: z.number(),
 });
 export type TokenUsage = z.infer<typeof tokenUsageSchema>;
