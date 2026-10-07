@@ -34,6 +34,7 @@ import { useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
 import { type BoardFilters, BoardSurface } from '../board/board.js';
 import { moveTodo, resetTodoLocal } from '../board/dnd.js';
+import { DoneConfirmDialog } from '../board/done-confirm-dialog.js';
 import type { FilterChip, FilterDimension } from '../board/filter-panel.js';
 import { NotificationBanner, useNotificationBanner } from '../board/notify-banner.js';
 import {
@@ -539,6 +540,21 @@ export function BoardPage() {
     [live, todos, fixture.now, teamId, mutations.patchTodo, queryClient, t],
   );
 
+  // #901 done 落位闸：闸相位（confirm/review）有变更产物的卡拖向已完成 =
+  // 跳过合并语义，先开确认弹层（判据单源 board.tsx needsDoneGate）。取消 =
+  // 零提交（拖拽路由未写任何乐观值）；确认 = 既有 handlePhaseDrop 提交路
+  // （fixture 本地集 / live 乐观 PATCH + server 审计行 #902）。无 reset 闸的
+  // 快照/409 复核位：确认走的是普通改相 PATCH，竞态由乐观回滚 + toast 兜底
+  // （#638 同律），不需要 stale 重确认面。
+  const [doneTarget, setDoneTarget] = useState<TodoRecord | null>(null);
+  const openDoneGate = useCallback((todo: TodoRecord) => setDoneTarget(todo), []);
+  const closeDoneGate = useCallback(() => setDoneTarget(null), []);
+  const confirmDone = useCallback(() => {
+    if (doneTarget == null) return;
+    handlePhaseDrop(doneTarget, 'done');
+    setDoneTarget(null);
+  }, [doneTarget, handlePhaseDrop]);
+
   // #828: 看板 branch 弹层的数据面——fixture 面走 overlayContent 冻结值；
   // live 面按 overlayTodo.latestBuildId 经 mapBranchInfo 现算（与详情页右
   // pane 同源）。此前 live 面同样走 overlayContent，真 todo id 恒 miss →
@@ -627,6 +643,7 @@ export function BoardPage() {
           onPhaseDrop={handlePhaseDrop}
           onStartIntent={startTask}
           onResetIntent={openResetGate}
+          onDoneIntent={openDoneGate}
           filters={filters}
           tagsById={tagIndex.tagById}
         />
@@ -717,6 +734,13 @@ export function BoardPage() {
         onConfirm={() => void confirmReset()}
         confirming={resetting}
         stale={resetStale}
+      />
+      {/* #901 done 落位闸：闸相位有产物在审的卡拖向已完成的确认位——取消
+          零提交，确认走 handlePhaseDrop（server 同落审计行 #902）。 */}
+      <DoneConfirmDialog
+        open={doneTarget != null}
+        onClose={closeDoneGate}
+        onConfirm={confirmDone}
       />
     </div>
   );

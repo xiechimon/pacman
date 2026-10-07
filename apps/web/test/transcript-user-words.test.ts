@@ -25,7 +25,9 @@
 
 import {
   type BuildRecord,
+  CONFIRM_ANNOUNCEMENT,
   CONTINUE_PROMPTS,
+  DONE_ANNOUNCEMENT,
   REVIEW_ANNOUNCEMENT,
   type StepJournalRow,
   buildPlanRewritePrompt,
@@ -59,9 +61,20 @@ const BUILD: BuildRecord = {
 };
 
 let msgSeq = 0;
-function msg(role: MessageRow['role'], content: unknown, at: number): MessageRow {
+function msg(
+  role: MessageRow['role'],
+  content: unknown,
+  at: number,
+  actor?: string | null,
+): MessageRow {
   msgSeq += 1;
-  return { id: `msg-${msgSeq}`, role, content, createdAt: at };
+  return {
+    id: `msg-${msgSeq}`,
+    role,
+    content,
+    createdAt: at,
+    ...(actor === undefined ? {} : { actor }),
+  };
 }
 
 function render(overrides: {
@@ -287,5 +300,47 @@ describe('mapTranscript 合成 prompt 过滤（#612）', () => {
     const users = userItems(items);
     expect(users).toHaveLength(1);
     expect(users[0]?.text).toBe('我要的是svg样式的');
+  });
+});
+
+// #902 过闸宣告行 actor 位：行自带主体（人 / chief Agent），呈现优先 actor
+// 位；存量旧行（actor 缺省/null）回落当前用户。失败方式：
+//   F14 新宣告行（通过了确认 / 标记为已完成）渲染成用户气泡——不在
+//       GATE_ANNOUNCEMENTS 表内，审计行冒名用户话语
+//   F15 actor 位被丢——chief 过的闸显示成当前用户名（审计撒谎的呈现面）
+//   F16 存量旧行（无 actor 位）呈现漂移——必须回落当前用户，逐字不变
+describe('mapTranscript 过闸宣告行 actor 位（#902）', () => {
+  test('F14 CONFIRM/DONE 宣告行渲染成 note 行，不是气泡', () => {
+    const items = render({
+      messages: [
+        msg('user', CONFIRM_ANNOUNCEMENT, NOW - 50_000, 'Xmon Dai'),
+        msg('user', DONE_ANNOUNCEMENT, NOW - 40_000, 'Xmon Dai'),
+      ],
+    });
+    expect(userItems(items)).toHaveLength(0);
+    expect(noteItems(items).map((n) => n.text)).toEqual([
+      `Xmon Dai ${CONFIRM_ANNOUNCEMENT}`,
+      `Xmon Dai ${DONE_ANNOUNCEMENT}`,
+    ]);
+  });
+
+  test('F15 actor 位优先于当前用户——chief 过的闸不记到人名下', () => {
+    const items = render({
+      messages: [msg('user', CONFIRM_ANNOUNCEMENT, NOW - 50_000, '总管甲')],
+    });
+    expect(noteItems(items).map((n) => n.text)).toEqual([`总管甲 ${CONFIRM_ANNOUNCEMENT}`]);
+  });
+
+  test('F16 存量旧行（actor null / 缺省）回落当前用户，呈现逐字不变', () => {
+    const items = render({
+      messages: [
+        msg('user', '发起了合并', NOW - 60_000, null),
+        msg('user', REVIEW_ANNOUNCEMENT, NOW - 50_000),
+      ],
+    });
+    expect(noteItems(items).map((n) => n.text)).toEqual([
+      'Xmon Dai 发起了合并',
+      `Xmon Dai ${REVIEW_ANNOUNCEMENT}`,
+    ]);
   });
 });

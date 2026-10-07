@@ -7,6 +7,7 @@ import {
   attentionCount,
   canDropOnColumn,
   COLUMNS,
+  needsDoneGate,
   needsResetGate,
   sortColumnTodos,
   type BoardColumnDef,
@@ -211,5 +212,27 @@ describe('needsResetGate（#755 拖回待开始确认闸）', () => {
 
   test('全新 todo 卡 = 静默（同列规则另保，判据本身 false）', () => {
     expect(needsResetGate(fresh(todo(1, 'todo')))).toBe(false);
+  });
+});
+
+// #901 done 落位闸（#892 §6 建议 2）：闸相位 ∧ 有产物在审才咬——无码可审的
+// 测试卡人肉清理（confirm 拖 done）保持静默，其余相位拖 done 不变。
+describe('needsDoneGate（#901 拖向已完成确认闸）', () => {
+  test('confirm/review ∧ hasChanges = 需闸', () => {
+    for (const phase of ['confirm', 'review'] as const) {
+      expect(needsDoneGate({ ...todo(1, phase), hasChanges: true }), phase).toBe(true);
+    }
+  });
+
+  test('confirm/review 无变更产物 = 静默（#892：无码可审的测试卡清理是合理人肉路径）', () => {
+    for (const phase of ['confirm', 'review'] as const) {
+      expect(needsDoneGate({ ...todo(1, phase), hasChanges: false }), phase).toBe(false);
+    }
+  });
+
+  test('其余相位（含 hasChanges 在位）= 静默（闸只咬 confirm/review 源）', () => {
+    for (const phase of ['todo', 'queued', 'planning', 'building', 'failed', 'done'] as const) {
+      expect(needsDoneGate({ ...todo(1, phase), hasChanges: true }), phase).toBe(false);
+    }
   });
 });
