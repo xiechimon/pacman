@@ -363,12 +363,6 @@ export const EN: Record<string, string> = {
   记忆: 'Memory',
   记忆已更新: 'Memory updated',
   技能已更新: 'Skill updated',
-  // #919 技能路由条目（线程列技能行 + 右栏「技能」汇总节）
-  '读取技能 {name}': 'Read skill {name}',
-  '技能 {name} 被拦截（未授权）': 'Skill {name} blocked (not authorized)',
-  本次运行没有技能事件: 'No skill events in this run',
-  '拦截 ×{n}': 'Blocked ×{n}',
-  '读取 ×{n}': 'Reads ×{n}',
   关注与提醒: 'Watches & reminders',
   未设置: 'Not set',
   压缩模型: 'Compaction model',

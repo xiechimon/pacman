@@ -20,14 +20,12 @@ import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
 import {
-  Ban,
   ChevronDown,
   ChevronRight,
   Clock,
   Copy,
   ExternalLink,
   FileTab,
-  Puzzle,
   Terminal,
 } from '../icons/index.js';
 import { ChatMarkdown } from './chat-markdown.js';
@@ -347,25 +345,6 @@ function Row({
         <div className="chat-scheduled mt-3.5 flex items-center gap-1.5 text-xs leading-4 text-(--text-tertiary)">
           <Clock width={13} height={13} />
           {t('由定时发起')}
-        </div>
-      );
-    case 'skill':
-      // #919 技能路由条目（scheduled 标记行同族几何：13px 字形 + 6px 距 +
-      // 12px 文案）。拦截态换 --stop 前景 + Ban 字形——被 deny 挡下的事件
-      // 与命中事件同一张脸的不同态，不另立行型。
-      return (
-        <div
-          className={`chat-skill mt-3.5 flex items-center gap-1.5 text-xs leading-4 ${
-            item.blocked ? 'text-(--stop)' : 'text-(--text-tertiary)'
-          }`}
-          data-testid="skill-row"
-          data-skill-name={item.name}
-          {...(item.blocked ? { 'data-blocked': 'true' } : {})}
-        >
-          {item.blocked ? <Ban width={13} height={13} /> : <Puzzle width={13} height={13} />}
-          {item.blocked
-            ? t('技能 {name} 被拦截（未授权）', { name: item.name })
-            : t('读取技能 {name}', { name: item.name })}
         </div>
       );
     case 'chief':

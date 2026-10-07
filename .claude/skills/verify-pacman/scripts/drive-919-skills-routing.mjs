@@ -308,21 +308,18 @@ async function createTaskAndBuild(projectId, agentId, title, spec) {
   return { todoId, buildId };
 }
 
-/** 详情页截图（真实用户路径）：线程列技能行 + 右栏「技能」汇总节。 */
-async function captureDetailUi(todoId, prefix, opts = {}) {
+/** 详情页截图（真实用户路径）：#918 落地的持久汇总行（testid
+ *  skills-summary，读/挡两列）——活行披露面是瞬态（步终态即清），截图取
+ *  持久面；返回汇总行文本供列断言。 */
+async function captureDetailUi(todoId, prefix, expectName) {
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 732 } });
     await page.goto(`${WEB}/app/todo/${todoId}`);
-    const rowSel = opts.blocked
-      ? '[data-testid="skill-row"][data-blocked="true"]'
-      : '[data-testid="skill-row"]';
-    await page.waitForSelector(rowSel, { timeout: 60_000 });
-    await page.screenshot({ path: join(EVIDENCE, `${prefix}-detail-skill-row.png`) });
-    await page.locator('.doc-select-wrap .doc-pane-select').click();
-    await page.getByRole('menuitemradio', { name: '技能' }).click();
-    await page.waitForSelector('[data-testid="skills-summary"]', { timeout: 15_000 });
-    await page.screenshot({ path: join(EVIDENCE, `${prefix}-detail-skills-pane.png`) });
+    const summary = page.locator('[data-testid="skills-summary"]', { hasText: expectName });
+    await summary.waitFor({ timeout: 60_000 });
+    await page.screenshot({ path: join(EVIDENCE, `${prefix}-detail-skills-summary.png`) });
+    return (await page.textContent('[data-testid="skills-summary"]')) ?? '';
   } finally {
     await browser.close();
   }
@@ -403,13 +400,16 @@ async function phaseBehavior() {
   check('daemon.log 目录行 entries=1（白名单 ∩ 全库）', logs.some((l) => l.includes('[skills] catalog: entries=1 ')));
   check('daemon.log 硬挡行（本机白名单外 2 技能）', logs.some((l) => l.includes('[skills] deny: 2 skill dir(s) hard-blocked')));
 
-  // 前端面（真实用户路径）：线程列技能行 + 右栏汇总节截图。
+  // 前端面（真实用户路径，#918 落地的持久汇总行）：点名命中技能在读列。
   try {
-    await captureDetailUi(todoId, 'behavior');
-    check('详情页技能行可见（截图 behavior-detail-skill-row.png）', true, `${WEB}/app/todo/${todoId}`);
-    check('详情页「技能」汇总节可见（截图 behavior-detail-skills-pane.png）', true);
+    const summaryText = await captureDetailUi(todoId, 'behavior', 'haiku-helper');
+    check(
+      '详情页汇总行读列点名命中技能（截图 behavior-detail-skills-summary.png）',
+      summaryText.includes('haiku-helper') && !summaryText.includes('挡下：'),
+      summaryText.trim(),
+    );
   } catch (err) {
-    check('详情页技能行/汇总节截图', false, String(err).slice(0, 200));
+    check('详情页汇总行截图/读列断言', false, String(err).slice(0, 200));
   }
   return finish();
 }
@@ -489,9 +489,14 @@ function startScriptedStub(responses) {
       resolveP({
         url: `http://127.0.0.1:${STUB_PORT}/v1`,
         requests,
-        // close 必须回调接 promise——裸 server.close() 不 settle，进程挂在
-        // unsettled top-level await 上（实测警告形）。
-        close: () => new Promise((r) => server.close(() => r(undefined))),
+        // close 必须回调接 promise 且先掐 keep-alive 连接——daemon 的 provider
+        // 连接不放手时裸 server.close() 永不 settle，进程挂 unsettled
+        // top-level await 退码 13（实测）。
+        close: () =>
+          new Promise((r) => {
+            server.closeAllConnections?.();
+            server.close(() => r(undefined));
+          }),
       }),
     );
   });
@@ -565,13 +570,16 @@ async function phaseDenyUi() {
     check('目录含点名技能 haiku-helper 与 haiku-local', inputFlat.includes('<name>haiku-helper</name>') && inputFlat.includes('<name>haiku-local</name>'));
     check('目录不含白名单外 secret-local', !inputFlat.includes('secret-local'));
 
-    // 前端面：blocked 行 + 汇总节（拦截计数）。
+    // 前端面（#918 持久汇总行）：挡下列点名被拒技能。
     try {
-      await captureDetailUi(todoId, 'deny', { blocked: true });
-      check('详情页 blocked 技能行可见（截图 deny-detail-skill-row.png）', true, `${WEB}/app/todo/${todoId}`);
-      check('详情页汇总节含拦截计数（截图 deny-detail-skills-pane.png）', true);
+      const summaryText = await captureDetailUi(todoId, 'deny', 'secret-local');
+      check(
+        '详情页汇总行挡下列点名被拒技能（截图 deny-detail-skills-summary.png）',
+        summaryText.includes('secret-local') && summaryText.includes('挡下：'),
+        summaryText.trim(),
+      );
     } catch (err) {
-      check('详情页 blocked 行/汇总节截图', false, String(err).slice(0, 200));
+      check('详情页汇总行挡下列截图/断言', false, String(err).slice(0, 200));
     }
     return finish();
   } finally {

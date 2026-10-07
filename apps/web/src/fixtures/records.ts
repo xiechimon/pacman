@@ -115,7 +115,7 @@ export interface RunHistoryRow {
 /** Detail-route right-pane view (issue #366): the doc surface (DocPane
  *  plan/changes/diff) plus the three static sections that replaced the
  *  former head-icon overlays. */
-export type PaneView = 'doc' | 'branch' | 'token' | 'history' | 'skills';
+export type PaneView = 'doc' | 'branch' | 'token' | 'history';
 
 /** Modal surface rendered over a route (issue #68). The scenario fixture
  *  opens one for capture determinism; the header/card buttons open the same
@@ -556,22 +556,7 @@ export type TranscriptItem =
    * 「判定提取失败」行（区别于「审核未返回结论」兜底）。 */
   | { kind: 'review'; conclusion: string; findings: ReviewFinding[]; extractionError?: string }
   /** #955 思考段行（详情页与总管抽屉共用同一张脸）：模型内部推理按段单列。 */
-  | { kind: 'thinking'; text: string }
-  /** #919 技能路由条目（行为验收的 UI 面）：agent 经 read 工具面命中
-   * SKILL.md、或经 claude-code 原生 Skill 工具调用技能时，从原始工具 pill
-   * 升格成的一等行（#634 人类面孔律）。blocked = 被白名单硬挡拦下（pi
-   * 门控拒绝文案 / deny 规则 isError——被 deny 挡下的事件同样可见）。
-   * name 优先级：拒绝文案里的技能名 > 路径目录名 > Skill 工具的 skill 参。 */
-  | { kind: 'skill'; name: string; blocked: boolean };
-
-/** #919 详情页技能汇总行（右栏「技能」节）：同名技能的读取/拦截计数。
- *  数据面 = transcript 里的 skill 条目（summarizeSkillItems 派生，fixture
- *  与 live 同一代码路径），不是独立 wire。 */
-export interface SkillSummaryRow {
-  name: string;
-  reads: number;
-  blocked: number;
-}
+  | { kind: 'thinking'; text: string };
 
 /** AI 审核 finding 显示形态（M7 #330，r8 §3.1）：严重度 + 标题 + 描述 +
  * 引用位（文件:行）+ 可选建议。dataSource = server verdict message 解出

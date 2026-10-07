@@ -22,7 +22,7 @@ import { useI18n } from '../i18n/provider.js';
 import { ChevronDown } from '../icons/index.js';
 
 /** Row/button copy — zh dict keys, rendered through t(). */
-export type PaneRowLabel = '方案' | '变更' | '分支与 PR' | 'Token 用量' | '运行历史' | '技能';
+export type PaneRowLabel = '方案' | '变更' | '分支与 PR' | 'Token 用量' | '运行历史';
 
 /** The doc surface's phase-derived type word (the listbox's first row). */
 export type DocTypeLabel = '方案' | '变更';
@@ -32,10 +32,6 @@ const SECTION_ROWS: Array<{ view: PaneView; label: PaneRowLabel }> = [
   { view: 'token', label: 'Token 用量' },
   { view: 'history', label: '运行历史' },
 ];
-
-/** #919 技能汇总行：只有真出现过技能事件才入列（no-dead-rows 律——零事件
- *  的运行不给一个空节占行）。 */
-const SKILLS_ROW: { view: PaneView; label: PaneRowLabel } = { view: 'skills', label: '技能' };
 
 /** #949: 旧 .plan-dropdown 壳规则等值迁 utility——V2 弹层壳（#790 P3：
  *  12px 内边距 / 1px 墨线框 / 圆角 0 / 最小宽 220）+ #854 盘三件套的硬偏移
@@ -87,7 +83,6 @@ export function PaneTypeSelect({
   sections,
   onView,
   initiallyOpen,
-  skillsRow = false,
 }: {
   view: PaneView;
   docLabel: DocTypeLabel;
@@ -95,21 +90,16 @@ export function PaneTypeSelect({
   onView: (view: PaneView) => void;
   /** Scenario-frozen initial open state (#67, r7 20). */
   initiallyOpen?: boolean;
-  /** #919：技能汇总行入列闸（真出现过技能事件才给行，见 SKILLS_ROW）。 */
-  skillsRow?: boolean;
 }) {
   const { t } = useI18n();
   const rows: Array<{ view: PaneView; label: PaneRowLabel }> = [
     { view: 'doc', label: docLabel },
     ...(sections ? SECTION_ROWS : []),
-    ...(sections && skillsRow ? [SKILLS_ROW] : []),
   ];
   const label: PaneRowLabel =
     view === 'doc'
       ? docLabel
-      : view === 'skills'
-        ? SKILLS_ROW.label
-        : (SECTION_ROWS.find((row) => row.view === view)?.label ?? '分支与 PR');
+      : (SECTION_ROWS.find((row) => row.view === view)?.label ?? '分支与 PR');
   return (
     <span className="doc-select-wrap relative flex">
       <DropdownMenu defaultOpen={initiallyOpen}>

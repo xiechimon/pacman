@@ -68,8 +68,6 @@ interface DocPaneProps {
   onPaneView: (view: PaneView) => void;
   /** Build payload present → the dropdown lists the three section rows. */
   hasSections?: boolean;
-  /** #919：技能事件在场 → 技能汇总行也入列（与 RightPane 同闸）。 */
-  hasSkills?: boolean;
   /** Version dropdown rows, newest first (r8 63/70). */
   planVersions?: PlanVersion[];
   /** Open menu on the version chip / range chip (r8 63/64). */
@@ -426,7 +424,6 @@ export function DocPane({
   planDropdownOpen,
   onPaneView,
   hasSections,
-  hasSkills,
   planVersions,
   versionMenu,
   onVersionMenu,
@@ -445,7 +442,6 @@ export function DocPane({
       view="doc"
       docLabel={docLabel}
       sections={hasSections}
-      skillsRow={hasSkills}
       onView={onPaneView}
       initiallyOpen={planDropdownOpen}
     />

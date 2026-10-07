@@ -14,14 +14,9 @@
 import { cn } from 'cn';
 import type { ReactNode } from 'react';
 import { useBuild } from '../api/hooks.js';
-import type {
-  BuildOverlayContent,
-  PaneView,
-  RunHistoryRow,
-  SkillSummaryRow,
-} from '../fixtures/records.js';
+import type { BuildOverlayContent, PaneView, RunHistoryRow } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { BarChart3, Check, Download, History, Puzzle, X } from '../icons/index.js';
+import { BarChart3, Check, Download, History, X } from '../icons/index.js';
 import { type DocTypeLabel, PaneTypeSelect } from '../overlays/plan-dropdown.js';
 import {
   BranchSyncFields,
@@ -40,8 +35,6 @@ interface PaneSelectProps {
   docLabel: DocTypeLabel;
   /** Payload present → the three section rows join the dropdown. */
   sections: boolean;
-  /** #919：技能事件在场 → 技能行也入列（no-dead-rows 律）。 */
-  skillsRow: boolean;
   onView: (view: PaneView) => void;
 }
 
@@ -53,67 +46,9 @@ function SectionHead({ icon, select }: { icon: ReactNode; select: PaneSelectProp
         view={select.view}
         docLabel={select.docLabel}
         sections={select.sections}
-        skillsRow={select.skillsRow}
         onView={select.onView}
       />
     </header>
-  );
-}
-
-/** #919 技能汇总节（详情页汇总面）：本次运行的技能路由事件按名计数——
- *  读取命中与被拦截（deny）并存分行。行几何从运行历史节律（11 gap / 13px
- *  名 / 12px meta / 分隔线），拦截 chip 用 --stop 前景（与线程列拦截行同
- *  色相）。数据面 = transcript 的 skill 条目派生（summarizeSkillItems），
- *  fixture 与 live 同一路径。 */
-function SkillsSection({ rows, select }: { rows: SkillSummaryRow[]; select: PaneSelectProps }) {
-  const { t } = useI18n();
-  return (
-    <section className="pane-section flex min-h-0 flex-1 flex-col">
-      <SectionHead icon={<Puzzle width={14} height={14} />} select={select} />
-      <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
-        <div className="px-4 pt-6 pb-[26px]" data-testid="skills-summary">
-          {rows.length === 0 ? (
-            <div className="text-[length:12px] text-(--text-tertiary)">
-              {t('本次运行没有技能事件')}
-            </div>
-          ) : (
-            rows.map((row, index) => (
-              <div
-                key={row.name}
-                data-testid="skill-summary-row"
-                data-skill-name={row.name}
-                className={cn(
-                  'flex items-center gap-[11px]',
-                  index > 0 && 'mt-2 border-t border-t-(--card-border) pt-2',
-                )}
-              >
-                <Puzzle
-                  width={14}
-                  height={14}
-                  className="ml-px size-3.5 flex-none text-(--text-tertiary)"
-                />
-                <div>
-                  <div className="flex h-[18px] items-center gap-2">
-                    <span className="text-[13px] text-(--text-primary)">{row.name}</span>
-                    {row.blocked > 0 && (
-                      <span
-                        className="h-[18px] rounded-[4px] bg-(--code-bg) px-[5px] text-[11px] leading-[18px] text-(--stop)"
-                        data-testid="skill-blocked-count"
-                      >
-                        {t('拦截 ×{n}', { n: row.blocked })}
-                      </span>
-                    )}
-                  </div>
-                  <div className="h-[17px] text-[length:12px] text-(--text-tertiary)">
-                    {t('读取 ×{n}', { n: row.reads })}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -304,32 +239,20 @@ function BranchSection({
   );
 }
 
-interface RightPaneProps extends Omit<PaneSelectProps, 'sections' | 'skillsRow'> {
+interface RightPaneProps extends Omit<PaneSelectProps, 'sections'> {
   /** Build-scoped section payloads; null = doc surface alone. */
   content: BuildOverlayContent | null;
   /** Live branch-sync handle (fixture = null). */
   buildId: string | null;
-  /** #919 技能汇总行（transcript skill 条目派生，summarizeSkillItems）；
-   *  [] = 本次运行没有技能事件（技能行不入列，no-dead-rows 律）。 */
-  skills: SkillSummaryRow[];
   /** The doc-view surface (DocPane), rendered while view === 'doc'. */
   children?: ReactNode;
 }
 
-export function RightPane({
-  view,
-  docLabel,
-  onView,
-  content,
-  buildId,
-  skills,
-  children,
-}: RightPaneProps) {
+export function RightPane({ view, docLabel, onView, content, buildId, children }: RightPaneProps) {
   const select = (active: PaneView): PaneSelectProps => ({
     view: active,
     docLabel,
     sections: content != null,
-    skillsRow: skills.length > 0,
     onView,
   });
   return (
@@ -343,8 +266,6 @@ export function RightPane({
         <BranchSection content={content} buildId={buildId} select={select('branch')} />
       ) : view === 'token' ? (
         <TokenSection content={content} select={select('token')} />
-      ) : view === 'skills' ? (
-        <SkillsSection rows={skills} select={select('skills')} />
       ) : (
         <HistorySection content={content} select={select('history')} />
       )}

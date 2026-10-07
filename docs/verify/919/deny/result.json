@@ -2,17 +2,17 @@
   "probe": "drive-919-skills-routing/deny-ui",
   "server": "http://127.0.0.1:8795",
   "web": "http://127.0.0.1:5277",
-  "db": "/tmp/pacman-919-run/home/server/server.db",
-  "daemonHome": "/tmp/pacman-919-daemon-home",
+  "db": "/tmp/pacman-919-run2/home/server/server.db",
+  "daemonHome": "/tmp/pacman-919-daemon-home2",
   "localSkills": "/tmp/pacman-919-local-skills",
   "model": "stub-model",
-  "passed": 11,
-  "total": 11,
+  "passed": 10,
+  "total": 10,
   "checks": [
     {
       "name": "stub 步 done",
       "ok": true,
-      "detail": "{\"id\":\"rhBJAnC84l54XDnDzGDyW\",\"kind\":\"build\",\"status\":\"done\"}"
+      "detail": "{\"id\":\"g9Vln9dmiMUubiPntiSZ4\",\"kind\":\"build\",\"status\":\"done\"}"
     },
     {
       "name": "拒绝文案落库（not in the agent allowlist）",
@@ -55,14 +55,9 @@
       "detail": null
     },
     {
-      "name": "详情页 blocked 技能行可见（截图 deny-detail-skill-row.png）",
+      "name": "详情页汇总行挡下列点名被拒技能（截图 deny-detail-skills-summary.png）",
       "ok": true,
-      "detail": "http://127.0.0.1:5277/app/todo/D8zWjk4i07c8dgo7_8D35"
-    },
-    {
-      "name": "详情页汇总节含拦截计数（截图 deny-detail-skills-pane.png）",
-      "ok": true,
-      "detail": null
+      "detail": "技能：haiku-local·挡下：secret-local"
     }
   ]
 }
