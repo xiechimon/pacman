@@ -1,8 +1,0 @@
-/* PROTOTYPE #988 — 圆角基历史对照切换（throwaway 分支 ui/988-palette-reselect）。
-   定版翻值后 base --radius = 0.625rem（官方基：#980 裁决④ registry 几何赢 +
-   #988 实审确认）。切换条挂 html[data-radius="current"] 时回到纸兰时代的
-   0.875rem 历史档供现场对照；胜者落 main 时本文件随 proto-988/ 全目录删除。 */
-
-html[data-radius="current"] {
-  --radius: 0.875rem;
-}

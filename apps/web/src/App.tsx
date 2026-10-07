@@ -7,7 +7,6 @@ import { ProjectNewPage } from './pages/project-new-page.js';
 import { ProjectPage } from './pages/project-page.js';
 import { ProjectSettingsPage } from './pages/project-settings-page.js';
 import { SchedulesPage } from './pages/schedules-page.js';
-import { ProtoSwitcher } from './proto-988/switcher.js';
 import { PwaBridge } from './pwa/register.js';
 import { MACHINES_HREF, MachinesPage } from './resources/machines-page.js';
 import { MCP_HREF, McpServersPage } from './resources/mcp-servers-page.js';
@@ -77,9 +76,6 @@ export function App() {
         {/* #631 toast 原语挂载：全站唯一 toaster（sonner，shadcn 官方配方），
             imperative toast.* 调用面由各 feature 自取。 */}
         <Toaster />
-        {/* PROTOTYPE #988：色板切换条（DEV-only，生产 build 折叠为 null；
-            throwaway 分支 ui/988-palette-reselect，胜者落 main 时删除）。 */}
-        <ProtoSwitcher />
       </I18nProvider>
     </ApiProvider>
   );
