@@ -83,6 +83,8 @@ function claimedStep(opts: { repoBound: boolean; continueSession?: string }): Cl
 class FakeClient implements MachineApi {
   calls: string[] = [];
   doneBodies: { stepId: string; body: MachineDoneBody }[] = [];
+  /** 上传的交付物（transcript 终稿）——断言面取这里的实物。 */
+  uploads: { url: string; body: TranscriptUpload | string }[] = [];
   async enroll(): Promise<never> {
     throw new Error('unused');
   }
@@ -129,7 +131,9 @@ class FakeClient implements MachineApi {
       })),
     };
   }
-  async putUpload(_url: string, _h: Record<string, string>, _body: TranscriptUpload | string) {}
+  async putUpload(url: string, _h: Record<string, string>, body: TranscriptUpload | string) {
+    this.uploads.push({ url, body });
+  }
   async done(stepId: string, body: MachineDoneBody) {
     this.doneBodies.push({ stepId, body });
   }
@@ -198,7 +202,10 @@ function handle(events: StepEvent[]): AgentSessionHandle {
 }
 
 /** fake worktree：只记调用序列，不碰真实 git（落盘面由 brief-file.test.ts 钉）。 */
-function fakeWorkspace(cwd: string): { ws: WorktreeOps; calls: string[] } {
+function fakeWorkspace(
+  cwd: string,
+  opts: { briefLeak?: string[] } = {},
+): { ws: WorktreeOps; calls: string[] } {
   const calls: string[] = [];
   const ws: WorktreeOps = {
     async prepare() {
@@ -234,6 +241,11 @@ function fakeWorkspace(cwd: string): { ws: WorktreeOps; calls: string[] } {
     },
     async cleanupOrphans() {
       return [];
+    },
+    // #958 闸 4：推送后检测面（缺省不实现 = 老实现/测试桩的形态）。
+    async briefMarkerInRef() {
+      calls.push('briefMarkerInRef');
+      return opts.briefLeak ?? [];
     },
   };
   return { ws, calls };
@@ -345,6 +357,40 @@ describe('简报接线：擦除覆盖各出口', () => {
     });
     const { cwd } = await run({ claimed: claimedStep({ repoBound: false }), backend });
     expect(existsSync(join(cwd, 'AGENTS.md'))).toBe(false);
+  });
+});
+
+describe('简报接线：推送后标记检测（#958 闸 4）', () => {
+  test('agent 自己提交把标记带进历史 → transcript 点名 + 日志行', async () => {
+    const cwdForWs = mkdtempSync(join(tmpdir(), 'pacman-brief-leak-'));
+    mkdirSync(cwdForWs, { recursive: true });
+    const { ws, calls } = fakeWorkspace(cwdForWs, { briefLeak: ['AGENTS.md'] });
+    const { backend } = stubBackend({});
+    const { client } = await run({
+      claimed: claimedStep({ repoBound: true }),
+      backend,
+      workspace: ws,
+    });
+    // 步照常收尾（检测是附加信号，不阻断），但点名必须真落到用户看得见的面。
+    expect(calls).toContain('briefMarkerInRef');
+    expect(client.doneBodies[0]?.body.status).toBe('success');
+    const transcript = JSON.stringify(client.uploads);
+    expect(transcript).toContain('分支 pacman/conv-conv-1 的历史里带着运行简报的标记块');
+    expect(transcript).toContain('AGENTS.md');
+  });
+
+  test('分支干净 → 无点名行（负例，避免把「没检测」读成「检测过了」）', async () => {
+    const cwdForWs = mkdtempSync(join(tmpdir(), 'pacman-brief-clean-'));
+    mkdirSync(cwdForWs, { recursive: true });
+    const { ws, calls } = fakeWorkspace(cwdForWs);
+    const { backend } = stubBackend({});
+    const { client } = await run({
+      claimed: claimedStep({ repoBound: true }),
+      backend,
+      workspace: ws,
+    });
+    expect(calls).toContain('briefMarkerInRef');
+    expect(JSON.stringify(client.uploads)).not.toContain('的历史里带着运行简报的标记块');
   });
 });
 

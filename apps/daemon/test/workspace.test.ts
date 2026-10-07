@@ -162,6 +162,35 @@ describe('worktree 契约（02 §5.5 / r3 §1.4）', () => {
     expect(existsSync(join(prepared.cwd, 'AGENTS.md'))).toBe(true);
   }, 30_000);
 
+  test('#958 闸 4：分支历史里带标记时 briefMarkerInRef 点名，干净分支为空', async () => {
+    const prepared = await ws.prepare(prepareInput(CONV_A));
+    // 先证负例：干净分支查不到。
+    expect(await ws.briefMarkerInRef(prepared.cwd, prepared.branch)).toEqual([]);
+
+    // agent 在 bash 里自己提交（绕过 commitAll 的认标记剔除）——daemon 拦不住
+    // 的那条路径，本函数是它唯一的可见性面。
+    writeFileSync(
+      join(prepared.cwd, 'AGENTS.md'),
+      `<!-- BEGIN PACMAN-RUNTIME (auto-managed; do not edit) -->\n简报\n<!-- END PACMAN-RUNTIME -->\n`,
+    );
+    await runGit(['add', '-A'], { cwd: prepared.cwd });
+    await runGit(
+      [
+        '-c',
+        'user.name=it-agent',
+        '-c',
+        'user.email=it@pacman.local',
+        'commit',
+        '-m',
+        'agent self-commit',
+      ],
+      {
+        cwd: prepared.cwd,
+      },
+    );
+    expect(await ws.briefMarkerInRef(prepared.cwd, prepared.branch)).toEqual(['AGENTS.md']);
+  }, 30_000);
+
   test('checkpoint 恢复：reset --hard + clean -fd → Worktree restored（r3 §1.4/§3.5）', async () => {
     const prepared = await ws.prepare(prepareInput(CONV_A));
     const checkpoint = (await ws.commitAll(prepared.cwd, 'plan: v1', IDENTITY)).head;
