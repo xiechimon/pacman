@@ -1,0 +1,18 @@
+[
+  {
+    "attempt": 1,
+    "todoId": "I6yaH8fkeQ9xArXRAEbYC",
+    "buildId": "01a11623-ae89-7295-91a5-7f66c898fec5",
+    "terminal": {
+      "step": {
+        "id": "4ujjP40hly8ekIX0UKLM6",
+        "kind": "build",
+        "status": "done"
+      },
+      "build": {
+        "id": "01a11623-ae89-7295-91a5-7f66c898fec5",
+        "errorMessage": null
+      }
+    }
+  }
+]

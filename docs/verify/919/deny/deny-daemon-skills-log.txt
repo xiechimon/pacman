@@ -1,0 +1,46 @@
+2026-10-07 19:17:06 [skills] team: 1 skill(s), 1 file(s) materialized → /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22 (fetched 1 file(s) / 386 byte(s), reused 0)
+2026-10-07 19:17:06 [skills] filtered: haiku-local not in agent allowlist
+2026-10-07 19:17:06 [skills] filtered: secret-local not in agent allowlist
+2026-10-07 19:17:06 [skills] loaded: 1 skills from /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22 + /tmp/pacman-919-local-skills
+2026-10-07 19:17:06 [skills] catalog: entries=1 chars=698
+2026-10-07 19:17:06 [skills] deny: 2 skill dir(s) hard-blocked
+2026-10-07 19:20:57 [skills] team: 1 skill(s) cache hit → /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22
+2026-10-07 19:20:57 [skills] filtered: haiku-local not in agent allowlist
+2026-10-07 19:20:57 [skills] filtered: secret-local not in agent allowlist
+2026-10-07 19:20:57 [skills] loaded: 1 skills from /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22 + /tmp/pacman-919-local-skills
+2026-10-07 19:20:57 [skills] catalog: entries=1 chars=698
+2026-10-07 19:20:57 [skills] deny: 2 skill dir(s) hard-blocked
+2026-10-07 19:23:24 [skills] team: 1 skill(s) cache hit → /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22
+2026-10-07 19:23:24 [skills] filtered: haiku-local not in agent allowlist
+2026-10-07 19:23:24 [skills] filtered: secret-local not in agent allowlist
+2026-10-07 19:23:24 [skills] loaded: 1 skills from /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22 + /tmp/pacman-919-local-skills
+2026-10-07 19:23:24 [skills] catalog: entries=1 chars=698
+2026-10-07 19:23:24 [skills] deny: 2 skill dir(s) hard-blocked
+2026-10-07 19:27:21 [skills] team: 1 skill(s) cache hit → /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22
+2026-10-07 19:27:21 [skills] filtered: haiku-local not in agent allowlist
+2026-10-07 19:27:21 [skills] filtered: secret-local not in agent allowlist
+2026-10-07 19:27:21 [skills] loaded: 1 skills from /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22 + /tmp/pacman-919-local-skills
+2026-10-07 19:27:21 [skills] catalog: entries=1 chars=698
+2026-10-07 19:27:21 [skills] deny: 2 skill dir(s) hard-blocked
+2026-10-07 19:27:21 [skills] denied-read: /tmp/pacman-919-local-skills/secret-local/SKILL.md (skill secret-local not in allowlist)
+2026-10-07 19:27:21 [skills] denied-read: /tmp/pacman-919-local-skills/haiku-local/SKILL.md (skill haiku-local not in allowlist)
+2026-10-07 19:33:20 [skills] team: 1 skill(s) cache hit → /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22
+2026-10-07 19:33:20 [skills] filtered: haiku-local not in agent allowlist
+2026-10-07 19:33:20 [skills] filtered: secret-local not in agent allowlist
+2026-10-07 19:33:20 [skills] loaded: 1 skills from /tmp/pacman-919-daemon-home/team-skills/views/cf0c79ea34c4d8fcda01869b3d7e2a21597c6d7724e08d1ac63b367994c1bf22 + /tmp/pacman-919-local-skills
+2026-10-07 19:33:20 [skills] catalog: entries=1 chars=698
+2026-10-07 19:33:20 [skills] deny: 2 skill dir(s) hard-blocked
+2026-10-07 19:33:57 [skills] team: 2 skill(s), 2 file(s) materialized → /tmp/pacman-919-daemon-home/team-skills/views/68e9966bfe3f9748733c7e7bc37f32cf68b4aac7f822ecd5ad9388be15be8b51 (fetched 1 file(s) / 141 byte(s), reused 1)
+2026-10-07 19:33:57 [skills] collision: name "haiku-local" collision (winner=/tmp/pacman-919-daemon-home/team-skills/views/68e9966bfe3f9748733c7e7bc37f32cf68b4aac7f822ecd5ad9388be15be8b51/haiku-local/SKILL.md loser=/tmp/pacman-919-local-skills/haiku-local/SKILL.md)
+2026-10-07 19:33:57 [skills] filtered: secret-local not in agent allowlist
+2026-10-07 19:33:57 [skills] loaded: 2 skills from /tmp/pacman-919-daemon-home/team-skills/views/68e9966bfe3f9748733c7e7bc37f32cf68b4aac7f822ecd5ad9388be15be8b51 + /tmp/pacman-919-local-skills
+2026-10-07 19:33:57 [skills] catalog: entries=2 chars=957
+2026-10-07 19:33:57 [skills] deny: 1 skill dir(s) hard-blocked
+2026-10-07 19:33:57 [skills] denied-read: /tmp/pacman-919-local-skills/secret-local/SKILL.md (skill secret-local not in allowlist)
+2026-10-07 19:44:26 [skills] team: 2 skill(s) cache hit → /tmp/pacman-919-daemon-home/team-skills/views/68e9966bfe3f9748733c7e7bc37f32cf68b4aac7f822ecd5ad9388be15be8b51
+2026-10-07 19:44:26 [skills] collision: name "haiku-local" collision (winner=/tmp/pacman-919-daemon-home/team-skills/views/68e9966bfe3f9748733c7e7bc37f32cf68b4aac7f822ecd5ad9388be15be8b51/haiku-local/SKILL.md loser=/tmp/pacman-919-local-skills/haiku-local/SKILL.md)
+2026-10-07 19:44:26 [skills] filtered: secret-local not in agent allowlist
+2026-10-07 19:44:26 [skills] loaded: 2 skills from /tmp/pacman-919-daemon-home/team-skills/views/68e9966bfe3f9748733c7e7bc37f32cf68b4aac7f822ecd5ad9388be15be8b51 + /tmp/pacman-919-local-skills
+2026-10-07 19:44:26 [skills] catalog: entries=2 chars=957
+2026-10-07 19:44:26 [skills] deny: 1 skill dir(s) hard-blocked
+2026-10-07 19:44:26 [skills] denied-read: /tmp/pacman-919-local-skills/secret-local/SKILL.md (skill secret-local not in allowlist)

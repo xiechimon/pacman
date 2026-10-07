@@ -55,6 +55,7 @@ import {
   mapRunHistory,
   mapTokenUsage,
   mapTranscript,
+  summarizeSkillItems,
   toDisplayTodo,
 } from '../api/mappers.js';
 import { useAgentAvatarUrlById, useLiveData } from '../api/provider.js';
@@ -515,6 +516,9 @@ export function TodoDetailPage() {
         planDiff: livePlanDiff,
       }
     : fixtureView;
+  // #919 技能汇总（右栏「技能」节 + 型选行入列闸）：transcript 的 skill 条目
+  // 派生，fixture 与 live 同一代码路径——汇总面不是独立 wire。
+  const skillSummary = summarizeSkillItems(view.transcript);
 
   // #873 会话跟随单源（components/chat/use-chat-follow）：列容器是
   // column-reverse（最新在 scrollTop 0 侧），规则与总管抽屉逐字同款——增长
@@ -1095,6 +1099,7 @@ export function TodoDetailPage() {
               docLabel={docMode === 'changes' ? '变更' : '方案'}
               content={content}
               buildId={live ? buildId : null}
+              skills={skillSummary}
             >
               <DocPane
                 mode={docMode}
@@ -1104,6 +1109,7 @@ export function TodoDetailPage() {
                 planDropdownOpen={fixture.ui?.planDropdownOpen === true}
                 onPaneView={setPaneView}
                 hasSections={content != null}
+                hasSkills={skillSummary.length > 0}
                 planVersions={view.planVersions}
                 versionMenu={menu}
                 onVersionMenu={setMenu}
