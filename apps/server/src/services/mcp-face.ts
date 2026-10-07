@@ -367,12 +367,29 @@ export async function executeMcpTool(
       }
       return json({ cancelled: buildIds });
     }
+    // MCP 面身份语义（本文件头注）：key 属主 = 用户——transitionTodos 的
+    // actor 记 user（#900 的 agent 闸相位拒否不咬本面；done 落地照落审计行）。
     case 'complete_todos':
-      return json(transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'done'));
+      return json(
+        transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'done', {
+          kind: 'user',
+          name: deps.user.displayName,
+        }),
+      );
     case 'close_todos':
-      return json(transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'closed'));
+      return json(
+        transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'closed', {
+          kind: 'user',
+          name: deps.user.displayName,
+        }),
+      );
     case 'reopen_todos':
-      return json(transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'todo'));
+      return json(
+        transitionTodos(deps, ctx.teamId, strArrOf(args, 'todoIds'), 'todo', {
+          kind: 'user',
+          name: deps.user.displayName,
+        }),
+      );
     case 'schedule_todo': {
       const todoId = str(args, 'todoId');
       const row = requireTeamTodo(db, todoId, ctx.teamId);

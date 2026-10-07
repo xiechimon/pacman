@@ -30,6 +30,7 @@ import {
   buildReviewStepPrompt,
   buildReworkNewBranchNote,
   buildReworkReuseNote,
+  CONFIRM_ANNOUNCEMENT,
   conversationBranch,
   hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
@@ -43,7 +44,6 @@ import {
   agent,
   build,
   machine,
-  message,
   plan as planTable,
   project,
   steerPending,
@@ -69,6 +69,8 @@ import { openGithubToken } from './github-connection.js';
 import type { MachineWakeHub } from './machines.js';
 import { assertPhaseTransition, canTransitionPhase } from './phase.js';
 import { getTodo, setTodoPhase } from './todos.js';
+// #902：transcript 行写入单源提出（todos 面同用，避免 todos→builds 依赖环）。
+import { insertMessageRow } from './transcript.js';
 
 export interface BuildDeps {
   db: Db;
@@ -109,25 +111,6 @@ export function toBuildRecord(row: BuildRow): BuildRecord {
     diffHash: row.diffHash,
     createdAt: row.createdAt,
   };
-}
-
-/** transcript 行落库 + 会话流即时推送（M5 live streaming：驳回 feedback 行/
- * 合并宣告行/🎉 行三处同形；machine 面 live 行走 machines.ts upsert 族）。 */
-export function insertMessageRow(
-  deps: { db: Db; convHub?: ConversationStreamHub },
-  conversationId: string,
-  row: {
-    id: string;
-    role: 'system' | 'user' | 'assistant';
-    content: unknown;
-    createdAt: number;
-  },
-): void {
-  deps.db
-    .insert(message)
-    .values({ ...row, conversationId })
-    .run();
-  deps.convHub?.publishMessage(conversationId, row);
 }
 
 function publishBuild(deps: BuildDeps, row: BuildRow): BuildRecord {
@@ -516,11 +499,15 @@ export async function applyBuildStepAction(
     | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string }
     | { action: 'review'; agentId: string; focus?: string }
     | { action: 'restart'; feedback: string; clientMessageId: string },
+  /** 过闸宣告行的 actor 位（#902）：REST 面缺省 = 用户；chief 工具面传
+   * Chief 绑定 Agent displayName；MCP 面 = key 属主（用户身份）。 */
+  actor?: string,
 ): Promise<void> {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
   let todoRecord = getTodo(deps, row.todoId);
   if (!todoRecord) throw new NotFoundError(`todo ${row.todoId}`);
+  const actorName = actor ?? deps.user.displayName;
 
   if (body.action === 'restart') {
     // 相位门：仅 failed 可重启（confirm 走 revision、building/review 走
@@ -669,6 +656,15 @@ export async function applyBuildStepAction(
   }
 
   if (body.action === 'confirm') {
+    // #902 确认闸通过宣告行（MERGE/REVIEW 同族行形）：actor 位答「在场的
+    // 是谁」——此前 confirm 闸被按过在库里零痕迹（#892 §6 建议 3）。
+    insertMessageRow(deps, buildId, {
+      id: newRecordId(),
+      role: 'user',
+      content: CONFIRM_ANNOUNCEMENT,
+      createdAt: nowMs(),
+      actor: actorName,
+    });
     setTodoPhase(deps, todoRecord.id, 'building');
     enqueueStep(deps, buildId, 'build', todoRecord.teamId);
     return;
@@ -696,6 +692,7 @@ export async function applyBuildStepAction(
       role: 'user',
       content: REVIEW_ANNOUNCEMENT,
       createdAt: nowMs(),
+      actor: actorName,
     });
     // 审核步 prompt：meta header（kind+agentId+gate，claim 载荷据此取 Agent
     // ——step 表无 agentId 列）+ JSON 输出契约 + plan.md 全文 +（审核关口）
@@ -814,7 +811,13 @@ function restoreFailedReview(deps: BuildDeps, row: BuildRow): void {
 
 /** 合并（02 §4.2/A6：merge = 202 delegated 机器执行；机器领合并步 continue
  * session 复用执行轮会话 → git merge --no-edit → phase=done，执行面归 M3）。 */
-export function requestMerge(deps: BuildDeps, buildId: string): { delegated: true } {
+export function requestMerge(
+  deps: BuildDeps,
+  buildId: string,
+  /** 宣告行 actor 位（#902）：REST 缺省 = 用户；chief merge_builds = Chief
+   * 绑定 Agent；MCP = key 属主。权限闸拒否与 actor 无关（403 在行之前）。 */
+  actor?: string,
+): { delegated: true } {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
   let todoRow = deps.db.select().from(todo).where(eq(todo.id, row.todoId)).get();
@@ -856,6 +859,7 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
     role: 'user',
     content: MERGE_ANNOUNCEMENT,
     createdAt: nowMs(),
+    actor: actor ?? deps.user.displayName,
   });
   enqueueStep(deps, buildId, 'merge', todoRow.teamId);
   return { delegated: true };

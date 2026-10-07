@@ -22,6 +22,7 @@ import {
   AGENT_TOOL_DEFAULTS,
   AGENT_TOOL_SHELL,
   createSkillBodySchema,
+  DONE_ANNOUNCEMENT,
   filterAgentTools,
   isChiefConversationId,
   MEMORY_QUOTA_PER_AGENT,
@@ -49,7 +50,7 @@ import type { FetchLike } from '../lib/github.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { applyBuildStepAction, requestMerge, startBuilds } from './builds.js';
 import { addChiefWatch, clearChiefWake, removeChiefWatches, setChiefWake } from './chief.js';
-import type { TeamStreamHub } from './events.js';
+import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { isGithubRepoRef, readFile } from './git.js';
 import type { MachineWakeHub } from './machines.js';
 import { defaultMcpConfigPath, listMcpServers } from './mcp-servers.js';
@@ -60,6 +61,7 @@ import { createSecret, deleteSecret, listSecrets, updateSecret } from './secrets
 import { createLocalSkill, scanLocalSkills, updateLocalSkill } from './skills.js';
 import { seedFixedTags } from './tags.js';
 import { createTodo, deleteTodo, getTodo, listTodos, setTodoPhase, updateTodo } from './todos.js';
+import { insertMessageRow } from './transcript.js';
 
 export interface ChiefToolDeps {
   db: Db;
@@ -67,6 +69,9 @@ export interface ChiefToolDeps {
   machineHub?: MachineWakeHub;
   box: SecretBox;
   user: UserRecord;
+  /** conversation stream 通道（#902 过闸宣告行落库后的 live 推送；缺省 =
+   * 只落库不推流）。 */
+  convHub?: ConversationStreamHub;
   /** 托管 bare repo 存储根（docs relay 读文件内容 = chief「探测仓库」面，r5 §3.1
    * 回合自带只读探索的宿主等价物；A4 黑盒逼近——官方走 worktree `git show`，
    * 复刻走 server 端裸库读，能力对齐、机制不同，标 [设计]）。 */
@@ -210,6 +215,18 @@ export async function executeChiefTool(
     box: deps.box,
     ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
   };
+  // #902 过闸宣告行的 actor 位：chief 工具面动作主体 = Chief 绑定 Agent 的
+  // displayName（未绑定回落 'Chief' 字面）——绝不记成用户名，审计要能区分
+  // 「人按的闸」与「agent 按的闸」（#892 §6：没有 actor，闸被人按过只能是
+  // 推断）。查询一次每回合复用（confirm_builds / merge_builds / *_todos）。
+  const chiefActorName =
+    ctx.chiefAgentId !== null
+      ? (db
+          .select({ name: agent.displayName })
+          .from(agent)
+          .where(eq(agent.id, ctx.chiefAgentId))
+          .get()?.name ?? 'Chief')
+      : 'Chief';
   switch (name) {
     // —— 读侧 16（#627 +models）——
     case 'projects': {
@@ -443,11 +460,26 @@ export async function executeChiefTool(
       return json({ deleted });
     }
     case 'close_todos':
-      return json(transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'closed'));
+      return json(
+        transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'closed', {
+          kind: 'agent',
+          name: chiefActorName,
+        }),
+      );
     case 'reopen_todos':
-      return json(transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'todo'));
+      return json(
+        transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'todo', {
+          kind: 'agent',
+          name: chiefActorName,
+        }),
+      );
     case 'complete_todos':
-      return json(transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'done'));
+      return json(
+        transitionTodos(deps, ctx.teamId, strArr(params, 'todoIds'), 'done', {
+          kind: 'agent',
+          name: chiefActorName,
+        }),
+      );
     case 'message_todo': {
       const todoId = str(params, 'todoId');
       const row = requireTeamTodo(db, todoId, ctx.teamId);
@@ -725,7 +757,7 @@ export async function executeChiefTool(
     }
     case 'confirm_builds': {
       const buildIds = strArr(params, 'buildIds');
-      for (const buildId of buildIds) await confirmBuild(deps, buildId);
+      for (const buildId of buildIds) await confirmBuild(deps, buildId, chiefActorName);
       return json({ confirmed: buildIds });
     }
     case 'cancel_builds': {
@@ -741,7 +773,7 @@ export async function executeChiefTool(
     }
     case 'merge_builds': {
       const buildIds = strArr(params, 'buildIds');
-      for (const buildId of buildIds) mergeBuild(deps, buildId);
+      for (const buildId of buildIds) mergeBuild(deps, buildId, chiefActorName);
       return json({ mergeDelegated: buildIds });
     }
 
@@ -845,22 +877,40 @@ export async function executeChiefTool(
   }
 }
 
+/** 过闸 done 落地的动作主体（#902/#900）：kind 决定闸相位拒否——agent
+ * （chief 工具面）不得自过 confirm/review 闸；user（MCP key 属主 = 用户身份，
+ * mcp-face.ts 头注同语义）放行但落审计行。name = 宣告行 actor 位。 */
+export type TransitionActor = { kind: 'user' | 'agent'; name: string };
+
 /** 批量 phase 流转（MCP server 面 complete/close/reopen 同吃，02 §7.2 六能力组
- * Manage lifecycle）。非法流转边跳过不中断 [设计]。 */
+ * Manage lifecycle）。非法流转边跳过不中断 [设计]。
+ * #900：agent 主体把闸相位（confirm/review）卡直推 done = 无 merge 步、无人
+ * 到场的自过闸（#892 实证 #14：8 秒）——拒，拒因进回执 reasons[ id ]（chief
+ * LLM 据此停在 review 并 notify_user 唤醒人）。
+ * #902：done 落地成功即往 todo 最新 build 会话落 DONE_ANNOUNCEMENT 行（actor
+ * = 主体 displayName）；无会话（latestBuildId null）静默跳过。 */
 export function transitionTodos(
   deps: ChiefToolDeps,
   teamId: string,
   todoIds: string[],
   to: 'closed' | 'todo' | 'done',
-): { transitioned: string[]; skipped: string[] } {
+  actor: TransitionActor,
+): { transitioned: string[]; skipped: string[]; reasons?: Record<string, string> } {
   // machineHub 在位 → setTodoPhase 漏斗可触发 chief wake（done=settle 等）。
-  const svc = { db: deps.db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user };
+  const svc = {
+    db: deps.db,
+    hub: deps.hub,
+    machineHub: deps.machineHub,
+    user: deps.user,
+    convHub: deps.convHub,
+  };
   const transitioned: string[] = [];
   const skipped: string[] = [];
+  const reasons: Record<string, string> = {};
   for (const id of todoIds) {
     // 团队归属校验（纵深防御）：跨团队 id 记 skipped，不中断批次。
     const owned = deps.db
-      .select({ id: todo.id })
+      .select({ id: todo.id, phase: todo.phase, latestBuildId: todo.latestBuildId })
       .from(todo)
       .where(and(eq(todo.id, id), eq(todo.teamId, teamId)))
       .get();
@@ -868,15 +918,40 @@ export function transitionTodos(
       skipped.push(id);
       continue;
     }
+    // #900 闸相位 done 落地要人过闸（agent 主体拒；confirm→done 在漏斗本就
+    // 非法，这里先于流转判定拒，让拒因是「闸」而不是笼统的非法边）。
+    if (
+      to === 'done' &&
+      actor.kind === 'agent' &&
+      (owned.phase === 'review' || owned.phase === 'confirm')
+    ) {
+      skipped.push(id);
+      reasons[id] =
+        '待确认/审核关口的 done 落地必须由人过闸（发起合并，或用户在看板确认）。把卡停在当前关口，用 notify_user 唤醒用户处理。';
+      continue;
+    }
     try {
       const record = setTodoPhase(svc, id, to);
-      if (record) transitioned.push(id);
-      else skipped.push(id);
+      if (record) {
+        transitioned.push(id);
+        // #902 done 落地审计行（不经合并步的 done 一律留痕，actor 答「谁」）。
+        if (to === 'done' && owned.latestBuildId !== null) {
+          insertMessageRow(deps, owned.latestBuildId, {
+            id: newRecordId(),
+            role: 'user',
+            content: DONE_ANNOUNCEMENT,
+            createdAt: nowMs(),
+            actor: actor.name,
+          });
+        }
+      } else skipped.push(id);
     } catch {
       skipped.push(id); // 非法流转边（phase.ts）→ 跳过，不中断批次 [设计]
     }
   }
-  return { transitioned, skipped };
+  return Object.keys(reasons).length > 0
+    ? { transitioned, skipped, reasons }
+    : { transitioned, skipped };
 }
 
 function buildDeps(deps: ChiefToolDeps) {
@@ -885,20 +960,31 @@ function buildDeps(deps: ChiefToolDeps) {
     hub: deps.hub,
     machineHub: deps.machineHub,
     user: deps.user,
+    convHub: deps.convHub,
     reposDir: deps.reposDir,
   };
 }
-export async function confirmBuild(deps: ChiefToolDeps, buildId: string): Promise<void> {
+export async function confirmBuild(
+  deps: ChiefToolDeps,
+  buildId: string,
+  /** 宣告行 actor 位（#902）；缺省 = 用户（MCP key 属主语义）。 */
+  actor?: string,
+): Promise<void> {
   if (!deps.db.select().from(build).where(eq(build.id, buildId)).get()) {
     throw new HttpError(404, `build ${buildId}`);
   }
-  await applyBuildStepAction(buildDeps(deps), buildId, { action: 'confirm' });
+  await applyBuildStepAction(buildDeps(deps), buildId, { action: 'confirm' }, actor);
 }
-export function mergeBuild(deps: ChiefToolDeps, buildId: string): void {
+export function mergeBuild(
+  deps: ChiefToolDeps,
+  buildId: string,
+  /** 宣告行 actor 位（#902）；缺省 = 用户（MCP key 属主语义）。 */
+  actor?: string,
+): void {
   if (!deps.db.select().from(build).where(eq(build.id, buildId)).get()) {
     throw new HttpError(404, `build ${buildId}`);
   }
-  requestMerge(buildDeps(deps), buildId);
+  requestMerge(buildDeps(deps), buildId, actor);
 }
 
 // —— memory 写路径共用面（02 §4.4/r5 §6，M4b）———————————————————————————————

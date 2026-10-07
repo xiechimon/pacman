@@ -132,6 +132,16 @@ export function needsResetGate(todo: TodoRecord): boolean {
   return todo.latestBuildId != null || todo.lastRunAt != null || todo.hasChanges || todo.hasPlan;
 }
 
+/** done 落位闸判据（#901，#892 §6 建议 2）：闸相位（confirm/review）且**有
+ *  产物在审**（hasChanges）的卡拖向 已完成 = 跳过两道硬闸的全部语义，要显式
+ *  确认弹层（复用 #755 reset 闸形态）；取消 = 零提交。无变更产物的闸相位卡
+ *  （测试卡/寒暄卡人肉清理，#892 实证 10 张）与其余拖拽保持静默改相——数据
+ *  不支持砍掉拖拽捷径本身。server 审计行面更宽（闸相位 done 落地一律落行，
+ *  todos.ts updateTodo #902）：弹层是 UI 位，行是审计位，两判据不共用。 */
+export function needsDoneGate(todo: TodoRecord): boolean {
+  return (todo.phase === 'confirm' || todo.phase === 'review') && todo.hasChanges === true;
+}
+
 /** Phase → primary card action, copy from the shared PHASE_UI table.
  *  Waiting-on-user todos get the ghost 回复 button (r3 §3.0 引导 P2 词表 +
  *  r5b §3.15). Done cards carry no button: 重开 lives only in the detail
