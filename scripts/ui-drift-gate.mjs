@@ -24,6 +24,13 @@
 //       migrate to components/ui/input.tsx; deliberate-native sites (hidden
 //       file triggers, tri-state checkboxes, custom-switch a11y layers)
 //       document their reason at the site instead.
+//   G5  No raw color in components/ui/*.tsx (#989, map #980 zero-skin):
+//       arbitrary color values (`[#…]`, `[rgb…]`, `[hsl…]`, `[oklch…]`) and
+//       raw palette-scale classes (`bg-red-500` family, all 22 Tailwind hue
+//       names) are red. Colors go through the semantic token slots;
+//       arbitrary VALUES stay legal for non-color geometry
+//       (`brightness-[1.07]`, `translate-x-[calc(100%-2px)]`), and the token
+//       shorthand (`bg-(--card-button)`) is not a bracket form at all.
 //
 // The former single-site exception is closed: #854 minted `--text-on-veil`
 // (styles/shadcn.css, both theme mirrors) for the white text over the
@@ -70,15 +77,17 @@ function stripCssComments(text) {
   return text.replace(/\/\*[\s\S]*?\*\//g, '\n');
 }
 
-/** G4 strips JSX block comments, TS block comments, and line comments so that
- *  `<input` mentioned in prose (e.g. api-key-create-dialog's XMON-75 note)
- *  does not count as a site. String literals are left alone: a literal
- *  "<input" inside a string is rare and errs on the side of flagging. */
+/** G4/G5 strip JSX block comments, TS block comments, and line comments so
+ *  that `<input` mentioned in prose (e.g. api-key-create-dialog's XMON-75
+ *  note) does not count as a site. String literals are left alone: a literal
+ *  "<input" inside a string is rare and errs on the side of flagging. The `m`
+ *  flag matters: without it `^` only matches the very start of the file and
+ *  every column-0 `//` line after the first survives stripping (#989). */
 function stripJsxComments(source) {
   return source
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))
     .replace(/\/\*[\s\S]*?\*\//g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))
-    .replace(/(^|[ \t])\/\/[^\n]*/g, '$1');
+    .replace(/(^|[ \t])\/\/[^\n]*/gm, '$1');
 }
 
 const cssFiles = walk(WEB_SRC, '.css');
@@ -165,10 +174,30 @@ for (const file of tsxFiles) {
   }
 }
 
+// --- G5: raw color in components/ui (#989, map #980 zero-skin) ----------------
+const UI_PRIMITIVES_PREFIX = 'components/ui/';
+const G5_ARBITRARY_COLOR_RE = /\[(?:#|rgb|hsl|oklch)/i;
+const G5_RAW_SCALE_RE =
+  /\b(?:bg|text|border|ring|fill|stroke)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|gray|slate|zinc|neutral|stone)-\d{2,3}\b/;
+let uiFilesScanned = 0;
+for (const file of tsxFiles) {
+  const relPath = rel(file);
+  if (!relPath.startsWith(UI_PRIMITIVES_PREFIX)) continue;
+  uiFilesScanned++;
+  const clean = stripJsxComments(readFileSync(file, 'utf8')).split('\n');
+  clean.forEach((line, i) => {
+    const m = line.match(G5_ARBITRARY_COLOR_RE) || line.match(G5_RAW_SCALE_RE);
+    if (m)
+      failures.push(
+        `G5 ${relPath}:${i + 1}: raw color \`${m[0]}\` in components/ui — colors go through semantic token slots (map #980 zero-skin); arbitrary values are for non-color geometry only (${line.trim()})`,
+      );
+  });
+}
+
 // --- verdict -----------------------------------------------------------------
 if (failures.length === 0) {
   console.log(
-    `[ui-drift-gate] PASS: no live .btn selectors, no hex escapes, no .chip--* redefinitions (${cssFiles.length} css files scanned); ${inputSites} bare <input> site(s), ${deliberateInputs} deliberate-native.`,
+    `[ui-drift-gate] PASS: no live .btn selectors, no hex escapes, no .chip--* redefinitions (${cssFiles.length} css files scanned); ${inputSites} bare <input> site(s), ${deliberateInputs} deliberate-native; no raw color in ${uiFilesScanned} components/ui file(s).`,
   );
   process.exit(0);
 }

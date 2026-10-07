@@ -49,6 +49,17 @@ jobs:
           fi
           node scripts/ui-debt-gate.mjs
 
+      # components/ui registry 闸（#989，地图 #980）：白名单清单 + 内容 hash
+      # 账本 + pristine 件对照 vendored 上游快照 + 状态棘轮（S5 对照 base
+      # manifest，复用上面已 fetch 的 base sha）。手写原语进 components/ui
+      # 即红；已登记文件被覆写而同 PR 未重冻账本也红。零网络、零依赖
+      # （shadcn CLI 只存在于按需刷新脚本 scripts/ui-registry-refresh.mjs，
+      # live diff 形态已被 #985 实测否掉），同样排在 install 之前。
+      - name: UI registry gate (#989)
+        env:
+          UI_REGISTRY_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ui-registry-gate.mjs
+
       # e2e 迁去独立分片 job（#693）后 ffmpeg 随迁；chromium 留在本 job——
       # integration vitest 的四个 e2e 套件（m5-web-e2e 等）在场内起真
       # Chromium（2026-10-03 实测摘掉即红：browserType.launch executable
