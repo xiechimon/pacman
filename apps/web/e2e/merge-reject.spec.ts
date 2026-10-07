@@ -9,9 +9,9 @@ import { evidenceShot } from './evidence';
 //  1. 详情页：授权缺项时「完成」仍可点 —— 点了必被 server 拒，用户白点一次；
 //  2. 看板：同上（两个入口各写一份接线，一处漏接就是一处静默）；
 //  3. 缺项不点名 —— 用户知道被拒了，但不知道该开哪个开关（等于没给答案）；
-//  3b. 空授权集被当成全关 —— 存量豁免：库里 notNull().default('[]') 让「从未
-//      保存过权限 tab」与「显式全关」同值，判缺 = 把所有存量 Agent 一刀切成
-//      禁按（PR #579 CI 红即此因）；
+//  3b. 空授权集被放行（#994）—— 那个豁免的前提已被 0018 回填（PR #576）作废：
+//      存量行补成含「推送分支」，此后 [] 只剩显式来路，而 server 侧对 [] 一律
+//      拒——放行即「点得动、点了必被拒」；
 //  4. 全开时误伤：明明有权限却点了没反应（前端拦下一个 server 会放行的请求）；
 //  5. server 真拒时弹层静默关 —— 本轮修的主症状，防它从 onError 一路退回去；
 //  6. 成功路径被写坏：正常合并后弹层不关、或残留一条错误行。
@@ -211,19 +211,23 @@ test('非空授权集里两项都缺时，两处开关都被点名', async ({ pa
   );
 });
 
-test('空授权集放行（存量豁免）：从未保存过权限 tab 的 Agent 不被拦', async ({ page }) => {
-  // 库里 agent.tools 是 notNull().default('[]')，「从未保存」与「显式全关」同值。
-  // 判空集为缺 = 把所有存量 Agent 一刀切成禁按（PR #579 CI 红即此因）。
-  // 两个入口各钉一次：豁免是本轮新开的支，只测一个入口等于放纵另一处漏接。
+test('空授权集照拦（#994）：显式全关 = 一无授权，两处入口都禁用并点名两项', async ({ page }) => {
+  // 0018 回填（PR #576）把存量行补成含「推送分支」后，库里剩下的 [] 只剩显式
+  // 来路（权限 tab 关到最后一档 / API 显式传空），而 server 侧 requestMerge 对
+  // [] 一律拒——放行即「点得动、点了必被拒」。两个入口各钉一次。
   const board = await openBoardAccept(page, []);
-  await expect(board.getByRole('button', { name: '完成' })).toBeEnabled();
-  await expect(page.getByText(BLOCK_NOTE)).toHaveCount(0);
-  await evidenceShot(page, 'XMON-89-board-exempt.png');
+  await expect(board.getByRole('button', { name: '完成' })).toBeDisabled();
+  await expect(page.getByText(BLOCK_NOTE)).toHaveText(
+    '缺少「合并分支、推送分支」授权，无法合并。请在该 Agent 的权限里开启。',
+  );
+  await evidenceShot(page, '994-empty-tools-board-blocked.png');
 
   const detail = await openDetailAccept(page, []);
-  await expect(detail.getByRole('button', { name: '完成' })).toBeEnabled();
-  await expect(page.getByText(BLOCK_NOTE)).toHaveCount(0);
-  await evidenceShot(page, 'XMON-89-detail-exempt.png');
+  await expect(detail.getByRole('button', { name: '完成' })).toBeDisabled();
+  await expect(page.getByText(BLOCK_NOTE)).toHaveText(
+    '缺少「合并分支、推送分支」授权，无法合并。请在该 Agent 的权限里开启。',
+  );
+  await evidenceShot(page, '994-empty-tools-detail-blocked.png');
 });
 
 test('两项都开时不拦：完成钮可点，无缺项提示', async ({ page }) => {
