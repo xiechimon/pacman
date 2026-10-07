@@ -227,6 +227,32 @@ export const gitPrim = {
     await runGitOk(['reset', '-q', '--', path], { cwd: dir, timeoutMs: META_TIMEOUT_MS });
   },
 
+  /** ref 里含指定**固定串**的文件，只在这些路径里找（#958 闸 4 的推送后检测）。
+   * 与 `stagedPathsContaining` 同一套限定理由：候选名只有五个，全仓 grep 不值。
+   * 输出形为 `<ref>:<path>`，此处剥掉 ref 前缀。无命中 = 空数组（`git grep`
+   * 的退出码 1 是「没匹配」，不是错）。 */
+  async pathsContainingInRef(
+    dir: string,
+    ref: string,
+    needle: string,
+    paths: readonly string[],
+  ): Promise<string[]> {
+    if (paths.length === 0) return [];
+    const r = await runGit(['grep', '-l', '-F', '-e', needle, ref, '--', ...paths], {
+      cwd: dir,
+      timeoutMs: META_TIMEOUT_MS,
+    });
+    if (r.code !== 0) return [];
+    return r.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '')
+      .map((line) => {
+        const sep = line.indexOf(':');
+        return sep === -1 ? line : line.slice(sep + 1);
+      });
+  },
+
   /** commit；干净树（nothing to commit）= false 不抛。 */
   async commit(dir: string, message: string, identity: CommitIdentity): Promise<boolean> {
     const r = await runGit(['commit', '-m', message], {

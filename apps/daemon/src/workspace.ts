@@ -134,6 +134,14 @@ export class WorkspaceManager implements WorktreeOps {
     return { committed, head };
   }
 
+  /** #958 闸 4 的检测半：ref 里是否带着简报标记。见 WorktreeOps 的接口注释——
+   *  这是检测不是预防，agent 自己提交的那条路径 daemon 拦不住。 */
+  async briefMarkerInRef(cwd: string, ref: string): Promise<string[]> {
+    return gitPrim.pathsContainingInRef(cwd, ref, BRIEF_MARKER_BEGIN, [
+      ...BRIEF_RECONCILE_FILENAMES,
+    ]);
+  }
+
   async push(cwd: string, branch: string, credentials: GitCredentials | null): Promise<void> {
     // 重试预算覆盖 git-host 5xx 窗口（02 §5.5/r3 bundle 注原话语义）。
     await withGitNetRetries(() => gitPrim.push(cwd, branch, credentials));

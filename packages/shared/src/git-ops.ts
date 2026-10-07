@@ -178,6 +178,15 @@ export interface WorktreeOps {
   /** 陈旧 worktree 清理：`worktree remove --force` + `worktree prune` +
    * `branch -D`（r3 §1.4）；返回被回收的 conversationId 集。 */
   cleanupOrphans(input: OrphanCleanupInput): Promise<string[]>;
+  /** ref 里含简报标记的候选文件（#958 闸 4 的推送后检测）。
+   *
+   * 检测而非预防：agent 在 bash 里自己 `git add && git commit` 时，标记块在
+   * daemon 的任何闸生效之前就已经进了提交——提交闸（commitAll 的认标记剔除）
+   * 只管得住 daemon 自己那一次提交。这一层只能事后点名，让「分支历史里带着我们
+   * 的标记」可见。
+   *
+   * 可选实现：缺省 = 不检测（测试桩与旧实现零破坏）。 */
+  briefMarkerInRef?(cwd: string, ref: string): Promise<string[]>;
 }
 
 /** 防分叉护栏错误词（02 §5.5/r3 §1.4：`REMOTE_BRANCH_DIVERGED = "remote

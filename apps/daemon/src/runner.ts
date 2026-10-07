@@ -1357,6 +1357,27 @@ export async function runStep(
       } else if (pushWarranted) {
         await git.push(ws.cwd, ws.branch, creds.git);
         logger.raw(`pushed ${ws.branch}`);
+        // —— #958 闸 4 的检测半：推送后查分支里有没有我们的标记 ——
+        // 预防做不到：agent 在 bash 里自己 `git add && git commit` 时，标记块在
+        // 这一步之前就已进提交；提交闸只管得住 daemon 自己那次提交。只能事后
+        // 点名，让「分支历史里带着我们的标记」在合并前可见（形状同审核步回退
+        // 失败那条 transcript 行）。支路失败不阻断收尾——检测是附加信号。
+        try {
+          const leaked = (await git.briefMarkerInRef?.(ws.cwd, ws.branch)) ?? [];
+          if (leaked.length > 0) {
+            logger.step(`brief marker found in the pushed branch: ${leaked.join(', ')}`);
+            transcript.upsert({
+              id: `brief-in-history-${stepId}`,
+              role: 'system',
+              content: `分支 ${ws.branch} 的历史里带着运行简报的标记块（${leaked.join('、')}）——agent 在步内自行提交时 daemon 拦不住。合并前请确认这些文件不该进交付物`,
+              createdAt: now(),
+            });
+          }
+        } catch (err) {
+          logger.step(
+            `brief marker scan failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
         // local 形态落地（spec 12 G2-T2）：merge 步 push 回用户仓库后
         // `git merge --ff-only <convBranch>` 推进用户当前分支；脏工作区/非 ff
         // → git 自拒 → lastError（failed 收尾，reason 含 git 拒绝原文）——
