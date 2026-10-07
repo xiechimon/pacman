@@ -25,6 +25,7 @@ import {
   escapeGitignorePath,
 } from '../src/backend/claude-code.js';
 import {
+  buildSkillsCatalog,
   collectDeniedSkillDirs,
   createSkillReadGate,
   type DeniedSkillEntry,
@@ -326,8 +327,7 @@ describe('buildClaudeSdkOptions（spec 14 §裁决后的范围 1/2：settingSour
 // —— catalog 观测行（失败方式 10）———————————————————————————————
 
 describe('[skills] catalog 观测行（#917 口径 5：目录条数 = 明确信号）', () => {
-  test('每次构造都落 catalog: entries=<N> chars=<C>，entries=0 也落', async () => {
-    const { buildSkillsCatalog } = await import('../src/backend/pi.js');
+  test('每次构造都落 catalog: entries=<N> chars=<C>，entries=0 也落', () => {
     const root = fixtureRoot('observe');
     writeSkill(root, 'alpha');
     const logsFull: string[] = [];

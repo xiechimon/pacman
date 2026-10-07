@@ -184,6 +184,23 @@ export interface SkillsCatalogOpts {
   log?: (msg: string) => void;
 }
 
+/** 会话面扫描参数单源（catalog 注入与硬挡拒绝集共用——两个消费面对同一
+ * 技能全集负责，参数形状不得各自漂移）：团队目录在前 = first-wins 冲突裁决
+ * 的胜出序（XMON-112 S2）；agentDir 钉不存在路径杜绝 pi 默认扫描；缺省
+ * teamSkillsDir 时 skillPaths 与旧行为完全一致（零回归判据的扫描面）。 */
+function scanSessionSkills(
+  skills: { skillsDir: string; cwd: string },
+  teamSkillsDir: string | undefined,
+): { skills: Skill[]; diagnostics: ResourceDiagnostic[] } {
+  return loadSkills({
+    cwd: skills.cwd,
+    agentDir: NO_PI_DEFAULT_AGENT_DIR,
+    skillPaths:
+      teamSkillsDir !== undefined ? [teamSkillsDir, skills.skillsDir] : [skills.skillsDir],
+    includeDefaults: false,
+  });
+}
+
 /** 扫描 skills 目录 → `<available_skills>` catalog XML 串（空串 = 无可注入
  * skills）。loadSkills 抛错（权限等）降级空集 + invalid 行，不阻断会话创建
  * （spec 14 Premortem 护栏）。 */
@@ -192,15 +209,7 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
   let skills: Skill[];
   let diagnostics: ResourceDiagnostic[];
   try {
-    const result = loadSkills({
-      cwd: opts.cwd,
-      agentDir: NO_PI_DEFAULT_AGENT_DIR,
-      // 团队目录在前 = first-wins 冲突裁决的胜出序（XMON-112 S2）；缺省时
-      // skillPaths 与旧行为完全一致（零回归判据的扫描面）。
-      skillPaths:
-        opts.teamSkillsDir !== undefined ? [opts.teamSkillsDir, opts.skillsDir] : [opts.skillsDir],
-      includeDefaults: false,
-    });
+    const result = scanSessionSkills(opts, opts.teamSkillsDir);
     skills = result.skills;
     diagnostics = result.diagnostics;
   } catch (err) {
@@ -304,15 +313,7 @@ export function collectDeniedSkillDirs(
   if (!skills || opts.skillsAllowlist === undefined) return [];
   let loaded: Skill[];
   try {
-    loaded = loadSkills({
-      cwd: skills.cwd,
-      agentDir: NO_PI_DEFAULT_AGENT_DIR,
-      skillPaths:
-        opts.teamSkillsDir !== undefined
-          ? [opts.teamSkillsDir, skills.skillsDir]
-          : [skills.skillsDir],
-      includeDefaults: false,
-    }).skills;
+    loaded = scanSessionSkills(skills, opts.teamSkillsDir).skills;
   } catch {
     return [];
   }
@@ -342,10 +343,10 @@ export function createSkillReadGate(
       return p;
     }
   };
-  const realms = denied.map((entry) => ({ entry, resolved: resolve(entry.baseDir) }));
+  const resolvedEntries = denied.map((entry) => ({ entry, resolved: resolve(entry.baseDir) }));
   const check = (absolutePath: string): DeniedSkillEntry | null => {
     const target = resolve(absolutePath);
-    for (const { entry, resolved } of realms) {
+    for (const { entry, resolved } of resolvedEntries) {
       if (target === resolved || target.startsWith(resolved + sep)) return entry;
     }
     return null;

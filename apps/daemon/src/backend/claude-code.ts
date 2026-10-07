@@ -730,8 +730,8 @@ export const CLAUDE_SETTING_SOURCES: readonly SettingSource[] = ['user', 'projec
 /** gitignore 元字符转义（deny 路径规则用；CLI 自家「don't ask again」落规则
  * 时同法转义，解析面认反斜杠形）。行首 `!`/`#` 的特殊位只在 pattern 头——
  * 本仓规则恒以 `//` 起头，无需处理。 */
-export function escapeGitignorePath(p: string): string {
-  return p.replaceAll(/([\\*?[\]])/g, '\\$1');
+export function escapeGitignorePath(path: string): string {
+  return path.replaceAll(/([\\*?[\]])/g, '\\$1');
 }
 
 /** 未授权技能 → deny 规则三条/技能（口径 4）。deny 规则在包括
