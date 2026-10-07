@@ -179,7 +179,7 @@ T1 (#367) 不阻塞 T3 但共享 wire 形状；T1 完工后开 T3 让 lane367 �
    - **未授权集的单源**：`collectDeniedSkillDirs`（backend/pi.ts 导出，claude-code.ts 经 backend 缝内既有通道消费）——与 `buildSkillsCatalog` 同参扫描（teamSkillsDir 在前 first-wins），allowlist 缺省 → 空集；名单外条目的 `baseDir` 即拒绝目标。目录里未被扫成技能的散文件不属本节授权面。
    - **已知边界（如实登记）**：bash 绕行（`cat <未授权 SKILL.md>`）两后端都不挡——本节硬挡的覆盖面 = 文件工具面，与口径 4「permission deny 路径规则」的字面一致；沙箱级收敛不在本票。
 3. **pi 原生发现关断（#958 折回）**：pi 的 `DefaultResourceLoader` 传 `noSkills: true`，消除 pi 自注入的 `<available_skills>` 段（发现面 = agentDir/skills 与 `.pi/skills` 系默认目录）。关断后 pi 侧技能目录**只剩简报文件通道一份**（AGENTS.md，经 `buildSkillsCatalog` 产出）。`noContextFiles` / `agentsFilesOverride` **一概不动**——那是 AGENTS.md 简报的承重位（spec 24 同律）。
-4. **pi 保留 catalog（口径 5）**：两后端的技能可见面差异以本条为正本——pi = 简报文件通道唯一（原生发现已关断）；claude-code = 简报文件通道 + 原生清单（经 `skills` 选项收编到同一张白名单下）。
+4. **pi 保留 catalog（口径 5）**：两后端的技能可见面差异以本条为正本——pi = 简报文件通道唯一（原生发现已关断）；claude-code = 简报文件通道 + 原生清单（清单本身按搁置的口径 2 保留，其中 pacman 扫得的未授权条目被 deny 规则硬挡——文件读取与 Skill 调用两侧，见第 2 条）。
 5. **观测**：`[skills]` 日志族增三行形——`catalog: entries=<N> chars=<C>`（**每次**目录构造都落，entries=0 也落：技能目录条数的明确信号）、`deny: <N> skill dir(s) hard-blocked`（会话建立时硬挡集非空才落）、`denied-read: <path> (skill <name> not in allowlist)`（pi 门控每次拒绝落一行）。claude-code 侧的逐次拒绝发生在 CLI 进程内，daemon 日志无逐次行——观测面 = transcript 里的 tool result（isError）与 `result.permission_denials`。
 
 ### 版本兼容
