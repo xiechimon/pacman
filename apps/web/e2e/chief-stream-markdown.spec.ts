@@ -28,6 +28,13 @@ import { expect, type Page, test } from '@playwright/test';
 // test/chief-flight-expand.test.ts F-E1..E6）：
 //  F-R18 行本体是 button（aria-expanded 开关）→ 展开面 = 正在调用的工具 +
 //        本轮已落库工具行；Enter 可收；typing 接管/终稿落库两帧展开态零残留
+// #1034 思考行宽截断（Button 基类 nowrap+shrink-0 未覆写、w-fit 在 nowrap 下
+// fit-content 解成整段文本宽——626px 钮冲出 384px 列；截图里的「…」是 JS 按
+// PREVIEW_CHARS=150 切的字面字符，不是 CSS 省略号。detail 面同源缺陷另钉
+// thinking-row-truncate.spec）：
+//  F-R21 长预览必须由 CSS 截断（#772 律 min-w-0 flex-auto truncate + live-row
+//        SKIN 同形）：CJK（无空格）与拉丁各一条，均 < 150 字符——字符切片
+//        救不了它们；钉 ellipsis 生效、可见宽 < 内容宽、钮宽 ≤ 列宽、页面零横溢
 //
 // live 面手法 = notify-click.spec 的替身 EventSource + 路由 mock（SSE 帧
 // 程序化注入，不经网络）；fixture 面 = 'chief-md' 命名场景（md-toolout 先例）。
@@ -826,5 +833,77 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     await expect(bashRow).toHaveCount(1);
     // 裸名 `正在调用 Bash` 是改前的形态；这里要求命令同行可见。
     await expect(bashRow).toContainText('正在调用 Bash ls -la');
+  });
+
+  test('F-R21: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）', async ({
+    page,
+  }) => {
+    // 失败方式（判因档第 5 条）：改前 F-R19 的短 stub（9 字符）永远放不出这个
+    // bug——钮宽 == 文本宽时 w-fit 无害。两条长预览都刻意 < PREVIEW_CHARS
+    // （150）：JS 字符切片不触发，能把宽度收住的只剩 CSS。CJK 一条（无空格、
+    // 无断行点，拉丁的换行兜底不存在）+ 拉丁一条（票面截图同款形态）。
+    const LONG_CJK =
+      '用户只是打了个招呼「你好」，没有具体任务，先不路由到任何看板任务，等下一句话再判断意图，同时留意要不要唤起定时器或者翻既有会话记录';
+    const LONG_LATIN =
+      '> The user just said "你好" — pure greeting. No task. I should not route it to the board yet; wait for the next line to tell intent.';
+    const state: Parameters<typeof mockChiefLiveApi>[1] = {
+      final: false,
+      messages: [
+        USER_ROW,
+        {
+          id: 'msg-tr-1',
+          role: 'assistant',
+          content: [{ type: 'thinking', thinking: LONG_CJK }],
+          createdAt: 2,
+        },
+        {
+          id: 'msg-tr-2',
+          role: 'assistant',
+          content: [{ type: 'thinking', thinking: LONG_LATIN }],
+          createdAt: 3,
+        },
+      ],
+    };
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    await mockChiefLiveApi(page, state);
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    for (const [text, tag] of [
+      [LONG_CJK, 'CJK 长预览'],
+      [LONG_LATIN, '拉丁长预览'],
+    ] as const) {
+      const row = drawer.locator('.chief-msg', { hasText: text.slice(0, 16) });
+      await expect(row, tag).toHaveCount(1);
+      const btn = row.getByRole('button', { name: '展开思考' });
+      const m = await btn.evaluate((el) => {
+        const label = el.querySelector('span') as HTMLElement;
+        const cs = getComputedStyle(label);
+        const col = el.closest('.chief-msg-col') as HTMLElement;
+        return {
+          textOverflow: cs.textOverflow,
+          overflowX: cs.overflowX,
+          labelClient: label.clientWidth,
+          labelScroll: label.scrollWidth,
+          btnW: Math.round(el.getBoundingClientRect().width),
+          colW: Math.round(col.getBoundingClientRect().width),
+        };
+      });
+      // 验收 1：真截断 = ellipsis 生效 + 可见宽 < 内容宽（改前：clip 且
+      // client == scroll，span 根本没有可溢出的盒）。
+      expect(m.textOverflow, tag).toBe('ellipsis');
+      expect(m.overflowX, tag).toBe('hidden');
+      expect(m.labelScroll, tag).toBeGreaterThan(m.labelClient);
+      // 验收 2 前半：钮宽 ≤ 列宽（改前实测 626px 钮 / 384px 列）。
+      expect(m.btnW, tag).toBeLessThanOrEqual(m.colW);
+    }
+    // 验收 2 后半：页面级零横向溢出。
+    const pageOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(pageOverflow).toBeLessThanOrEqual(0);
   });
 });
