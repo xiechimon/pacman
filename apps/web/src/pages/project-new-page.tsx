@@ -633,10 +633,9 @@ export function ProjectNewPage() {
                 </>
               ) : (
                 <>
-                  {/* XMON-25 收编：brand（--card-button 实底等价迁移位）；
+                  {/* XMON-25 收编：default（等价迁移位）；
                     #946：h40/flex:1 几何迁 utility。 */}
                   <Button
-                    variant="brand"
                     id="prj-new-repo"
                     className="h-10 flex-1 cursor-pointer rounded-none border-none text-sm font-normal active:not-aria-[haspopup]:translate-y-0"
                     onClick={startAuth}
@@ -875,11 +874,9 @@ export function ProjectNewPage() {
             {pickHint}
           </div>
         )}
-        {/* XMON-25 收编：brand；#946：40 高零内距几何与禁用态（.55 淡化 +
-            实底恒 --card-button，压过 brand 的 spot-disabled 档）迁 utility。 */}
+        {/* XMON-25 收编：default；#946：40 高零内距几何与禁用态（.55 淡化）迁 utility。 */}
         <Button
-          variant="brand"
-          className="mt-5 h-10 cursor-pointer rounded-none border-none p-0 text-sm font-normal leading-[inherit] disabled:bg-(--card-button) disabled:opacity-[0.55] active:not-aria-[haspopup]:translate-y-0"
+          className="mt-5 h-10 cursor-pointer rounded-none border-none p-0 text-sm font-normal leading-[inherit] disabled:opacity-[0.55] active:not-aria-[haspopup]:translate-y-0"
           disabled={live ? name.trim() === '' || !formOk : true}
           onClick={live ? submit : undefined}
         >

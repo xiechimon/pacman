@@ -9,9 +9,9 @@
 // #947 per-face 清零：secondary.css 退役，空态/明文块/列表行几何改挂 token
 // utility（tile 44 = size-11、行高 62 与顶部节奏 41/21/11/22 是阶梯外
 // 一次性实测值，§3.1(a)；圆角走 --radius-popover 槽）。按钮全走
-// components/ui/Button brand——空态新建 = sm 档（30→28px 吸附控件高阶梯，
+// components/ui/Button default——空态新建 = sm 档（30→28px 吸附控件高阶梯，
 // §2.6-1 同款 D2 授权；20px 横垫与 13px 字保留实测），一次性明文块的复制
-// = brand/sm。类名别名按 #910 裁定 1 退役，空态容器换 data-testid 二级
+// = default/sm。类名别名按 #910 裁定 1 退役，空态容器换 data-testid 二级
 // 载体（resource-empty 同款，无 role 纯结构钩）。
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -70,7 +70,6 @@ export function ApiKeysPage() {
                 透明边（bg-clip-padding 会把实底下裁 padding box，钮面四周
                 透出 1px 缝）。 */}
             <Button
-              variant="brand"
               size="sm"
               className="cursor-pointer border-0 px-5 text-[13px] leading-4 font-normal active:not-aria-[haspopup]:translate-y-0"
               onClick={live ? () => setCreateOpen(true) : undefined}
@@ -94,7 +93,6 @@ export function ApiKeysPage() {
                 {/* 差额并项（28 高 / 0 12 内垫 / 12px 字 / 字重 400 是 [推断]
                     面的既有钉回值）：border-0 同上。 */}
                 <Button
-                  variant="brand"
                   size="sm"
                   className="cursor-pointer border-0 px-3 text-xs leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0"
                   onClick={

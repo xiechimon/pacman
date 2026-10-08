@@ -482,11 +482,10 @@ function TasksPane({
           <div className="mt-1 text-xs leading-4 text-(--text-tertiary)">
             {t('创建第一个任务以开始使用。')}
           </div>
-          {/* XMON-25 收编：老 ui/Button primary/compact → brand 变体（等价
+          {/* XMON-25 收编：老 ui/Button primary/compact → default 变体（等价
               迁移位）；compact 几何（28 高/12 内边距/13 字号）与 cursor 下沉
               per-face .prj-tasks-empty-new；size-auto 保 PlusSmall 12px。 */}
           <Button
-            variant="brand"
             aria-label={t('新建任务')}
             className="mt-4 h-7 cursor-pointer gap-1 rounded-none border-none px-3 text-[13px] font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             onClick={onNewTask}
@@ -526,6 +525,7 @@ function TasksPane({
               </span>
               <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--card) after:bg-(--badge-idle) after:content-['']">
                 <SeededAvatar
+                  className="size-5"
                   name={user.displayName}
                   src={user.avatarUrl}
                   fallback="/avatar-user.png"
@@ -551,6 +551,7 @@ function TasksPane({
                 />
                 <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--card) after:bg-(--badge-idle) after:content-['']">
                   <SeededAvatar
+                    className="size-5"
                     name={user.displayName}
                     src={user.avatarUrl}
                     fallback="/avatar-user.png"

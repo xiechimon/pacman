@@ -12,7 +12,7 @@
 // B2 · secondary 面（XMON-20）：弹窗内两件控件（提交钮、名称输入）全走
 // components/ui 件。#952（正典表 §5.3/§5.4，ui/dialog.css 退役）：.dlg-form*
 // 族类 → utility 等值迁移（单源同 #944 的 LABEL_CLS 律）、.dlg-form-input 摘类
-// （几何即件正典 h-8，36px 不存续）、.dlg-agent-create → Button brand + w-full
+// （几何即件正典 h-8，36px 不存续）、.dlg-agent-create → Button default + w-full
 // （§2.6-3 迁移位；散写形差额并项——字重 400、无按下位移——原样承接）。
 //
 // #485 模型槽两态（原版两处实测：r2 §8.1 capture 20 = 尚未配置服务商时的
@@ -101,13 +101,11 @@ export function CreateAgentDialog({
       title={t('创建 agent')}
       open={open}
       onClose={onClose}
-      // 底座 = components/ui/Button brand 档（--card-button 实底 + on-accent 字、
-      // 禁用换 --spot-disabled，原 .dlg-agent-create 同形）；w-full = 钉底独占
+      // 底座 = components/ui/Button default 档；w-full = 钉底独占
       // （§5.4）。差额并项——散写形字重 400、无按下位移。
       footer={
         <div className="flex flex-col px-4 pb-4">
           <Button
-            variant="brand"
             className="w-full px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
             disabled={name.trim() === ''}
             onClick={submit}
@@ -127,11 +125,7 @@ export function CreateAgentDialog({
           {/* #387: 头像行 = 名称种子的 dicebear 预览——随输入即所得（创建后
               同名恒同像）；空名退回静态机器人资产。「更换」钮全除（#307
               wontfix）：栈内无上传面。 */}
-          <SeededAvatar
-            name={name.trim()}
-            fallback="/avatar-robot-1.svg"
-            className="[&_img]:size-10 [&_img]:rounded-full"
-          />
+          <SeededAvatar name={name.trim()} fallback="/avatar-robot-1.svg" className="size-10" />
         </div>
         <label className={LABEL_CLS} htmlFor="dlg-agent-name">
           {t('名称')}

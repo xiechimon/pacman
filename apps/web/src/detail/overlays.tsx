@@ -153,14 +153,14 @@ export function RerunDialog({
         )}
         <div className="overlay-actions mt-4 flex justify-end gap-2">
           <Button
-            variant={reuse ? 'ghost' : 'brand'}
+            variant={reuse ? 'ghost' : 'default'}
             className={reuse ? OVERLAY_GHOST : OVERLAY_BTN}
             onClick={onRerun}
           >
             {t('重跑')}
           </Button>
           {reuse && (
-            <Button variant="brand" className={OVERLAY_BTN} onClick={onReuse}>
+            <Button className={OVERLAY_BTN} onClick={onReuse}>
               {t('复用方案')}
             </Button>
           )}
@@ -199,7 +199,7 @@ export function ReusePanel({
           <Button variant="ghost" className={OVERLAY_GHOST} onClick={onView}>
             {t('查看方案')}
           </Button>
-          <Button variant="brand" className={OVERLAY_BTN} onClick={onDirect}>
+          <Button className={OVERLAY_BTN} onClick={onDirect}>
             {t('直接执行')}
           </Button>
         </div>

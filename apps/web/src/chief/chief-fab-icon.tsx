@@ -15,6 +15,7 @@ export function ChiefFabIcon({ chief }: { chief: ChiefContent }) {
     // 单源在此，五族 FAB（board inline + 四个 wake 壳）同配方。
     <span className="block size-full overflow-hidden rounded-full [&_img]:block [&_img]:size-full [&_img]:object-cover">
       <SeededAvatar
+        className="size-full"
         name={chief.agent.displayName}
         src={chief.agent.avatarUrl}
         fallback="/avatar-robot-1.svg"

@@ -137,7 +137,8 @@ function mockChiefLiveApi(
     final: boolean;
     messages?: { id: string; role: string; content: unknown; createdAt: number }[];
     // #822 F-R18：在飞展开面数据源覆写（activeRun.tool 工具名投影）。
-    activeRun?: { phase: string; tool?: { toolName: string } };
+    // null = 回合已收口（settled 面覆写，F-R21；undefined 走 THREAD 缺省）。
+    activeRun?: { phase: string; tool?: { toolName: string } } | null;
   },
 ) {
   const json = (body: unknown) => ({
@@ -151,7 +152,14 @@ function mockChiefLiveApi(
     if (p === '/api/teams/t1/notifications')
       return route.fulfill(json({ unreadThreadIds: [] }));
     if (p === '/api/teams/t1/chief/threads')
-      return route.fulfill(json([{ ...THREAD, activeRun: state.activeRun ?? THREAD.activeRun }]));
+      return route.fulfill(
+        json([
+          {
+            ...THREAD,
+            activeRun: state.activeRun === undefined ? THREAD.activeRun : state.activeRun,
+          },
+        ]),
+      );
     if (p === '/api/teams/t1/chief') {
       return route.fulfill(
         json({
@@ -826,5 +834,112 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     await expect(bashRow).toHaveCount(1);
     // 裸名 `正在调用 Bash` 是改前的形态；这里要求命令同行可见。
     await expect(bashRow).toContainText('正在调用 Bash ls -la');
+  });
+
+  test('F-R21: 段序契约（#1003 / ADR 0011 premortem）——文本段在前、其工具行在后、各恰一次；收口后工具折进后随段', async ({
+    page,
+  }) => {
+    // 失败方式（先列后写；ADR 0011 premortem「真 e2e 断言：文本段在前、
+    // 其工具行在后」的投影面落点，#984 侦察点名的缺口、#1009 chief 车道
+    // 施工前补钉——车道只消费本 pin，不重设计）：
+    //   1. 渲染序按 id 字典序 / 到达序而非落库序——msg-run-10 字典序排在
+    //      msg-run-2 前，任何客户端重排即红；
+    //   2. 同毫秒并列行（D4 单调 createdAt 防线失效时）序不稳——两行同
+    //      createdAt 必须仍按落库数组序渲染（mapper 不排序，REST 序即序）；
+    //   3. 在飞工具行不再平铺（折回披露面）——段序在主呈现不可观测；
+    //   4. 收口后工具行挂错宿主——必须折进它**后随**的文本段披露，不是
+    //      前导段（D6 / r5 canon）。
+    // 「段文本恰一次」的 live 缓冲↔落库行交接面由 F-R16（#857）钉住，
+    // 本条钉 DOM 序与折叠归属，不重复覆盖。
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    const startedAt = Date.now() - 3000;
+    const segRows = [
+      {
+        id: 'msg-run-1',
+        role: 'assistant',
+        content: [{ type: 'thinking', thinking: '先盘点凭证面' }],
+        createdAt: 2,
+      },
+      {
+        id: 'msg-run-2',
+        role: 'assistant',
+        content: [{ type: 'text', text: '先看现状' }],
+        createdAt: 4,
+      },
+      {
+        id: 'c-tool-1',
+        role: 'assistant',
+        content: {
+          kind: 'toolcall',
+          call: { id: 'c-tool-1', name: 'todo_write', arguments: {}, startedAt },
+        },
+        createdAt: 5,
+      },
+      // 同毫秒并列 + id 字典序陷阱（'msg-run-10' < 'msg-run-2'）：
+      // 渲染序只许来自落库数组序。
+      {
+        id: 'msg-run-10',
+        role: 'assistant',
+        content: [{ type: 'text', text: '再核对补发语义' }],
+        createdAt: 6,
+      },
+      {
+        id: 'msg-run-11',
+        role: 'assistant',
+        content: [{ type: 'text', text: '最后收口票' }],
+        createdAt: 6,
+      },
+    ];
+    const state: Parameters<typeof mockChiefLiveApi>[1] = {
+      final: false,
+      messages: [USER_ROW, ...segRows],
+    };
+    await mockChiefLiveApi(page, state);
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    // 在飞面（activeRun 在位）：段行与工具行按落库序平铺，user + 5 段 = 6
+    // 行；尾行是 robot 段，无存在行/打字行追加（#739 尾行 gate）。
+    // 行载体两族并集（chief-drawer 渲染面事实）：user/robot/streaming 行 =
+    // data-testid="chief-msg"，thinking/tool 段行 = .chief-msg 类；CSS 并集
+    // 选择器按文档序返回，正好是段序本身。
+    const rows = drawer.locator('.chief-msg, [data-testid="chief-msg"]');
+    await expect(rows).toHaveCount(6);
+    await expect(rows.nth(0)).toContainText('派一下凭证链路验证');
+    await expect(rows.nth(1)).toContainText('先盘点凭证面');
+    await expect(rows.nth(2)).toContainText('先看现状');
+    await expect(rows.nth(3)).toContainText('正在调用 todo_write');
+    await expect(rows.nth(4)).toContainText('再核对补发语义');
+    await expect(rows.nth(5)).toContainText('最后收口票');
+    // 各段恰一次（无重复投影；工具行以「正在调用」进行态标签计，其披露
+    // pill 文案 todo_write 是子串关系，不入本组过滤）。
+    for (const text of [
+      '先看现状',
+      '正在调用 todo_write',
+      '再核对补发语义',
+      '最后收口票',
+    ]) {
+      await expect(rows.filter({ hasText: text })).toHaveCount(1);
+    }
+
+    // 收口面：activeRun 收口 + 重导航（深链参一次性消费即剥，reload 读不到
+    // ?chief= 参，必须重新 goto）——工具行退出主呈现，折进它后随文本段
+    // （「再核对补发语义」）foot 的「展开过程」披露；前导段（「先看现状」）
+    // 无披露触发器（归属错位即红）。
+    state.activeRun = null;
+    await page.goto('/app?chief=chief-bbb');
+    const settled = drawer.locator('.chief-msg, [data-testid="chief-msg"]');
+    await expect(settled).toHaveCount(5);
+    await expect(settled.nth(2)).toContainText('先看现状');
+    await expect(settled.nth(2).getByRole('button', { name: '展开过程' })).toHaveCount(0);
+    await expect(settled.nth(3)).toContainText('再核对补发语义');
+    const fold = settled.nth(3).getByRole('button', { name: '展开过程' });
+    await expect(fold).toHaveCount(1);
+    await fold.click();
+    await expect(settled.nth(3).getByTestId('chief-turn-tools')).toContainText('todo_write');
+    await expect(settled.filter({ hasText: '正在调用' })).toHaveCount(0);
   });
 });

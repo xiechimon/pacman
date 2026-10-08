@@ -116,6 +116,7 @@ export function AccountPage() {
                 sidebar chip / chat user rows (seeded, avatarUrl override),
                 not a per-surface static asset. */}
             <SeededAvatar
+              className="size-16"
               name={userName}
               src={sessionQ.data?.avatarUrl ?? null}
               fallback="/avatar-user.png"
