@@ -215,35 +215,41 @@ export function ChiefSettings({
           {t('总管设置')}
         </h1>
       </header>
-      <div className="mx-auto w-[766px]">
-        {/* XMON-23 收编：Tabs bare 档——零 chrome 原语只出语义（role=
+      {/* #1032：面板体自持滚动（secondary/shell.tsx:92、resources/shell.tsx:121
+          同律）——根与内容列此前全链 overflow visible，长内容（记忆列表/长
+          章程/关注清单）被外壳 overflow-hidden 裁掉且滚轮不动。全宽滚动层
+          承接 overflow（滚动条贴面板右缘），766px 窄列只在里面居中、不自滚；
+          overflow-x 保持裁切：窄列内容不该横向溢出（页面壳仍是唯一裁切者）。 */}
+      <div className="flex-1 overflow-x-hidden overflow-y-auto">
+        <div className="mx-auto w-[766px]">
+          {/* XMON-23 收编：Tabs bare 档——零 chrome 原语只出语义（role=
             tablist/tab、aria-selected、roving tabindex），几何/配色/选中态
             #950 后由 TAB_CLS/TAB_INDICATOR_CLS utility 承载；选中态载体 =
             aria-selected（旧 is-active 类退役，e2e 钉 role=tab+selected）。
             根 contents 出树，不产生布局盒。 */}
-        <Tabs
-          value={tab}
-          onValueChange={(value) => setTab(value as ChiefSettingsTab)}
-          className="contents"
-        >
-          <TabsList
-            variant="bare"
-            className="relative inline-flex rounded-none bg-(--secondary) p-0.5"
+          <Tabs
+            value={tab}
+            onValueChange={(value) => setTab(value as ChiefSettingsTab)}
+            className="contents"
           >
-            {/* #644 滑动指示条：选中 chip 的底色不再画在 chip 上，改由这根
+            <TabsList
+              variant="bare"
+              className="relative inline-flex rounded-none bg-(--secondary) p-0.5"
+            >
+              {/* #644 滑动指示条：选中 chip 的底色不再画在 chip 上，改由这根
                 pill 承载——切 tab 时它按参考站实测的过渡滑到新位并变宽。 */}
-            <TabsIndicator data-testid="chief-tab-indicator" className={TAB_INDICATOR_CLS} />
-            {TABS.map((item) => (
-              <TabsTrigger key={item.id} value={item.id} className={TAB_CLS}>
-                {t(item.label)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+              <TabsIndicator data-testid="chief-tab-indicator" className={TAB_INDICATOR_CLS} />
+              {TABS.map((item) => (
+                <TabsTrigger key={item.id} value={item.id} className={TAB_CLS}>
+                  {t(item.label)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
-        {tab === 'agent' && (
-          <>
-            {/* XMON-23→#950：ghost 原语 + 行卡皮肤 utility（旧
+          {tab === 'agent' && (
+            <>
+              {/* XMON-23→#950：ghost 原语 + 行卡皮肤 utility（旧
                 .chief-agent-row 等值：44 行 / 12 gap / 16 横垫 /
                 surface-secondary 底 / 14px 次级墨）。中和件沿旧：
                 justify-start（原语居中会破左对齐行）、font-normal、
@@ -252,165 +258,168 @@ export function ChiefSettings({
                 上）、active 位移、hover/expanded 涂底钉回卡片底（旧
                 per-face 恒压件层无反馈）、svg size-auto（ChiefFaceDashed
                 24 / ChevronRight 14 属性尺寸）+ 行首 svg tertiary 墨。 */}
-            <Button
-              variant="ghost"
-              className="mt-[17px] h-11 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--secondary) px-4 text-sm leading-normal font-normal text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) dark:hover:text-(--text-secondary) aria-expanded:bg-(--secondary) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:first-child]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
-              onClick={() => setAgentOpen(true)}
-            >
-              {boundAgent != null ? (
-                boundAgent.avatarUrl != null ? (
-                  /* #811: 已绑定行接 agentActor.avatarUrl（封套自带，不新增
+              <Button
+                variant="ghost"
+                className="mt-[17px] h-11 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--secondary) px-4 text-sm leading-normal font-normal text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) dark:hover:text-(--text-secondary) aria-expanded:bg-(--secondary) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:first-child]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
+                onClick={() => setAgentOpen(true)}
+              >
+                {boundAgent != null ? (
+                  boundAgent.avatarUrl != null ? (
+                    /* #811: 已绑定行接 agentActor.avatarUrl（封套自带，不新增
                       请求；XMON-105 --img 律：图即 24 圆盘，去 chip 底边）。 */
-                  <span className={ROW_AVATAR_IMG_CLS}>
-                    <SeededAvatar
-                      name={boundAgent.name}
-                      src={boundAgent.avatarUrl}
-                      fallback="/avatar-robot-1.svg"
-                    />
-                  </span>
+                    <span className={ROW_AVATAR_IMG_CLS}>
+                      <SeededAvatar
+                        name={boundAgent.name}
+                        src={boundAgent.avatarUrl}
+                        fallback="/avatar-robot-1.svg"
+                      />
+                    </span>
+                  ) : (
+                    <span className={ROW_AVATAR_CLS}>{boundAgent.name.charAt(0)}</span>
+                  )
                 ) : (
-                  <span className={ROW_AVATAR_CLS}>{boundAgent.name.charAt(0)}</span>
-                )
-              ) : (
-                <ChiefFaceDashed width={24} height={24} />
-              )}
-              <span>{boundAgent != null ? boundAgent.name : t('未设置')}</span>
-              <ChevronRight width={14} height={14} className="ml-auto text-(--text-tertiary)" />
-            </Button>
-            <div className={CARD_CLS}>
-              <div>
-                <h3 className={CARD_TITLE_CLS}>{t('压缩模型')}</h3>
-                <p className={CARD_DESC_CLS}>
-                  {t(
-                    '压缩上下文时用来生成摘要的模型，选更快的模型可缩短等待。需要 {cli} CLI 0.1.49 及以上版本。',
-                    {
-                      cli: BRAND.cliCommandName,
-                    },
-                  )}
-                </p>
-              </div>
-              {/* #204 翻回交互(server #203 槽就位,见文件头):ChiefModelSelect
+                  <ChiefFaceDashed width={24} height={24} />
+                )}
+                <span>{boundAgent != null ? boundAgent.name : t('未设置')}</span>
+                <ChevronRight width={14} height={14} className="ml-auto text-(--text-tertiary)" />
+              </Button>
+              <div className={CARD_CLS}>
+                <div>
+                  <h3 className={CARD_TITLE_CLS}>{t('压缩模型')}</h3>
+                  <p className={CARD_DESC_CLS}>
+                    {t(
+                      '压缩上下文时用来生成摘要的模型，选更快的模型可缩短等待。需要 {cli} CLI 0.1.49 及以上版本。',
+                      {
+                        cli: BRAND.cliCommandName,
+                      },
+                    )}
+                  </p>
+                </div>
+                {/* #204 翻回交互(server #203 槽就位,见文件头):ChiefModelSelect
                   保 r5 101 捕获 select 形状(button + chevron)。 */}
-              <ChiefModelSelect value={compaction} options={modelOptions} onPick={pickModel} />
-            </div>
-            {/* #895 spec 21 A6「机器」槽：主力机（chief 的默认执行机器，决策
+                <ChiefModelSelect value={compaction} options={modelOptions} onPick={pickModel} />
+              </div>
+              {/* #895 spec 21 A6「机器」槽：主力机（chief 的默认执行机器，决策
                 面与绑定 Agent / 模型同层，N6——machines 页只有读态徽标）。 */}
-            <div className={CARD_CLS}>
-              <div>
-                <h3 className={CARD_TITLE_CLS}>{t('机器')}</h3>
-                <p className={CARD_DESC_CLS}>
-                  {t(
-                    '总管回合默认在哪台机器上执行。选「自动」时由在线机器认领，并粘住持有会话的那台。',
-                  )}
-                </p>
+              <div className={CARD_CLS}>
+                <div>
+                  <h3 className={CARD_TITLE_CLS}>{t('机器')}</h3>
+                  <p className={CARD_DESC_CLS}>
+                    {t(
+                      '总管回合默认在哪台机器上执行。选「自动」时由在线机器认领，并粘住持有会话的那台。',
+                    )}
+                  </p>
+                </div>
+                <ChiefMachineSelect
+                  value={machineValue}
+                  machines={machineOptions}
+                  onPick={pickMachine}
+                />
               </div>
-              <ChiefMachineSelect
-                value={machineValue}
-                machines={machineOptions}
-                onPick={pickMachine}
-              />
-            </div>
-          </>
-        )}
+            </>
+          )}
 
-        {tab === 'charter' && (
-          <>
-            {charter !== '' ? (
-              // live 既有章程呈现位(r5 未拍非空章程 tab,[设计]:同空态块
-              // 语言换实文)。旧 .chief-charter-text 等值迁移。
-              <div className="mt-[17px] bg-(--secondary) px-4 py-3 text-[13px] leading-5 whitespace-pre-wrap text-(--foreground)">
-                {charter}
-              </div>
-            ) : (
-              <div className="mt-[17px] grid min-h-[78px] place-items-center rounded-none border border-dashed border-(--input) bg-(--secondary) text-[13px] text-(--text-tertiary)">
-                {t('尚无章程。点击编辑，为总管添加常设指示。')}
-              </div>
-            )}
-            <div className="mt-5 flex justify-end">
-              {/* XMON-23→#950：旧 .chief-edit-btn 三点 per-face 偏差（描边
+          {tab === 'charter' && (
+            <>
+              {charter !== '' ? (
+                // live 既有章程呈现位(r5 未拍非空章程 tab,[设计]:同空态块
+                // 语言换实文)。旧 .chief-charter-text 等值迁移。
+                <div className="mt-[17px] bg-(--secondary) px-4 py-3 text-[13px] leading-5 whitespace-pre-wrap text-(--foreground)">
+                  {charter}
+                </div>
+              ) : (
+                <div className="mt-[17px] grid min-h-[78px] place-items-center rounded-none border border-dashed border-(--input) bg-(--secondary) text-[13px] text-(--text-tertiary)">
+                  {t('尚无章程。点击编辑，为总管添加常设指示。')}
+                </div>
+              )}
+              <div className="mt-5 flex justify-end">
+                {/* XMON-23→#950：旧 .chief-edit-btn 三点 per-face 偏差（描边
                   token、surface 底、primary 字）正是 outline 档配方——收编
                   variant="outline"（spec/22 §5.4 chief-dlg-ghost 同律，件
                   几何正典承接、差额 D2 吸收）；sm 档 28 高沿旧；px-3/
                   text-[13px] 补齐 compact 档的 12 内边距/13 字。 */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="px-3 text-[13px]"
-                onClick={() => setCharterOpen(true)}
-              >
-                {t('编辑')}
-              </Button>
-            </div>
-          </>
-        )}
-
-        {tab === 'memory' &&
-          (live && boundAgent != null ? (
-            memoriesQ.data != null ? (
-              <div>
-                {/* 配额头与 agent-detail 同文（`记忆 · n / 100`，上限取 shared
-                    单源常量）；行只读，管理落 Agent 详情记忆 tab。 */}
-                <p className="mt-[17px] text-xs text-(--text-tertiary)">
-                  {t('记忆 · {n} / {max}', { n: memories.length, max: MEMORY_QUOTA_PER_AGENT })}
-                </p>
-                {memories.length === 0 ? (
-                  <p className={EMPTY_CARD_CLS}>{t(MEMORY_EMPTY_COPY)}</p>
-                ) : (
-                  <div className={`${LIST_CARD_CLS} px-4 py-1`}>
-                    {memories.map((memory, index) => (
-                      <div
-                        key={memory.id}
-                        className={
-                          // XMON-117 一卡多行律：行间分隔线（旧
-                          // .chief-memory-row + 兄弟选择器等值，随改落
-                          // 条件类）。
-                          index > 0 ? 'block border-t border-(--border) py-2' : 'block py-2'
-                        }
-                      >
-                        <span className="block text-(--foreground)">{memory.title}</span>
-                        <span className="block text-(--text-secondary)">{memory.content}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-3 text-[13px]"
+                  onClick={() => setCharterOpen(true)}
+                >
+                  {t('编辑')}
+                </Button>
               </div>
-            ) : null
-          ) : (
-            <div className={EMPTY_CARD_CLS}>
-              {t('尚未选择 Agent。请先在「Agent」页选定 Agent，记忆将保存在该 Agent 上。')}
-            </div>
-          ))}
+            </>
+          )}
 
-        {tab === 'watches' &&
-          (live && (watches.length > 0 || wakes.length > 0) ? (
-            <div className="flex flex-col">
-              {watches.map((watch) => (
-                <div key={watch.threadId} className={`${LIST_CARD_CLS} px-4 py-2`}>
-                  <span className="block text-(--foreground)">{watch.title}</span>
-                  <span className="block text-xs text-(--text-tertiary)">{watch.threadTitle}</span>
+          {tab === 'memory' &&
+            (live && boundAgent != null ? (
+              memoriesQ.data != null ? (
+                <div>
+                  {/* 配额头与 agent-detail 同文（`记忆 · n / 100`，上限取 shared
+                    单源常量）；行只读，管理落 Agent 详情记忆 tab。 */}
+                  <p className="mt-[17px] text-xs text-(--text-tertiary)">
+                    {t('记忆 · {n} / {max}', { n: memories.length, max: MEMORY_QUOTA_PER_AGENT })}
+                  </p>
+                  {memories.length === 0 ? (
+                    <p className={EMPTY_CARD_CLS}>{t(MEMORY_EMPTY_COPY)}</p>
+                  ) : (
+                    <div className={`${LIST_CARD_CLS} px-4 py-1`}>
+                      {memories.map((memory, index) => (
+                        <div
+                          key={memory.id}
+                          className={
+                            // XMON-117 一卡多行律：行间分隔线（旧
+                            // .chief-memory-row + 兄弟选择器等值，随改落
+                            // 条件类）。
+                            index > 0 ? 'block border-t border-(--border) py-2' : 'block py-2'
+                          }
+                        >
+                          <span className="block text-(--foreground)">{memory.title}</span>
+                          <span className="block text-(--text-secondary)">{memory.content}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
-              {wakes.map((wake) => {
-                const note = typeof wake.note === 'string' ? wake.note : null;
-                const at = typeof wake.at === 'number' ? wake.at : null;
-                const id = typeof wake.id === 'string' ? wake.id : null;
-                return (
-                  <div key={id ?? `${at}`} className={`${LIST_CARD_CLS} px-4 py-2`}>
-                    <span className="block text-(--foreground)">{note ?? t('到点提醒')}</span>
-                    {at != null && (
-                      <span className="block text-xs text-(--text-tertiary)">
-                        {new Date(at).toLocaleString()}
-                      </span>
-                    )}
+              ) : null
+            ) : (
+              <div className={EMPTY_CARD_CLS}>
+                {t('尚未选择 Agent。请先在「Agent」页选定 Agent，记忆将保存在该 Agent 上。')}
+              </div>
+            ))}
+
+          {tab === 'watches' &&
+            (live && (watches.length > 0 || wakes.length > 0) ? (
+              <div className="flex flex-col">
+                {watches.map((watch) => (
+                  <div key={watch.threadId} className={`${LIST_CARD_CLS} px-4 py-2`}>
+                    <span className="block text-(--foreground)">{watch.title}</span>
+                    <span className="block text-xs text-(--text-tertiary)">
+                      {watch.threadTitle}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className={EMPTY_CARD_CLS}>
-              {t('暂无跟进事项。总管关注某个任务，或约定到点回头核实时，会按主题列在这里。')}
-            </div>
-          ))}
+                ))}
+                {wakes.map((wake) => {
+                  const note = typeof wake.note === 'string' ? wake.note : null;
+                  const at = typeof wake.at === 'number' ? wake.at : null;
+                  const id = typeof wake.id === 'string' ? wake.id : null;
+                  return (
+                    <div key={id ?? `${at}`} className={`${LIST_CARD_CLS} px-4 py-2`}>
+                      <span className="block text-(--foreground)">{note ?? t('到点提醒')}</span>
+                      {at != null && (
+                        <span className="block text-xs text-(--text-tertiary)">
+                          {new Date(at).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={EMPTY_CARD_CLS}>
+                {t('暂无跟进事项。总管关注某个任务，或约定到点回头核实时，会按主题列在这里。')}
+              </div>
+            ))}
+        </div>
       </div>
       {/* 弹窗挂在 tab 条件块外:切换 tab 不带走开态(dialog 遮罩层级高于
           设置面)。 */}
