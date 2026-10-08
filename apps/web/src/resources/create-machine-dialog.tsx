@@ -73,7 +73,7 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
           <code className={CMD_CODE_CLS}>{installCmd}</code>
           <Button
             size="xs"
-            className="shrink-0 px-2.5"
+            className="shrink-0"
             onClick={() => void navigator.clipboard?.writeText(installCmd)}
           >
             {t('复制')}
@@ -84,17 +84,18 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
           <code className={CMD_CODE_CLS}>{startCmd}</code>
           <Button
             size="xs"
-            className="shrink-0 px-2.5"
+            className="shrink-0"
             onClick={() => void navigator.clipboard?.writeText(startCmd)}
           >
             {t('复制')}
           </Button>
         </div>
-        {/* disclosure 钮 = 正典表 §5.4 model-add 同族配方（Button ghost +
-            贴左、无框、secondary 墨）；hover/展开态底色由件承载（D2）。 */}
+        {/* disclosure 钮 = Button ghost 默认档（#1005 registry 对齐：七通道
+            中和配方退役，hover/展开态底色与按下位移由件承载）；贴左 px-0
+            与 secondary 墨（token 槽）是 layout/ink。 */}
         <Button
           variant="ghost"
-          className={`${INLINE_ACTION_CLS} px-0 text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) dark:hover:bg-transparent font-normal active:not-aria-[haspopup]:translate-y-0`}
+          className={`${INLINE_ACTION_CLS} px-0 text-(--text-secondary)`}
           aria-expanded={apiKeyOpen}
           onClick={() => setApiKeyOpen((value) => !value)}
         >

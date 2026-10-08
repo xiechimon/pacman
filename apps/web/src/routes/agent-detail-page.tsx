@@ -474,6 +474,7 @@ export function AgentDetailPage() {
                       <span className="agent-task-title min-w-0 flex-[1_1_auto] truncate text-sm text-foreground">
                         {row.todo.title}
                       </span>
+                      {/* #983 判决：sm 几何档退役，收敛 registry Badge h-5。 */}
                       <StatusChip tone={ui.tone}>{t(ui.chip)}</StatusChip>
                       <span
                         className="agent-task-go inline-flex flex-none text-muted-foreground"

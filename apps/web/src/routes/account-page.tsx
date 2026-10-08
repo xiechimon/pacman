@@ -22,12 +22,14 @@
 // row keeps its on-state knob (headless chromium reports the real API 'denied').
 // The 名称 row (#1031) is inline-editable via the shared ProfileNameRow (agent
 // detail 同款); it used to be inert text + a decorative pencil (假可供性).
-// #947 per-face 清零：secondary.css 退役。三处控件的 per-face 皮肤改挂
-// token utility（语言触发器 = Button ghost 底座 + 七通道中和，#908
-// comment-6001887439 裁决 3）；推送通知开关落 components/ui/Switch 正典
-// 默认档（spec/22 §2.5 冻结几何：32×18.4 / thumb 16，track 吃 --input /
-// --primary，thumb 吃 --background——旧 29×16 手搓面与 --toggle-knob 消费
-// 随之退役；两槽的删槽动作不归本票，§4-2 既有裁定走散件票）。
+// #947 per-face 清零：secondary.css 退役；推送通知开关落 components/ui/Switch
+// 正典默认档（spec/22 §2.5 冻结几何：32×18.4 / thumb 16，track 吃 --input /
+// --primary，thumb 吃 --background）。
+// #1005 registry 对齐（#983 floating-shell 族拆判决，锚定 absolute 族 →
+// Popover）：语言 dropdown 从 FloatingShell+ClickCatcher 卡内锚定迁
+// registry Popover（Portal + Positioner，触发钮 outline 默认档、盘皮肤走件
+// 默认、选项行 ghost 默认档）；外点关闭随 Base UI 原生 outside-press 语义
+// （2026-10-08 全局裁决：不恢复 ClickCatcher、不开 modal 档）。
 // `account-card` / `account-avatar` 别名保留 = profile-card 共享模板家族的
 // e2e 锚（profile-card.tsx 头注契约；#952 起模板几何住件上 PROFILE_* utility
 // 常量，profile-card.css 已退役）；其余类名别名按 #910 裁定 1 退役，载体 =
@@ -54,11 +56,7 @@ import {
   ProfileRow,
 } from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
-import {
-  EXIT_BRIDGE_CLS,
-  FLOATING_POP_ANIM,
-  FloatingShell,
-} from '../components/ui/floating-shell.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Switch } from '../components/ui/switch.js';
 import { toastError } from '../components/ui/toaster.js';
@@ -67,29 +65,7 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { LOCALE_NAMES, LOCALES } from '../i18n/locale.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import { SecondaryShell } from '../secondary/shell.js';
-
-/** 语言触发器（Button ghost 底座）：30px 带框盒形（r7 13 实测 box
- *  x1120..1207，高是阶梯外一次性值 §3.1(a)）、12px 字、方角、surface 底 +
- *  border-default 描边；chevron tertiary 墨 12px（走属性，件基类
- *  [&_svg]:size-4 会盖过属性，故就地顶回同链 size-3）。件配方按七通道律
- *  归零到带框皮肤：hover/aria-expanded 回 surface 底 + primary 墨（原形
- *  无 hover、开态无换装），含 dark: 变体。 */
-const LANG_TRIGGER_CLS =
-  "h-[30px] cursor-pointer gap-1.5 rounded-none border border-(--border) bg-(--card) px-2.5 text-xs font-normal leading-[inherit] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
-
-/** 语言盘（V2 弹层壳 #790 P3：最小宽 220 / 12px 内垫 / 1px 墨线框 / 直角 /
- *  顶部锚距 8px / fab-shadow）+ 上指锚边右上的描边 Arrow（12×6 外三角压
- *  10×5 内三角，clip-path utility 承载，RES_SORT_MENU_CLS 同配方）。 */
-const LANG_MENU_CLS =
-  "absolute right-0 top-[calc(100%+8px)] z-(--z-popover) flex min-w-[220px] flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:right-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
-
-/** 语言盘选项行（Button ghost 底座）：32px 行 / 8px 圆角 / 12px 字
- *  （壳垫 12px 后行内横缩 4，字墨 inset 落 16）。原形无 hover 态，件配方
- *  按七通道律归零到透明。 */
-const LANG_ROW_CLS =
-  "h-8 w-full cursor-pointer justify-start gap-0 rounded-[8px] border-0 px-1 text-left text-xs leading-4 font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5";
 
 /* —— #1031 名称行内编辑面配方（account 面几何，与 agent 详情同构、只差档）——
    ProfileNameRow 是共享模板件，本面只注入自己的几何/皮肤 utility。值钮吃
@@ -116,12 +92,6 @@ export function AccountPage() {
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const [langOpen, setLangOpen] = useState(fixture.ui?.langDropdownOpen === true);
-  // #656：Esc 归 FloatingShell（Base UI layer 栈），旧 useEscapeClose 退役；
-  // wrap 作 Portal container，absolute 面板的包含块原位保真。dock 走 state
-  // 而非 ref 读值：fixture 面（scenario 13-lang）开态即挂载，首帧 ref 尚未
-  // 就位，Portal container=null 不渲染任何东西——state 在 ref 回调里落成，
-  // 下一帧 Portal 拿到真容器（dir-browser 同款）。
-  const [langDock, setLangDock] = useState<HTMLElement | null>(null);
   // M5 live：名称 = GET /api/user/me（seed 单用户 displayName，02 §2.1）。
   // 邮箱行已删（XMON-107 用户裁决）：无邮箱账位面，占位无信息量。
   const { live, teamId } = useLiveData();
@@ -191,40 +161,30 @@ export function AccountPage() {
           inputClassName={ACCOUNT_NAME_INPUT_CLS}
         />
         <ProfileRow className={PROFILE_ROW_TALL_CLS} label={t('语言')}>
-          <span className="relative flex" ref={setLangDock}>
-            <Button
-              variant="ghost"
-              className={LANG_TRIGGER_CLS}
-              aria-haspopup="listbox"
-              aria-expanded={langOpen}
-              onClick={() => setLangOpen((value) => !value)}
-            >
+          {/* #1005：语言 dropdown = registry Popover（#983 判决：锚定
+              absolute 族 → Popover Positioner 锚定）。触发钮 outline 默认档，
+              aria-expanded 由 Base UI 承载；#666 toggle 面律（焦点留触发位）
+              走 Popup initialFocus=false。盘宽 min 220 是 layout（内容宽
+              自适应）；选项行 ghost 默认档 + role=option 行为契约保留，
+              当前语言勾色走 --card-button 品牌槽（#991 Q10 激活态强调面）。
+              listbox 语义载体 = 盘内 div（role/aria-label 原样）。 */}
+          <Popover open={langOpen} onOpenChange={setLangOpen}>
+            <PopoverTrigger render={<Button variant="outline" aria-haspopup="listbox" />}>
               {LOCALE_NAMES[locale]}
-              <ChevronDown width={12} height={12} />
-            </Button>
-            {/* #656：语言 dropdown 壳 = FloatingShell（旧条件渲染无退场窗，
-                进场从无动效到 tw 缺省 pop 档——D3 mount → tw default；#666
-                toggle 面律：焦点留触发位、外点归 catcher）。右锚面板，
-                transform-origin 落右上锚边（more-menu 同律）。 */}
-            <FloatingShell
-              open={langOpen}
-              onClose={() => setLangOpen(false)}
-              container={langDock}
-              className={EXIT_BRIDGE_CLS}
+              <ChevronDown />
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={8}
               initialFocus={false}
-              disablePointerDismissal
+              className="w-fit min-w-[220px] gap-1 p-1.5"
             >
-              <ClickCatcher onClose={() => setLangOpen(false)} />
-              <div
-                className={`${LANG_MENU_CLS} origin-top-right ${FLOATING_POP_ANIM}`}
-                role="listbox"
-                aria-label={t('语言')}
-              >
+              <div role="listbox" aria-label={t('语言')} className="flex flex-col gap-1">
                 {LOCALES.map((code) => (
                   <Button
                     key={code}
                     variant="ghost"
-                    className={LANG_ROW_CLS}
+                    className="w-full justify-start text-left"
                     role="option"
                     aria-selected={code === locale}
                     onClick={() => {
@@ -241,8 +201,8 @@ export function AccountPage() {
                   </Button>
                 ))}
               </div>
-            </FloatingShell>
-          </span>
+            </PopoverContent>
+          </Popover>
         </ProfileRow>
         <ProfileRow
           label={t('推送通知')}

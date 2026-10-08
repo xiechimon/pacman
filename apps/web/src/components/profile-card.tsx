@@ -29,14 +29,21 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { SquarePen } from '../icons/index.js';
 import { Button } from './ui/button.js';
+// #1031 改名编辑器（Button/Input/SquarePen）与 Card 化（panel→Card，#1005 /
+// #1007 两车道同面收敛于本件）合并：皮肤只住 registry Card 一处，改名交互
+// 逻辑零分叉。
 import { Card } from './ui/card.js';
 import { Input } from './ui/input.js';
 
-/** 卡盒（原 .profile-card 三律）：overflow visible（语言 dropdown 与模型菜单
- *  要翻出卡外；圆角裁切换挂首末子件的逻辑角属性。ring-1 是 box-shadow 环、
- *  不占布局位，子件逻辑角 = 卡角 12px 原值，#983「11px=12−1px border 复算」
- *  判决执行）。用逻辑角而非 rounded-t/b 简写：单行卡的首末是同一个元素，
- *  简写会互相覆盖。gap-0/py-0 中和 Card 内距节奏——行盒自持几何。 */
+/** 卡盒（原 .profile-card 三律）：overflow visible 保留——agent 资料页的模型
+ *  菜单仍走 FloatingShell 卡内锚定（select.tsx 退役 = #1010，波 2；Popover 化
+ *  后随件摘除；语言 dropdown 已随 registry DropdownMenuContent Portal 化，
+ *  不受裁切影响）。圆角裁切换挂首末子件的逻辑角属性：ring-1 是 box-shadow
+ *  环、不占布局位，子件逻辑角 = 卡角原值（rounded-xl = --radius-xl，无
+ *  「−1px 环」内缩复算——该复算属 border 时代遗留，#983 判决作废；协调裁决
+ *  2026-10-08：取更贴 registry 默认者）。用逻辑角而非 rounded-t/b 简写：
+ *  单行卡的首末是同一个元素，简写会互相覆盖。gap-0/py-0 中和 Card 内距
+ *  节奏——行盒自持几何。 */
 const PROFILE_CARD_CLS =
   'profile-card gap-0 overflow-visible py-0 [&>:first-child]:rounded-ss-xl [&>:first-child]:rounded-se-xl [&>:last-child]:rounded-es-xl [&>:last-child]:rounded-ee-xl';
 
@@ -71,14 +78,16 @@ export const PROFILE_VALUE_GROW_CLS = 'min-w-0 flex-[1_1_auto]';
 export const PROFILE_VALUE_EDITOR_CLS = 'min-w-0 flex-[1_1_auto] flex-col items-stretch gap-2';
 
 /** 卡盒：皮肤 = registry Card 默认（ring / 底色 / rounded-xl 只住 Card 一处），
- *  本件只挂 overflow 与首末子件圆角。上边距归消费点（帐号面 r7 13 的 16px 是
+ *  本件只挂 overflow 与首末子件圆角；件默认纵向垫/gap 归零（行满幅贴边，
+ *  layout，住 PROFILE_CARD_CLS）。上边距归消费点（帐号面 r7 13 的 16px 是
  *  「头 44 + 16」的页面节奏，资源面的节奏由域配方给），本组件不带外边距。 */
 export function ProfileCard({ className, children }: { className?: string; children: ReactNode }) {
   return <Card className={cn(PROFILE_CARD_CLS, className)}>{children}</Card>;
 }
 
 /** 头像头（原 .profile-head）：120px 居中带，头像贴顶 16px（头像圆
- *  y77..141）；顶圆角 = 卡角原值 12px（ring 环不占布局位，无内缩复算）。 */
+ *  y77..141）；底色与 Card 同槽（bg-card）；顶圆角 = 卡角原值（ring 环不占
+ *  布局位，无内缩复算）。 */
 export function ProfileHead({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div

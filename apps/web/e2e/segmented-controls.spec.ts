@@ -44,6 +44,12 @@ const INK_HOVER_LIGHT = 'rgb(18, 15, 11)'; // --foreground light
 // those lanes migrate — their hover tint stays the #138 --seg-hover value.
 const HOVER_DARK = 'rgba(255, 252, 248, 0.05)'; // --seg-hover dark
 const HOVER_LIGHT = 'rgba(28, 25, 21, 0.05)'; // --seg-hover light
+const CHIP_DARK = 'rgb(38, 34, 31)'; // --card dark (tab-chip-bg merged → card, #1002)
+// #1005 registry 对齐：team 布局钮离 SEG_* 分段族、骑 registry default Tabs——
+// 组盒 bg-muted（light 与 --secondary 同值 #eae4e0）、无发丝环 border、选中片
+// bg-background、hover 只换墨不上底（无 tint）。
+const TABS_GROUP_LIGHT = 'rgb(234, 228, 224)'; // --muted light (registry TabsList default)
+const TABS_CHIP_ACTIVE_LIGHT = 'rgb(246, 241, 236)'; // --background light (registry data-active chip)
 
 // Tailwind v4 opacity modifiers (bg-input/30, text-foreground/60) compute to
 // oklab color-mix strings; the repo value notation (#411) wants rgb/hex —
@@ -248,24 +254,32 @@ test('branch-dialog seg: hover tints Git, click swaps the tab body', async ({ pa
   await expect(page.getByRole('tab', { name: '同步到机器', selected: false })).toBeVisible();
 });
 
-test('team layout toggle: official ring border + hover tint + chip token', async ({ page }) => {
+test('team layout toggle: registry default Tabs form (muted group, background chip, no ring)', async ({
+  page,
+}) => {
   await themed(page, 'light', '/app/team?scenario=12');
-  // #947/#910 载体：.team-layout-tab(s) 别名退役 → role=tablist/tab 一级
-  // （规则正本仍住 pages.css 分段档，值零改动）。
-  const ring = await page.evaluate(() => {
-    const group = document.querySelector('[role="tablist"]')!;
+  // #1005 registry 对齐（重钉）：team 布局钮离 SEG_* 分段族（发丝环 / --secondary
+  // 组底 / --card 选中片 / --seg-hover tint 全退役），骑 registry default Tabs：
+  // 组盒 bg-muted 无 border、选中片 bg-background、未选中片零底（hover 只换墨）。
+  // 载体仍 = role=tablist/tab 一级（#947/#910）。
+  const group = await page.evaluate(() => {
+    const g = document.querySelector('[role="tablist"]')!;
     return {
-      border: getComputedStyle(group).borderTopWidth,
-      groupBg: getComputedStyle(group).backgroundColor,
+      border: getComputedStyle(g).borderTopWidth,
+      groupBg: getComputedStyle(g).backgroundColor,
     };
   });
-  expect(ring.border).toBe('1px');
-  expect(ring.groupBg).toBe(GROUP_LIGHT);
-  expect(await bg(page.locator('[role="tab"][aria-selected="true"]'))).toBe(CHIP_LIGHT);
+  expect(group.border).toBe('0px');
+  expect(group.groupBg).toBe(TABS_GROUP_LIGHT);
+  expect(await bg(page.locator('[role="tab"][aria-selected="true"]'))).toBe(
+    TABS_CHIP_ACTIVE_LIGHT,
+  );
 
+  // 未选中片零底：registry hover 是 ink-only，不上 tint 底。
   const chart = page.getByRole('tab', { name: 'chart' });
+  expect(await bg(chart)).toBe('rgba(0, 0, 0, 0)');
   await chart.hover();
-  await expect.poll(() => bg(chart)).toBe(HOVER_LIGHT);
+  await expect.poll(() => bg(chart)).toBe('rgba(0, 0, 0, 0)');
 });
 
 // skills-import tab 半已随 spec 13（#367）退役——导入页删除，res-tab 族

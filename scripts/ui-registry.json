@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "034cd1496a409254cfebf79ca09e47ebeec8f3fe",
+    "sha": "897e96b7c7c69b5f1221c92535bde28c8bf34e7a",
     "date": "2026-10-08"
   },
   "scope": "apps/web/src/components/ui (#989, map #980). kind registry = shadcn base-nova registry item (upstreamItem names it; status pristine = hash must equal the vendored snapshot in scripts/ui-upstream-snapshots.json, deviated = registered divergence with reason). kind adapter = local composition over registry items or a repo-specific primitive (reason required). hash = sha256 over the comment-stripped, line-normalized file content (scripts/ui-normalize.mjs); comment-only edits do not move it, code edits always do. Scope is exactly this directory — domain-directory skins are ui-debt-gate/ui-drift-gate territory.",
@@ -162,7 +162,7 @@
     },
     "tag-chip.tsx": {
       "kind": "adapter",
-      "reason": "XMON-14 / #983 verdict (rewritten as zero-skin adapter): tag pill = registry Badge default geometry with the runtime data color kept as an inline background (TagRecord.color is a record field, not a design token — board-filter.spec pins the contract) + max-w-40 truncate layout + --text-on-accent foreground. The 11px font-rewrite tier (text-[11px]/leading-5/py-0) is retired per #983 — font size/line height/padding converge on Badge defaults (#1006).",
+      "reason": "XMON-14 / #983 verdict (rewritten as zero-skin adapter): tag pill = registry Badge default geometry with the runtime data color kept as an inline background (TagRecord.color is a record field, not a design token — board-filter.spec pins the contract) + max-w-40 truncate layout + --text-on-accent foreground. The 11px font-rewrite tier (text-[11px]/leading-5/py-0) is retired per #983 — font size/line height/padding converge on Badge defaults (#1006); the todo-card row-flush consumer override is folded into the same default per the R5 prototype-review ruling.",
       "hash": "0c06b753c2184eae55f8d1398b2810de5fadbb20f35a717753d9fb1be08fd09b"
     },
     "textarea.tsx": {

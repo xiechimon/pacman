@@ -20,13 +20,16 @@
 // 表单往返不带残值）。
 // #944 正典表执行（spec/22 §5.1/§5.3/§5.4）：老 ui/input 六处 →
 // components/ui Input（36px→h-8 32px，§2.6-1，getByLabel/placeholder 载体
-// 不动）；.dlg-form* 族 → utility 等值迁移；.dlg-provider-create → Button
-// default w-full；.dlg-provider-model-add / -back → Button ghost（§5.4 配方：
-// 贴左、无框、secondary 墨）；.dlg-form-seg/.dlg-provider-seg-tab → Tabs 件
-// default 档（block 形态 = TabsList w-full + TabsTrigger flex-1，选中态载体
-// = role=tab + aria-selected，data-active 断言退役）；.dlg-provider-* per-face
-// 皮肤（规则住 detail/overlays.css，detail-b 清零账）消费面随本票迁 utility，
-// 行钮收编 Button（#851 裸控件账）。data-preset-id 保留 = 行级二级载体。
+// 不动）；.dlg-provider-create → Button default w-full；
+// .dlg-form-seg/.dlg-provider-seg-tab → Tabs 件 default 档（block 形态 =
+// TabsList w-full + TabsTrigger flex-1，选中态载体 = role=tab +
+// aria-selected，data-active 断言退役）；行钮收编 Button（#851 裸控件账）。
+// data-preset-id 保留 = 行级二级载体。
+// #1005 registry 对齐：密钥表单改 Field 官方组合（FieldGroup/Field/
+// FieldLabel/FieldTitle/FieldDescription），LABEL_CLS/NOTE_CLS 手排配方退役；
+// picker 行钮走 Button outline 默认档、行右 chip 走 Badge 默认档（PICKER_ROW/
+// ROW_CHIP 皮肤配方退役）；ghost 文字钮的七通道中和退役（件默认 hover/按下
+// 态回归）。
 
 import {
   OAUTH_FAMILIES,
@@ -36,37 +39,29 @@ import {
   type ProviderApi,
 } from '@pacman/shared';
 import { useEffect, useState } from 'react';
+import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Checkbox } from '../components/ui/checkbox.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldTitle,
+} from '../components/ui/field.js';
 import { Input } from '../components/ui/input.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, PlusSmall } from '../icons/index.js';
 
-/** .dlg-form 退役后的容器 utility（正典表 §5.4：12/16px 现值已在 §2.2
- *  阶梯上，等值迁移即正典）。 */
-const FORM_CLS = 'flex flex-col gap-3 px-4 pt-4 pb-3';
+/** 弹窗体容器垫（DialogShell 体无内垫，容器 layout 归消费点）。 */
+const FORM_CLS = 'px-4 pt-4 pb-3';
 
-/** .dlg-form-label 退役后的等值 rhythm（正典表 §5.4，create-secret-dialog
- *  同方）：9/8 外距 + 18 行盒；字号/字距 = c.css 定版 --label-size 12px /
- *  --label-spacing 0.01em——token 落后改 text-(--label-size)
- *  tracking-(--label-spacing)（§4-4）。 */
-const LABEL_CLS = 'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--foreground)';
-
-/** .dlg-form-note 退役后的辅助说明行（正典表 §5.4）。 */
-const NOTE_CLS = 'text-xs leading-4 text-(--text-tertiary)';
-
-/** picker 行钮（preset 38 行 + 自定义端点入口，原 .dlg-provider-preset/
- *  -custom 同规则）：outline 档 + surface/card-border 皮肤等值迁移；高
- *  36→32 = §2.6-1 单一控件高正本（D2），圆角随件 rounded-lg（D2 吸收）。 */
-const PICKER_ROW_CLS =
-  'justify-start gap-2 border-(--border) bg-(--card) px-3 text-left font-normal text-(--foreground) hover:bg-(--secondary) hover:text-(--foreground) dark:border-(--border) dark:bg-(--card) dark:hover:bg-(--secondary) disabled:opacity-60';
-
-/** 行右 chip 槽（OAuth 徽标 / 暂未开通注记，原 .dlg-provider-badge/-note）：
- *  20px 高对齐 Badge 正典档（原 18px，§5.2 D2），11px 三级墨。 */
-const ROW_CHIP_CLS =
-  'ml-auto inline-flex h-5 flex-none items-center rounded-[4px] px-1.5 text-[11px] leading-none';
+/** picker 行钮（preset 38 行 + 自定义端点入口）：Button outline 默认档 +
+ *  左对齐 layout（#1005：皮肤/状态全走件默认）。 */
+const PICKER_ROW_CLS = 'justify-start px-3 text-left';
 
 /** API 协议段（r3 §2 实测文案与顺序；wire 值 = providerApiSchema）。 */
 const API_OPTIONS: readonly { value: ProviderApi; label: string }[] = [
@@ -262,7 +257,7 @@ export function CreateProviderDialog({
       }
     >
       {view === 'picker' ? (
-        <div className={FORM_CLS}>
+        <div className={`flex flex-col gap-3 ${FORM_CLS}`}>
           <Input
             // spec/verify 载体 = aria-label 一级（getByLabel('搜索服务商...')，
             // #910/#944——原 .dlg-provider-search/.dlg-picker-search 类名钩
@@ -274,18 +269,15 @@ export function CreateProviderDialog({
           />
           {/* #231 错误行：authorize 失败原文 / callback 落地 reason 三译
               （providers-page 喂入）。列表前渲染——着陆重开即可见。
-              配方 = 仓内错误文本族（12px/16px/--danger）；role=alert 是
-              错误行的一级载体（原 .dlg-provider-oauth-error 类名钩退役，
-              #910/#944，与 dlg-skill-error 同律）。 */}
-          {connectError != null && connectError !== '' && (
-            <div className="text-xs leading-4 text-(--destructive)" role="alert">
-              {connectError}
-            </div>
-          )}
+              #1005：FieldError 承载（role=alert 内建 = 错误行一级载体，
+              件默认 destructive 墨；原 .dlg-provider-oauth-error 类名钩已随
+              #944 退役）。 */}
+          {connectError != null && connectError !== '' && <FieldError>{connectError}</FieldError>}
           <div className="flex flex-col gap-1">
             {rows.map((row) => (
               <Button
                 key={row.id}
+                variant="outline"
                 // data-preset-id = 行级二级载体（#910：38 行的计数/定位锚，
                 // verify feature map 同锚）。
                 data-preset-id={row.id}
@@ -305,138 +297,145 @@ export function CreateProviderDialog({
                 {row.label}
                 {/* T0 map：'(OAuth)' 后缀进名称文本（行 textContent 等值
                     断言，JSX 折叠换行空白故显式 {' '}），只骑族表已接线行
-                    （#385）；xai 行不带后缀（负向钉）。视觉间距由 chip 的
-                    margin-left:auto 承担。 */}
+                    （#385）；xai 行不带后缀（负向钉）。#1005：chip 走 Badge
+                    secondary 默认档，margin-left:auto 行末 layout。 */}
                 {row.wired && (
-                  <span className={`${ROW_CHIP_CLS} bg-(--secondary) text-(--text-tertiary)`}>
+                  <Badge variant="secondary" className="ml-auto">
                     {' (OAuth)'}
-                  </span>
+                  </Badge>
                 )}
-                {/* #385 未接线注记：占徽标同槽位（行右 chip），只描边不上底
-                    （行整体 :disabled 已降不透明度）；显式 {' '} 保行
-                    textContent 空格分隔（probe 名称节点等值断言的行文本形）。 */}
+                {/* #385 未接线注记：占徽标同槽位（行右 chip，Badge outline
+                    默认档 = 描边不上底；行整体 :disabled 已降不透明度）；
+                    显式 {' '} 保行 textContent 空格分隔（probe 名称节点等值
+                    断言的行文本形）。 */}
                 {row.oauth && !row.wired && (
-                  <span
-                    className={`${ROW_CHIP_CLS} border border-(--border) text-(--text-tertiary)`}
-                  >
+                  <Badge variant="outline" className="ml-auto">
                     {' '}
                     {t('暂未开通')}
-                  </span>
+                  </Badge>
                 )}
               </Button>
             ))}
           </div>
-          <Button className={PICKER_ROW_CLS} onClick={() => enterForm(null)}>
+          <Button variant="outline" className={PICKER_ROW_CLS} onClick={() => enterForm(null)}>
             {t('自定义端点')}
           </Button>
         </div>
       ) : (
-        <div className={FORM_CLS}>
-          {/* 返回钮 = §5.4 model-add 同族配方（ghost + 贴左无框 secondary
-              墨）；12px chevron 是消费点既有尺寸，svg 档就地并掉。 */}
+        <FieldGroup className={FORM_CLS}>
+          {/* 返回钮 = Button ghost 默认档（#1005：七通道中和退役，hover/
+              按下态由件承载）；贴左 px-0 与 secondary 墨（token 槽）是
+              layout/ink。 */}
           <Button
             variant="ghost"
-            className="self-start px-0 text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) dark:hover:bg-transparent font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3"
+            className="self-start px-0 text-(--text-secondary)"
             onClick={() => setView('picker')}
           >
-            <ChevronLeft width={12} height={12} />
+            <ChevronLeft />
             {t('返回')}
           </Button>
           {/* xai 双通道（r3 §2）：oauthLabel 在密钥表单内展示；族表外无
               后端面 → note 不做钮（#222）。 */}
           {preset?.id === PROVIDER_XAI_PRESET.id && (
-            <p className={NOTE_CLS}>{PROVIDER_XAI_PRESET.oauthLabel}</p>
+            <FieldDescription>{PROVIDER_XAI_PRESET.oauthLabel}</FieldDescription>
           )}
-          <label className={LABEL_CLS} htmlFor="dlg-provider-id">
-            {t('服务商 ID')}
-          </label>
-          <Input
-            id="dlg-provider-id"
-            value={providerId}
-            onChange={(event) => setProviderId(event.target.value)}
-            placeholder={t('例如 my-relay')}
-          />
-          <label className={LABEL_CLS} htmlFor="dlg-provider-label">
-            {t('名称')}
-          </label>
-          <Input
-            id="dlg-provider-label"
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-          />
-          <label className={LABEL_CLS} htmlFor="dlg-provider-baseurl">
-            Base URL
-          </label>
-          <Input
-            id="dlg-provider-baseurl"
-            value={baseUrl}
-            onChange={(event) => setBaseUrl(event.target.value)}
-            placeholder="https://api.example.com/v1"
-          />
-          <div className={LABEL_CLS}>{t('API 协议')}</div>
-          {/* API 协议段 → Tabs 件 default 档（正典表 §5.4）：block 形态 =
-              TabsList w-full + TabsTrigger flex-1（default 档基类自带）；
-              registry 几何（rounded-lg bg-muted p-[3px] h-8）与旧 30px/3px
-              族近同形，差值 D2 吸收。选中态载体 = role=tab + aria-selected
-              （Base UI 自带），data-active 断言退役。 */}
-          <Tabs value={api} onValueChange={(value) => setApi(value as ProviderApi)}>
-            <TabsList className="w-full" aria-label={t('API 协议')}>
-              {API_OPTIONS.map((option) => (
-                <TabsTrigger key={option.value} value={option.value}>
-                  {option.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          <label className={LABEL_CLS} htmlFor="dlg-provider-apikey">
-            {t('API 密钥')}
-          </label>
-          <Input
-            id="dlg-provider-apikey"
-            type="password"
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-            placeholder={t('无密钥网关可留空')}
-          />
-          <div className="flex items-center gap-2">
+          <Field>
+            <FieldLabel htmlFor="dlg-provider-id">{t('服务商 ID')}</FieldLabel>
+            <Input
+              id="dlg-provider-id"
+              value={providerId}
+              onChange={(event) => setProviderId(event.target.value)}
+              placeholder={t('例如 my-relay')}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="dlg-provider-label">{t('名称')}</FieldLabel>
+            <Input
+              id="dlg-provider-label"
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="dlg-provider-baseurl">Base URL</FieldLabel>
+            <Input
+              id="dlg-provider-baseurl"
+              value={baseUrl}
+              onChange={(event) => setBaseUrl(event.target.value)}
+              placeholder="https://api.example.com/v1"
+            />
+          </Field>
+          <Field>
+            <FieldTitle>{t('API 协议')}</FieldTitle>
+            {/* API 协议段 → Tabs 件 default 档（正典表 §5.4）：block 形态 =
+                TabsList w-full + TabsTrigger flex-1（default 档基类自带）。
+                选中态载体 = role=tab + aria-selected（Base UI 自带），
+                data-active 断言退役。 */}
+            <Tabs value={api} onValueChange={(value) => setApi(value as ProviderApi)}>
+              <TabsList className="w-full" aria-label={t('API 协议')}>
+                {API_OPTIONS.map((option) => (
+                  <TabsTrigger key={option.value} value={option.value}>
+                    {option.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="dlg-provider-apikey">{t('API 密钥')}</FieldLabel>
+            <Input
+              id="dlg-provider-apikey"
+              type="password"
+              value={apiKey}
+              onChange={(event) => setApiKey(event.target.value)}
+              placeholder={t('无密钥网关可留空')}
+            />
             {/* XMON-72：收口 components/ui/checkbox 原语（#1003 起 = registry
                 同源件，行盒由消费点 label 承载）。id 保留：Base UI 契约 id 落
                 隐藏原生 input，provider-add-dialog.spec 的 pin 骑它。 */}
-            {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
-            <label className="inline-flex cursor-pointer items-center gap-2">
-              <Checkbox
-                id="dlg-provider-authheader"
-                checked={authHeader}
-                onCheckedChange={setAuthHeader}
-                aria-label={t('以 Authorization: Bearer 请求头发送 API 密钥')}
+            {/* Field 竖排的 *:w-full 会拉满直接子件——行盒包一层 div，
+                label 本体保持内容宽。 */}
+            <div>
+              {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
+              <label className="inline-flex w-fit cursor-pointer items-center gap-2">
+                <Checkbox
+                  id="dlg-provider-authheader"
+                  checked={authHeader}
+                  onCheckedChange={setAuthHeader}
+                  aria-label={t('以 Authorization: Bearer 请求头发送 API 密钥')}
+                />
+                <span className="text-[13px] text-(--foreground)">
+                  {t('以 Authorization: Bearer 请求头发送 API 密钥')}
+                </span>
+              </label>
+            </div>
+            <FieldDescription>{t('密钥将加密存储，保存后无法再次查看。')}</FieldDescription>
+          </Field>
+          <Field>
+            <FieldTitle>{t('模型（可选）')}</FieldTitle>
+            {modelIds.map((id, i) => (
+              <Input
+                key={i}
+                aria-label={t('模型 ID')}
+                value={id}
+                placeholder="claude-sonnet-5"
+                onChange={(event) =>
+                  setModelIds((rows) => rows.map((r, j) => (i === j ? event.target.value : r)))
+                }
               />
-              <span className="text-[13px] text-(--foreground)">
-                {t('以 Authorization: Bearer 请求头发送 API 密钥')}
-              </span>
-            </label>
-          </div>
-          <p className={NOTE_CLS}>{t('密钥将加密存储，保存后无法再次查看。')}</p>
-          <div className={LABEL_CLS}>{t('模型（可选）')}</div>
-          {modelIds.map((id, i) => (
-            <Input
-              key={i}
-              aria-label={t('模型 ID')}
-              value={id}
-              placeholder="claude-sonnet-5"
-              onChange={(event) =>
-                setModelIds((rows) => rows.map((r, j) => (i === j ? event.target.value : r)))
-              }
-            />
-          ))}
-          <Button
-            variant="ghost"
-            className="self-start px-0 text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) dark:hover:bg-transparent font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3"
-            onClick={() => setModelIds((rows) => [...rows, ''])}
-          >
-            <PlusSmall width={12} height={12} />
-            {t('添加模型')}
-          </Button>
-        </div>
+            ))}
+            <div>
+              <Button
+                variant="ghost"
+                className="px-0 text-(--text-secondary)"
+                onClick={() => setModelIds((rows) => [...rows, ''])}
+              >
+                <PlusSmall />
+                {t('添加模型')}
+              </Button>
+            </div>
+          </Field>
+        </FieldGroup>
       )}
     </DialogShell>
   );

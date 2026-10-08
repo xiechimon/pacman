@@ -14,6 +14,7 @@
 import { cn } from 'cn';
 import type { ReactNode } from 'react';
 import { useBuild } from '../api/hooks.js';
+import { Badge } from '../components/ui/badge.js';
 import type { BuildOverlayContent, PaneView, RunHistoryRow } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { BarChart3, Check, Download, History, X } from '../icons/index.js';
@@ -146,12 +147,15 @@ function HistorySection({
             >
               <RunGlyph status={run.status} />
               <div>
-                <div className="flex h-[18px] items-center gap-2">
+                <div className="flex items-center gap-2">
                   <span className="text-[13px] text-(--foreground)">{t(run.label)}</span>
                   {(run.status === 'current' || run.status === 'failed-current') && (
-                    <span className="h-[18px] rounded-[4px] bg-(--muted) px-[5px] text-[11px] leading-[18px] text-(--text-tertiary)">
+                    // #1006（#980 前提④）：手搓 18px/4px 圆角小 chip →
+                    // registry Badge secondary 档（h-5 rounded-4xl 默认几何；
+                    // 「当前」是计数标注非任务五态，secondary 语义对应）。
+                    <Badge variant="secondary" className="font-normal text-(--text-tertiary)">
                       {t('当前')}
-                    </span>
+                    </Badge>
                   )}
                 </div>
                 <div className="h-[17px] text-[length:12px] text-(--text-tertiary)">

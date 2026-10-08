@@ -7,10 +7,10 @@
 // #423 第一片真域收编（#422 裁决 a）：卡片系落 components/ui Card 底座 +
 // 本文件的域内列表行卡组合件（RowCard / GroupCard）；StatusPill 骑 Badge；
 // EmptyState 落 Empty 底座 + components/ui Button（default 档）。
-// #944 per-face 清零：resources.css 退役，皮肤全部改挂 token utility
-// （spec/22 §3.1——角色有 token 必走 token；阶梯外一次性几何走 arbitrary，
-// §3.1(a)）。几何取原 per-face 规则等值迁移；控件几何随件正典，差额由 D2
-// 吸收（探针对照表随 PR 人审）。
+// #1005 registry 对齐（#980 裁决②④、ADR 0012）：件皮肤回归 registry 默认
+// ——Card 自带 rounded-xl/ring-1/bg-card（CARD_SKIN_CLS 灭皮配方退役），
+// Badge/Empty 走默认档与官方 compound（EmptyHeader/Media/Title/Description/
+// Content）；消费点只保留 layout（行高/间距/外边距）与 token 层墨色。
 
 import { cn } from 'cn';
 import type { ComponentProps, ComponentType, ReactNode, SVGProps } from 'react';
@@ -18,57 +18,54 @@ import { Link, useLocation } from 'react-router';
 import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Card } from '../components/ui/card.js';
-import { Empty } from '../components/ui/empty.js';
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia } from '../components/ui/empty.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TVars } from '../i18n/translate.js';
 import { ChevronRight, Lock } from '../icons/index.js';
 
 /* ---- 搜索 + 排序行（#306/#854 家族）----
    正本原住 resources.css（.res-searchrow / .res-search / .res-search-input /
-   .res-sort 族），消费点两处：skills-page 与 routes/agent-detail-page 的
-   记忆 tab（#854 起同一块盘只剩一种实现）。清零后配方以 utility 常量单源
-   在此，两侧共引——不再有两套同款手搓壳，也没有第二份正则。 */
+   .res-sort 族），清零后配方以 utility 常量单源在此。#1005 registry 对齐：
+   资源域消费点（skills-page 搜索/排序）已迁 registry 件默认形（InputGroup /
+   DropdownMenu 官方皮肤）；下列盒形/盘形常量的唯一剩余消费面 =
+   routes/agent-detail-page 记忆 tab（detail 车道 #1006 承载迁移，迁完即删）。 */
 
-/** 搜索 + 排序的工具行容器。 */
+/** 搜索 + 排序的工具行容器（纯 layout，两域共用）。 */
 export const RES_SEARCH_ROW_CLS = 'flex gap-2';
 
-/** 搜索盒（32px 高、card-border 描边、surface 底、13px 图标 + 输入位）。 */
+/** 排序钮的定位包裹（弹层锚点；纯 layout）。 */
+export const RES_SORT_WRAP_CLS = 'relative flex';
+
+/** 搜索盒（32px 高、card-border 描边、surface 底、13px 图标 + 输入位）。
+ *  遗留配方：剩余消费面 = agent-detail 记忆 tab（#1006）。 */
 export const RES_SEARCH_BOX_CLS =
   'flex h-8 flex-1 items-center gap-1.5 border border-(--border) bg-(--card) px-2 text-(--text-tertiary)';
 
 /** 盒内真 Input（components/ui 底座）：盒形由 RES_SEARCH_BOX_CLS 承载，
  *  input 本体零装饰；focus 环走 #388 家族律（2px --focus-ring + offset 2，
- *  utility 层就地并掉件默认的 border-ring + 灰 ring）。 */
+ *  utility 层就地并掉件默认的 border-ring + 灰 ring）。
+ *  遗留配方：剩余消费面 = agent-detail 记忆 tab（#1006）。 */
 export const RES_SEARCH_INPUT_CLS =
   'h-full min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-sm leading-4 text-(--foreground) shadow-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) focus-visible:ring-0 dark:bg-transparent';
 
-/** 排序钮的定位包裹（弹层锚点）。 */
-export const RES_SORT_WRAP_CLS = 'relative flex';
-
-/** ghost 档「行形钮」七通道中和（#908 comment-6001887439 裁决 1，#943
- *  ROW_BTN 同形）：hover bg（含 dark:）· aria-expanded bg+text · hover text ·
- *  press translate（同变体链 active:not-aria-[haspopup]）· gap/px ·
- *  font-weight · border。漏任一通道会被 accent-typo 族 computed 探针抓红。
- *  文字色通道随各钮自己的墨色重复（此处 secondary）。 */
-export const GHOST_ROW_BTN_CLS =
-  'font-normal hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0';
-
 /** 排序触发钮（Button ghost 底座）：32px 高、88px 宽由消费点补
  *  （记忆 tab 是内容宽）；皮肤等值迁移，件默认档按七通道律就地并掉
- *  （本钮是带框盒形：hover/aria-expanded 回到 surface 皮肤而非透明）。 */
+ *  （本钮是带框盒形：hover/aria-expanded 回到 surface 皮肤而非透明）。
+ *  遗留配方：剩余消费面 = agent-detail 记忆 tab（#1006）。 */
 export const RES_SORT_TRIGGER_CLS =
   "h-8 flex-none cursor-pointer justify-start gap-0 rounded-none border border-(--border) bg-(--card) px-[11px] text-[13px] font-normal leading-4 text-(--text-secondary) hover:bg-(--card) hover:text-(--text-secondary) aria-expanded:bg-(--card) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&>span]:ml-2 [&>span]:flex-none [&>span]:whitespace-nowrap [&_svg:last-of-type]:ml-1 [&_svg:not([class*='size-'])]:size-auto";
 
 /** 排序盘（DropdownMenuContent）：V2 弹层壳（#790 P3——最小宽 220 / 12px
  *  内边距 / 1px 墨线框 / 直角 / plate-shadow）+ 上指锚边右上的描边 Arrow
- *  （12×6 外三角压 10×5 内三角，clip-path utility 承载）。 */
+ *  （12×6 外三角压 10×5 内三角，clip-path utility 承载）。
+ *  遗留配方：剩余消费面 = agent-detail 记忆 tab（#1006）。 */
 export const RES_SORT_MENU_CLS =
   "relative flex min-w-[220px] flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--plate-shadow) ring-0 before:absolute before:top-px before:right-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 
 /** 盘内单选行（DropdownMenuRadioItem）：32px 行、12px 字、选中 --spot-soft
  *  （plan-dropdown 同族）；行是 div[role=menuitemradio]，不在 #388 全局环
  *  名单，键盘 roving focus 的可见环按同配方就地补钉；勾色 --card-button 走
- *  indicator 槽选择器。 */
+ *  indicator 槽选择器。遗留配方：剩余消费面 = agent-detail 记忆 tab（#1006）。 */
 export const RES_SORT_ROW_CLS =
   "h-8 w-full cursor-pointer rounded-none px-1 py-0 text-left text-xs leading-4 text-(--foreground) data-checked:bg-(--spot-soft) focus:bg-transparent focus:data-checked:bg-(--spot-soft) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button) [&_svg:not([class*='size-'])]:size-auto";
 
@@ -101,12 +98,9 @@ export function Tile({
   );
 }
 
-/** 行卡公共皮肤（原 .res-card）：card-border 描边 + radius-popover 圆角 +
- *  surface-secondary 底；Card 件默认的 rounded-xl/ring/bg-card 就地并掉。 */
-const CARD_SKIN_CLS =
-  'gap-0 overflow-hidden rounded-(--radius-popover) border border-(--border) bg-(--secondary) py-0 ring-0';
-
 /** 域内列表行卡组合件：单行卡（skills / secrets / mcp 行，64/62px）。
+ *  皮肤 = Card 件 registry 默认（rounded-xl / ring-1 / bg-card，#1005 裁决④
+ *  官方几何赢）；本件只补 layout（行高、行内 gap、横垫）。
  *  onOpen（XMON-114 技能行开编辑弹窗）：整行可点——role=button + 键盘
  *  Enter/Space 同律；focus 环由 app.css 的 #388 全局 :where([role=button])
  *  规则承载，无需就地补钉。
@@ -130,8 +124,7 @@ export function RowCard({
       data-testid="resource-row"
       {...(mcp ? { 'data-mcp': '' } : {})}
       className={cn(
-        CARD_SKIN_CLS,
-        'mt-4 h-16 flex-row items-center px-4',
+        'mt-4 h-16 flex-row items-center gap-3 px-4 py-0',
         mcp && 'h-[62px]',
         onOpen !== undefined && 'cursor-pointer',
         className,
@@ -156,11 +149,12 @@ export function RowCard({
 }
 
 /** 域内列表行卡组合件：分组卡（machines / providers 模型行容器）；行本体
- *  是卡内结构 div，分隔线走 RowGrow 的 divided 档。data-testid =
+ *  是卡内结构 div，分隔线走 RowGrow 的 divided 档。皮肤 = Card 件 registry
+ *  默认；行满幅贴边，件默认纵向垫/gap 归零（layout）。data-testid =
  *  #910 二级结构载体（分组卡无 role，几何/计数断言的锚）。 */
 export function GroupCard({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <Card data-testid="resource-group" className={cn(CARD_SKIN_CLS, className)}>
+    <Card data-testid="resource-group" className={cn('gap-0 py-0', className)}>
       {children}
     </Card>
   );
@@ -183,7 +177,7 @@ export function RowGrow({
     <div
       {...(divided ? { 'data-divided': '' } : {})}
       className={cn(
-        'flex items-center px-4',
+        'flex items-center gap-3 px-4',
         divided ? 'h-[59px] border-t border-(--border)' : 'h-[60px]',
         className,
       )}
@@ -194,10 +188,10 @@ export function RowGrow({
   );
 }
 
-/** 行文字列（tile 右 12px；lg tile 行 16px、模型行 0——消费点经 className
- *  调档，tailwind-merge 收口）。 */
+/** 行文字列（与 tile 的间距由行容器的 gap-3 承载；模型行等零间距面由
+ *  消费点经 className 调档，tailwind-merge 收口）。 */
 export function RowText({ className, children }: { className?: string; children: ReactNode }) {
-  return <span className={cn('ml-3 flex min-w-0 flex-col', className)}>{children}</span>;
+  return <span className={cn('flex min-w-0 flex-col', className)}>{children}</span>;
 }
 
 /** 行内标题线（标题 + dot/tag 的横排）。 */
@@ -255,16 +249,13 @@ export function RowAgo({ className, children }: { className?: string; children: 
   );
 }
 
-/** Right-side status pill (`未启用`, r7 06/07)。Badge 底座（#422），r7 实测
- *  形（20px 高 / 4px 圆角 / text-dim 字 / pill-idle-bg 底 / 11px 常规字重）
- *  以 token utility 等值承载——Badge 默认档的 px/text/font 就地并掉。 */
+/** Right-side status pill (`未启用`, r7 06/07)。Badge 底座（#422）；
+ *  #1005 registry 对齐：皮肤 = Badge secondary 默认档（h-5 圆角 pill /
+ *  text-xs / secondary 墨对），只保留 ml-auto 行末 layout。 */
 export function StatusPill({ label }: { label: string }) {
   const { t } = useI18n();
   return (
-    <Badge
-      variant="secondary"
-      className="ml-auto h-5 flex-none rounded-[4px] border-none bg-(--secondary) px-[5px] text-[11px] font-normal leading-4 text-(--text-tertiary)"
-    >
+    <Badge variant="secondary" className="ml-auto">
       {t(label)}
     </Badge>
   );
@@ -295,15 +286,17 @@ export function OnlineDot({ on }: { on: boolean }) {
   );
 }
 
-/** Empty-state block (r7 10 geometry): 48px hero tile, heading, two-line
- *  description, primary button, optional 总管 hint row (查看文档 link
- *  removed #307 — local-first 无文档站, #149 schedules 同律).
- *  spec 13（#367/#368）：actionLabel 可选——只读资源面（技能 / MCP）无主钮；
- *  description 经 descriptionVars 走 {vars} 插值（空态指路配置目录 /
- *  ~/.claude.json，单点 t()）。
- *  底座 = components/ui Empty；r7 10 实测形是左对齐零间隙列，Empty 默认档的
- *  居中/gap/padding 就地并掉。标题/描述保持 h2/p 语义标签（Empty 子件是
- *  div，换用即降级标题语义，不取）。 */
+/** Empty-state block：48px hero tile + 标题 + 两行描述 + 主钮 + 可选总管
+ *  hint 行（查看文档 link removed #307 — local-first 无文档站, #149
+ *  schedules 同律）。spec 13（#367/#368）：actionLabel 可选——只读资源面
+ *  （技能 / MCP）无主钮；description 经 descriptionVars 走 {vars} 插值
+ *  （空态指路配置目录 / ~/.claude.json，单点 t()）。
+ *  #1005 registry 对齐：走 Empty 官方 compound（EmptyHeader/Media/Content），
+ *  居中列 + 默认间隙即 registry 形态（#980 裁决④），r7 10 的左对齐实测形由
+ *  原型实审复核。标题/描述保留 h2/p 语义标签（不用 EmptyTitle/Description 的
+ *  div——heading 语义是 a11y 资产，skills-page/dead-buttons spec 以
+ *  getByRole('heading') 与 locator('p') 钉描述），只把 registry 件的文字档
+ *  （text-sm font-medium / text-sm/relaxed muted）挂上去取齐观感。 */
 export function EmptyState({
   Icon,
   title,
@@ -332,38 +325,38 @@ export function EmptyState({
   const { t } = useI18n();
   const { search } = useLocation();
   return (
-    <Empty
-      data-testid="resource-empty"
-      className="items-stretch justify-start gap-0 p-0 pt-6 text-left [text-wrap:wrap]"
-    >
-      <Tile Icon={Icon} size="hero" tone="orange" />
-      <h2 className="mt-4 text-[15px] leading-5 font-semibold text-(--foreground)">{t(title)}</h2>
-      <p className="mt-1.5 max-w-[450px] text-[13px] leading-5 text-(--text-tertiary)">
-        {t(description, descriptionVars)}
-      </p>
-      {actionLabel != null && (
-        <div className="mt-3.5 flex items-center gap-4">
-          {actionHref == null ? (
-            <Button
-              size="sm"
-              className="px-[11px] text-[13px] leading-4 font-normal"
-              onClick={onAction}
-            >
-              {t(actionLabel)}
-            </Button>
-          ) : (
-            <Link to={{ pathname: actionHref, search }}>{t(actionLabel)}</Link>
-          )}
+    <Empty data-testid="resource-empty" className="mt-4">
+      <EmptyHeader>
+        <EmptyMedia>
+          <Tile Icon={Icon} size="hero" tone="orange" />
+        </EmptyMedia>
+        <h2 className="text-sm font-medium tracking-tight text-balance text-foreground">
+          {t(title)}
+        </h2>
+        <p className="text-sm/relaxed text-muted-foreground text-balance">
+          {t(description, descriptionVars)}
+        </p>
+      </EmptyHeader>
+      {(actionLabel != null || hint != null) && (
+        <EmptyContent>
+          {actionLabel != null &&
+            (actionHref == null ? (
+              <Button size="sm" onClick={onAction}>
+                {t(actionLabel)}
+              </Button>
+            ) : (
+              <Link to={{ pathname: actionHref, search }}>{t(actionLabel)}</Link>
+            ))}
           {/* 「查看文档」钮全除（#307 wontfix）：local-first 自托管无文档站
               可链（#149 schedules 同律）——skills/secrets/mcp 空态随共享件
               一并出账，spec 08 档 4。 */}
-        </div>
-      )}
-      {hint != null && (
-        <p className="mt-[18px] flex items-center gap-[7px] text-[13px] leading-[18px] text-(--text-tertiary)">
-          <Lock width={11} height={11} />
-          {t(hint)}
-        </p>
+          {hint != null && (
+            <p className="flex items-center gap-[7px] text-[13px] leading-[18px] text-(--text-tertiary)">
+              <Lock width={11} height={11} />
+              {t(hint)}
+            </p>
+          )}
+        </EmptyContent>
       )}
     </Empty>
   );

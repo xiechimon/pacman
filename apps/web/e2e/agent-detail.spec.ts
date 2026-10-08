@@ -635,8 +635,9 @@ async function assertTopCorner(rows: Locator) {
         topBorder: cs.borderTopWidth,
       };
     });
-    // #1007 重钉：Card 的 ring-1 是 box-shadow 环、不占布局位，首行逻辑角 =
-    // 卡角原值；半径基 10px（#988）下 rounded-xl = 14px。
+    // #1007 重钉（协调裁决：本重钉归 L4；#1057 的 13px 用「−1px ring」复算，
+    // 该复算属 border 时代遗留——ring-1 是 box-shadow 环、不占布局位，首行
+    // 逻辑角 = 卡角原值；半径基 10px（#988）下 rounded-xl = 14px，实测同）。
     expect(topLeft).toEqual(['14px', '14px']);
     expect(topBorder).toBe('0px');
   }
