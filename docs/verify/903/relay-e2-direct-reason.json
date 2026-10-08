@@ -2,9 +2,9 @@
   "relayResult": {
     "builds": [
       {
-        "id": "01a11761-ea42-7308-8d3c-67fad71274f9",
-        "todoId": "ZFI61QFYHqcN5qxcE-m2K",
-        "withPlan": true,
+        "id": "01a11a41-35ab-7c7a-939a-02e68527b15e",
+        "todoId": "SE7yD8lGFU9UE20y21SiT",
+        "withPlan": false,
         "prevPhase": "todo",
         "triggerSource": "chief",
         "pinnedMachineId": null,
@@ -13,24 +13,25 @@
         "prUrl": null,
         "prNumber": null,
         "diffHash": null,
-        "createdAt": 1791393655362
+        "createdAt": 1791441843627
       }
     ],
-    "withPlan": true,
+    "withPlan": false,
+    "dispatchReason": "缺陷有可复现步骤（信号一）→ 直接修",
     "triggerSource": "chief"
   },
   "sqlite": {
     "builds": [
       {
-        "id": "01a11761-ea42-7308-8d3c-67fad71274f9",
-        "withPlan": 1,
+        "id": "01a11a41-35ab-7c7a-939a-02e68527b15e",
+        "withPlan": 0,
         "triggerSource": "chief"
       }
     ],
     "steps": [
       {
-        "buildId": "01a11761-ea42-7308-8d3c-67fad71274f9",
-        "kind": "plan",
+        "buildId": "01a11a41-35ab-7c7a-939a-02e68527b15e",
+        "kind": "build",
         "status": "pending"
       }
     ]

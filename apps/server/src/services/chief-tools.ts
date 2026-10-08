@@ -140,6 +140,12 @@ function num(params: Params, key: string): number | undefined {
   }
   return v;
 }
+function bool(params: Params, key: string, fallback: boolean): boolean {
+  const v = params[key];
+  if (v === undefined || v === null) return fallback;
+  if (typeof v !== 'boolean') throw new HttpError(400, `invalid params.${key}: expected boolean`);
+  return v;
+}
 
 function json(result: unknown): string {
   return JSON.stringify(result ?? null);
@@ -683,12 +689,14 @@ export async function executeChiefTool(
     case 'run_builds': {
       // 单请求单 todo 直派；assignment 双槽（分派职责权重由 LLM 侧选 agentId，
       // 本层落库，r5 §3.3/§5）。
-      // #903（ADR 0013）：派发模式 = 团队设置 chief.dispatchWithPlan（默认
-      // true 先规划），服务端强制——工具面无 withPlan 参数，报文塞值不生效；
-      // 编排者不得单方撤销 confirm 闸（#892 实证 8/8 chief 直执行即此病灶）。
+      // #903（ADR 0014）：withPlan = chief 的逐次派发判定（判定权归
+      // chief，判据 = 系统提示词派发判定节的章程 prose，不进本层规则表）。
+      // 缺省 = 先规划（fail-safe：判不准的方向是「多问一次」，不是静默跳过
+      // confirm 闸）。dispatchReason 随响应回显——工具调用与响应都落
+      // transcript，判定因此可审计、可被用户就地一句话推翻（只影响该次）。
       const todoIds = strArr(params, 'todoIds');
-      const chiefRow = db.select().from(chief).where(eq(chief.id, ctx.chiefId)).get();
-      const withPlan = chiefRow?.dispatchWithPlan ?? true;
+      const withPlan = bool(params, 'withPlan', true);
+      const dispatchReason = optStr(params, 'dispatchReason') ?? null;
       // #682：chief 的机器杠杆——显式 machineId 覆盖；缺省（undefined）回落
       // 各 todo 的 machineId（startBuilds 缺省链）。null 形不收（LLM 想表达
       // 「自动」就省略参数；显式 null 会被缺省链回落到 todo 值而非「自动」，
@@ -735,7 +743,7 @@ export async function executeChiefTool(
           });
         }
       }
-      return json({ builds: started, withPlan, triggerSource: 'chief' });
+      return json({ builds: started, withPlan, dispatchReason, triggerSource: 'chief' });
     }
     case 'run_review': {
       const buildId = str(params, 'buildId');

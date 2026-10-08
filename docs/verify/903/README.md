@@ -1,32 +1,39 @@
-# #903 verify 证据索引 — chief 派发方式选择权（ADR 0013）
+# #903 派发判定 — live 验证证据（返工轮 / 第 2 轮）
 
-probe = `.claude/skills/verify-pacman/scripts/drive-903-dispatch-mode.mjs`（纯 live 栈，零
-daemon 零 LLM：假机器经真 machine wire 认领 chief 回合步 + relay `run_builds`）。
-栈坐标 = server 8795 / web 5277 / 独立 PACMAN_HOME scratch（全新库，seed 用户 Owner）。
-复跑配方：`launch.mjs`（换端口 env 覆写）→ 本 probe → `cleanup.mjs`。
+裁决正本 = `docs/adr/0014-chief派发判定-判定权归chief-判说可推翻.md`（返工轮，
+推翻第一轮 ADR 0013 的设置槽方案）。探针 =
+`.claude/skills/verify-pacman/scripts/drive-903-dispatch-judgment.mjs`，
+2026-10-08 live **12/12 PASS**（隔离栈 8795/5277，全新库，零 daemon 零 LLM，
+假机器走真 machine wire）。
 
-结果：**14/14 PASS**（`result.json` 的 checks 逐条对齐，不写约数）。
+第 1 轮证据（设置槽面：ChiefDispatchSelect 四截图 + PATCH 往返 + clamp 实证，
+14/14 PASS）随设置槽被 ADR 0014 D1 删除而整体失效，已从本目录移除——按提交
+`c16714b3` 可在 git 历史回查，其 raw 永久链（钉旧 SHA）仍可解析。
 
-## 证据与判读
+## 断言 → 文件对照
 
-| 文件 | 判读 |
-|---|---|
-| `01-settings-dispatch-default-plan.png` | 设置 Agent tab「派发方式」行在位，缺省回显「先规划」（ADR 0013 D2 默认档） |
-| `02-dispatch-menu-plan-selected.png` | popover 两行 listbox：先规划（选中 Check）/ 直接执行 |
-| `03-settings-dispatch-direct.png` | 真用户路径选「直接执行」→ chip 回显翻（live PATCH → invalidateAll 重取） |
-| `04-settings-dispatch-back-to-plan.png` | 翻回「先规划」→ chip 回显（第二写） |
-| `chief-envelope-direct.json` / `chief-envelope-plan.json` | GET /chief 回读：`chief.dispatchWithPlan` false / true（回读确认律） |
-| `claim-direct.json` | claim 载荷两样运行时实物：合成 systemPrompt 的派发模式行 = 「直接执行」且全文无 `withPlan:false`（D4）；`run_builds` 工具定义 properties = `[todoIds, assignment, machineId]`——withPlan 参数已除名（D3） |
-| `relay-direct.json` | relay `run_builds`（不带 withPlan 参数）→ 响应生效值 `withPlan:false` + `triggerSource:"chief"`；SQLite `build.withPlan=0` + 首步 `step.kind="build"`（直执行档实证） |
-| `claim-plan.json` | 翻回先规划后 claim：systemPrompt 派发模式行 = 「先规划」 |
-| `relay-plan-clamp.json` | **clamp 实证**：relay 报文对抗性塞 `withPlan:false` → 响应生效值仍 `withPlan:true`；SQLite `build.withPlan=1` + 首步 `step.kind="plan"`（按配置走 plan，编排者推翻不了设置） |
-| `result.json` | 14 checks 全 ok + 栈坐标 + 实体 id（team/project/agent/双 todo） |
+| 断言 | 裁决 | 实物 |
+|---|---|---|
+| S0 铺底（project + 三 todo） | — | `result.json` ids |
+| U1 Agent tab 无「派发方式」行、邻座机器/压缩模型行健在 | D1（不留哑控件） | `01-settings-agent-no-dispatch-row.png` |
+| A1 PATCH 单独 dispatchWithPlan → 400 | D1（槽死态） | `patch-reject-and-envelope.json` |
+| A2 PATCH 混发 → 200 且键被剥离、封套无 dispatchWithPlan | D1（契约面死态） | 同上 |
+| E1a systemPrompt 派发判定节：Mika 纪律原句 + 三信号 + 审阅关口恒在 + dispatchReason + 就地推翻只影响这一次；无 `withPlan:false` 写死指令、无设置合成残留 | D5/D3/D4 | `claim-e1.json`（判定节两行原文 + run_builds 定义） |
+| E1b run_builds 词表：withPlan + dispatchReason 在位、必填仅 todoIds | D1/D4 | 同上 |
+| E1c/E1d 缺省 → withPlan=true + reason null；build.withPlan=1 + 首步 plan | D2（fail-safe） | `relay-e1-default-plan.json` |
+| E2a/E2b 显式 false + 理由 → 响应 false（无 clamp）+ 理由原样回显；build.withPlan=0 + 首步 build | D1/D4 | `relay-e2-direct-reason.json` |
+| E3a/E3b 显式 true + 理由 → 回显；首步 plan | D1/D4 | `relay-e3-explicit-plan-reason.json` |
 
-## 与票面验收的对账
+## 复跑配方
 
-- 「选择权可配置且默认值有理由」→ U1/U3/U4 + A1/A2（设置面 + PATCH/GET 往返）；理由正本 = `docs/adr/0013-chief派发方式-选择权归人-服务端强制.md` D2。
-- 「改后 chief 派发按配置走 plan」→ E1（false 档走 build 步）+ E2（true 档走 plan 步）双档 SQLite 行级实证。
-- 「编排者不得单方撤销」→ E2b 对抗腿（报文塞 withPlan:false 不生效）。
+```sh
+env -u http_proxy -u https_proxy -u all_proxy \
+  VERIFY_REPO_ROOT=<worktree> VERIFY_PORT=8795 VERIFY_WEB_PORT=5277 \
+  node .claude/skills/verify-pacman/scripts/launch.mjs
+env -u http_proxy -u https_proxy -u all_proxy \
+  VERIFY_REPO_ROOT=<worktree> \
+  node .claude/skills/verify-pacman/scripts/drive-903-dispatch-judgment.mjs
+```
 
-fixture 面（设置行回显/清单/accept 律/互扰负向）由 `apps/web/e2e/chief-settings.spec.ts`
-的 #903 五测钉住（28/28 PASS，含全量回落 818/818）；本目录只管 live 真机面。
+撞端口先 `lsof -iTCP:8795 -sTCP:LISTEN` 查占用——占着的是别的车道就顺延端口，
+别杀。依赖全新库：重验 = 重 launch（launch 会清运行目录）。

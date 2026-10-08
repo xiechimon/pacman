@@ -1,4 +1,0 @@
-{
-  "stepId": "zUbylKvD1A8xaTn14rfuz",
-  "systemPromptDispatchLine": "- 派发模式（团队设置，服务端强制）：先规划——派发的任务先产出方案并停在「待确认」关口，等用户批准方案后才进入执行；run_builds 不收先规划/直接执行的选择，汇报派发结果时说明任务将停在方案确认。"
-}

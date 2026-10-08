@@ -2,9 +2,9 @@
   "relayResult": {
     "builds": [
       {
-        "id": "01a11761-e80c-7595-aa0c-03d0c0834fe9",
-        "todoId": "TvH9GNmJOxk4sZ7bKvpvz",
-        "withPlan": false,
+        "id": "01a11a41-3596-790f-8fb5-1e71967e2acb",
+        "todoId": "PoRTSZVcEt0eOEyUEZVDE",
+        "withPlan": true,
         "prevPhase": "todo",
         "triggerSource": "chief",
         "pinnedMachineId": null,
@@ -13,24 +13,25 @@
         "prUrl": null,
         "prNumber": null,
         "diffHash": null,
-        "createdAt": 1791393654796
+        "createdAt": 1791441843606
       }
     ],
-    "withPlan": false,
+    "withPlan": true,
+    "dispatchReason": null,
     "triggerSource": "chief"
   },
   "sqlite": {
     "builds": [
       {
-        "id": "01a11761-e80c-7595-aa0c-03d0c0834fe9",
-        "withPlan": 0,
+        "id": "01a11a41-3596-790f-8fb5-1e71967e2acb",
+        "withPlan": 1,
         "triggerSource": "chief"
       }
     ],
     "steps": [
       {
-        "buildId": "01a11761-e80c-7595-aa0c-03d0c0834fe9",
-        "kind": "build",
+        "buildId": "01a11a41-3596-790f-8fb5-1e71967e2acb",
+        "kind": "plan",
         "status": "pending"
       }
     ]

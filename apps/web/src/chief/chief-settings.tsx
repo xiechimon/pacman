@@ -11,9 +11,9 @@
 // 段;#770 起 providers 段已除,spec 11 §A10)落账口径见 chief-model-select.tsx
 // 文件头。#895 主力机槽(spec 21 A6) = Agent tab 新「机器」行
 // ChiefMachineSelect:live 选定 → PATCH chief machineId 槽(null = 清回
-// 自动),行形态沿 new-task 机器 chip 的 listbox 族。#903 派发方式槽
-// (ADR 0013) = Agent tab「派发方式」行 ChiefDispatchSelect(先规划/直接
-// 执行,服务端强制、选择权归人):live 选定 → PATCH chief dispatchWithPlan 槽。
+// 自动),行形态沿 new-task 机器 chip 的 listbox 族。#903(ADR 0014):
+// 派发不设槽——先规划/直接修由 chief 逐次派发自行判定(run_builds withPlan
+// + dispatchReason 回执),settings 无「派发方式」行。
 
 import {
   BRAND,
@@ -44,7 +44,6 @@ import type {
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, ChiefFaceDashed } from '../icons/index.js';
 import { ChiefAgentDialog, type ChiefAgentOption } from './chief-agent-dialog.js';
-import { ChiefDispatchSelect } from './chief-dispatch-select.js';
 import { type ChiefMachineOption, ChiefMachineSelect } from './chief-machine-select.js';
 import { ChiefModelSelect } from './chief-model-select.js';
 import { EditCharterDialog } from './edit-charter-dialog.js';
@@ -201,16 +200,6 @@ export function ChiefSettings({
   const pickMachine = live
     ? (machineId: string | null) => mutations.patchChief.mutate({ machineId })
     : undefined;
-  // #903 派发方式槽（ADR 0013，machineId 槽同构）：live 值 = chief 封套
-  // chief.dispatchWithPlan（缺省按默认档 true 读，加法契约）；选定 = PATCH
-  // chief dispatchWithPlan 槽，invalidateAll 重取回显，无本地乐观态。
-  // fixture 面 = ChiefContent.dispatchWithPlan 回显，无 mutation（accept 律）。
-  const dispatchValue = live
-    ? (chiefQ.data?.chief.dispatchWithPlan ?? true)
-    : (chief.dispatchWithPlan ?? true);
-  const pickDispatch = live
-    ? (dispatchWithPlan: boolean) => mutations.patchChief.mutate({ dispatchWithPlan })
-    : undefined;
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <header className="relative flex h-[57px] flex-none items-center">
@@ -331,20 +320,6 @@ export function ChiefSettings({
                   machines={machineOptions}
                   onPick={pickMachine}
                 />
-              </div>
-              {/* #903 派发方式槽（ADR 0013）：先规划/直接执行 = 团队级设置，
-                服务端强制（chief 工具面无 withPlan 参数）——决策面与绑定
-                Agent / 模型 / 机器同层（spec 21 N6 同构）。 */}
-              <div className={CARD_CLS}>
-                <div>
-                  <h3 className={CARD_TITLE_CLS}>{t('派发方式')}</h3>
-                  <p className={CARD_DESC_CLS}>
-                    {t(
-                      '总管派发任务时是否先出方案。「先规划」停在确认关口等你批准方案；「直接执行」跳过方案确认，完成后仍停在审阅关口。',
-                    )}
-                  </p>
-                </div>
-                <ChiefDispatchSelect value={dispatchValue} onPick={pickDispatch} />
               </div>
             </>
           )}

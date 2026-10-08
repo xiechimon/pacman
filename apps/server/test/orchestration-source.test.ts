@@ -13,8 +13,9 @@
 // B prompt 面
 //  B1 chief system prompt 含编排回合纪律：拆分粒度 = 核销次数；子卡 spec
 //     内嵌用户原文片段 + 兄弟任务交叉引用；单任务直派（run_builds）；
-//     派发模式（先规划/直接执行）按团队设置合成、不再写死（#903）；
-//     拆分时 close_todos 关原卡（父卡不引入，closed 不入看板四列）。
+//     派发判定（先规划/直接修）归 chief 逐次判断、判据 = 章程 prose
+//     （#903，ADR 0014）；拆分时 close_todos 关原卡（父卡不引入，
+//     closed 不入看板四列）。
 // C 格式面
 //  C1 落库的 sourceRef 与 shared orchestrationSourceRef 单源严格互逆
 //     （反解 = 编排会话 threadId，详情面板链回会话的消费位）。
@@ -325,8 +326,10 @@ describe('B prompt 面：编排回合拆分纪律（r14 §5.2 护栏进 system p
     expect(prompt).toContain('原文片段');
     expect(prompt).toContain('兄弟任务');
     expect(prompt).toContain('close_todos');
-    // #903：派发模式不再写死 withPlan:false——按团队设置合成，默认先规划。
-    expect(prompt).toContain('派发模式（团队设置，服务端强制）：先规划');
+    // #903（ADR 0014）：派发判定 = chief 逐次判断——静态章程 prose
+    // （判断纪律 + 可判信号），不再写死 withPlan:false 直执行指令。
+    expect(prompt).toContain('当信息会实质改变结果、执行方式、权限或安全时才问');
+    expect(prompt).toContain('判不准 → 先规划');
     expect(prompt).not.toContain('withPlan:false');
   });
 });

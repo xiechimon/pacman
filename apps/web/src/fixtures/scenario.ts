@@ -41,7 +41,6 @@ import {
   chiefMarkdown,
   chiefReady,
   chiefSettings,
-  chiefSettingsDirectDispatch,
   chiefSettingsMachines,
   chiefSettingsStaleModel,
   chiefStreaming,
@@ -359,9 +358,6 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #895 主力机槽（spec 21 A6）：Agent tab 机器 chip 的回显/清单钉面
       //（合成 scenario，101-stale-model 先例；live PATCH 写读归 verify 证据）
       '101-machines': chiefSettingsMachines,
-      // #903 派发方式槽（ADR 0013）：Agent tab 派发方式 chip 的「直接执行」
-      // 回显钉面（缺省面 101 = 先规划；合成 scenario，101-machines 先例）
-      '101-direct-dispatch': chiefSettingsDirectDispatch,
       '111': chiefReady,
       // #624 r5 113 流式面（回合进行中）：composer 占位 = steer canon 的钉面
       // （running 位；命名场景手法循 #499/#444 先例，流内容 [推断] 拼装）。

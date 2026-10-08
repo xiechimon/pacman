@@ -853,10 +853,6 @@ export interface ChiefContent {
    *  chief 封套 chief.machineId 投影）。缺省/null = 自动；值 = resources
    *  machines 行 id（命中行集才回显机器名，悬空 = 裸串回显）。 */
   machineId?: string | null;
-  /** #903 派发方式槽值（settings Agent tab 派发方式选择器回显位；live =
-   *  GET chief 封套 chief.dispatchWithPlan 投影）。缺省 = 默认档 true
-   *  （先规划，ADR 0013）；false = 直接执行。 */
-  dispatchWithPlan?: boolean;
   /** Model slot line when bound (`claude-sonnet-5 · 默认`); `n/a` else. */
   modelSlot?: string;
   /** #444 绑定 Agent 的头像位（总管 FAB 图标源）：语义走 Avatar 原语

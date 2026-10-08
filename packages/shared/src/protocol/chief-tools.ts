@@ -472,10 +472,12 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   // —— 执行侧 5 ——
   {
     name: 'run_builds',
-    // #903（ADR 0013）：withPlan 参数除名——派发模式 = 团队设置
-    // （chief.dispatchWithPlan），服务端强制，不是调用时选择。
+    // #903（ADR 0014）：withPlan = chief 的逐次派发判定（判定权归
+    // chief，无团队设置槽）；缺省 = 先规划（fail-safe：判不准的方向是
+    // 「多问一次」）。dispatchReason 把判定理由落进 transcript（回执可
+    // 审计、用户可就地一句话推翻）。直修只跳过方案确认——审阅闸恒在。
     description:
-      'Start builds for todos: assignment picks the executing agent per responsibility fit; plan-first vs direct execution follows the team dispatch-mode setting and cannot be overridden per call.',
+      'Start builds for todos: assignment picks the executing agent per responsibility fit; withPlan is your per-dispatch judgment (omit = plan first) — state the reason via dispatchReason; the review gate applies either way.',
     parameters: obj(
       {
         todoIds: idArr('Todo ids to start.'),
@@ -485,6 +487,14 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
             build: obj({ agentId: str('Executing agent id.') }),
           },
           [],
+        ),
+        withPlan: {
+          type: 'boolean',
+          description:
+            'true (default when omitted) = plan first, parking at the confirm gate; false = direct fix, skipping only plan confirmation (the review gate always stands). Omit when unsure.',
+        },
+        dispatchReason: str(
+          'Why plan-first or direct — recorded on the dispatch receipt so the user can audit or override the judgment.',
         ),
         machineId: str(
           'Optional pinned machine id for the builds; omit to inherit the todo machine (null = automatic).',

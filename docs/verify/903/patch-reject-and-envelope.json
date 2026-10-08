@@ -1,0 +1,26 @@
+{
+  "patchLone": {
+    "status": 400,
+    "body": {
+      "error": "invalid body: expected agent and/or charter and/or compactionModel and/or model and/or machineId"
+    }
+  },
+  "patchMixed": {
+    "status": 200
+  },
+  "chiefEnvelope": {
+    "id": "chief-Bc-teakMJ8lw61hB7EKqA-AxeqNl1_UajNixAhFvcS-",
+    "userId": "Bc-teakMJ8lw61hB7EKqA",
+    "teamId": "AxeqNl1_UajNixAhFvcS-",
+    "agent": {
+      "agentId": "EHdYqkNtdVuXYkWaGR10S"
+    },
+    "charter": "判定探针章程",
+    "compactionModel": null,
+    "model": null,
+    "machineId": null,
+    "lastTurnAt": null,
+    "createdAt": 1791441841671,
+    "tz": "Asia/Shanghai"
+  }
+}

@@ -156,6 +156,24 @@ describe('51 词表（raw 49 − 除名 1 + 新增 3 + 回摆 1）', () => {
     expect(params?.required).toEqual(['agentId', 'enabled']);
     expect(def?.replaySafe).toBeUndefined(); // 写件（grant/revoke 不可重放）
   });
+
+  // #903（ADR 0014）：withPlan 收回工具面 = chief 的逐次派发判定参数，
+  // dispatchReason = 判定理由（回执可审计）。失败方式：① 判定参数被标成
+  // 必填（缺省即判定的语义断——缺省必须先规划，不能 400）；② 参数除名
+  // 回潮（判定权又没了入口）；③ description 退回「不可 per-call 覆盖」
+  // 的旧设置 clamp 口径。
+  it('run_builds 定义形（#903）：withPlan/dispatchReason 皆可选判定参数，必填仅 todoIds', () => {
+    const def = CHIEF_REMOTE_TOOLS.find((t) => t.name === 'run_builds');
+    const params = def?.parameters as {
+      required?: string[];
+      properties?: Record<string, unknown>;
+    };
+    expect(params?.required).toEqual(['todoIds']);
+    expect(params?.properties?.withPlan).toBeDefined();
+    expect(params?.properties?.dispatchReason).toBeDefined();
+    expect(def?.description).toContain('per-dispatch judgment');
+    expect(def?.description).toContain('review gate');
+  });
 });
 
 describe('relay wire（bundle 提取原样，r5 §3.1 raw）', () => {
