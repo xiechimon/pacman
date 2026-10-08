@@ -437,10 +437,15 @@ function Row({
         </div>
       );
     case 'thinking':
+      // #1034 同源缺陷：本行曾只挂死类名（chat-row / chat-text 零规则）——
+      // 既无 flex 也无宽度上限，20px 头像槽（-mt-1 骑顶设计）直接压在文字上。
+      // 对齐 robot 行工具类（:419）：ROW_BASE 供 flex 骨架，chat-text 挂
+      // ml-[11px] 头文间距 + max-w-[68ch] min-w-0 宽度上限——上限是行内
+      // ThinkingRow 截断律（#772）能生效的前提。
       return (
-        <div className="chat-row chat-row--agent">
+        <div className={`${ROW_BASE} chat-row--agent ${margin}`} data-row="agent">
           <AgentRowAvatar agent={agent} />
-          <span className="chat-text">
+          <span className="chat-text -mt-px ml-[11px] max-w-[68ch] min-w-0 text-[15px] leading-[1.6] break-words text-(--foreground)">
             <ThinkingRow text={item.text} />
           </span>
         </div>
