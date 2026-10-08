@@ -18,18 +18,10 @@ import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AppSidebar } from '../board/app-sidebar.js';
 import type { SidebarSelected } from '../board/sidebar.js';
-import { Button } from '../components/ui/button.js';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft } from '../icons/index.js';
-import {
-  GHOST_SEG_BTN_CLS,
-  SEG_GROUP_CLS,
-  SEG_TAB_ACTIVE_CLS,
-  SEG_TAB_CLS,
-  SEG_TAB_DISABLED_CLS,
-  SEG_TAB_IDLE_CLS,
-} from './parts.js';
 
 export interface PageTab {
   id: string;
@@ -40,10 +32,12 @@ export interface PageTab {
 }
 
 /** Text-tab pill group (任务|文件 in the topbar, 基本信息|仓库|标签 in the
- *  settings column — r2 24b/24c share one markup). #946: role=tablist/tab +
- *  aria-selected 为选中态一级载体（#910 裁定 3：状态类断言归行为、载体改
- *  aria-*）；page-tab(s-group)/--active 类名留存（segmented-controls.spec
- *  跨域别名，皮肤已迁 SEG_* 配方）。 */
+ *  settings column — r2 24b/24c share one markup). registry Tabs 承载
+ *  （#980 裁决②④：手写分段壳退役，default 档 = base-nova 形态）：
+ *  role=tablist/tab、aria-selected、roving focus、disabled 全归 Base UI 原语；
+ *  page-tabs-group/page-tab 类名留存（segmented-controls.spec 跨域别名，
+ *  选中态载体 = data-active/aria-selected，#910 裁定 3）。本组无内容面板
+ *  （tab 值驱动消费页状态），只渲 List+Trigger。 */
 export function TabGroup({
   tabs,
   tab,
@@ -55,31 +49,24 @@ export function TabGroup({
 }) {
   const { t } = useI18n();
   return (
-    <div className={`page-tabs-group ${SEG_GROUP_CLS} pointer-events-auto`} role="tablist">
-      {tabs.map((item) => {
-        const active = tab === item.id;
-        const disabled = item.disabled === true;
-        return (
-          <Button
+    <Tabs
+      className="page-tabs-group pointer-events-auto gap-0"
+      value={tab}
+      onValueChange={(next) => onTab?.(String(next))}
+    >
+      <TabsList>
+        {tabs.map((item) => (
+          <TabsTrigger
             key={item.id}
-            variant="ghost"
-            role="tab"
-            aria-selected={active}
-            className={`page-tab ${SEG_TAB_CLS} ${GHOST_SEG_BTN_CLS} disabled:pointer-events-auto ${
-              active
-                ? `page-tab--active ${SEG_TAB_ACTIVE_CLS}`
-                : disabled
-                  ? SEG_TAB_DISABLED_CLS
-                  : SEG_TAB_IDLE_CLS
-            }`}
-            disabled={disabled}
-            onClick={() => onTab?.(item.id)}
+            value={item.id}
+            className="page-tab px-3"
+            disabled={item.disabled === true}
           >
             {t(item.label)}
-          </Button>
-        );
-      })}
-    </div>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 

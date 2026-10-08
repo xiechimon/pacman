@@ -1,16 +1,11 @@
-// pages 域共享配方（#946 per-face 清零）：原 pages.css 里被多面/多域消费的
-// 规则组以 utility 常量单源在此——域内消费点（shell TabGroup、schedules 频率
-// seg、project 文件 seg / 视图切换）与三个域外 segmented Tabs 消费点
-// （resources/providers-page、routes/team-page、routes/agent-detail-page，
-// 经 components/ui/tabs 的 segmented 档）共引同一份，不再有两套同款手搓壳。
-// 值 = 原 pages.css 规则的等值迁移（token 槽引用，spec/22 §1.7/1.8 + §3.1）；
-// 几何 r2 24b/24c 发丝环（1px border + 2px padding，chip 内浮）逐值保持。
-// tabs.tsx 的 segmented 档已随 #1003 退役（#982/#991 判决：手写皮肤档回
-// registry 原生 default/line 机制）：Tabs 承载的消费点走 default 档，皮肤
-// 全量由本文件常量承载，上游基类的穿透面（32px 行高、font-medium、
-// data-active 漆面）由常量内同 modifier 的中和段钉回原 .page-tab 正典值；
-// page-tabs-group/page-tab 类名仅存于 Button 承载（pages/shell.tsx topbar，
-// e2e 定位面），无 CSS 规则。
+// pages 域共享配方（#946 per-face 清零建；#1007 起 SEG_* 退役中）。
+// 域内消费点（shell TabGroup、schedules 频率 seg、project 文件 seg / 视图
+// 切换）与 routes/agent-detail-page 已迁 registry Tabs 件默认形态（#980
+// 裁决②④：手写发丝环分段壳是超出官网形态的皮肤通道，退役）；SEG_* 常量
+// 仅剩两个域外消费点（resources/providers-page、routes/team-page，归 L2
+// 车道迁移），迁完即删——本文件不再接受新消费者。
+// page-tabs-group/page-tab 类名留存于 registry Tabs 承载（e2e 定位面，
+// 选中态载体 = data-active/aria-selected，#910 裁定 3）。
 
 /** 分段组盒（原 .page-tabs-group / .sched-form-freq / .prj-files-seg /
  *  .prj-tasks-view 共用基）：30px 高 = 1 border + 2 pad + 24 chip + 2 pad +

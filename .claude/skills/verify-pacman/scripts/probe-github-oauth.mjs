@@ -25,7 +25,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from '@playwright/test';
+import { chromium, expect } from '@playwright/test';
 
 const SCRIPT_ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
 const ROOT = process.env.VERIFY_REPO_ROOT
@@ -147,12 +147,22 @@ const page = await browser.newPage({
 try {
   await page.goto(`${WEB}/app/project/new`, { waitUntil: 'load' });
   await page.locator('#prj-new-repo').click();
+  // #1007 载体迁:.prj-new-* 别名 #946 已退役,探针改语义载体(role 一级)。
   await page
-    .locator('.prj-new-repo-menu-row', { hasText: 'GitHub 仓库' })
+    .getByRole('menu', { name: '仓库' })
+    .getByRole('menuitemradio', { name: 'GitHub 仓库' })
     .click();
-  const auth = page.locator('.prj-new-gh-auth');
-  const authVisible = (await auth.textContent())?.trim() === '认证 GitHub';
-  const linkVisible = await page.locator('.prj-new-gh-link').isVisible();
+  // 认证钮 = #prj-new-repo 续作位(label「仓库」关联命名覆盖了按钮文案的
+  // 可及名,e2e project-new-github 同律钉 id + 文案判面)——探针同载体。
+  // 连接态首取在途 = 禁用占位(不闪认证钮)——等读面收敛再断言。
+  const auth = page.locator('#prj-new-repo');
+  await expect
+    .poll(() => auth.textContent(), { timeout: 8000 })
+    .toBe('认证 GitHub');
+  const authVisible = await auth.isVisible();
+  const linkVisible = await page
+    .getByRole('button', { name: '手动输入 owner/repo' })
+    .isVisible();
   check(
     authVisible && linkVisible,
     `UI:未认证点「GitHub 仓库」→ 认证钮(文案「认证 GitHub」)+ 手动兜底链接(实际 auth=${authVisible} link=${linkVisible})`,
@@ -161,7 +171,7 @@ try {
 
   if (!oauthConfigured) {
     await auth.click();
-    const err = page.locator('.prj-new-gh-error');
+    const err = page.getByRole('alert');
     await err.waitFor({ state: 'visible', timeout: 5000 });
     const errText = (await err.textContent()) ?? '';
     check(
@@ -174,13 +184,13 @@ try {
   }
 
   // 手动兜底 → input → 公开仓免认证降级路全链(填名 + 合法 ref → 提交跳项目页)
-  await page.locator('.prj-new-gh-link').first().click();
+  await page.getByRole('button', { name: '手动输入 owner/repo' }).click();
   const input = page.locator('#prj-new-repo');
   const inputOk = (await input.getAttribute('placeholder')) === 'owner/repo';
   check(inputOk, `UI:手动兜底链接 → 现状 owner/repo input(placeholder 实际 ${await input.getAttribute('placeholder')})`);
   await page.locator('#prj-new-name').fill('verify-gh-manual');
   await input.fill('xiechimon/pacman');
-  const submit = page.locator('.prj-new-submit');
+  const submit = page.getByRole('button', { name: '创建项目' });
   const enabled = await submit.isEnabled();
   check(enabled, 'UI:name + 合法 owner/repo(isGithubRepoRef 过闸)→ 创建钮放开');
   await submit.click();
