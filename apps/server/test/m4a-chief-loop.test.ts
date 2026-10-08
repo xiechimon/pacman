@@ -179,10 +179,13 @@ describe('M4a Chief 机器协议全环（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5�
     const todoRow = w.s.db.select().from(todoTable).where(eq(todoTable.id, created.id)).get()!;
     expect(todoRow.spec).toContain('补充信息（探测得出，非用户确认）：');
 
-    // —— relay run_builds：单 todo 直派 withPlan:false + triggerSource:chief + watch ——
+    // —— relay run_builds：单 todo 直派 + triggerSource:chief + watch ——
+    // #903（ADR 0014）：withPlan = chief 逐次派发判定（缺省先规划）。
+    // 本环测机器协议全环，显式传 false 保持直派语义。
     const runOut = (await w.relay(stepId, 'run_builds', {
       todoIds: [created.id],
       assignment: { build: { agentId: AGENT_ID } },
+      withPlan: false,
     })) as { builds: { id: string; withPlan: boolean; triggerSource: string }[] };
     expect(runOut.builds[0]!.withPlan).toBe(false);
     expect(runOut.builds[0]!.triggerSource).toBe('chief');

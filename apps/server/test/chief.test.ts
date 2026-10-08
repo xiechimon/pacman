@@ -400,6 +400,30 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
     expect(after.chief.model).toBeNull();
   });
 
+  // #903（ADR 0014）：派发设置槽已删——判定权归 chief（run_builds 的
+  // withPlan 逐次判定），服务端不再留常设槽。失败方式——① PATCH 单独
+  // dispatchWithPlan 仍被当槽受理（僵尸槽没拆干净）；② GET 封套仍投影该键
+  // （契约面残留，web 会重建哑控件）；③ 与合法槽混发时该键被落库。
+  test('PATCH /chief 不再受理 dispatchWithPlan：设置槽已删、封套无该键（#903）', async () => {
+    type Env = { chief: Record<string, unknown> };
+    // 单独发 = 五槽皆无 → refine 400（dispatchWithPlan 不再是槽位）。
+    const lone = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      dispatchWithPlan: false,
+    });
+    expect(lone.status).toBe(400);
+    // 与合法槽混发 → 200，但该键被 schema 剥离：封套不回显、不落库。
+    const withCharter = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      charter: '章程照常',
+      dispatchWithPlan: false,
+    });
+    expect(withCharter.status).toBe(200);
+    const patched = (await withCharter.json()) as Env;
+    expect(patched.chief.charter).toBe('章程照常');
+    expect('dispatchWithPlan' in patched.chief).toBe(false);
+    const got = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect('dispatchWithPlan' in got.chief).toBe(false);
+  });
+
   test('chief 步 claim 载荷消费 model 覆盖：覆盖在 → 覆盖值；null → 绑定 Agent 模型（#615）', async () => {
     // 机器面（machine-wire 同配方）：发行 key → Bearer key enroll 拿 machine
     // token → Bearer token claim。pending step 在队时 claim 立即返回。
@@ -529,6 +553,44 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
     expect(prompt).toContain('agents:'); // 团队资源清单
     expect(prompt).toContain('措辞→spec'); // 策略指引
   });
+
+  // #903（ADR 0014）：派发判定节 = 静态章程 prose（D5：判据不进代码
+  // 规则表、不按设置合成）。失败方式——① 提示词写死直执行指令（#892 的
+  // 8/8 病灶回归）；② 判定节仍按设置合成（设置槽已删，合成无据 = 哑分支）；
+  // ③ 判断纪律 / 三条可判信号 / 审阅闸恒在 / 回执可推翻，任一要素缺位。
+  test('systemPrompt 派发判定节：判断纪律 + 三条信号 + 审阅闸恒在 + 回执可推翻，静态不依赖设置（#903）', () => {
+    const deps = {
+      db: s.db,
+      hub: s.hub,
+      machineHub: s.machineHub,
+      user: s.user,
+      skillsDir: s.skillsDir,
+    };
+    const prompt = composeChiefSystemPrompt(deps, teamId);
+    // 判断纪律（multica 内置 Chief of Staff 指令原句，D5 出厂唯一纪律）。
+    expect(prompt).toContain('当信息会实质改变结果、执行方式、权限或安全时才问');
+    expect(prompt).toContain('否则自己决定，并说出你决定了什么');
+    // 三条可判信号（prose 非硬规则）。
+    expect(prompt).toContain('有可复现步骤或失败测试的缺陷 → 直接修');
+    expect(prompt).toContain('引入新能力、或改动跨包 → 先问');
+    expect(prompt).toContain('判不准 → 先规划');
+    // D3：直接修只跳过方案确认，审阅闸永远在。
+    expect(prompt).toContain('审阅关口恒在');
+    // D4：判定 + 说 + 可推翻（理由落 transcript 可审计；推翻只影响这一次）。
+    expect(prompt).toContain('dispatchReason');
+    expect(prompt).toContain('就地一句话推翻');
+    expect(prompt).toContain('只影响这一次');
+    // 病灶负向钉：不再写死直执行指令、不再按设置合成。
+    expect(prompt).not.toContain('withPlan:false');
+    expect(prompt).not.toContain('派发模式（团队设置');
+
+    // 静态面：翻用户章程不改判定节（判定纪律是出厂件，不是设置投影）。
+    patchChief(deps, teamId, { charter: '用户自己的章程' });
+    const after = composeChiefSystemPrompt(deps, teamId);
+    expect(after).toContain('用户自己的章程');
+    expect(after).toContain('当信息会实质改变结果、执行方式、权限或安全时才问');
+    expect(after).not.toContain('withPlan:false');
+  });
 });
 
 // —— AC r5 §3.2: 措辞→spec 三段变换（宿主机制：溯源落库）———————————————
@@ -617,26 +679,84 @@ describe('分派 + 单 todo 直派 + 双 Agent assignment（r5 §3.3/§3.4/§5�
     ]);
   });
 
-  test('run_builds 默认 withPlan:false 直派 + triggerSource:chief + assignment 落槽', async () => {
+  // #903（ADR 0014）：withPlan = chief 的逐次派发判定（工具面收回
+  // 参数，D1），缺省 = 先规划（D2 fail-safe：判不准的方向是「多问一次」，
+  // 不是静默跳过闸）。失败方式：① 缺省仍直执行（#892 的 8/8 病灶回归）；
+  // ② 显式 false 被顶回 true（旧设置 clamp 残留 = 判定权没还给 chief）；
+  // ③ dispatchReason 不回显（D4 审计面断：判定不可审计 = 换了个黑箱）。
+  test('run_builds 缺省 withPlan 走先规划：响应 withPlan=true + 首步=plan + triggerSource:chief + assignment 落槽（#903）', async () => {
     const todoRec = (await relay('create_todo', { projectId, title: '写文档', spec: 's' })) as {
       id: string;
     };
     const out = (await relay('run_builds', {
       todoIds: [todoRec.id],
       assignment: { build: { agentId: AGENT_ID } },
-    })) as { builds: { withPlan: boolean; triggerSource: string }[] };
-    expect(out.builds[0]!.withPlan).toBe(false); // 单请求单 todo 直派（跳过规划）
+    })) as {
+      builds: { withPlan: boolean; triggerSource: string }[];
+      withPlan: boolean;
+      dispatchReason: string | null;
+    };
+    expect(out.withPlan).toBe(true); // 缺省 = 先规划（fail-safe，D2）
+    expect(out.dispatchReason).toBeNull(); // 未给理由 → null 回显（不炸）
+    expect(out.builds[0]!.withPlan).toBe(true);
     expect(out.builds[0]!.triggerSource).toBe('chief');
     const row = s.db.select().from(todoTable).where(eq(todoTable.id, todoRec.id)).get()!;
     expect(row.assignment?.build?.agentId).toBe(AGENT_ID);
     expect(row.phase).toBe('queued');
-    // 首步 = 执行步（withPlan:false → build，非 plan）
+    // 首步 = 规划步（方案停在确认闸）
+    const steps = s.db
+      .select()
+      .from(stepTable)
+      .where(eq(stepTable.buildId, row.latestBuildId!))
+      .all();
+    expect(steps[0]!.kind).toBe('plan');
+  });
+
+  test('run_builds withPlan=false → chief 判定直接修：首步=build + dispatchReason 回显（#903）', async () => {
+    const todoRec = (await relay('create_todo', { projectId, title: '直接干', spec: 's' })) as {
+      id: string;
+    };
+    const out = (await relay('run_builds', {
+      todoIds: [todoRec.id],
+      assignment: { build: { agentId: AGENT_ID } },
+      withPlan: false,
+      dispatchReason: '缺陷有可复现步骤，信号一 → 直接修',
+    })) as {
+      builds: { withPlan: boolean }[];
+      withPlan: boolean;
+      dispatchReason: string | null;
+    };
+    expect(out.withPlan).toBe(false); // 判定权在 chief（D1），不再被 clamp
+    expect(out.dispatchReason).toBe('缺陷有可复现步骤，信号一 → 直接修'); // D4 审计面
+    expect(out.builds[0]!.withPlan).toBe(false);
+    const row = s.db.select().from(todoTable).where(eq(todoTable.id, todoRec.id)).get()!;
     const steps = s.db
       .select()
       .from(stepTable)
       .where(eq(stepTable.buildId, row.latestBuildId!))
       .all();
     expect(steps[0]!.kind).toBe('build');
+  });
+
+  test('run_builds withPlan=true 显式先规划 + 首步=plan（#903）', async () => {
+    const todoRec = (await relay('create_todo', { projectId, title: '新能力', spec: 's' })) as {
+      id: string;
+    };
+    const out = (await relay('run_builds', {
+      todoIds: [todoRec.id],
+      assignment: { build: { agentId: AGENT_ID } },
+      withPlan: true,
+      dispatchReason: '引入新能力，信号二 → 先规划',
+    })) as { builds: { withPlan: boolean }[]; withPlan: boolean; dispatchReason: string | null };
+    expect(out.withPlan).toBe(true);
+    expect(out.dispatchReason).toBe('引入新能力，信号二 → 先规划');
+    const row = s.db.select().from(todoTable).where(eq(todoTable.id, todoRec.id)).get()!;
+    const steps = s.db
+      .select()
+      .from(stepTable)
+      .where(eq(stepTable.buildId, row.latestBuildId!))
+      .all();
+    expect(steps[0]!.kind).toBe('plan');
   });
 
   test('双 Agent 分派：assignment.plan ≠ assignment.build 两槽独立落库（r5 §5）', async () => {
@@ -648,12 +768,11 @@ describe('分派 + 单 todo 直派 + 双 Agent assignment（r5 §3.3/§3.4/§5�
     await relay('run_builds', {
       todoIds: [todoRec.id],
       assignment: { plan: { agentId: AGENT2_ID }, build: { agentId: AGENT_ID } },
-      withPlan: true,
     });
     const row = s.db.select().from(todoTable).where(eq(todoTable.id, todoRec.id)).get()!;
     expect(row.assignment?.plan?.agentId).toBe(AGENT2_ID); // 规划 = 代码 Agent
     expect(row.assignment?.build?.agentId).toBe(AGENT_ID); // 执行 = 文档 Agent
-    // 首步 = 规划步（withPlan:true）
+    // 首步 = 规划步（withPlan 缺省 = 先规划，#903）
     const steps = s.db
       .select()
       .from(stepTable)
@@ -904,7 +1023,7 @@ describe('驳回回路 plan v2 + unified diff（r5 §4/02 §4.2）', () => {
     const out = (await relay('run_builds', {
       todoIds: [todoRec.id],
       assignment: { plan: { agentId: AGENT_ID } },
-      withPlan: true,
+      // withPlan 缺省 = 先规划（#903），无需报文参数。
     })) as { builds: { id: string }[] };
     const buildId = out.builds[0]!.id;
     // run_builds 已置 queued；模拟规划步成 → planning → confirm
