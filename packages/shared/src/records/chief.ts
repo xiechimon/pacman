@@ -217,7 +217,8 @@ export const CHIEF_ENTITY_REF_SCHEMES = ['agent', 'todo'] as const;
  * 不动 / null = 清空回默认）；`model` 槽 = 主模型覆盖长槽（#615 [设计]，
  * undefined = 不动 / null = 清空回绑定 Agent 继承）；`machineId` 槽 =
  * 主力机（#895 spec 21 A7 [设计]，undefined = 不动 / null = 清回自动）。
- * 五槽至少一位。 */
+ * 五槽至少一位。派发方式不设槽（#903，ADR 0014：判定权归 chief，
+ * run_builds 的 withPlan 逐次判定，不留常设设置面）。 */
 export const patchChiefBodySchema = z
   .object({
     agent: z

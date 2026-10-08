@@ -216,6 +216,8 @@ beforeAll(async () => {
   const dispatch = (todoId: string): StubResponse => ({
     toolCall: {
       name: 'run_builds',
+      // #903（ADR 0014）：withPlan = chief 逐次判定参数（缺省先规划），
+      // 本环测 wake 三触发全链，stub 显式传 false 保持 worker 直执行脚本语义。
       arguments: {
         todoIds: [todoId],
         withPlan: false,

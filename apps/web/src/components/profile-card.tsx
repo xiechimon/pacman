@@ -25,8 +25,14 @@
 // 同一份行盒配方——不再有两套行几何。
 
 import { cn } from 'cn';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { useI18n } from '../i18n/provider.js';
+import { SquarePen } from '../icons/index.js';
+import { Button } from './ui/button.js';
+// #1031 改名编辑器（Button/Input/SquarePen）与 #1005 Card 化（panel→Card）
+// 合并：皮肤只住 registry Card 一处，改名交互逻辑零分叉。
 import { Card } from './ui/card.js';
+import { Input } from './ui/input.js';
 
 /** 卡盒：overflow visible 保留——agent 资料页的模型菜单仍走 FloatingShell
  *  卡内锚定（select.tsx 退役 = #1010，波 2；Popover 化后随件摘除，语言
@@ -166,5 +172,106 @@ export function ProfileRow({
         {children}
       </span>
     </div>
+  );
+}
+
+/** 进输入态即聚焦。聚焦走 ref + effect 而非 autoFocus：biome 的
+ *  a11y/noAutofocus 在本仓是 error 档，composer / mention-picker 同法。
+ *  名称行（ProfileNameRow）与 agent 职责行（RoleRow）共用。 */
+export function useEditorFocus<T extends HTMLElement>(editing: boolean) {
+  const ref = useRef<T | null>(null);
+  useEffect(() => {
+    if (editing) ref.current?.focus();
+  }, [editing]);
+  return ref;
+}
+
+interface ProfileNameRowProps {
+  /** 当前名（显示态文本 + 编辑态预填值）。 */
+  value: string;
+  /** 提交回调（已过 trim + 非空 + 变更闸，收到的 next 一定是有效新名）。 */
+  onCommit: (next: string) => void;
+  /** 显示态值钮附加类（几何/皮肤 + e2e 锚别名，如 `.agent-name`）。 */
+  nameClassName?: string;
+  /** 编辑铅笔钮附加类（e2e 锚别名，如 `.agent-name-edit`）。 */
+  editClassName?: string;
+  /** 编辑态输入框附加类（几何/皮肤 + e2e 锚别名，如 `.agent-name-input`）。 */
+  inputClassName?: string;
+  /** 编辑态输入框 id（e2e 锚，如 `agent-name-input`）。 */
+  inputId?: string;
+  /** label 列附加类（e2e 锚别名，如 `.agent-field-label`）。 */
+  labelClassName?: string;
+}
+
+/** 名称行内编辑（模板单源，r3 §4 / r7 13：名称（行内编辑））——点文本或
+ *  铅笔进输入态，Enter 或失焦提交，Esc 放弃；空串/纯空白不算提交（trim 后
+ *  min(1)），未变更也不触发 onCommit。铅笔钮是图标-only，靠 aria-label 拿
+ *  可访问名（SquarePen 自带 aria-hidden）。
+ *
+ *  #1031：account 与 agent 详情两面共用本件——旧 account 名称行是纯文本 +
+ *  装饰 svg（无 button、无 onClick = 假可供性），本件把 agent 详情已接好的
+ *  那套（agent-detail.spec 钉死）提成模板，两面只经 props 注入各自的几何/
+ *  e2e 锚，交互逻辑零分叉。行高恒名称档（PROFILE_ROW_NAME_CLS，49px）。 */
+export function ProfileNameRow({
+  value,
+  onCommit,
+  nameClassName,
+  editClassName,
+  inputClassName,
+  inputId,
+  labelClassName,
+}: ProfileNameRowProps) {
+  const { t } = useI18n();
+  const [draft, setDraft] = useState<string | null>(null);
+  const inputRef = useEditorFocus<HTMLInputElement>(draft !== null);
+  if (draft === null) {
+    return (
+      <ProfileRow
+        className={PROFILE_ROW_NAME_CLS}
+        label={t('名称')}
+        labelClassName={labelClassName}
+      >
+        <Button variant="ghost" className={nameClassName} onClick={() => setDraft(value)}>
+          {value}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className={editClassName}
+          aria-label={t('编辑')}
+          onClick={() => setDraft(value)}
+        >
+          <SquarePen width={14} height={14} />
+        </Button>
+      </ProfileRow>
+    );
+  }
+  const commit = () => {
+    const next = draft.trim();
+    if (next !== '' && next !== value) onCommit(next);
+    setDraft(null);
+  };
+  return (
+    <ProfileRow
+      className={PROFILE_ROW_NAME_CLS}
+      label={t('名称')}
+      labelClassName={labelClassName}
+      valueClassName={PROFILE_VALUE_GROW_CLS}
+    >
+      {/* 名称编辑进 Input 原语；几何/皮肤随消费点注入的 inputClassName；focus
+          行为收敛底座环（#849 方向），不再是 UA 默认 outline。 */}
+      <Input
+        id={inputId}
+        ref={inputRef}
+        className={inputClassName}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') commit();
+          if (event.key === 'Escape') setDraft(null);
+        }}
+      />
+    </ProfileRow>
   );
 }

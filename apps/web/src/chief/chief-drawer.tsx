@@ -820,7 +820,7 @@ export function ChiefDrawer({
                               fallback="/avatar-user.png"
                             />
                           </span>
-                          <div className={MSG_COL_CLS}>
+                          <div className={MSG_COL_CLS} data-testid="chief-msg-col">
                             {/* #742：live 用户行的 markdown 槽（详情页用户行
                                 transcript.tsx #612 同款配方）——经共用块级解析器
                                 渲染，todo 提及 chip / 粗体 / 行内 code / 围栏不再
@@ -883,11 +883,16 @@ export function ChiefDrawer({
                       );
                     // #955 思考段行：与 robot 行同槽（绑定身份脸 / 未绑定虚线 chief 字形）+
                     // 折叠式思考体，无 foot（思考不参与复制/恢复）。
+                    // #1033：本行与工具行是 chief.css 退役（#950）后仅存的两处
+                    // 死类名残留——骨架接回 robot/streaming 行同一套原语
+                    // （AVATAR_IMG_CLS / AVATAR_SLOT_CLS / MSG_COL_CLS，行几何
+                    // mt-3.5 flex gap-2.5）。`chief-msg` 类名保留：e2e 用它当
+                    // 选择器（chief-stream-markdown.spec F-R19/R20）。
                     if (item.kind === 'thinking')
                       return (
-                        <div key={i} className="chief-msg">
+                        <div key={i} className="chief-msg mt-3.5 flex gap-2.5">
                           {chief.bound && chief.agent ? (
-                            <span className="chief-avatar chief-avatar--img">
+                            <span className={AVATAR_IMG_CLS}>
                               <SeededAvatar
                                 className="size-6"
                                 name={chief.agent.displayName}
@@ -896,20 +901,21 @@ export function ChiefDrawer({
                               />
                             </span>
                           ) : (
-                            <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
+                            <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
                           )}
-                          <div className="chief-msg-col">
+                          <div className={MSG_COL_CLS} data-testid="chief-msg-col">
                             <ThinkingRow text={item.text} />
                           </div>
                         </div>
                       );
                     // #955 流式期工具行：mapper 只在回合在飞（activeRun 非空）时
                     // 产出，与文本段按序交错；收口后回到 robot 行的折叠面。
+                    // #1033：同思考行——骨架接回原语，`chief-msg` 类名保留。
                     if (item.kind === 'tool')
                       return (
-                        <div key={i} className="chief-msg">
+                        <div key={i} className="chief-msg mt-3.5 flex gap-2.5">
                           <span className="w-6 shrink-0" aria-hidden="true" />
-                          <div className="chief-msg-col">
+                          <div className={MSG_COL_CLS} data-testid="chief-msg-col">
                             <ToolActivityRow
                               name={item.label}
                               {...(item.startedAt !== undefined
@@ -1026,7 +1032,7 @@ export function ChiefDrawer({
                         {identity ?? (
                           <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
                         )}
-                        <div className={MSG_COL_CLS}>
+                        <div className={MSG_COL_CLS} data-testid="chief-msg-col">
                           {item.markdown != null ? (
                             // #650: live 回复原文走共用块级解析器（chat-markdown，
                             // transcript robot 行 #469 同律）——bold / 行内 code /

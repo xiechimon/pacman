@@ -17,6 +17,7 @@ import {
 import { createClaudeCodeBackend } from './backend/claude-code.js';
 import { createPiBackend, piSessionPolicyLine } from './backend/pi.js';
 import { type ClaudeCodeAuthProbe, probeClaudeCodeAuth } from './claude-code-auth.js';
+import { type ClaudeBinInfo, probeClaudeBin } from './claude-code-bin.js';
 import { readClaudeCodeReport } from './claude-code-models.js';
 import type { DaemonConfig } from './config.js';
 import { StepJournal } from './journal.js';
@@ -125,6 +126,34 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     logger.machine(piSessionPolicyLine(process.env));
   }
 
+  // —— #1050：claude 可用性的两个事实位（二进制 + 凭据态）——
+  // 二进制：PATH 解析 + `--version`（2s 上界），起动时探一次并缓存。它是
+  // 「这台机器装没装 claude」的判据——没有它，providers 页的 installed 只
+  // 等于「settings.json 在」，两个方向都会说谎（配置在而二进制缺失 / 装好
+  // 了却没写配置）。探到的路径同时钉给 SDK（pathToClaudeCodeExecutable），
+  // 免掉「探的二进制」与「执行的二进制」不是一个。
+  const claudeBin: ClaudeBinInfo | null = await probeClaudeBin();
+  logger.machine(
+    claudeBin
+      ? `claude binary: ${claudeBin.path}${claudeBin.version !== null ? ` (${claudeBin.version})` : ''}`
+      : 'claude binary: not found on PATH',
+  );
+  // 凭据态：探针结果缓存在这里，随下一拍 presence 上行。不进 presence 节拍
+  // ——30s 一次 spawn `claude auth status` 是纯浪费（登录态分钟级才变），
+  // 节奏 = 起动一次 + 每个 claude-code 步前一次（现状）。
+  let claudeAuth: ClaudeCodeAuthProbe | null = null;
+  const probeAuthAndRemember = async (): Promise<ClaudeCodeAuthProbe> => {
+    const probe = await (opts.claudeCodeAuthProbe ?? probeClaudeCodeAuth)();
+    claudeAuth = probe;
+    return probe;
+  };
+  const claudeReport = () =>
+    readClaudeCodeReport(undefined, {
+      bin: claudeBin,
+      ...(claudeAuth !== null ? { auth: claudeAuth } : {}),
+    });
+  claudeAuth = await probeAuthAndRemember();
+
   // —— per-step 后端解析 registry（spec 17 A3：runner 的 backendFor 唯一
   // 分叉，此处供解析目标）——claude-code 后端惰性初始化：首 runtime 步才
   // 构造（零 claude 步的机器不付 SDK 构造/扫描成本），canon 行
@@ -146,6 +175,9 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
         // 缺凭据失败文案的「哪台机器」位（#867 T6；机器名 = 注册/上线序列里
         // 那一个，与 machines 页显示同值）。
         machineName: config.name,
+        // #1050 路径单源：探到的绝对路径钉给 SDK，免掉「探的二进制」与
+        // 「执行的二进制」不是一个（PACMAN_CLAUDE_BIN 此前只喂 auth 探针）。
+        ...(claudeBin !== null ? { executablePath: claudeBin.path } : {}),
       });
     }
     return claudeBackend;
@@ -183,7 +215,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       teamId: config.teamId,
       name: config.name,
       cliVersion: DAEMON_VERSION,
-      claudeCode: readClaudeCodeReport(),
+      claudeCode: claudeReport(),
     });
     machineJson = {
       machineId: enrolled.machineId,
@@ -197,7 +229,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   inMemoryToken = machineJson.token;
   const machineId = machineJson.machineId;
 
-  await client.presence({ cliVersion: DAEMON_VERSION, claudeCode: readClaudeCodeReport() });
+  await client.presence({ cliVersion: DAEMON_VERSION, claudeCode: claudeReport() });
   logger.raw(`Online (machineId=${machineId}); polling ${config.serverUrl}`);
 
   // 闲置防睡（darwin caffeinate -i；平台命令表 spawn，01 §4.3）。
@@ -408,7 +440,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   // —— presence 心跳（并行失败不退出，r3 §1.5）——
   const presenceTimer = setInterval(() => {
     client
-      .presence({ cliVersion: DAEMON_VERSION, claudeCode: readClaudeCodeReport() })
+      .presence({ cliVersion: DAEMON_VERSION, claudeCode: claudeReport() })
       .catch((err: unknown) => {
         logger.machine(`presence failed: ${err instanceof Error ? err.message : String(err)}`);
       });
@@ -434,7 +466,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       stopRequests,
       // #867 T6：runtime 步凭据预检（机器名进失败文案；探针缺省 = 真 CLI）。
       machineName: config.name,
-      claudeCodeAuthProbe: opts.claudeCodeAuthProbe ?? probeClaudeCodeAuth,
+      claudeCodeAuthProbe: probeAuthAndRemember,
       ...(opts.heartbeatIntervalMs !== undefined
         ? { heartbeatIntervalMs: opts.heartbeatIntervalMs }
         : {}),
