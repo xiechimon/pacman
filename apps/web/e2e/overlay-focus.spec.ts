@@ -7,8 +7,8 @@ import { expect, type Page, test } from '@playwright/test';
 //         ring-ring/50，#982 判决回官方形）；仍带 #388 per-face outline 配方
 //         的面（sidebar 行钮等）保持旧环，其退役归波 1 域车道——正向断言因此
 //         配方无关（expectVisibleRing），只钉「换皮，不是删皮」。
-//   #10 — /app/schedules 新建定时弹层升级全屏族（#656 起壳 = FloatingShell，
-//         入场 = tw-animate-css fade）：scrim 盖全视口（含 sidebar——旧 z auto
+//   #10 — /app/schedules 新建定时弹层全屏族（#1007 起壳 = registry Dialog，
+//         入场 = registry fade-in）：scrim 盖全视口（含 sidebar——旧 z auto
 //         被 sidebar z1 压过，阴影只盖右 pane）、Esc 关、背板点击关。
 // Fixture 面（r3-92 冻结开屏）承载弹层断言：关闭 = 局部 UI 态，重载还原。
 
@@ -112,17 +112,17 @@ test.describe('#15 focus ring收编', () => {
   });
 });
 
-// #1008 重钉（#983 判决：居中 fixed 模态族 → registry Dialog；原型实审裁决 3：
-// 可见背板 + registry 动效默认赢）：.sched-form-overlay / .sched-form-close
-// 两个手写别名随壳退役——载体换 registry slot（dialog-overlay / dialog-close），
-// 进场机制断言从「computed animation-name=enter」改钉 animate-in 载体类
-// （registry duration-100 的进场窗太短，不足以竞态 computed 值；机制真值 =
-// tw-animate-css 载体在场 + .overlay-mount 旧机制恒零；几何/动效数值面归
-// probe:dump 对账）。
-test.describe('#10 schedules 新建定时弹层 = registry Dialog 全屏族（#1008 族拆）', () => {
+// #1007（wave 1 L4）重钉：新建定时弹层从 FloatingShell 全屏族迁 registry
+// Dialog 直组（#983 居中 fixed 模态族判决）——scrim 载体 = DialogOverlay
+// （data-slot=dialog-overlay），入场 = registry fade-in（duration-100），
+// 关闭四路（Esc/背板/X/取消）语义保持；X 钮 aria-label=t('关闭')（消费点
+// 自携 DialogClose，registry 内建钮 sr-only 文案是英文硬编码）。
+test.describe('#10 schedules 新建定时弹层 = registry Dialog 全屏族（fade-in）', () => {
+  const overlay = (page: Page) => page.locator('[data-slot="dialog-overlay"]');
+
   test('scrim covers the full viewport — sidebar included', async ({ page }) => {
     await page.goto(SCHED);
-    await expect(page.locator('[data-slot="dialog-overlay"]')).toBeVisible();
+    await expect(overlay(page)).toBeVisible();
     const covers = await page.evaluate(() => {
       // a point deep inside the sidebar, far from the centered panel
       const el = document.elementFromPoint(100, 400);
@@ -133,35 +133,31 @@ test.describe('#10 schedules 新建定时弹层 = registry Dialog 全屏族（#1
 
   test('Esc closes the overlay', async ({ page }) => {
     await page.goto(SCHED);
-    const overlay = page.locator('[data-slot="dialog-overlay"]');
-    await expect(overlay).toBeVisible();
+    await expect(overlay(page)).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(overlay).toBeHidden();
-    await expect(page.getByRole('dialog', { name: '新建定时' })).toBeHidden();
+    await expect(overlay(page)).toBeHidden();
   });
 
-  test('backdrop click closes; entry rides the registry animate-in carrier', async ({ page }) => {
+  test('backdrop click closes; entry rides the registry fade-in', async ({ page }) => {
     await page.goto(SCHED);
-    const overlay = page.locator('[data-slot="dialog-overlay"]');
-    await expect(overlay).toBeVisible();
-    // registry DialogOverlay 的进场机制 = data-open:animate-in + fade-in-0
-    // （tw-animate-css 载体类即机制证据；旧 FloatingShell group 门控退役）。
-    await expect(overlay).toHaveClass(/animate-in/);
-    await expect(overlay).toHaveClass(/fade-in-0/);
-    await expect(page.locator('.overlay-mount')).toHaveCount(0);
+    const scrim = overlay(page);
+    await expect(scrim).toBeVisible();
+    // registry DialogOverlay: data-open:animate-in data-open:fade-in-0 —
+    // tw-animate-css 的 animate-in 单 keyframe 名 = enter（fade 幅度走
+    // --enter-fade 变量），与 #656 期 scrim 同机制。
+    await expect(scrim).toHaveCSS('animation-name', 'enter');
     // scrim far from the 488-wide centered panel
     await page.mouse.click(80, 80);
-    await expect(overlay).toBeHidden();
+    await expect(scrim).toBeHidden();
   });
 
   test('X and 取消 close the fixture face too (no dead buttons)', async ({ page }) => {
     await page.goto(SCHED);
     await page.locator('.sched-form-cancel').click();
-    await expect(page.locator('[data-slot="dialog-overlay"]')).toBeHidden();
+    await expect(overlay(page)).toBeHidden();
 
     await page.goto(SCHED);
-    // registry DialogContent 自带关闭钮（旧 .sched-form-close 手写 X 退役）。
-    await page.locator('[data-slot="dialog-content"] [data-slot="dialog-close"]').click();
-    await expect(page.locator('[data-slot="dialog-overlay"]')).toBeHidden();
+    await page.getByRole('button', { name: '关闭' }).click();
+    await expect(overlay(page)).toBeHidden();
   });
 });

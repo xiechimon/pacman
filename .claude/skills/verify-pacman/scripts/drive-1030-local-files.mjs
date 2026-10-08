@@ -223,7 +223,7 @@ try {
   await shot('A2-local-file-viewer.png');
   check(true, '浏览器:点文件行 → 查看器出 README 内容(标记行在屏)');
 
-  await page.getByRole('button', { name: '历史', exact: true }).click();
+  await page.getByRole('tab', { name: '历史', exact: true }).click();
   await page.getByText('init verify-1030 local').waitFor({ timeout: 15_000 });
   await shot('A3-local-history.png');
   check(true, '浏览器:历史 seg → 提交行在屏');
@@ -250,7 +250,7 @@ try {
   await reasonLine.waitFor({ timeout: 10_000 });
   await shot('C1-local-unreachable-degradation.png');
   check(true, '浏览器:删仓后 reload → 主行「本地仓库当前无法读取。」+ reason 分译「路径不存在」');
-  const paneGone = (await page.getByRole('button', { name: '历史', exact: true }).count()) === 0;
+  const paneGone = (await page.getByRole('tab', { name: '历史', exact: true }).count()) === 0;
   check(paneGone, '浏览器:降级态不渲染 FilesPane(不空树、无历史假面)');
 
   const degradedTree = await api('GET', `/api/projects/${localId}/tree`);

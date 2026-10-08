@@ -50,8 +50,8 @@
     },
     "dialog-shell.tsx": {
       "kind": "adapter",
-      "reason": "#425 B1: API-identical shell over shadcn/Base UI Dialog replacing the hand-rolled overlay mechanism (#418 comparison matrix); 11 consumer sites unchanged.",
-      "hash": "f39024b851e301e7bf4f8d1256fec454de6b7012d7366167d44a58f7a227d97f"
+      "reason": "#983 verdict / map #980 (ruling 2/4): zero-skin adapter over the registry dialog item — regular faces compose Dialog/DialogContent/DialogHeader/DialogTitle/DialogFooter (registry defaults win: panel/overlay skin, motion, close button all come from dialog.tsx), keeping only the repo behavior contracts as semantic mapping (#193 three-segment cap via layout classes + dialog-head/body/foot testids, #389 finalFocus, #73 retained-mount open flag, #318 layered dismiss, #68 family close law via native dismiss, width as a layout position). The viewportRoot and bare modes stay on the legacy direct-primitive mechanism unchanged — they are the #983 adapter-boundary pressure points whose surfaces belong to the L5 lane (#1008) and whose fate is ruled at that lane's prototype review; zIndex/onBackdropClick/backdropClassName serve only those two modes (#1006).",
+      "hash": "4f9b8042ecf9e2a5981b77dbc329ab9f9e43bcb035266ae8fa03fbde6ef6decd"
     },
     "dialog.tsx": {
       "kind": "registry",
@@ -116,8 +116,8 @@
       "kind": "registry",
       "upstreamItem": "popover",
       "status": "deviated",
-      "reason": "#733 single z ladder (z-50 → z-(--z-dialog), a repo overlay-architecture slot, not skin); #805 scale-fade motion retired to the upstream default (#991 Q9: motion is part of the base-nova form). #1008 anchor prop exposed for call-site positioning (dir-browser dock, project-new-page gh picker — the #454 dropdown-menu precedent).",
-      "hash": "a6cef66e3babb75c78fade085c6b2238f12227ecf54aea864c38d7ec0e554fbc"
+      "reason": "#733 single z ladder (z-50 → z-(--z-dialog), a repo overlay-architecture slot, not skin); #805 scale-fade motion retired to the upstream default (#991 Q9: motion is part of the base-nova form).",
+      "hash": "67acbc37d16288c560eb8187d433c2cbbb767062e99d08705e606ff1689a77e1"
     },
     "seeded-avatar.tsx": {
       "kind": "adapter",
