@@ -10,6 +10,13 @@
 // 唯一行「删除」沿 DELETE /api/schedules/:id 全链（route/service/web mutation
 // 均已建、此前无 UI 入口）；删除走 DeleteConfirm 家族确认弹层。fixture 面
 // 删除走 deletions.ts 覆面（session 局部），live 面走 mutation。
+// #1037 三层收口（「看起来可点的东西，点下去必须有可解释的结果」）：
+//   a. fixture 面不再有哑按钮——顶栏/空态两个新建入口、频率 tab、保存全部
+//      接真 handler；保存走会话创建覆面（deletions.ts 同律，重载还原）。
+//   b. 项目/任务/机器三行改静态展示行：r2 §6.6 只登记参考站预选值、picker
+//      交互未观测，ChevronRight 可供性暗示随假行一并移除。
+//   c. 对话框收编 DialogShell 家族律容器（封顶 + body 内滚 + footer 钉底），
+//      自组裸 DialogContent 的第三套容器退役。
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useApiMutations, useProjects, useSchedules, useTodos } from '../api/hooks.js';
@@ -17,14 +24,7 @@ import { mapSchedules, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { Card } from '../components/ui/card.js';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../components/ui/dialog.js';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,21 +43,17 @@ import { Select } from '../components/ui/select.js';
 import { StatusChip } from '../components/ui/status-chip.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { toastError } from '../components/ui/toaster.js';
-import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
-import type { FixtureSet, ScheduleRecord } from '../fixtures/records.js';
+import {
+  markDeleted,
+  markScheduleCreated,
+  withCreatedSchedules,
+  withoutDeleted,
+} from '../fixtures/deletions.js';
+import type { ScheduleRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
-import {
-  ChevronRight,
-  Clock,
-  EllipsisVertical,
-  Lock,
-  PlusSmall,
-  Server,
-  Trash2,
-  X,
-} from '../icons/index.js';
+import { Clock, EllipsisVertical, Lock, PlusSmall, Server, Trash2 } from '../icons/index.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { PHASE_UI } from '../phase.js';
 import { PAGE_COL_CLS } from './parts.js';
@@ -100,8 +96,11 @@ const monthDay = (ts: number, t: TFunc) => {
 const dayWord = (ts: number, now: number, t: TFunc) =>
   monthDay(ts, t) === monthDay(now, t) ? t('今天') : monthDay(ts, t);
 
+/** 频率档（wire kind 同型）。 */
+type ScheduleKind = ScheduleRecord['kind'];
+
 /** 频率 tab words (02 §9.2 canon order). */
-const FREQ_LABEL: Record<ScheduleRecord['kind'], string> = {
+const FREQ_LABEL: Record<ScheduleKind, string> = {
   hourly: '每小时',
   daily: '每天',
   weekly: '每周',
@@ -121,12 +120,15 @@ const RUN_WORD: Record<ScheduleRecord['kind'], string> = {
 };
 
 /** 表单行盒（项目/任务/机器 静息展示行）：36 高带框行，registry 几何
- *  （rounded-lg + border-input，input 族同款描边词汇）；布局位自持。 */
-const FORM_ROW_CLS = 'flex h-9 items-center justify-between rounded-lg border border-input px-3';
+ *  （rounded-lg + border-input，input 族同款描边词汇）；布局位自持。
+ *  sched-form-row 别名 = #1037 e2e 跨域句柄（行结构读数/截断钉）。 */
+const FORM_ROW_CLS =
+  'sched-form-row flex h-9 items-center justify-between rounded-lg border border-input px-3';
 
-/** 行右值槽：13/20 字改走 registry text-sm；chevron muted 墨。 */
-const FORM_ROW_VALUE_CLS =
-  'flex min-w-0 items-center gap-1.5 text-sm text-foreground [&_svg]:flex-none [&_svg]:text-muted-foreground';
+/** 行右值槽：13/20 字改走 registry text-sm。#1037：chevron 与其 muted 墨
+ *  退役（假行不再读作 picker），值单行截断——超长不可断词（真用户数据形态）
+ *  不得撑爆 488 面板。 */
+const FORM_ROW_VALUE_CLS = 'min-w-0 truncate text-sm text-foreground';
 
 /** 时/分/日期选择盒（#946 建局部壳；#952 回收进共享 Select 件——className
  *  透传位已落件上，本面几何走 triggerClassName/menuClassName 两位）：皮肤 =
@@ -255,163 +257,154 @@ function ScheduleCard({
 }
 
 /** r3 92/92b dialog. Field values ride the fixture (project + first todo);
- *  the open tab is the scenario's capture state. M5 live 面：`live` 绑定使
- *  tab/时/分受控、保存接真 mutation。
- *  #983 判决执行（居中 fixed 模态族 → Dialog）：registry Dialog 直组——
- *  scrim/居中/进出场动效/X 关闭钮全归件默认；Esc / 背板点击 / X / 取消
- *  四路关闭语义保持（Base UI 原语承载，家族律 #67/#68 的机制位）。
- *  open/onClose 由页面持有：live 面 = formOpen 真值，fixture 冻结
- *  开屏面 = 局部 UI 态（关闭不销毁 scenario，重载还原——deletions.ts
- *  覆面同律）。 */
+ *  the open tab is the scenario's capture state. M5 live 面：受控 tab/时/分、
+ *  保存接真 mutation。
+ *  #983 判决（居中 fixed 模态族 → Dialog）；#1037 收编 DialogShell 零皮肤
+ *  适配层——家族律容器整层归壳：封顶 max-h = 100vh-48、dialog-body 真滚动
+ *  区、footer 钉底、#389 焦点回陷、Esc/背板/X/取消 四路关闭（Base UI 原语
+ *  承载，#67/#68 机制位）、X 钮 aria-label=t('关闭')。本面只余 488 宽度
+ *  layout 位与内容；自组裸 DialogContent 的第三套容器退役（票面 c 层：旧面
+ *  无封顶无滚动，900×420 实测面板 485px 上下溢出、保存钮出视口）。
+ *  全受控：kind/时/分/日期与 onSave 一律由页面传入——live 与 fixture 两面
+ *  都有真 handler，本组件内不存在 `live ? handler : undefined` 的死面分支
+ *  （票面 a 层主因）。open/onClose 由页面持有：live 面 = formOpen 真值，
+ *  fixture 面 = 冻结开屏（scenario.scheduleForm）或用户点开，关闭不销毁
+ *  scenario，重载还原——deletions.ts 覆面同律。 */
 function ScheduleForm({
   kind,
-  fixture,
+  onKind,
+  hour,
+  onHour,
+  minute,
+  onMinute,
+  date,
+  onDate,
+  todo,
+  repo,
   open,
   onClose,
-  live,
+  onSave,
 }: {
-  kind: 'hourly' | 'daily' | 'weekly' | 'once';
-  fixture: FixtureSet;
+  kind: ScheduleKind;
+  onKind: (kind: ScheduleKind) => void;
+  hour: string;
+  onHour: (hour: string) => void;
+  minute: string;
+  onMinute: (minute: string) => void;
+  /** 日期档回显值；null = 未选过，落唯一候选 今天（#1037：旧
+   *  onPick={() => undefined} 写死空操作退役——选择即回显）。 */
+  date: string | null;
+  onDate: (date: string) => void;
+  todo: { seqNum: number; title: string } | undefined;
+  repo: string;
   open: boolean;
   onClose: () => void;
-  live?: {
-    hour: string;
-    minute: string;
-    todo: { seqNum: number; title: string } | undefined;
-    repo: string;
-    onKind(kind: 'hourly' | 'daily' | 'weekly' | 'once'): void;
-    onHour(hour: string): void;
-    onMinute(minute: string): void;
-    onSave(): void;
-  };
+  onSave: () => void;
 }) {
   const { t } = useI18n();
-  // #656：Esc 归 FloatingShell（Base UI layer 栈），旧 useEscapeClose 退役。
-  // 时/分现在是受控选择器（XMON-75），fixture 面没有后端，落局部态承载「选了
-  // 就回显」——live 面照旧走 live.hour/onHour。
-  const [fixtureHour, setFixtureHour] = useState('09');
-  const [fixtureMinute, setFixtureMinute] = useState('00');
-  const hour = live ? live.hour : fixtureHour;
-  const minute = live ? live.minute : fixtureMinute;
-  const onHour = live ? live.onHour : setFixtureHour;
-  const onMinute = live ? live.onMinute : setFixtureMinute;
-  const todo = live ? live.todo : fixture.todos[0];
-  const repo = live ? live.repo : (fixture.project?.repoName ?? '');
   return (
-    <Dialog
+    <DialogShell
+      title={t('新建定时')}
       open={open}
-      onOpenChange={(next: boolean) => {
-        if (!next) onClose();
-      }}
-    >
-      {/* 关闭钮自携（aria-label 走 t('关闭')——registry 内建钮的 sr-only
-          文案是英文硬编码，i18n 语义映射归消费点；形态与内建钮逐类同形，
-          L3 dialog-shell 同款手法）。 */}
-      <DialogContent className="w-[488px] sm:max-w-[488px]" showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>{t('新建定时')}</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          <div className={FORM_ROW_CLS}>
-            <span className="text-sm leading-5 text-muted-foreground">{t('项目')}</span>
-            <span className={FORM_ROW_VALUE_CLS}>
-              {repo}
-              <ChevronRight width={12} height={12} />
-            </span>
-          </div>
-          <div className={FORM_ROW_CLS}>
-            <span className="text-sm leading-5 text-muted-foreground">{t('任务')}</span>
-            <span className={FORM_ROW_VALUE_CLS}>
-              {todo == null ? '' : `#${todo.seqNum} ${todo.title}`}
-              <ChevronRight width={12} height={12} />
-            </span>
-          </div>
-          {/* 频率分段 = registry Tabs default 档（手写 SEG_* 发丝环壳退役，
-              #982 tabs 判决）；sched-form-freq(-tab) 别名留存
-              （segmented-controls 跨域句柄），选中载体 = data-active。
-              fixture 冻结面：受控 value 无 onValueChange = 点击不动。 */}
-          <Tabs
-            className="sched-form-freq w-fit gap-0"
-            value={kind}
-            {...(live
-              ? { onValueChange: (next: unknown) => live.onKind(next as typeof kind) }
-              : {})}
-          >
-            <TabsList>
-              {(['hourly', 'daily', 'weekly', 'once'] as const).map((k) => (
-                <TabsTrigger key={k} value={k} className="sched-form-freq-tab px-3">
-                  {t(FREQ_LABEL[k])}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          {kind === 'once' && (
-            <>
-              <div className="text-sm leading-5 text-muted-foreground">{t('日期')}</div>
-              <div>
-                {/* r3 92b observes 今天; further entries unrecorded——单候选，
-                    故值就地取 t()（每渲染现取，locale 切换自然跟上，不带
-                    #74 那种「无控 select 重挂」）。 */}
-                <SchedSelect
-                  value={t('今天')}
-                  options={[{ value: t('今天'), label: t('今天') }]}
-                  label={t('今天')}
-                  menuLabel={t('日期')}
-                  triggerLabel={t('日期')}
-                  onPick={() => undefined}
-                />
-              </div>
-            </>
-          )}
-          <div className="text-sm leading-5 text-muted-foreground">{t('时间')}</div>
-          {/* hour at column left, minute at column center (r3 92 probe) */}
-          <div className="grid grid-cols-2">
-            <SchedSelect
-              value={hour}
-              options={HOURS.map((h) => ({ value: h, label: h }))}
-              label={hour}
-              menuLabel={t('时')}
-              triggerLabel={t('时')}
-              onPick={onHour}
-            />
-            <SchedSelect
-              value={minute}
-              options={MINUTE_STEPS.map((m) => ({ value: m, label: m }))}
-              label={minute}
-              menuLabel={t('分')}
-              triggerLabel={t('分')}
-              onPick={onMinute}
-            />
-          </div>
-          <div className="text-xs leading-4 text-muted-foreground">
-            {t('按你的本地时区运行（Asia/Shanghai）')}
-          </div>
-          <div className={FORM_ROW_CLS}>
-            <span className="text-sm leading-5 text-muted-foreground">{t('机器')}</span>
-            <span className={FORM_ROW_VALUE_CLS}>
-              {t('自动')}
-              <ChevronRight width={12} height={12} />
-            </span>
-          </div>
-        </div>
-        {/* registry DialogFooter 形态（border-t + muted 底、行尾对齐）：
-            取消 = outline、保存 = default（官网 dialog footer 词汇）。 */}
-        <DialogFooter>
+      onClose={onClose}
+      width={488}
+      footer={
+        // registry DialogFooter 形态（border-t + muted 底、行尾对齐）：
+        // 取消 = outline、保存 = default（官网 dialog footer 词汇）。
+        <>
           <Button variant="outline" className="sched-form-cancel" onClick={onClose}>
             {t('取消')}
           </Button>
-          <Button onClick={live?.onSave}>{t('保存')}</Button>
-        </DialogFooter>
-        <DialogClose
-          render={<Button variant="ghost" size="icon-sm" className="absolute top-2 right-2" />}
-          aria-label={t('关闭')}
+          <Button onClick={onSave}>{t('保存')}</Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        {/* 项目/任务/机器三行 = 静态展示行（#1037 b 层）：r2 §6.6 只登记参考
+            站预选值、picker 交互未观测（保存后列表形态原注「未测试」），
+            local-first 无选择语义可挂——行显示即将生效的值，ChevronRight
+            可供性暗示整族移除，静态行不得读作 picker。 */}
+        <div className={FORM_ROW_CLS}>
+          <span className="text-sm leading-5 text-muted-foreground">{t('项目')}</span>
+          <span className={FORM_ROW_VALUE_CLS}>{repo}</span>
+        </div>
+        <div className={FORM_ROW_CLS}>
+          <span className="text-sm leading-5 text-muted-foreground">{t('任务')}</span>
+          <span className={FORM_ROW_VALUE_CLS}>
+            {todo == null ? '' : `#${todo.seqNum} ${todo.title}`}
+          </span>
+        </div>
+        {/* 频率分段 = registry Tabs default 档（手写 SEG_* 发丝环壳退役，
+            #982 tabs 判决）；sched-form-freq(-tab) 别名留存
+            （segmented-controls 跨域句柄），选中载体 = data-active。
+            #1037：fixture 面同样传 onValueChange——冻结面不是死面，点 tab
+            选中即跟（时/分/日期的局部态回显同律）。 */}
+        <Tabs
+          className="sched-form-freq w-fit gap-0"
+          value={kind}
+          onValueChange={(next: unknown) => onKind(next as ScheduleKind)}
         >
-          <X width={16} height={16} />
-        </DialogClose>
-      </DialogContent>
-    </Dialog>
+          <TabsList>
+            {(['hourly', 'daily', 'weekly', 'once'] as const).map((k) => (
+              <TabsTrigger key={k} value={k} className="sched-form-freq-tab px-3">
+                {t(FREQ_LABEL[k])}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        {kind === 'once' && (
+          <>
+            <div className="text-sm leading-5 text-muted-foreground">{t('日期')}</div>
+            <div>
+              {/* r3 92b observes 今天; further entries unrecorded——单候选，
+                  故缺省值就地取 t()（每渲染现取，locale 切换自然跟上，不带
+                  #74 那种「无控 select 重挂」）；选过的回显值优先。 */}
+              <SchedSelect
+                value={date ?? t('今天')}
+                options={[{ value: t('今天'), label: t('今天') }]}
+                label={date ?? t('今天')}
+                menuLabel={t('日期')}
+                triggerLabel={t('日期')}
+                onPick={onDate}
+              />
+            </div>
+          </>
+        )}
+        <div className="text-sm leading-5 text-muted-foreground">{t('时间')}</div>
+        {/* hour at column left, minute at column center (r3 92 probe) */}
+        <div className="grid grid-cols-2">
+          <SchedSelect
+            value={hour}
+            options={HOURS.map((h) => ({ value: h, label: h }))}
+            label={hour}
+            menuLabel={t('时')}
+            triggerLabel={t('时')}
+            onPick={onHour}
+          />
+          <SchedSelect
+            value={minute}
+            options={MINUTE_STEPS.map((m) => ({ value: m, label: m }))}
+            label={minute}
+            menuLabel={t('分')}
+            triggerLabel={t('分')}
+            onPick={onMinute}
+          />
+        </div>
+        <div className="text-xs leading-4 text-muted-foreground">
+          {t('按你的本地时区运行（Asia/Shanghai）')}
+        </div>
+        <div className={FORM_ROW_CLS}>
+          <span className="text-sm leading-5 text-muted-foreground">{t('机器')}</span>
+          <span className={FORM_ROW_VALUE_CLS}>{t('自动')}</span>
+        </div>
+      </div>
+    </DialogShell>
   );
 }
+
+/** fixture 创建覆面的会话内序号（id 唯一性——同刻两次保存不得撞 id，
+ *  否则删除覆面按 id 一出俱出）。 */
+let fixtureCreatedSeq = 0;
 
 export function SchedulesPage() {
   const { t } = useI18n();
@@ -422,16 +415,25 @@ export function SchedulesPage() {
   const todosQ = useTodos(teamId, live);
   const projectsQ = useProjects(teamId, live);
   const mutations = useApiMutations(teamId);
-  // live 表单态（fixture 面由 scenario 冻结 scheduleForm，互不干扰）。
+  // live 表单态（fixture 面另有一套镜像态，互不干扰）。
   const [formOpen, setFormOpen] = useState(false);
-  // #388 fixture 冻结开屏面的关闭态：局部 UI 状态，重载还原（deletions.ts
-  // 覆面同律）——Esc / 背板 / X / 取消 四路关闭在冻结面上同样成立。
-  const [fixtureFormOpen, setFixtureFormOpen] = useState(true);
-  const [formKind, setFormKind] = useState<'hourly' | 'daily' | 'weekly' | 'once'>('daily');
+  // #388 fixture 冻结开屏面 + #1037 用户点开态：null = 未交互，开屏跟随
+  // scenario 冻结面（scheduleForm != null 即开）；true/false = 显式开/关。
+  // 局部 UI 状态，重载还原（deletions.ts 覆面同律）——Esc / 背板 / X /
+  // 取消 四路关闭在冻结面上同样成立。
+  const [fixtureFormOpen, setFixtureFormOpen] = useState<boolean | null>(null);
+  const [formKind, setFormKind] = useState<ScheduleKind>('daily');
   const [formHour, setFormHour] = useState('09');
   const [formMinute, setFormMinute] = useState('00');
+  // fixture 面表单态（#1037：冻结面同样全受控——tab/时/分/保存都有真
+  // handler）；kind 初值 = scenario 冻结档（r3-92 每天 / r3-92b 单次），
+  // 缺省 每天。日期回显两面共用一格（URL 决定同一时刻只有一面在场）。
+  const [fixtureKind, setFixtureKind] = useState<ScheduleKind>(fixture.scheduleForm ?? 'daily');
+  const [fixtureHour, setFixtureHour] = useState('09');
+  const [fixtureMinute, setFixtureMinute] = useState('00');
+  const [formDate, setFormDate] = useState<string | null>(null);
   const schedules = withoutDeleted(
-    live ? mapSchedules(schedulesQ.data ?? []) : (fixture.schedules ?? []),
+    live ? mapSchedules(schedulesQ.data ?? []) : withCreatedSchedules(fixture.schedules ?? []),
   );
   const now = live ? Date.now() : fixture.now;
   // #306 删除确认：target 与 open 分离——退出动画期摘要行保内容（todo 删除
@@ -466,6 +468,57 @@ export function SchedulesPage() {
     );
     setFormOpen(false);
   };
+  /** #1037 fixture 面保存：会话创建覆面落卡（markScheduleCreated，重载
+   *  还原——删除覆面同律），不再是零结果的哑点击。记录是展示数据不是
+   *  wire 真值：at = 冻结日（fixture.now 所在日）的 hh:mm，TZ_OFFSET
+   *  wall-clock 口径与 hourMinute 同源；nextRunAt 按频率自 at 前滚到越过
+   *  fixture.now（once 已过点 = 滚明日，live 分支同律）。[设计] 覆面档位
+   *  仅此一条——原站保存后的列表形态未观测（r2 §6.6 注「未测试」）。 */
+  const saveScheduleFixture = () => {
+    const todo = fixture.todos[0];
+    if (todo == null) {
+      setFixtureFormOpen(false);
+      return;
+    }
+    const d = new Date(fixture.now + TZ_OFFSET);
+    const at =
+      Date.UTC(
+        d.getUTCFullYear(),
+        d.getUTCMonth(),
+        d.getUTCDate(),
+        Number(fixtureHour),
+        Number(fixtureMinute),
+      ) - TZ_OFFSET;
+    const step = {
+      hourly: 3_600_000,
+      daily: 86_400_000,
+      weekly: 604_800_000,
+      once: 86_400_000,
+    }[fixtureKind];
+    let nextRunAt = at;
+    while (nextRunAt <= fixture.now) nextRunAt += step;
+    markScheduleCreated({
+      id: `fixture-created-${++fixtureCreatedSeq}`,
+      teamId: todo.teamId,
+      projectId: todo.projectId,
+      todoId: todo.id,
+      kind: fixtureKind,
+      at,
+      tz: 'Asia/Shanghai',
+      machineId: null,
+      nextRunAt,
+      // fixture canon（scheduleOnce 同款占位，卡面不渲染）。
+      createdBy: 'u-xmon-dai',
+      todo: {
+        seqNum: todo.seqNum,
+        title: todo.title,
+        phase: todo.phase,
+        projectName: fixture.project?.name ?? '',
+        ownerId: 'u-xmon-dai',
+      },
+    });
+    setFixtureFormOpen(false);
+  };
   return (
     <PageShell
       fixture={live ? { ...fixture, todos: liveTodos } : fixture}
@@ -474,11 +527,13 @@ export function SchedulesPage() {
       action={
         // 顶栏动作钮：ghost 件默认形态 + primary 墨（品牌语义走 token 层，
         // #991 Q10）；手写七通道中和配方退役，hover 涂底 = registry 可供性。
-        // page-new-action 类名留存 = overlay-focus 跨域别名。
+        // page-new-action 类名留存 = overlay-focus 跨域别名。#1037：两面都
+        // 有真 handler——fixture 面点开冻结表单，不再渲染 onClick=undefined
+        // 的假可供性。
         <Button
           variant="ghost"
           className="page-new-action text-primary hover:text-primary dark:hover:text-primary"
-          onClick={live ? () => setFormOpen(true) : undefined}
+          onClick={() => (live ? setFormOpen(true) : setFixtureFormOpen(true))}
         >
           <PlusSmall data-icon="inline-start" />
           {t('新建')}
@@ -503,9 +558,10 @@ export function SchedulesPage() {
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
+              {/* #1037：空态主钮两面接真（fixture 面点开冻结表单）。 */}
               <Button
                 className="sched-empty-new"
-                onClick={live ? () => setFormOpen(true) : undefined}
+                onClick={() => (live ? setFormOpen(true) : setFixtureFormOpen(true))}
               >
                 {t('新建定时')}
               </Button>
@@ -533,32 +589,44 @@ export function SchedulesPage() {
           ))
         )}
       </div>
+      {/* #1037：fixture 面恒挂载（open=false 时 Base UI 不渲染 DOM）——
+          retained-mount 让退场淡出活过关闭，冻结面与用户点开面共用一壳。 */}
       {live ? (
         <ScheduleForm
           kind={formKind}
-          fixture={fixture}
+          onKind={setFormKind}
+          hour={formHour}
+          onHour={setFormHour}
+          minute={formMinute}
+          onMinute={setFormMinute}
+          date={formDate}
+          onDate={setFormDate}
+          todo={liveTodo ? { seqNum: liveTodo.seqNum, title: liveTodo.title } : undefined}
+          repo={projectsQ.data?.[0]?.name ?? ''}
           open={formOpen}
           onClose={() => setFormOpen(false)}
-          live={{
-            hour: formHour,
-            minute: formMinute,
-            todo: liveTodo ? { seqNum: liveTodo.seqNum, title: liveTodo.title } : undefined,
-            repo: projectsQ.data?.[0]?.name ?? '',
-            onKind: setFormKind,
-            onHour: setFormHour,
-            onMinute: setFormMinute,
-            onSave: saveSchedule,
-          }}
+          onSave={saveSchedule}
         />
       ) : (
-        fixture.scheduleForm != null && (
-          <ScheduleForm
-            kind={fixture.scheduleForm}
-            fixture={fixture}
-            open={fixtureFormOpen}
-            onClose={() => setFixtureFormOpen(false)}
-          />
-        )
+        <ScheduleForm
+          kind={fixtureKind}
+          onKind={setFixtureKind}
+          hour={fixtureHour}
+          onHour={setFixtureHour}
+          minute={fixtureMinute}
+          onMinute={setFixtureMinute}
+          date={formDate}
+          onDate={setFormDate}
+          todo={
+            fixture.todos[0]
+              ? { seqNum: fixture.todos[0].seqNum, title: fixture.todos[0].title }
+              : undefined
+          }
+          repo={fixture.project?.repoName ?? ''}
+          open={fixtureFormOpen ?? fixture.scheduleForm != null}
+          onClose={() => setFixtureFormOpen(false)}
+          onSave={saveScheduleFixture}
+        />
       )}
       <DeleteConfirm
         open={confirmOpen}
