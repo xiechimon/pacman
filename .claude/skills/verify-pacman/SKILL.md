@@ -77,15 +77,9 @@ node .../scripts/drive-920-skills-manifest.mjs --phase=wire|daemon-success|daemo
 node .../scripts/drive-929-930.mjs   # 命令闸 tool_call 缝 + pi 原生 MCP 桥双票双向证据(#929/#930;自 spawn stub LLM + stdio MCP fixture + 真 daemon 并自回收;配方与判读 = docs/verify/929-930/README.md)
 node .../scripts/drive-918-skill-facts.mjs   # 技能事实活行+详情汇总(#918;含 deny 挡下面与对照组;自 spawn stub LLM ×2 + 真 daemon 并自回收;配方与判读 = docs/verify/918/README.md)
 node .../scripts/drive-919-skills-routing.mjs --phase=behavior|deny-ui  # 技能路由行为验收(#919;behavior=真模型腿——claude-code runtime + 本机 claude 登录态,票面零技能词看 lane 自己命中;deny-ui=内嵌脚本 stub 腿——deny 事件 UI 可见面 + LLM 输入面目录断言;配方与判读 = docs/verify/919/README.md)
-<<<<<<< HEAD
-<<<<<<< HEAD
 node .../scripts/drive-925-pi-policy.mjs  # pi 会话策略取证(#925/#927,spec 26;纯 HTTP+fs+SQLite 无浏览器面——trust deny 四面 + 策略宣告行 + cost 落库 worked example + prompt_cache_retention 请求面;自 spawn stub LLM + 真 daemon 并自回收;配方与判读 = docs/verify/925/README.md)
-=======
 node .../scripts/drive-904-plan-chain.mjs   # plan.md 落库通道全链(#904;withPlan build → plan 表落行 → confirm 卡/右栏方案面有物;三腿:hosted 正向 + 裸目录 #703 正向 + 负对照「缺物必红」;stub ×3 + 真 daemon 自 spawn 自回收;配方与判读 = docs/verify/904/README.md)
->>>>>>> origin/main
-=======
 cd apps/daemon && corepack pnpm exec tsx .../scripts/drive-926-convergence.mts  # 重试与收敛时序显式化(#926;.mts 走 daemon 包 tsx,不起 web/server 栈——直接 import daemon 源码 + pi 包;三相:pi 真 SettingsManager 读回显式 retry 配置、真 pi AgentSession×stub LLM 捕获原始事件序 agent_end→agent_settled 且 done 只落 settled、mapPiSessionEvent 对照;自起 stub 并自回收,配方与判读 = docs/verify/926/README.md)
->>>>>>> origin/main
 ```
 
 **纯 live 栈 probe**(无 daemon 依赖,launch 后直跑;配方见对应 feature 文件):
