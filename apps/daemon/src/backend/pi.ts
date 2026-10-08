@@ -32,14 +32,16 @@ import { join, sep } from 'node:path';
 import {
   type AgentSession,
   createAgentSession,
-  createBashToolDefinition,
-  createLocalBashOperations,
+  createMcpExtension,
   createReadToolDefinition,
   DefaultResourceLoader,
   defineTool,
   detectSupportedImageMimeTypeFromFile,
+  type ExtensionUIContext,
   formatSkillsForPrompt,
+  type InlineExtension,
   loadSkills,
+  type McpServerConfig,
   ModelRuntime,
   type ReadOperations,
   type ResourceDiagnostic,
@@ -54,6 +56,7 @@ import type {
   AgentTokenUsage,
   BriefChannel,
   DeliveredImage,
+  McpEndpoint,
   ModelUsage,
   ProviderCompat,
   ProviderConfig,
@@ -62,9 +65,9 @@ import type {
   ToolCallRecord,
 } from '@pacman/shared';
 import { ENV_VARS, THINKING_LEVELS } from '@pacman/shared';
-import { buildGatedBashOperations } from './command-gate.js';
+import { gateToolCallHandler, type PermissionRule } from './command-gate.js';
 import { SessionNotResumableError } from './errors.js';
-import { connectFailedLine, connectMcpBridge } from './mcp-bridge.js';
+import { connectFailedLine } from './mcp-config.js';
 import { PI_RETRY_SETTINGS } from './pi-retry.js';
 import {
   enrichProviderError,
@@ -147,6 +150,88 @@ export function sessionToolNames(opts: {
     ...opts.mcpTools,
     ...(opts.localTools ?? []),
   ];
+}
+
+// —— #930 MCP 原生桥（pi registerMcpServer/createMcpExtension；解析层
+// backend/mcp-config.ts 保留）————————————————————————————————
+
+/** MCP server 每请求超时（秒；McpServerConfig.timeout 单位）。旧手写桥的
+ * 10s/请求预算对齐保留。 */
+const MCP_TIMEOUT_SECONDS = 10;
+
+/** 会话工具面放行 MCP 工具的允许清单条目：`mcp__*` pattern（MCP 工具在
+ * server 连接后才注册激活，名字无法预知——pattern 放行；不带 mcp__ 条目的
+ * tools 清单会把 direct MCP 工具藏掉）+ pi 资源工具三名（resources 能力
+ * 面，#930 新获；不带则被允许清单滤掉）。 */
+const MCP_TOOL_ALLOWLIST = [
+  'mcp__*',
+  'list_mcp_resources',
+  'list_mcp_resource_templates',
+  'read_mcp_resource',
+] as const;
+
+/** McpEndpoint → pi McpServerConfig（stdio/http 两形态字段一一对应）。工具
+ * 命名 `mcp__<server>__<tool>`（pi 拼装）与旧手写桥同形：slug 与 tool 名均
+ * 为 [A-Za-z0-9_] 时逐字节一致；其余字符 pi 会归一成 `_`（slug 含 `-` 等
+ * 旧形不逐字节保真，见 PR）。exposure=direct = 工具直报模型（旧桥
+ * customTools 的对齐行为）。 */
+function mcpServerConfig(endpoint: McpEndpoint): McpServerConfig {
+  return endpoint.transport === 'stdio'
+    ? {
+        type: 'stdio',
+        command: endpoint.command ?? '',
+        ...(endpoint.args ? { args: [...endpoint.args] } : {}),
+        ...(endpoint.env ? { env: { ...endpoint.env } } : {}),
+        exposure: 'direct',
+        timeout: MCP_TIMEOUT_SECONDS,
+      }
+    : {
+        type: 'http',
+        url: endpoint.url ?? '',
+        ...(endpoint.headers ? { headers: { ...endpoint.headers } } : {}),
+        exposure: 'direct',
+        timeout: MCP_TIMEOUT_SECONDS,
+      };
+}
+
+/** pi MCP 扩展 headless 面的 attention 通知解析产物行。 */
+export interface McpAttentionLine {
+  slug: string;
+  reason: string;
+}
+
+/** pi MCP 扩展 headless 面的 attention 通知 → 行（#930 连接失败观察缝）。
+ * 通知文本形（扩展 reportProblems）：
+ * `MCP servers need attention:\n  <name>: <state>\n…\nRun /mcp to fix.`；
+ * state 形：`failed: <首行错误>` / `needs sign-in`。SDK 会话无其它连接状态
+ * 出口（2026-10-08 探针实测）——行形由 pi-mcp-attention.test 与集成 m4b
+ * 双面钉住，上游改词即红。 */
+export function parseMcpAttentionMessage(message: string): McpAttentionLine[] {
+  if (!message.startsWith('MCP servers need attention:')) return [];
+  const out: McpAttentionLine[] = [];
+  for (const line of message.split('\n').slice(1)) {
+    if (line.startsWith('Run /mcp')) break;
+    const m = /^  (\S+): (.+)$/.exec(line);
+    if (m) out.push({ slug: m[1] ?? '', reason: m[2] ?? '' });
+  }
+  return out;
+}
+
+/** headless 捕获 UI：notify 真转发（canon 降级行原料），其余成员一律
+ * no-op——daemon 无终端面，pi 对无 UI 会话本来就用同形 no-op 桩
+ * （runner.js noOpUIContext）。Proxy 免手写全部接口成员；仅 notify 在
+ * headless 流程会被读到。绑定为 uiContext 会把 ctx.hasUI 翻真，故只在
+ * 有 MCP 端点的会话绑定（见 open()）。 */
+function headlessCaptureUi(
+  onNotify: (message: string, type?: 'info' | 'warning' | 'error') => void,
+): ExtensionUIContext {
+  const base: Record<string, unknown> = { notify: onNotify };
+  return new Proxy(base, {
+    get(target, prop) {
+      if (typeof prop === 'string' && prop in target) return target[prop];
+      return () => undefined;
+    },
+  }) as unknown as ExtensionUIContext;
 }
 
 // —— skills 执行面注入（spec 14/#371）————————————————————————
@@ -751,7 +836,6 @@ class PiSessionHandle implements AgentSessionHandle {
   constructor(
     private readonly session: AgentSession,
     private readonly model: { input: ('text' | 'image')[] } | null,
-    private readonly onDispose?: () => void,
     diagnose?: (message: string) => string,
   ) {
     this.sessionId = session.sessionId;
@@ -772,12 +856,27 @@ class PiSessionHandle implements AgentSessionHandle {
     });
   }
 
+  /** 收尾：先发 session_shutdown（pi 唯一公开的扩展收尾缝——AgentSession
+   * Runtime.dispose 同形做法），MCP 扩展在 handler 里关连接（stdio 子进程/
+   * HTTP 流）；随后 dispose。单会话的 dispose() **不发**该事件（1.0.4 源读
+   * + 2026-10-08 探针实测：不发则 MCP stdio 子进程泄漏——daemon 长活进程
+   * 每步漏一个）。发射失败 fail-open（dispose 兜底清理）。 */
   private finish(): void {
     if (this.closed) return;
     this.closed = true;
     this.queue.end();
-    this.session.dispose();
-    this.onDispose?.(); // per-turn 资源释放（MCP 桥 close，02 §7.1）
+    void this.shutdownExtensions().finally(() => {
+      this.session.dispose();
+    });
+  }
+
+  private async shutdownExtensions(): Promise<void> {
+    if (!this.session.hasExtensionHandlers('session_shutdown')) return;
+    try {
+      await this.session.extensionRunner.emit({ type: 'session_shutdown', reason: 'quit' });
+    } catch {
+      // 收尾失败不挡 dispose（fail-open）。
+    }
   }
 
   async steer(text: string, images?: readonly DeliveredImage[]): Promise<void> {
@@ -834,6 +933,11 @@ export interface PiBackendOpts {
   /** `[gate]` 裁决行出口（#866 T5 命令闸：machine-loop 接 logger.gate；只记
    * 非放行裁决，allow 静默）。缺省 = 仍门控，只是不落行。 */
   onGateLog?: (msg: string) => void;
+  /** 命令闸规则表（#929：PermissionRule[] 通用工具面——bash/MCP/内建工具
+   * 一体生效；首命中胜出）。缺省 = 无自定义表（DEFAULT_BASH_PATTERNS 仍
+   * 护 bash 面）。产品内暂无馈源（将来服务端统一下发表即进此层）；测试与
+   * 集成面经此注入。 */
+  gateRules?: readonly PermissionRule[];
   /** 本机机器名（#882：非 SSE 响应诊断文案的「哪台机器」位；缺省 =
    * os.hostname()）。与 #867 同值来源 = config.name。 */
   machineName?: string;
@@ -918,6 +1022,53 @@ export class PiBackend implements AgentBackend {
     // systemPrompt。这里只透传 runner 给的 systemPrompt——**只有**不具备简报
     // 通道的后端才会拿到非空值。空集 = 不覆盖引擎自身的 system prompt。
     const settingsManager = SettingsManager.inMemory(buildPiSessionSettings());
+    // —— #929 命令闸：inline extension 的 tool_call handler（pi 原生阻断缝）
+    // ——拦截缝换挂点（策略表不动，见 command-gate.ts 头注）：bash 面 =
+    // 规则表 + DEFAULT_BASH_PATTERNS 全量裁决；MCP/嵌套调用同过此管线，规则
+    // 表对它们一体生效。返回 {block, reason} 由 pi 转成 error tool result
+    // （agent 可见改道文案）；放行 undefined，执行面零参与。
+    const gateExtension: InlineExtension = {
+      name: 'pacman-command-gate',
+      factory: (pi) => {
+        pi.on(
+          'tool_call',
+          gateToolCallHandler({
+            ...(this.opts.gateRules ? { rules: this.opts.gateRules } : {}),
+            ...(this.opts.onGateLog ? { log: this.opts.onGateLog } : {}),
+          }),
+        );
+      },
+    };
+    // —— #930 MCP 原生桥：registerMcpServer 喂端点（config 形状与
+    // McpEndpoint 一一对应；工具命名 mcp__<server>__<tool> 与旧手写桥同形），
+    // 连接由 pi MCP 扩展在 session_start 后台发起。注册抛错（非法名/config）
+    // = 单点降级行，不炸会话。解析层 mcp-config.ts 保留（勾选表仍唯一决定
+    // 谁能出现——loadConfig 钉空杜绝 mcp.json 旁路）。
+    const mcpEndpoints = opts.mcpServers ?? [];
+    const onMcpLog = this.opts.onMcpLog;
+    const mcpRegisterExtension: InlineExtension = {
+      name: 'pacman-mcp-bridge',
+      factory: (pi) => {
+        for (const endpoint of mcpEndpoints) {
+          try {
+            pi.registerMcpServer(endpoint.slug, mcpServerConfig(endpoint));
+          } catch (err) {
+            const reason = err instanceof Error ? err.message : String(err);
+            onMcpLog?.(connectFailedLine(endpoint.slug, reason));
+          }
+        }
+      },
+    };
+    // 连接失败观察缝（headless）：pi MCP 扩展把失败经 ctx.ui.notify 报告，
+    // SDK 会话无别的连接状态出口——捕获 notify 解析 attention 块出 canon
+    // 降级行（行形钉在 pi-mcp-attention.test + 集成 m4b，上游改词即红）。
+    // 仅在有 MCP 端点时绑定（绑定会把 ctx.hasUI 翻真，非 MCP 步保持纯
+    // headless 语义零漂移）。
+    const mcpCaptureUi = headlessCaptureUi((message) => {
+      for (const { slug, reason } of parseMcpAttentionMessage(message)) {
+        onMcpLog?.(connectFailedLine(slug, reason));
+      }
+    });
     const loader = new DefaultResourceLoader({
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
@@ -929,6 +1080,13 @@ export class PiBackend implements AgentBackend {
       // 是 AGENTS.md 简报的承重位（spec 24 §通道漂移），一概不动。
       noSkills: true,
       ...(opts.systemPrompt !== undefined ? { systemPromptOverride: () => opts.systemPrompt } : {}),
+      // #929/#930 挂点：闸 + MCP 注册 + pi 自家 MCP 连接器（loadConfig 钉空
+      // = 不读 agentDir / project 的 mcp.json，端点唯一来源是本机 config 解析）。
+      extensionFactories: [
+        gateExtension,
+        mcpRegisterExtension,
+        createMcpExtension({ loadConfig: () => ({ servers: [], errors: [] }) }),
+      ],
     });
     await loader.reload();
     const sessionManager = resumeFile
@@ -986,60 +1144,13 @@ export class PiBackend implements AgentBackend {
         },
       }),
     );
-    // MCP 薄桥（00/D4、02 §7.1）：per-turn 连接已授权 server → `mcp__<slug>__
-    // <tool>` 工具面；单点失败降级不阻断（canon 行经 onMcpLog）。
-    const mcpBridge =
-      opts.mcpServers && opts.mcpServers.length > 0
-        ? await connectMcpBridge(opts.mcpServers, {
-            ...(this.opts.onMcpLog
-              ? {
-                  onConnectFailed: (slug: string, reason: string) => {
-                    this.opts.onMcpLog?.(connectFailedLine(slug, reason));
-                  },
-                }
-              : {}),
-          })
-        : null;
-    const mcpTools = (mcpBridge?.tools ?? []).map((t) =>
-      defineTool({
-        name: t.name,
-        label: t.name,
-        description: t.description,
-        // 远端 inputSchema 原样透传（relay 同族机制，M4a/#81 已坐实 pi
-        // customTools 接受原始 JSON Schema）。
-        parameters: (t.inputSchema ?? { type: 'object', properties: {} }) as never,
-        execute: async (_id: string, params: Record<string, unknown>) => {
-          try {
-            const text = await t.call(params ?? {});
-            return { content: [{ type: 'text' as const, text }], details: {} };
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            return {
-              content: [{ type: 'text' as const, text: `${t.name} rejected: ${msg}` }],
-              details: {},
-            };
-          }
-        },
-      }),
-    );
-    // 命令闸（#866 T5）：门控 bash 以同名 customTool 覆盖内建 bash（pi 注册
-    // 表按名后写胜出，执行/定义/提示面一致走覆盖后；定义仍是 pi 自家的
-    // createBashToolDefinition——描述/schema/流式/截断/超时/exit 码文案与内建
-    // 同一，只把 operations.exec 换成门控版）。defineTool 包一层保参数推断
-    // （与 remoteTools/localTools 同形，customTools 数组元素类型统一）。
-    // 放行命令行为零差；ask/reject 抛拒绝进 tool error 结果（agent 可见改道
-    // 文案）+ [gate] 行（allow 静默）。
-    const gatedBash = defineTool(
-      createBashToolDefinition(opts.cwd, {
-        operations: buildGatedBashOperations(createLocalBashOperations(), {
-          ...(this.opts.onGateLog ? { log: this.opts.onGateLog } : {}),
-        }),
-      }),
-    );
+    // MCP 工具面（#930）：pi 原生注册（上方 mcpRegisterExtension）——工具由
+    // MCP 扩展在 server 连接后注册并直报模型（exposure=direct），会话创建时
+    // 名字未知；允许清单以 pattern 放行（见 MCP_TOOL_ALLOWLIST）。旧手写桥
+    // （connectMcpBridge → customTools）已退役。
     // 白名单硬挡（#917 口径 4）：worker 步（allowlist 在位）把内建 read 以同名
-    // customTool 覆盖成门控版（gated bash 同形，注册表按名后写胜出）——未授权
-    // 技能文件读取被拒。chief 步（allowlist 缺省）拒绝集恒空、不注册门控，
-    // read 面零变化。
+    // customTool 覆盖成门控版（注册表按名后写胜出）——未授权技能文件读取被拒。
+    // chief 步（allowlist 缺省）拒绝集恒空、不注册门控，read 面零变化。
     const deniedSkills = collectDeniedSkillDirs(this.opts.skills, opts);
     const gatedRead =
       deniedSkills.length > 0
@@ -1072,33 +1183,32 @@ export class PiBackend implements AgentBackend {
       resourceLoader: loader,
       sessionManager,
       settingsManager,
-      tools: sessionToolNames({
-        readOnly: opts.readOnly === true,
-        remoteTools: remoteTools.map((t) => t.name),
-        mcpTools: mcpTools.map((t) => t.name),
-        localTools: localTools.map((t) => t.name),
-      }),
-      ...(customTools.length > 0 || mcpTools.length > 0 || localTools.length > 0 || gatedRead
+      // 工具面（#930）：已知名走 sessionToolNames（MCP 名连接后才存在，
+      // 传 []）；有 MCP 端点时附允许清单 pattern——tools 是持续过滤器，不带
+      // mcp__ 条目会把 direct MCP 工具与资源工具藏掉（agent-session
+      // allowedToolNames 语义），带上即由 MCP 扩展连接后激活直报。
+      tools: [
+        ...sessionToolNames({
+          readOnly: opts.readOnly === true,
+          remoteTools: remoteTools.map((t) => t.name),
+          mcpTools: [],
+          localTools: localTools.map((t) => t.name),
+        }),
+        ...(mcpEndpoints.length > 0 ? [...MCP_TOOL_ALLOWLIST] : []),
+      ],
+      ...(gatedRead || customTools.length > 0 || localTools.length > 0
         ? {
-            customTools: [
-              gatedBash,
-              ...(gatedRead ? [gatedRead] : []),
-              ...customTools,
-              ...localTools,
-              ...mcpTools,
-            ],
+            customTools: [...(gatedRead ? [gatedRead] : []), ...customTools, ...localTools],
           }
-        : { customTools: [gatedBash] }),
+        : {}),
     });
+    // bindExtensions（#930 必调步，官方示例 14-codemode-mcp 同款）：发
+    // session_start → MCP 扩展读注册表、后台连接 server；首轮 prompt 只对
+    // direct server 等待（startupWaitMs 10s 上限，慢/死 server 不拖回合）。
+    // 有 MCP 端点时绑捕获 UI（连接失败观察缝，见上方 mcpCaptureUi 注释）。
+    await session.bindExtensions(mcpEndpoints.length > 0 ? { uiContext: mcpCaptureUi } : {});
     this.opts.onSession?.(session.sessionId, session.sessionFile);
-    const handle = new PiSessionHandle(
-      session,
-      model,
-      () => {
-        if (mcpBridge) void mcpBridge.close();
-      },
-      diagnose,
-    );
+    const handle = new PiSessionHandle(session, model, diagnose);
     // #730 首轮图片交付：promptImages 随 prompt 进会话（pi PromptOptions.
     // images 原生面）。先翻本会话的 input 能力钉（ensureImageInput）——
     // models.json 的 CUSTOM_MODEL_DEFAULTS input:['text'] 是 daemon 物化的

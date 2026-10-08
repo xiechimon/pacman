@@ -4,12 +4,16 @@
 
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { ProjectRepoKind, Scheduler } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { createApp } from '../../apps/server/src/app.js';
 import { openMemoryDb } from '../../apps/server/src/db/client.js';
 import {
@@ -241,6 +245,62 @@ export function daemonLogLines(daemonLog: string): string[] {
   } catch {
     return [];
   }
+}
+
+/** 外部 MCP server（测试内起，client 面对拍端）：echo 工具 + note 资源
+ * （#930 resources 能力立证面）+ 调用记录。m4b（桥全链）与 gate-e2e
+ * （闸覆盖面探针）共用同一 fixture 形。 */
+export async function startExternalMcp(): Promise<{
+  url: string;
+  calls: { name: string; args: Record<string, unknown> }[];
+  close(): Promise<void>;
+}> {
+  const calls: { name: string; args: Record<string, unknown> }[] = [];
+  const http: Server = createServer((req, res) => {
+    void (async () => {
+      const server = new McpServer({ name: 'external-fixture', version: '0.0.1' });
+      server.registerTool(
+        'echo',
+        { description: 'Echo text back.', inputSchema: { text: z.string() } },
+        async (args) => {
+          calls.push({ name: 'echo', args: args as Record<string, unknown> });
+          return { content: [{ type: 'text', text: `external-echo:${args.text}` }] };
+        },
+      );
+      server.resource(
+        'note',
+        'demo://note',
+        { description: 'A demo note resource (#930).' },
+        async () => ({ contents: [{ uri: 'demo://note', text: 'demo-note-content' }] }),
+      );
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
+      });
+      await server.connect(transport);
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const body =
+        chunks.length > 0 ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : undefined;
+      res.on('close', () => {
+        void transport.close();
+        void server.close();
+      });
+      await transport.handleRequest(req, res, body);
+    })();
+  });
+  await new Promise<void>((r) => http.listen(0, '127.0.0.1', r));
+  const addr = http.address();
+  if (!addr || typeof addr === 'string') throw new Error('no address');
+  return {
+    url: `http://127.0.0.1:${addr.port}/mcp`,
+    calls,
+    close: () =>
+      new Promise<void>((resolve) => {
+        http.closeAllConnections();
+        http.close(() => resolve());
+      }),
+  };
 }
 
 export async function waitFor(
