@@ -50,8 +50,9 @@ import { ChiefSettings } from '../chief/chief-settings.js';
 import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import { Button } from '../components/ui/button.js';
-import { KbdHint } from '../components/ui/kbd-hint.js';
+import { Kbd } from '../components/ui/kbd.js';
 import { toastError } from '../components/ui/toaster.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
@@ -688,23 +689,32 @@ export function BoardPage() {
           ChiefWakeFab：font-normal（badge 10px 字）、active 位移、svg
           size-auto（ChiefFab 30.8 属性尺寸）。board 内联钮与各族 wake FAB
           （*-fab 类，几何住各域）保持同配方。 */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute right-4 bottom-4 size-12 cursor-pointer rounded-full border-none bg-(--card) font-normal shadow-(--fab-shadow) hover:bg-(--card) dark:hover:bg-(--card) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-        aria-label={t('总管')}
-        onClick={() => setChiefView('drawer')}
-      >
-        <ChiefFabIcon chief={chiefData} />
-        {/* #468: ⌘J 悬浮提示（board 内联钮与 ChiefWakeFab 同批；点击维持
-            open-only）。 */}
-        <KbdHint label="⌘J" />
-        {chiefUnread > 0 && (
-          <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
-            {chiefUnread}
-          </span>
-        )}
-      </Button>
+      {/* #468: ⌘J 悬浮提示（board 内联钮与 ChiefWakeFab 同批；点击维持
+          open-only）。#983/#1004：kbd-hint 退役回 registry Tooltip + Kbd
+          （原 placement 缺省 above → side=top）。 */}
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 bottom-4 size-12 cursor-pointer rounded-full border-none bg-(--card) font-normal shadow-(--fab-shadow) hover:bg-(--card) dark:hover:bg-(--card) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+              aria-label={t('总管')}
+              onClick={() => setChiefView('drawer')}
+            >
+              <ChiefFabIcon chief={chiefData} />
+              {chiefUnread > 0 && (
+                <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
+                  {chiefUnread}
+                </span>
+              )}
+            </Button>
+          }
+        />
+        <TooltipContent side="top" sideOffset={8}>
+          <Kbd>⌘J</Kbd>
+        </TooltipContent>
+      </Tooltip>
       <AcceptDialog
         open={overlay?.kind === 'accept'}
         onClose={closeOverlay}

@@ -407,10 +407,10 @@ test('the robot FAB surfaces the ⌘J hint on hover; at rest it stays hidden', a
 }) => {
   await page.goto(BOARD);
   const fab = page.getByRole('button', { name: '总管' });
-  const hint = fab.locator('.kbd-hint');
-  await expect(hint).toHaveCount(1);
-  // visibility:hidden at rest — capture faces never grow a phantom chip
-  await expect(hint).toBeHidden();
+  // #983/#1004: kbd-hint retired to the registry Tooltip+Kbd combo — the chip
+  // is a portaled tooltip kbd, unmounted at rest (not visibility-hidden).
+  const hint = page.locator('[data-slot="tooltip-content"] [data-slot="kbd"]');
+  await expect(hint).toHaveCount(0);
   await fab.hover();
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('⌘J');
@@ -433,8 +433,9 @@ test('the collapsed rail search icon hovers the ⌘K hint', async ({ page }) => 
   await page.locator('button[aria-label="收起侧边栏"]').click();
   const railSearch = page.getByRole('button', { name: '搜索' });
   await expect(railSearch).toBeVisible();
-  const hint = railSearch.locator('.kbd-hint');
-  await expect(hint).toBeHidden();
+  // #983/#1004: rail ⌘K is the registry Tooltip+Kbd combo; unmounted at rest.
+  const hint = page.locator('[data-slot="tooltip-content"] [data-slot="kbd"]');
+  await expect(hint).toHaveCount(0);
   await railSearch.hover();
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('⌘K');
