@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "7a4434e39260b20a3f4d92a4d7778527c7f06099",
+    "sha": "897e96b7c7c69b5f1221c92535bde28c8bf34e7a",
     "date": "2026-10-08"
   },
   "scope": "apps/web/src/components/ui (#989, map #980). kind registry = shadcn base-nova registry item (upstreamItem names it; status pristine = hash must equal the vendored snapshot in scripts/ui-upstream-snapshots.json, deviated = registered divergence with reason). kind adapter = local composition over registry items or a repo-specific primitive (reason required). hash = sha256 over the comment-stripped, line-normalized file content (scripts/ui-normalize.mjs); comment-only edits do not move it, code edits always do. Scope is exactly this directory — domain-directory skins are ui-debt-gate/ui-drift-gate territory.",
@@ -144,8 +144,8 @@
     },
     "status-chip.tsx": {
       "kind": "adapter",
-      "reason": "#942 canon table §5.2: five-state task chip on the registry badge skeleton with --chip-* token utilities (spec/22 §1.7/1.8 1:1 values).",
-      "hash": "575db938953650e3cd7fa2f69492886f812856370038edee217ae742a618025e"
+      "reason": "#942 canon table §5.2 / #983 verdict (kept as zero-skin adapter): five-state task chip = registry Badge skeleton + data-tone state carrier + five --chip-* token utility pairs (spec/22 §1.7/1.8 1:1 values; plan/confirm have no registry variant semantics). The sm geometry tier is retired per #983 — all faces converge on the registry Badge h-5 default (#1006).",
+      "hash": "02a9ea807a008af5a33701580d1ff3a0f6c27dc6ad20d96303dbb9d3def9fe14"
     },
     "switch.tsx": {
       "kind": "registry",
@@ -162,8 +162,8 @@
     },
     "tag-chip.tsx": {
       "kind": "adapter",
-      "reason": "XMON-14: 20px tag pill (tag.color inline background, cn-primitives) on the registry badge geometry.",
-      "hash": "d2977c4e9bc6e2662f7011b7e4525230e26c4dd8a61a3bb134210b8d9854df99"
+      "reason": "XMON-14 / #983 verdict (rewritten as zero-skin adapter): tag pill = registry Badge default geometry with the runtime data color kept as an inline background (TagRecord.color is a record field, not a design token — board-filter.spec pins the contract) + max-w-40 truncate layout + --text-on-accent foreground. The 11px font-rewrite tier (text-[11px]/leading-5/py-0) is retired per #983 — font size/line height/padding converge on Badge defaults (#1006); the todo-card row-flush consumer override is folded into the same default per the R5 prototype-review ruling.",
+      "hash": "0c06b753c2184eae55f8d1398b2810de5fadbb20f35a717753d9fb1be08fd09b"
     },
     "textarea.tsx": {
       "kind": "registry",

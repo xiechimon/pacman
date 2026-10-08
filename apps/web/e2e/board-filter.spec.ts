@@ -485,7 +485,7 @@ test('生效筛选条：只列生效维度、点条清该维度、两轴齐时�
   await expect(page.getByTestId('filter-count')).toHaveCount(0);
 });
 
-test('任务卡渲染标签 chip：词表配色、无标签零占位、既有几何不漂移', async ({ page }) => {
+test('任务卡渲染标签 chip：词表配色、无标签零占位、卡面 chip 20px 默认档', async ({ page }) => {
   await page.goto(TAGS);
   // tagged 卡：chip 在场、文本 = 词表名、底色 = 词表色（bug #ef4444）
   const bugChip = card(page, 'tagfilter-bug').locator(CHIP);
@@ -498,9 +498,10 @@ test('任务卡渲染标签 chip：词表配色、无标签零占位、既有几
   await expect(
     card(page, 'tagfilter-plain').getByText(/^(bug|feature|improvement|refactor|docs|chore)$/),
   ).toHaveCount(0);
-  // 几何护栏：chip 卡面 16px（todo-card.tsx 的 row-flush per-face 覆写——与
-  // 16px row1 齐平；20px 正本保留给容器更高的三个面，shadcn-primitives 钉），
-  // 不撑高 row1；tagged 卡与无标签卡的 row1 高、卡高、seq 右锚一致（不挤压既有元素）
+  // 几何护栏（#1006 R5 实审裁决重钉，用户 2026-10-08，与 L1 裁决①一致）：
+  // row-flush 16px 消费点覆写收编 registry Badge 默认 20px——两尺寸不并存。
+  // 回流契约：tagged 卡 row1 随 chip 长到 20（min-h-4 行盒），卡高比无标签
+  // 卡高 4px；无标签卡 row1 保持 16 节奏；seq 右锚跨卡一致（不挤压既有元素）
   const geo = await page.evaluate(() => {
     const probe = (id: string) => {
       const el = document.querySelector(`[data-todo-id="${id}"]`)!;
@@ -521,10 +522,11 @@ test('任务卡渲染标签 chip：词表配色、无标签零占位、既有几
     };
     return { tagged: probe('tagfilter-bug'), plain: probe('tagfilter-plain') };
   });
-  expect(geo.tagged.row1H).toBe(16);
+  expect(geo.tagged.row1H).toBe(20);
   expect(geo.plain.row1H).toBe(16);
-  expect(geo.tagged.chipH).toBe(16);
-  expect(geo.tagged.cardH).toBe(geo.plain.cardH);
+  expect(geo.tagged.chipH).toBe(20);
+  // R5 回流：tagged 卡随 20px chip 长高 4px（旧「卡高一致」契约由裁决作废）
+  expect(geo.tagged.cardH - geo.plain.cardH).toBe(4);
   // seq 保持右锚（同一列宽网格下两卡右缘差一致）
   expect(geo.tagged.cardRight - geo.tagged.seqRight).toBe(
     geo.plain.cardRight - geo.plain.seqRight,

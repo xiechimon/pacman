@@ -92,13 +92,9 @@ export function FreshBlock({ todo, tags, action, onAction, hasSpec }: FreshBlock
       </div>
       {action != null && onAction != null && (
         <div className="fresh-actions mt-8 flex items-center gap-3">
-          {/* XMON-24：老 primary/standard（h32 px12 r8 @13px，.fresh-start
-              无本面规则）逐值搬 default 档 utilities；border-0 去掉底座 1px
-              透明描边（配 bg-clip-padding 会在漆边留一圈未paint环）。 */}
-          <Button
-            className="fresh-start border-0 px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
-            onClick={onAction}
-          >
+          {/* #1006 原型（#980 前提④）：老 primary/standard 的 13px/px-12
+              冻结几何与描边中和退役——registry Button default 档默认形态。 */}
+          <Button className="fresh-start" onClick={onAction}>
             {t(action)}
           </Button>
           <span className="fresh-action-hint text-xs leading-4 text-(--text-tertiary)">

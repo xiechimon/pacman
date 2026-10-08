@@ -27,11 +27,11 @@ import { PHASE_UI } from '../phase.js';
  *  触发面 .detail-chip 类名保留（detail-b 的 reject-chain/review-reject 与
  *  integration m5/web-plans 按它定位；重钉归各自批次），皮肤迁 utilities。 */
 
-// 头带 44px（43 + 1px 缝线，r7 §3.1）；主钮 50.5×28 @12px 是 r7 §3.3 冻结
-// 几何（老 scoped override 规则的消费端等价形）。ghost 七通道中和（#908
-// 裁决 3）逐钮带上：hover/aria-expanded 底清零、墨色钉回原值。
-const ICON_BTN =
-  'flex size-7 flex-none cursor-pointer items-center justify-center border-none bg-transparent p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0';
+// 头带 44px（43 + 1px 缝线，r7 §3.1）是 layout 位。#1006 原型（#980
+// 前提④ registry 默认赢）：r7 §3.3 冻结几何（主钮 50.5×28 @12px、icon 钮
+// 28×28 透明底）与 ghost 七通道中和串退役——icon 钮 = registry ghost
+// icon-sm 档（28×28 + hover:bg-muted 反馈），主钮 = default 档默认几何，
+// chevron/图标吃底座 [&_svg]:size-4 律。
 
 interface DetailHeadProps {
   todo: TodoRecord;
@@ -80,36 +80,40 @@ export function DetailHead({
       className="detail-head relative flex h-11 flex-none items-center border-b border-(--border) pl-3"
       data-testid="detail-head"
     >
-      <Link
-        className="detail-back flex size-7 flex-none cursor-pointer items-center justify-center border-none bg-transparent p-0 text-(--text-tertiary)"
-        to={{ pathname: '/app', search }}
+      {/* #1006 原型：返回钮 = registry ghost icon-sm 档经 render prop 落
+          router Link（Base UI useRender 组合，锚语义/中键/新标签行为保留；
+          .detail-back 别名透传）。 */}
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="detail-back flex-none"
+        render={<Link to={{ pathname: '/app', search }} />}
         aria-label={t('返回')}
       >
         <ChevronLeft />
-      </Link>
+      </Button>
       <span className="detail-seq ml-1 flex-none text-xs leading-4 text-(--text-tertiary)">
         #{todo.seqNum}
       </span>
       {/* #949：chipwrap 定位类随 overlays.css 清零退役（relative flex
           items-center 等值 utility）。 */}
       <span className="relative flex items-center" ref={setChipWrap}>
-        {/* XMON-24 wrapper 钮 shadcn ghost 底座不变；#945 皮肤从
-            .detail-chip per-face 迁 utilities（七通道中和：hover/
-            aria-expanded 底清零、墨色走 inherit 保持老「无 color 规则」的
-            继承形；h-auto/gap-0/字号继承清底座差额）。#951：detail-b 两 spec
+        {/* XMON-24 wrapper 钮 shadcn ghost 底座；#1006 原型（#980 前提④）：
+            七通道中和串退役——ghost 底座的 hover:bg-muted /
+            aria-expanded:bg-muted 反馈生效（registry 默认赢），只留 layout
+            位（h-auto 随 chip 内容、gap-0 保 chevron 5px 左距为唯一间距、
+            p-0.5 给 hover 盒留呼吸）。#951：detail-b 两 spec
             （reject-chain/review-reject）重钉到 phase-chip testid——断言目标
-            就是这个钮的文案（相位词随链路翻动），按 name 定位即循环，属
-            #910 裁定 1 的真盲区二级载体。detail-chip 基类保留至 #953 终账
-            ——chip-assign/chip-hotzone 与 integration m5/web-plans 仍按它
-            定位（其批次已收官，类名钩零规则存活）。 */}
+            就是这个钮的文案（相位词随链路翻动）。detail-chip 基类保留至
+            执行域退役——chip-assign/chip-hotzone 与 integration m5/web-plans
+            仍按它定位（类名钩零规则存活）。 */}
         {/* #634: the chevron rides INSIDE the trigger — the whole chip
             (pill + arrow + the space between) is one hit target; it used to
-            be a sibling span, so the arrow side of the cluster was dead.
-            gap-0 keeps the chevron's own 5px margin as the only spacing. */}
+            be a sibling span, so the arrow side of the cluster was dead. */}
         <Button
           variant="ghost"
           data-testid="phase-chip"
-          className="detail-chip ml-2 flex h-auto flex-none cursor-pointer items-center gap-0 rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit aria-expanded:bg-transparent aria-expanded:text-inherit active:not-aria-[haspopup]:translate-y-0"
+          className="detail-chip ml-2 h-auto flex-none gap-0 p-0.5"
           aria-expanded={popover}
           onClick={() => setPopover((value) => !value)}
         >
@@ -173,22 +177,22 @@ export function DetailHead({
         className="detail-head-actions ml-3 flex flex-none items-center gap-1.5 pr-3"
         data-testid="detail-head-actions"
       >
-        {/* XMON-24 更多钮 shadcn ghost 底座不变；#945 皮肤迁 utilities
-            （ICON_BTN 七通道中和；svg 免底座 16px 强制——EllipsisVertical
-            按自身默认尺寸渲染）。--more 别名保留（8 处 spec 钉）。 */}
+        {/* XMON-24 更多钮 shadcn ghost 底座；#1006 原型：registry ghost
+            icon-sm 档默认形态（hover 反馈生效、svg 吃底座 size-4 律）。
+            --more 别名保留（8 处 spec 钉）。 */}
         <Button
           variant="ghost"
-          className={`detail-head-icon detail-head-icon--more ${ICON_BTN} [&_svg:not([class*='size-'])]:size-auto`}
+          size="icon-sm"
+          className="detail-head-icon detail-head-icon--more flex-none"
           aria-label={t('更多')}
           onClick={onMore}
         >
           <EllipsisVertical />
         </Button>
         {ui.action != null && (
-          <Button
-            className="detail-head-action h-7 w-[50.5px] flex-none cursor-pointer border-none p-0 text-xs leading-7 font-normal active:not-aria-[haspopup]:translate-y-0"
-            onClick={onAction}
-          >
+          // #1006 原型（#980 前提④）：主钮 50.5×28 @12px 冻结几何退役——
+          // registry Button default 档默认几何（h-8 text-sm font-medium）。
+          <Button className="detail-head-action flex-none" onClick={onAction}>
             {t(ui.action)}
           </Button>
         )}

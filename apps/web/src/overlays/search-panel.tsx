@@ -187,10 +187,10 @@ function TodoRow({
       <span className="flex-none text-[11px] leading-[15px] text-(--text-tertiary)">
         {relativeTime(todo.phaseAt, now, t)}
       </span>
-      {/* #853→#949：行 chip = StatusChip sm 档（spec/22 §5.1 C2）——五态
-          token 对皮肤在件内，旧 mini 14px → sm 16px 是 §5.2 正典增长；
-          行内只剩定位职责（右贴 + 不挤压）。 */}
-      <StatusChip tone={ui.tone} size="sm" className="ml-auto flex-none">
+      {/* #853→#949：行 chip = StatusChip（五态 token 对皮肤在件内）；#983
+          判决：sm 几何档退役，收敛 registry Badge h-5 默认——行内只剩定位
+          职责（右贴 + 不挤压）。 */}
+      <StatusChip tone={ui.tone} className="ml-auto flex-none">
         {t(ui.chip)}
       </StatusChip>
     </Button>
