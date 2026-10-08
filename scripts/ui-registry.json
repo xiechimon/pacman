@@ -62,8 +62,8 @@
     },
     "dialog-shell.tsx": {
       "kind": "adapter",
-      "reason": "#425 B1: API-identical shell over shadcn/Base UI Dialog replacing the hand-rolled overlay mechanism (#418 comparison matrix); 11 consumer sites unchanged.",
-      "hash": "f39024b851e301e7bf4f8d1256fec454de6b7012d7366167d44a58f7a227d97f"
+      "reason": "#983 verdict / map #980 (ruling 2/4): zero-skin adapter over the registry dialog item — regular faces compose Dialog/DialogContent/DialogHeader/DialogTitle/DialogFooter (registry defaults win: panel/overlay skin, motion, close button all come from dialog.tsx), keeping only the repo behavior contracts as semantic mapping (#193 three-segment cap via layout classes + dialog-head/body/foot testids, #389 finalFocus, #73 retained-mount open flag, #318 layered dismiss, #68 family close law via native dismiss, width as a layout position). The viewportRoot and bare modes stay on the legacy direct-primitive mechanism unchanged — they are the #983 adapter-boundary pressure points whose surfaces belong to the L5 lane (#1008) and whose fate is ruled at that lane's prototype review; zIndex/onBackdropClick/backdropClassName serve only those two modes (#1006).",
+      "hash": "4f9b8042ecf9e2a5981b77dbc329ab9f9e43bcb035266ae8fa03fbde6ef6decd"
     },
     "dialog.tsx": {
       "kind": "registry",

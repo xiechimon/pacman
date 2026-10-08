@@ -1,37 +1,56 @@
-// DialogShell 适配层（#425 B1）：对外 API 与 `ui/dialog-shell.tsx` 逐字相同，
-// 内部换成 shadcn/Base UI Dialog——11 个消费点只改 import 路径，调用点零改动。
+// DialogShell 零皮肤适配层（#983 判决：改写为零皮肤适配层；地图 #980
+// 前提②④）：对外 API 与旧壳逐参数兼容，常规面（17 挂载点）内部组合
+// registry dialog.tsx 件——面板/背板/头/脚皮肤一律 registry 默认
+// （DialogContent rounded-xl p-4 grid gap-4 ring-1 duration-100、
+// DialogOverlay bg-black/10 + backdrop-blur-xs、DialogHeader/DialogTitle、
+// DialogFooter border-t bg-muted/50 band），本层不再持任何皮肤串。
 //
-// 换掉的机制（#418 对照矩阵）：Esc 分层（Base UI layer 栈，只关最顶层）、
-// 遮罩外点、焦点圈定、退场（data-open/data-closed + tw-animate-css 的
-// animate-out，替代仓内 JS 定时器 + transition）、body 滚动锁。
+// 保住的行为契约（直通 Base UI props / layout 类承载）：
+// - #193 三段律：DialogContent 吃 layout 类——封顶 max-h = 100vh - 48px +
+//   grid-rows auto/minmax(0,1fr)/auto；dialog-head / dialog-body /
+//   dialog-foot 三个结构 testid 原位在（几何断言需要结构盒，role-scope
+//   隔离不出滚动容器，spec/22 §5.5 二级载体）。高表单挤不出提交钮；
+// - #389 焦点回陷：finalFocus 直通 Popup（不经 Base UI 的 trigger 推定，
+//   仓内触发钮多在 dialog 树外）；
+// - #73 retained-mount：open flag 直通 Root，退场淡出活得过 close；
+// - #318 dismiss 分层：onOpenChange reason 闸原样（escape-key 转交
+//   onEscapeWhileNested、嵌套期 outside-press 不关）；
+// - #68 家族关闭律：Esc / 背板外点 / X 三路同归 onClose（外点与 Esc 走
+//   Base UI 原生 dismiss，X 走 DialogClose）；
+// - width 入参 = layout 位（#983 判决：448/560/640 宽度归消费点布局）——
+//   style width = min(100% - 2rem, Npx)，移动端收口与 registry
+//   max-w-[calc(100%-2rem)] 配方等值；z 档 registry z-50 与 --z-dialog
+//   同值（tokens.css #688 阶梯 50），常规面不再传 zIndex。
 //
-// 保住的契约：
-// - #193 三段律：panel = 封顶 flex 列（head 固定 / body 自滚 / foot 钉底），
-//   高表单挤不出提交钮——几何与旧壳逐值对齐（max-h = 100vh - 48px）；
-// - #389 焦点回陷：开时记住触发位，关时归还（finalFocus），不经 Base UI 的
-//   trigger 推定（仓内触发钮多在 dialog 树外）。
+// viewportRoot / bare 两模式保留旧直连机制**原样不动**：它们是 #983 判决
+// 点名的「适配层只语义映射」判据压力点（search-panel / new-task-dialog，
+// 面归 L5 车道），去留（留在适配层 vs 降级为消费点自组合 registry
+// Dialog）在 L5 原型实审裁决；本层不预判。zIndex / backdropClassName /
+// onBackdropClick 入参仅这两模式消费。
 //
-// 载体（#952，spec/22 §5.4/§5.5 正典表执行；ui/dialog.css 已退役删除）：
-// - 面板 = role=dialog + aria-label=title（一级）；壳级 .dlg* 别名类不再输出；
-// - 结构钩子 = dialog-head / dialog-body / dialog-foot 三个 testid（二级，
-//   §5.5 kebab-case 无前缀律）——几何断言（封顶律 / body 溢出 / 钉底不位移）
-//   需要结构盒，role-scope 隔离不出滚动容器；
-// - 退场机制内联为 utility（§5.4 机制行）：壳 = visibility 延迟过渡撑 Base UI
-//   卸载窗（--dur-overlay），视口根 = --dur-fast 档 + pointer-events 管道。
-//
-// #453 视口根变体（`viewportRoot`）：给视口根定位的面（⌘K search-panel）用同一台
-// 行为机器，只是不吃面板几何——容器铺满视口但自身不吃点击（外点落回 Backdrop
-// 位的 scrim），面内容经 className 自带 fixed 几何。容器 z-index 抬到背板之上
-// （fixed + z-index 自建 stacking context，否则遮罩反盖面板、行点不中）；退场
-// 不做布局动画（D4 等价语义）。
+// i18n：关闭钮 aria-label 走 t('关闭')（registry 内建 close 的 sr-only
+// 文案是英文硬编码，语义映射归适配层）；形态与内建钮逐类同形
+// （ghost icon-sm，absolute top-2 right-2）。
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
+import { cn } from 'cn';
 import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useI18n } from '../../i18n/provider.js';
 import { X } from '../../icons/index.js';
+import { Button } from './button.js';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './dialog.js';
 
 /** 退场 visibility 桥（§5.4 机制内联，原 .dlg-shell 配方）：零视觉的
- *  visibility 延迟过渡撑住 Base UI 的卸载窗，让面板 animate-out 播完再卸。 */
+ *  visibility 延迟过渡撑住 Base UI 的卸载窗，让面板 animate-out 播完再卸。
+ *  仅 viewportRoot/bare 旧机制路径消费；常规面走 registry duration-100
+ *  默认退场（#991 Q9：动效 = base-nova 形态一部分）。 */
 const SHELL_EXIT_BRIDGE_CLS =
   '[transition:visibility_0s_linear_var(--dur-overlay)] data-[ending-style]:invisible';
 
@@ -42,13 +61,9 @@ const VIEWPORT_MECHANISM_CLS =
   'fixed inset-0 pointer-events-none [&>*]:pointer-events-auto [transition:visibility_0s_linear_var(--dur-fast)] data-[ending-style]:invisible';
 
 /** 视口根面（viewportRoot）面板的进场（V2 覆写，base-ui-theme §1.2：
- *  scale .98 + fade、100ms ease-out——替代 ADR 0009 D3 的 slide -8px）。
- *  挂在**面板**上、经视口根 Popup 的具名 group 读 Base UI 开态——视口根
- *  Popup 是铺满视口的包装层，transform 上它会把面板（fixed 子级）的
- *  containing block 拽走（#656）。
- *  退场不在这里：#844 起退出走 overlays.css 的指定式 transition（同面
- *  进场 keyframe + 退场 transition；一次性 exit keyframe 会在壳的 150ms
- *  卸载窗里先播完回弹，卸载前闪几帧全不透明）。 */
+ *  scale .98 + fade、100ms ease-out）。挂在**面板**上、经视口根 Popup 的
+ *  具名 group 读 Base UI 开态——视口根 Popup 是铺满视口的包装层，transform
+ *  上它会把面板（fixed 子级）的 containing block 拽走（#656）。 */
 export const VIEWPORT_POP_ANIM =
   'duration-100 ease-out group-data-open/dlgvp:animate-in group-data-open/dlgvp:fade-in-0 group-data-open/dlgvp:zoom-in-98';
 
@@ -62,44 +77,38 @@ interface DialogShellProps {
   onClose: () => void;
   children: ReactNode;
   /** #193: pinned below the body scroll region — submit/cancel rides here so
-   *  a tall form scrolls the fields, never the buttons. */
+   *  a tall form scrolls the fields, never the buttons. 常规面渲染进
+   *  registry DialogFooter（band 皮肤件自带）——消费点给裸内容即可，
+   *  自携 padding 包装会与 band 的 p-4 叠垫。 */
   footer?: ReactNode;
   /** #309: face class on the panel — per-face utility recipes and the e2e
    *  handle discipline without touching the family base. */
   className?: string;
   /** Panel width in px (defaults to 448 = family law #68); M7 #312 review
-   *  dialog uses 560. */
+   *  dialog uses 560. 常规面 = layout 位（min() 收口，见头注）。 */
   width?: number;
   /** bare：面板内容由消费者全权渲染（自带头/体/底），适配层只出壳机制与
-   *  皮肤——new-task-dialog 的面板几何（672×439 + 自定义头）自成一体。 */
+   *  皮肤——new-task-dialog 的面板几何（672×439 + 自定义头）自成一体。
+   *  L5 实审压力点，旧机制原样（见头注）。 */
   bare?: boolean;
   /** 面板高度 in px（bare 面用；家族缺省按内容自适应）。 */
   height?: number;
-  /** 面板 z-index（缺省 = 阶梯的 --z-dialog；背板自动取面板减一）。收数字
-   *  或 CSS 值——阶梯令牌走 var()，单源在 tokens.css 的 #688 z ladder，
-   *  适配层不持第二套真值。仓内阶梯把面板钉在低档的面（new-task 的
-   *  --z-panel-low，见 overlay.css 的 21/29/31 组合）靠本入参与内层浮层
-   *  共存——适配层里背板与面板是兄弟节点，面板必须高于背板。 */
+  /** 面板 z-index——仅 viewportRoot/bare 旧机制路径消费（常规面 =
+   *  registry z-50 ≡ --z-dialog 档，#688 阶梯）。 */
   zIndex?: number | string;
-  /** 背板点击的自定义处置（缺省 = onClose）。new-task 的「内层优先」逻辑：
-   *  项目浮层/提及 picker 开着时先关内层，否则走未保存闸 requestClose。 */
+  /** 背板点击的自定义处置——仅 viewportRoot/bare 旧机制路径消费（常规面
+   *  外点走 Base UI 原生 dismiss → onClose）。 */
   onBackdropClick?: () => void;
-  /** 内层浮层开着时的 Esc 处置（等价旧壳手写的分层 Esc：dialog 层用
-   *  `useEscClose(requestClose, open && !projectOpen && ...)` 闸住，内层各
-   *  自收自己的 Esc）。**必须由壳代收**：Base UI 处理 Esc 时会拦下事件，
-   *  仓内内层的 window 监听收不到。传了本回调即表示「现在有内层开着」——
-   *  壳不关自己，转交本回调（由消费者决定关哪层）。 */
+  /** 内层浮层开着时的 Esc 处置（等价旧壳手写的分层 Esc）。**必须由壳代收**：
+   *  Base UI 处理 Esc 时会拦下事件，仓内内层的 window 监听收不到。传了本
+   *  回调即表示「现在有内层开着」——壳不关自己，转交本回调（由消费者决定
+   *  关哪层）。 */
   onEscapeWhileNested?: () => void;
-  /** #453 视口根变体：壳不出面板几何，children 自带 fixed 几何。定宽居中弹层
-   *  会把视口根定位的面挤碎（containing block 改变 + 动画期布局位移，#453
-   *  实测），这族面用它。**开它是内容全权**：面板几何与头/体/底由消费者渲染，
-   *  `width` / `height` / `footer` / `headerCenter` / `bare` 一并失效，`title`
-   *  也不参与（容器退为纯管道 role=presentation，dialog 语义由面内自带）。 */
+  /** #453 视口根变体：壳不出面板几何，children 自带 fixed 几何。**开它是
+   *  内容全权**：`width` / `height` / `footer` / `headerCenter` / `bare`
+   *  一并失效。L5 实审压力点，旧机制原样（见头注）。 */
   viewportRoot?: boolean;
-  /** Backdrop 位类名入参（只作用于视口根态）：视口根态下壳不注入家族皮肤，
-   *  scrim 皮肤由消费者全权给（search-panel 传 `.search-scrim` + tw 的
-   *  data-open/data-closed fade 变体，#656）。
-   *  默认态不开这个口子——11 个既有消费点的背板类串保持逐字不动。 */
+  /** Backdrop 位类名入参（只作用于视口根态）。 */
   backdropClassName?: string;
 }
 
@@ -140,94 +149,106 @@ export function DialogShell({
 }: DialogShellProps) {
   const { t } = useI18n();
   const { restore } = useReturnFocus(open);
-  // 背板 = 面板减一档（#688 阶梯）：数字档直接减，令牌档走 calc——z-index
-  // 是 <integer> 槽，calc 整数运算合法且 computed value 归一成数字。
-  const backdropZ = typeof zIndex === 'number' ? zIndex - 1 : `calc(${zIndex} - 1)`;
-  // 只视口根态吃 backdropClassName：默认态的类串因此逐字不动（11 个消费点）。
-  const backdropClass = viewportRoot
-    ? `fixed inset-0${backdropClassName == null ? '' : ` ${backdropClassName}`}`
-    : 'fixed inset-0 flex items-center justify-center bg-black/60 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0';
+
+  // #318 dismiss 分层闸（两路径共用）：内层浮层开着时，壳不吃 Esc / 外点
+  // （让内层自己收）。
+  const handleOpenChange = (next: boolean, details?: { reason?: string }) => {
+    if (next) return;
+    if (details?.reason === 'escape-key' && onEscapeWhileNested != null) {
+      onEscapeWhileNested();
+      return;
+    }
+    if (onEscapeWhileNested != null && details?.reason === 'outside-press') {
+      return;
+    }
+    onClose();
+  };
+
+  // ── viewportRoot / bare：旧直连机制原样保留（L5 实审压力点，见头注）──
+  if (viewportRoot || bare) {
+    // 背板 = 面板减一档（#688 阶梯）：数字档直接减，令牌档走 calc——z-index
+    // 是 <integer> 槽，calc 整数运算合法且 computed value 归一成数字。
+    const backdropZ = typeof zIndex === 'number' ? zIndex - 1 : `calc(${zIndex} - 1)`;
+    // 只视口根态吃 backdropClassName：bare 态的类串保持逐字不动。
+    const backdropClass = viewportRoot
+      ? `fixed inset-0${backdropClassName == null ? '' : ` ${backdropClassName}`}`
+      : 'fixed inset-0 flex items-center justify-center bg-black/60 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0';
+    return (
+      <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange} modal>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Backdrop
+            data-slot="dialog-overlay"
+            style={{ zIndex: backdropZ }}
+            className={backdropClass}
+            onClick={onBackdropClick ?? onClose}
+          />
+          <DialogPrimitive.Popup
+            data-slot="dialog-content"
+            // #389：关闭后归还触发位（Base UI 的 finalFocus），不经 trigger 推定
+            finalFocus={restore}
+            className={
+              viewportRoot
+                ? // 具名 group：视口根面板经 group-data-open/closed/dlgvp 读本 Popup
+                  // 的开闭态（VIEWPORT_POP_ANIM）；transform 不上包装层（#656）。
+                  `${VIEWPORT_MECHANISM_CLS} group/dlgvp${className != null ? ` ${className}` : ''}`
+                : `${SHELL_EXIT_BRIDGE_CLS}${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`
+            }
+            style={
+              viewportRoot ? { zIndex } : { width, zIndex, ...(height == null ? {} : { height }) }
+            }
+            // 视口根态：容器是纯管道，dialog 语义由面内自己的 role 承载——
+            // 容器不抢名，面内的 role/aria-label 就是这一层的 a11y 身份。
+            // 默认态的 'dialog' 是复述（Base UI 的默认值就是它），不是冗余：
+            // mergeProps 用 for...in 覆盖外部 props，`role={undefined}` 会把
+            // store 的默认值一并抹掉，两态必须各给一个实值。
+            role={viewportRoot ? 'presentation' : 'dialog'}
+            aria-label={viewportRoot ? undefined : title}
+          >
+            {children}
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    );
+  }
+
+  // ── 常规面：组合 registry dialog.tsx（零皮肤，#983 判决）──
   return (
-    <DialogPrimitive.Root
-      open={open}
-      onOpenChange={(next: boolean, details?: { reason?: string }) => {
-        if (next) return;
-        // #318 闸：内层浮层开着时，壳不吃 Esc / 外点（让内层自己收），
-        // 也不吃背板（背板走 onBackdropClick 的内层优先分支）。
-        if (details?.reason === 'escape-key' && onEscapeWhileNested != null) {
-          onEscapeWhileNested();
-          return;
-        }
-        if (onEscapeWhileNested != null && details?.reason === 'outside-press') {
-          return;
-        }
-        onClose();
-      }}
-      modal
-    >
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop
-          data-slot="dialog-overlay"
-          style={{ zIndex: backdropZ }}
-          className={backdropClass}
-          onClick={onBackdropClick ?? onClose}
-        />
-        <DialogPrimitive.Popup
-          data-slot="dialog-content"
-          // #389：关闭后归还触发位（Base UI 的 finalFocus），不经 trigger 推定
-          finalFocus={restore}
-          className={
-            viewportRoot
-              ? // 具名 group：视口根面板经 group-data-open/closed/dlgvp 读本 Popup
-                // 的开闭态（VIEWPORT_POP_ANIM）；transform 不上包装层（#656）。
-                `${VIEWPORT_MECHANISM_CLS} group/dlgvp${className != null ? ` ${className}` : ''}`
-              : `${SHELL_EXIT_BRIDGE_CLS}${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`
-          }
-          style={
-            viewportRoot ? { zIndex } : { width, zIndex, ...(height == null ? {} : { height }) }
-          }
-          // 视口根态：容器是纯管道，dialog 语义由面内自己的 role 承载——
-          // 容器不抢名，面内的 role/aria-label 就是这一层的 a11y 身份。
-          // 默认态的 'dialog' 是复述（Base UI 的默认值就是它），不是冗余：
-          // mergeProps 用 for...in 覆盖外部 props，`role={undefined}` 会把
-          // store 的默认值一并抹掉，两态必须各给一个实值。
-          role={viewportRoot ? 'presentation' : 'dialog'}
-          aria-label={viewportRoot ? undefined : title}
+    <Dialog open={open} onOpenChange={handleOpenChange} modal>
+      <DialogContent
+        // #389：关闭后归还触发位（finalFocus 经 DialogContent 直通 Popup）。
+        finalFocus={restore}
+        showCloseButton={false}
+        aria-label={title}
+        style={{ width: `min(100% - 2rem, ${width}px)` }}
+        className={cn(
+          // layout 位：#193 封顶 + 三段 grid（body 是真滚动容器）；宽度经
+          // style min() 收口，故解除 registry 的 max-w 两档。
+          'max-h-[calc(100vh-48px)] max-w-none sm:max-w-none',
+          footer != null ? 'grid-rows-[auto_minmax(0,1fr)_auto]' : 'grid-rows-[auto_minmax(0,1fr)]',
+          className,
+        )}
+      >
+        <DialogHeader
+          data-testid="dialog-head"
+          className={headerCenter != null ? 'items-center' : undefined}
         >
-          {viewportRoot || bare ? (
-            children
-          ) : (
-            <>
-              <div
-                data-testid="dialog-head"
-                className={`relative flex h-12 flex-none items-center border-b border-border px-4${
-                  headerCenter != null ? ' justify-center border-b-0' : ''
-                }`}
-              >
-                {title != null && (
-                  <span className="text-sm font-medium text-foreground">{title}</span>
-                )}
-                {headerCenter}
-                <DialogPrimitive.Close
-                  className="absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground"
-                  aria-label={t('关闭')}
-                  onClick={onClose}
-                >
-                  <X width={16} height={16} />
-                </DialogPrimitive.Close>
-              </div>
-              <div data-testid="dialog-body" className="min-h-0 flex-1 overflow-y-auto">
-                {children}
-              </div>
-              {footer != null && (
-                <div data-testid="dialog-foot" className="flex-none">
-                  {footer}
-                </div>
-              )}
-            </>
-          )}
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+          {headerCenter != null ? (
+            headerCenter
+          ) : title != null ? (
+            <DialogTitle>{title}</DialogTitle>
+          ) : null}
+        </DialogHeader>
+        <div data-testid="dialog-body" className="min-h-0 overflow-y-auto">
+          {children}
+        </div>
+        {footer != null && <DialogFooter data-testid="dialog-foot">{footer}</DialogFooter>}
+        <DialogClose
+          render={<Button variant="ghost" size="icon-sm" className="absolute top-2 right-2" />}
+          aria-label={t('关闭')}
+        >
+          <X width={16} height={16} />
+        </DialogClose>
+      </DialogContent>
+    </Dialog>
   );
 }

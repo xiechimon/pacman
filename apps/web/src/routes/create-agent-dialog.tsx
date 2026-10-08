@@ -29,6 +29,7 @@ import { Link, useLocation } from 'react-router';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
+import { Label } from '../components/ui/label.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -41,11 +42,9 @@ import {
   DLG_AGENT_SELECT_TRIGGER_CLS,
 } from './agent-model-select.js';
 
-/** .dlg-form-label 退役后的等值 rhythm（正典表 §5.4，#944 的 LABEL_CLS 同律）：
- *  9/8 外距 + 18 行盒；字号/字距 = c.css 定版 --label-size 12px /
- *  --label-spacing 0.01em——#915 落 token 后改 text-(--label-size)
- *  tracking-(--label-spacing)（§4-4）。 */
-const LABEL_CLS = 'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--foreground)';
+/** 槽位标签（运行时/模型 span，无控件配对不走 label 元素）：registry Label
+ *  同款排印（text-sm leading-none font-medium）；12px/0.01em 手写档退役。 */
+const SLOT_LABEL_CLS = 'text-sm leading-none font-medium';
 
 /** POST agents body 的创建面字段（reason = 词表最小形 + #485 的模型槽）。 */
 export interface CreateAgentInput {
@@ -101,21 +100,15 @@ export function CreateAgentDialog({
       title={t('创建 agent')}
       open={open}
       onClose={onClose}
-      // 底座 = components/ui/Button default 档；w-full = 钉底独占
-      // （§5.4）。差额并项——散写形字重 400、无按下位移。
+      // 裸内容进 DialogFooter（壳组合 registry dialog 件后 band 自带 p-4，
+      // 自携 padding 包装会双垫）；Button default 档 + w-full 钉底独占。
       footer={
-        <div className="flex flex-col px-4 pb-4">
-          <Button
-            className="w-full px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
-            disabled={name.trim() === ''}
-            onClick={submit}
-          >
-            {t('创建')}
-          </Button>
-        </div>
+        <Button className="w-full" disabled={name.trim() === ''} onClick={submit}>
+          {t('创建')}
+        </Button>
       }
     >
-      <div className="flex flex-col gap-3 px-4 pt-4 pb-3">
+      <div className="flex flex-col gap-3">
         {/* #951（detail/overlays.css 清零）：.dlg-agent-avatar 律等值迁
             utility——行 12 gap；img 40×40 圆（per-face 容器是 img 几何正本，
             SeededAvatar 契约）。testid = 二级载体（img 在 loaded 前被 registry
@@ -127,12 +120,9 @@ export function CreateAgentDialog({
               wontfix）：栈内无上传面。 */}
           <SeededAvatar name={name.trim()} fallback="/avatar-robot-1.svg" className="size-10" />
         </div>
-        <label className={LABEL_CLS} htmlFor="dlg-agent-name">
-          {t('名称')}
-        </label>
+        <Label htmlFor="dlg-agent-name">{t('名称')}</Label>
         <Input
           id="dlg-agent-name"
-          className="placeholder:text-current/50"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder={t('输入 Agent 名称')}
@@ -145,7 +135,7 @@ export function CreateAgentDialog({
                 排布，6 gap）；#952：选择器本体几何走 DLG_AGENT_SELECT_* 常量
                 （agent-model-select.tsx 单源，agent-detail.css 退役）。 */}
             <div className="flex flex-col gap-1.5">
-              <span className={LABEL_CLS}>{t('运行时')}</span>
+              <span className={SLOT_LABEL_CLS}>{t('运行时')}</span>
               <AgentRuntimeSelect
                 value={provider}
                 options={modelOptions}
@@ -159,7 +149,7 @@ export function CreateAgentDialog({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className={LABEL_CLS}>{t('模型')}</span>
+              <span className={SLOT_LABEL_CLS}>{t('模型')}</span>
               <AgentModelSelect
                 provider={provider}
                 modelId={modelId}
@@ -172,16 +162,12 @@ export function CreateAgentDialog({
             </div>
           </>
         ) : (
-          // #951：.dlg-agent-warn/-configure 律等值迁 utility——告警行 8 圆角
-          // card-border 描边 surface 底 8/12 垫 13/16 secondary 墨；外链
-          // ml-auto 右锚（spec 载体 = link 文案一级，agent-create-model /
-          // team-create-agent 同 PR 重钉）。
-          <div className="flex items-center gap-2 rounded-[8px] border border-(--border) bg-(--card) px-3 py-2 text-[13px] leading-4 text-(--text-secondary)">
+          // 告警行：registry 词汇（rounded-lg + border-input + bg-card +
+          // text-sm muted 墨）；外链 primary 墨 ml-auto 右锚（spec 载体 =
+          // link 文案一级，agent-create-model / team-create-agent 同 PR 重钉）。
+          <div className="flex items-center gap-2 rounded-lg border border-input bg-card px-3 py-2 text-sm leading-4 text-muted-foreground">
             <span>{t('尚未配置模型服务商')}</span>
-            <Link
-              className="ml-auto text-[13px] leading-4"
-              to={{ pathname: PROVIDERS_HREF, search }}
-            >
+            <Link className="ml-auto text-primary" to={{ pathname: PROVIDERS_HREF, search }}>
               {t('配置服务商')}
             </Link>
           </div>

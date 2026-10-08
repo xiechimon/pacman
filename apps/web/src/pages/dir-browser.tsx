@@ -14,53 +14,39 @@
 //   server 全量返回，隐藏/toggle 是本显示层语义（F16）。
 // - 空目录空态、超大目录截断提示（truncated 旗标，W9/W10）。
 // - localStorage 隐私模式抛 = 读写 try/catch 降级（缺省起点、不记住，W13）。
-// 弹层家族法 #67/#127：FloatingShell + ClickCatcher（#656 起 Esc 归 Base UI
-// layer 栈；gh-picker 同款）。
-// #946：per-face 类（dir-browser-*）退役——皮肤迁 token utility 等值，e2e
-// 载体迁语义位（role=dialog/list/listitem、按钮文案、aria-pressed）。
+// 弹层承载 = registry Popover（#983 floating-shell 族拆判决：锚定 absolute
+// 族 → Popover，Positioner 锚定）——Esc / 外点关 / 焦点归还 / 进出场动效全归
+// Base UI 原语；外点语义随壳退役换原生 outside-press（穿透下层，#425 遗留
+// 待定项按 #991 归原型实审裁决）。
+// #946：per-face 类（dir-browser-*）退役——e2e 载体迁语义位
+// （role=dialog/list/listitem、按钮文案、aria-pressed）。
 
 import { FS_LIST_MAX_ENTRIES } from '@pacman/shared';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client.js';
 import { useFsList } from '../api/hooks.js';
 import { Button } from '../components/ui/button.js';
-import {
-  EXIT_BRIDGE_CLS,
-  FLOATING_POP_ANIM,
-  FloatingShell,
-} from '../components/ui/floating-shell.js';
+import { PopoverContent } from '../components/ui/popover.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, GitCommit } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 
 /** 记住上次位置的 localStorage 键（单租户单机，ADR 0003 D5）。 */
 const LAST_DIR_KEY = 'pacman.dirBrowser.lastDir';
 
-/** 弹层板（原 .dir-browser，#441 family plate / plan-dropdown 律）：V2 弹层壳
- *  （#790 P3——12px 内边距 / 1px 墨线框 / 直角 / 顶部锚距 8px / 最小宽 220）
- *  + 上指锚边左上的描边 Arrow（12×6 外三角压 10×5 内三角，clip-path utility
- *  承载，#944 RES_SORT_MENU_CLS 同形、此面锚左）。geometry [设计]——上游无
- *  像素采集，贴仓内锚定弹层词汇。 */
-const PLATE_CLS =
-  "absolute top-[calc(100%+8px)] inset-x-0 z-(--z-popover) flex min-w-[220px] flex-col gap-1.5 rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
-
-/** 面包屑段钮（原 .dir-browser-crumb，ghost 底座七通道中和）。 */
+/** 面包屑段钮：ghost 件默认形态 + 紧凑布局位；末段（aria-current=location）
+ *  加重 = 状态载体，字重/墨色走 registry 词汇。 */
 const CRUMB_CLS =
-  'h-auto max-w-40 shrink cursor-pointer truncate rounded-none border-none bg-transparent p-0 text-xs font-normal leading-4 text-(--text-secondary) hover:bg-transparent hover:text-(--foreground) hover:underline dark:hover:bg-transparent aria-[current=location]:font-medium aria-[current=location]:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
+  'h-auto max-w-40 shrink cursor-pointer truncate p-1 font-normal text-muted-foreground hover:text-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground';
 
-/** dotfiles toggle 钮（原 .dir-browser-dots，pill 带框形 + aria-pressed
- *  品牌态；pressed×hover 叠态钉品牌墨 = 旧 unlayered 规则序的等值）。 */
-const DOTS_CLS =
-  'h-auto flex-none cursor-pointer rounded-full border border-(--border) bg-transparent px-2 py-0.5 text-[11px] font-normal leading-4 whitespace-nowrap text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-pressed:border-(--card-button) aria-pressed:text-(--card-button) aria-pressed:hover:text-(--card-button) active:not-aria-[haspopup]:translate-y-0';
-
-/** 行名钮（原 .dir-browser-name，ghost 底座；行钮自身无 hover 涂底）。 */
+/** 行名钮：ghost 件；行盒（li）是唯一 hover 涂底面（hover:bg-accent，
+ *  registry 菜单行词汇），行内钮自身涂底并掉——一个可供性面不叠两层。 */
 const ROW_NAME_CLS =
-  'h-auto min-w-0 flex-1 cursor-pointer justify-start truncate rounded-none border-none bg-transparent px-1 text-[13px] font-normal leading-[18px] text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'h-auto min-w-0 flex-1 cursor-pointer justify-start truncate px-1.5 py-1 font-normal hover:bg-transparent dark:hover:bg-transparent';
 
-/** 「选择」钮（原 .dir-browser-pick）：静息隐身，行 hover（group）/自身
- *  focus-visible 现身。 */
+/** 「选择」钮：outline 件 xs 档；静息隐身，行 hover（group）/自身
+ *  focus-visible 现身（渐进披露是交互设计位，非皮肤）。 */
 const PICK_CLS =
-  'h-auto flex-none cursor-pointer rounded-[6px] border border-(--border) bg-transparent px-2.5 py-0.5 text-xs font-normal leading-4 text-(--text-secondary) opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'flex-none cursor-pointer opacity-0 group-hover:opacity-100 focus-visible:opacity-100';
 
 function readLastDir(): string | null {
   try {
@@ -90,47 +76,22 @@ function breadcrumb(path: string): { label: string; path: string }[] {
   return segs;
 }
 
+/** 目录浏览弹层板（#983 floating-shell 族拆判决：registry Popover 承载）。
+ *  本件只渲 PopoverContent——Popover Root/Trigger 归消费点（project-new-page
+ *  的 浏览 钮 = Trigger；422 兜底的程序开面走受控 open）。开面即挂载：
+ *  lastDir 起点走 useState 惰性初始化（记住上次位置 W1，单请求——挂载即
+ *  dir 就位，无「缺省 + lastDir」双发面）；关面即卸载，状态自然归零。 */
 export function DirBrowser({
-  open,
-  onClose,
   onPick,
 }: {
-  open: boolean;
-  /** Escape / 点外部关闭（输入框值不动，弹层家族法）。 */
-  onClose: () => void;
-  /** 单击行「选择」：回填该目录 canonical 绝对路径（消费点接输入框）。 */
+  /** 单击行「选择」：回填该目录 canonical 绝对路径（消费点接输入框 + 关面）。 */
   onPick: (path: string) => void;
 }) {
   const { t } = useI18n();
-  const [dir, setDir] = useState<string | null>(null);
-  const [armed, setArmed] = useState(false);
+  const [dir, setDir] = useState<string | null>(() => readLastDir());
   const [showDotfiles, setShowDotfiles] = useState(false);
-  // #656：Esc 归 FloatingShell（Base UI layer 栈）。面板是 absolute top:100%，
-  // 旧 containing block = 最近的非 static 祖先；Portal container 取同一个元素，
-  // 几何逐像素不变（锚点 span 原位，向上走到第一个非 static 祖先）。
-  const anchorRef = useRef<HTMLSpanElement | null>(null);
-  const [dockEl, setDockEl] = useState<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    let node = anchorRef.current?.parentElement ?? null;
-    while (node !== null && getComputedStyle(node).position === 'static') {
-      node = node.parentElement;
-    }
-    setDockEl(node);
-  }, []);
 
-  // 起点：open 翻真时同步 lastDir（记住上次位置，W1）+ armed 门——query 只在
-  // dir 就位后 enabled，避免「缺省请求 + lastDir 请求」双发（W1）。
-  useEffect(() => {
-    if (open) {
-      setDir(readLastDir());
-      setShowDotfiles(false);
-      setArmed(true);
-    } else {
-      setArmed(false);
-    }
-  }, [open]);
-
-  const listQ = useFsList(dir, open && armed);
+  const listQ = useFsList(dir, true);
 
   // 面包屑/记住位置真值 = canonical path（非 placeholder 的成功数据）。错误面
   // （无 data）走 lastGoodPath ref 不塌缩（W3）；列表成功即写 lastDir（W6）。
@@ -161,115 +122,103 @@ export function DirBrowser({
   const crumbs = currentPath !== null ? breadcrumb(currentPath) : [];
 
   return (
-    <>
-      <span ref={anchorRef} hidden aria-hidden="true" />
-      {dockEl !== null && (
-        <FloatingShell open={open} onClose={onClose} container={dockEl} className={EXIT_BRIDGE_CLS}>
-          <ClickCatcher onClose={onClose} />
-          <div
-            className={`${PLATE_CLS} ${FLOATING_POP_ANIM}`}
-            role="dialog"
-            aria-label={t('浏览本地文件夹')}
-          >
-            <div className="flex items-center gap-2 px-1">
-              <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5">
-                {crumbs.map((seg, i) => (
-                  <span key={seg.path} className="inline-flex min-w-0 items-center gap-0.5">
-                    {i > 0 && (
-                      <span className="inline-flex text-(--text-tertiary)" aria-hidden="true">
-                        <ChevronRight width={12} height={12} />
-                      </span>
-                    )}
-                    {/* XMON-25 收编：ghost；h-auto 保内容高（focus 环矩形 =
+    <PopoverContent side="bottom" align="end" sideOffset={8} aria-label={t('浏览本地文件夹')}>
+      <div className="flex items-center gap-2 px-1">
+        <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5">
+          {crumbs.map((seg, i) => (
+            <span key={seg.path} className="inline-flex min-w-0 items-center gap-0.5">
+              {i > 0 && (
+                <span className="inline-flex text-muted-foreground" aria-hidden="true">
+                  <ChevronRight width={12} height={12} />
+                </span>
+              )}
+              {/* XMON-25 收编：ghost；h-auto 保内容高（focus 环矩形 =
                     现行为）、shrink 保面包屑挤压可缩（base shrink-0 会改
                     溢出行为）。hover 提亮 + 下划线 = 原 per-face hover 面；
                     末段（aria-current=location）primary 墨 + 500 字重。 */}
-                    <Button
-                      variant="ghost"
-                      className={CRUMB_CLS}
-                      // 末段 = 当前目录（不可再下钻到自己，仍渲染为钮保持一致性）。
-                      aria-current={i === crumbs.length - 1 ? 'location' : undefined}
-                      onClick={() => setDir(seg.path)}
-                    >
-                      {seg.label}
-                    </Button>
-                  </span>
-                ))}
-              </nav>
-              {/* XMON-25 收编：ghost；aria-pressed 选中态（品牌描边 + 品牌墨，
-              原 per-face [aria-pressed=true] 规则）迁 aria-pressed 变体
-              utility，pressed×hover 叠态钉品牌墨（旧 unlayered 恒压序的等值）。 */}
               <Button
                 variant="ghost"
-                className={DOTS_CLS}
-                aria-pressed={showDotfiles}
-                onClick={() => setShowDotfiles((v) => !v)}
+                className={CRUMB_CLS}
+                // 末段 = 当前目录（不可再下钻到自己，仍渲染为钮保持一致性）。
+                aria-current={i === crumbs.length - 1 ? 'location' : undefined}
+                onClick={() => setDir(seg.path)}
               >
-                {t('显示隐藏文件')}
+                {seg.label}
               </Button>
-            </div>
-            <ul className="flex max-h-72 flex-col overflow-y-auto">
-              {listQ.isError ? (
-                <div className="px-3 py-2 text-xs leading-4 text-(--destructive)" role="alert">
-                  {(listQ.error as Error).message}
-                </div>
-              ) : (
-                visible.map((entry) => {
-                  const base = currentPath ?? '/';
-                  // canonical 绝对路径 + 目录名 → 子路径（base 恒以 `/` 开头无尾斜杠）。
-                  const child = base === '/' ? `/${entry.name}` : `${base}/${entry.name}`;
-                  return (
-                    <li
-                      className="group flex h-8 items-center gap-1.5 rounded-[6px] px-1 hover:bg-(--card)"
-                      key={entry.name}
-                    >
-                      {/* XMON-25 收编：ghost；justify-start 对齐位（text-align:left
-                      的 flex 等价）、h-auto 保 18px 内容高。行钮自身无 hover
-                      涂底面（hover 高亮骑整行盒，group 面）。 */}
-                      <Button
-                        variant="ghost"
-                        className={ROW_NAME_CLS}
-                        onClick={() => setDir(child)}
-                      >
-                        {entry.name}
-                      </Button>
-                      {entry.git && (
-                        <span
-                          className="inline-flex flex-none text-(--card-button)"
-                          role="img"
-                          aria-label={t('git 仓库')}
-                        >
-                          <GitCommit width={13} height={13} />
-                        </span>
-                      )}
-                      {/* XMON-25 收编：ghost；opacity 0→1（行 hover 经 group /
-                      自身 focus-visible）utility 等值承接。 */}
-                      <Button variant="ghost" className={PICK_CLS} onClick={() => onPick(child)}>
-                        {t('选择')}
-                      </Button>
-                    </li>
-                  );
-                })
-              )}
-              {!listQ.isError &&
-                !listQ.isPlaceholderData &&
-                listQ.data !== undefined &&
-                visible.length === 0 && (
-                  <li className="px-3 py-2 text-xs leading-4 text-(--text-tertiary)">
-                    {/* 真无子目录 vs 子目录全被 dotfiles 隐藏（toggle 是就近 affordance）
-                    ——两态分译，不对「有但隐藏」谎称「没有」。 */}
-                    {entries.length === 0 ? t('没有子目录') : t('子目录均已隐藏')}
-                  </li>
-                )}
-            </ul>
-            {listQ.data?.truncated === true && (
-              <div className="border-t border-(--border) p-1 text-[11px] leading-4 text-(--text-tertiary)">
-                {t('目录条目过多，只列出前 {n} 条', { n: FS_LIST_MAX_ENTRIES })}
-              </div>
-            )}
+            </span>
+          ))}
+        </nav>
+        {/* toggle 钮：registry 形态 outline/secondary 双档（aria-pressed
+              选中态载体保持，品牌描边 pill 手写皮肤退役）。 */}
+        <Button
+          variant={showDotfiles ? 'secondary' : 'outline'}
+          size="xs"
+          className="flex-none whitespace-nowrap"
+          aria-pressed={showDotfiles}
+          onClick={() => setShowDotfiles((v) => !v)}
+        >
+          {t('显示隐藏文件')}
+        </Button>
+      </div>
+      <ul className="flex max-h-72 flex-col overflow-y-auto">
+        {listQ.isError ? (
+          <div className="px-3 py-2 text-xs leading-4 text-destructive" role="alert">
+            {(listQ.error as Error).message}
           </div>
-        </FloatingShell>
+        ) : (
+          visible.map((entry) => {
+            const base = currentPath ?? '/';
+            // canonical 绝对路径 + 目录名 → 子路径（base 恒以 `/` 开头无尾斜杠）。
+            const child = base === '/' ? `/${entry.name}` : `${base}/${entry.name}`;
+            return (
+              <li
+                className="group flex h-8 items-center gap-1.5 rounded-md px-1 hover:bg-accent"
+                key={entry.name}
+              >
+                {/* 行钮：ghost；行盒（li hover:bg-accent）是唯一涂底面，
+                      行内钮自身 hover 涂底并掉——一个可供性面不叠两层。 */}
+                <Button variant="ghost" className={ROW_NAME_CLS} onClick={() => setDir(child)}>
+                  {entry.name}
+                </Button>
+                {entry.git && (
+                  <span
+                    className="inline-flex flex-none text-primary"
+                    role="img"
+                    aria-label={t('git 仓库')}
+                  >
+                    <GitCommit width={13} height={13} />
+                  </span>
+                )}
+                {/* 「选择」：outline xs 档；opacity 0→1（行 hover 经 group /
+                      自身 focus-visible）渐进披露。 */}
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className={PICK_CLS}
+                  onClick={() => onPick(child)}
+                >
+                  {t('选择')}
+                </Button>
+              </li>
+            );
+          })
+        )}
+        {!listQ.isError &&
+          !listQ.isPlaceholderData &&
+          listQ.data !== undefined &&
+          visible.length === 0 && (
+            <li className="px-3 py-2 text-xs leading-4 text-muted-foreground">
+              {/* 真无子目录 vs 子目录全被 dotfiles 隐藏（toggle 是就近 affordance）
+                    ——两态分译，不对「有但隐藏」谎称「没有」。 */}
+              {entries.length === 0 ? t('没有子目录') : t('子目录均已隐藏')}
+            </li>
+          )}
+      </ul>
+      {listQ.data?.truncated === true && (
+        <div className="border-t border-border p-1 text-xs leading-4 text-muted-foreground">
+          {t('目录条目过多，只列出前 {n} 条', { n: FS_LIST_MAX_ENTRIES })}
+        </div>
       )}
-    </>
+    </PopoverContent>
   );
 }
