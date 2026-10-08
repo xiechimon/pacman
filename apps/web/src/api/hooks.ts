@@ -36,6 +36,7 @@ import type {
   PatchAgentBody,
   PatchChiefBody,
   PatchMachineBody,
+  PatchUserBody,
   PlanRow,
   ProjectFileResponse,
   ProjectFilesResponse,
@@ -590,6 +591,15 @@ export function useApiMutations(teamId: string | undefined) {
     void qc.invalidateQueries();
   };
   return {
+    // 改名写回（#1031）：PATCH /api/user/me。成功只失效 session 读面（名称
+    // 单源，帐号页 + LiveDataBridge 共用 ['session'] 键），无需全量重取。不做
+    // 乐观更新：失败时调用点（帐号页）toast 点名，行面停在服务端旧值。
+    patchUser: useMutation({
+      mutationFn: (body: PatchUserBody) => api.patch<UserRecord>('/api/user/me', body),
+      onSuccess: () => {
+        void qc.invalidateQueries({ queryKey: ['session'] });
+      },
+    }),
     createTodo: useMutation({
       // spec 15 #394：web 面不产标题——wire 上 title 恒空串 = server 派生占位
       // 标题（首行截断），执行 agent 接单后回填正式标题；标签 = 固定词表

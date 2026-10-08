@@ -319,6 +319,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '13': boardDefault,
       // account 语言 dropdown open state (issue #74; shape [设计], r2 §11 Q19)
       '13-lang': { ...boardDefault, ui: { langDropdownOpen: true } },
+      // account 推送通知开关的权限三态表达面 (#1031)：denied 档起步关、点开出
+      // 拦截解释。旧面硬编 granted 使「关不掉」被掩盖——本场景把 denied 显式化。
+      '13-notify-denied': { ...boardDefault, ui: { notificationPermission: 'denied' } },
       'api-keys': boardDefault,
       'api-keys-created': apiKeysCreated,
       // resources (r7 06–10, issue #69): one shared row set — the captures

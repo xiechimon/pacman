@@ -16,6 +16,15 @@ export const userRecordSchema = z.object({
 });
 export type UserRecord = z.infer<typeof userRecordSchema>;
 
+/** 改名落盘面 body（#1031：帐号页名称行内编辑，PATCH /api/user/me）。只有
+ *  displayName 一位——头像无上传面（#306 wontfix），不在此开写路径。
+ *  `.trim().min(1)`：空白名不落库（身份位非空），与 agent displayName 同律
+ *  但补 trim（zod 4 transform 先 trim 再校验长度，纯空白 → 空 → 拒）。 */
+export const patchUserBodySchema = z.object({
+  displayName: z.string().trim().min(1),
+});
+export type PatchUserBody = z.infer<typeof patchUserBodySchema>;
+
 /** 会话 = httpOnly cookie 自设（01 §4.2 认证行）；session-v1 缓存中
  * token 字段留空（r2 §1.5 要点：会话走 cookie）。 */
 export const AUTH_SESSION_NOTE = '单用户 seed + 自动登录（02 §2.1）；无登录页复刻';
