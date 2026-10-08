@@ -78,17 +78,20 @@ test('avatar 落点定尺盒（#983/#1003）：Root 生成真盒承上游发丝�
   expect(probe.chipBox.h).toBe(44);
 });
 
-test('kbd 落点：悬浮提示是 registry Kbd，静息隐藏 / 悬浮浮出不变', async ({ page }) => {
+test('kbd 落点：悬浮提示 = registry Tooltip+Kbd 组合，静息不挂载 / 悬浮浮出', async ({ page }) => {
   await page.goto('/app?scenario=01');
   // #950 载体：.chief-fab → aria-label 总管钮（board inline FAB）。
   const fab = page.getByRole('button', { name: '总管', exact: true });
-  const hint = fab.locator('.kbd-hint');
-  await expect(hint).toHaveCount(1);
-  await expect(hint).toHaveAttribute('data-slot', 'kbd');
-  await expect(hint).toBeHidden();
+  // #1008 重钉：kbd-hint 适配件退役（#983 判决）→ 官网 Tooltip+Kbd 组合：
+  // Kbd 保住 data-slot=kbd 载体、移进 tooltip content（registry kbd 槽自带
+  // 反色变体）；静息态从「常驻 DOM + visibility:hidden」变「不挂载」。
+  const hint = page.locator('[data-slot="tooltip-content"]');
+  await expect(hint).toHaveCount(0);
   await fab.hover();
   await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('⌘J');
+  const kbd = hint.locator('[data-slot="kbd"]');
+  await expect(kbd).toBeVisible();
+  await expect(kbd).toHaveText('⌘J');
 });
 
 test('tag-chip 落点：落在 registry Badge 上，别名类与 per-face 几何双保（卡面 16 / 面板面 20）', async ({

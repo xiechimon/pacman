@@ -407,13 +407,15 @@ test('the robot FAB surfaces the ⌘J hint on hover; at rest it stays hidden', a
 }) => {
   await page.goto(BOARD);
   const fab = page.getByRole('button', { name: '总管' });
-  const hint = fab.locator('.kbd-hint');
-  await expect(hint).toHaveCount(1);
-  // visibility:hidden at rest — capture faces never grow a phantom chip
-  await expect(hint).toBeHidden();
+  // #1008 重钉：kbd-hint chip 退役 → 官网 Tooltip+Kbd 组合（#983 判决）。
+  // 静息 = tooltip 不挂载（旧 visibility:hidden 常驻 DOM 的语义随件换代，
+  // 原型实审裁决 3 过目：tooltip 进可及树 = a11y 增强）；挂载点是 body 级
+  // portal，定位器走页面级。
+  const hint = page.locator('[data-slot="tooltip-content"]');
+  await expect(hint).toHaveCount(0);
   await fab.hover();
   await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('⌘J');
+  await expect(hint.locator('[data-slot="kbd"]')).toHaveText('⌘J');
 });
 
 test('a wake-family FAB carries the same ⌘J hint (shared consumption point)', async ({
@@ -421,11 +423,12 @@ test('a wake-family FAB carries the same ⌘J hint (shared consumption point)', 
 }) => {
   await page.goto('/app/team?scenario=12');
   const fab = page.locator('button[aria-label="总管"]');
-  const hint = fab.locator('.kbd-hint');
-  await expect(hint).toBeHidden();
+  // #1008 重钉：Tooltip+Kbd 组合（同上），body 级 portal 走页面级定位器。
+  const hint = page.locator('[data-slot="tooltip-content"]');
+  await expect(hint).toHaveCount(0);
   await fab.hover();
   await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('⌘J');
+  await expect(hint.locator('[data-slot="kbd"]')).toHaveText('⌘J');
 });
 
 test('the collapsed rail search icon hovers the ⌘K hint', async ({ page }) => {
@@ -433,11 +436,12 @@ test('the collapsed rail search icon hovers the ⌘K hint', async ({ page }) => 
   await page.locator('button[aria-label="收起侧边栏"]').click();
   const railSearch = page.getByRole('button', { name: '搜索' });
   await expect(railSearch).toBeVisible();
-  const hint = railSearch.locator('.kbd-hint');
-  await expect(hint).toBeHidden();
+  // #1008 重钉：Tooltip+Kbd 组合，side=right sideOffset=8 = 旧 rail 落位。
+  const hint = page.locator('[data-slot="tooltip-content"]');
+  await expect(hint).toHaveCount(0);
   await railSearch.hover();
   await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('⌘K');
+  await expect(hint.locator('[data-slot="kbd"]')).toHaveText('⌘K');
 });
 
 test('the drawer new-thread + hovers the N hint and advertises aria-keyshortcuts', async ({
@@ -448,13 +452,13 @@ test('the drawer new-thread + hovers the N hint and advertises aria-keyshortcuts
   const newThread = drawer(page).locator('button[aria-label="新主题"]');
   await expect(newThread).toBeVisible();
   await expect(newThread).toHaveAttribute('aria-keyshortcuts', 'N');
-  const hint = newThread.locator('.kbd-hint');
-  await expect(hint).toHaveCount(1);
-  // visibility:hidden at rest — capture faces never grow a phantom chip
-  await expect(hint).toBeHidden();
+  // #1008 重钉：Tooltip+Kbd 组合，side=bottom sideOffset=8 = 旧 below 落位
+  // （头部贴视口顶）。静息 = tooltip 不挂载。
+  const hint = page.locator('[data-slot="tooltip-content"]');
+  await expect(hint).toHaveCount(0);
   await newThread.hover();
   await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('N');
+  await expect(hint.locator('[data-slot="kbd"]')).toHaveText('N');
 });
 
 test('with the drawer closed, N stays retired — neither drawer nor dialog opens', async ({
@@ -646,13 +650,13 @@ test('the chip cycles on Tab while the list is open; Shift+Tab keeps native move
   await expect(chip).toBeFocused();
   await expect(menu).toBeVisible();
 
-  // Shift+Tab 不吃：Tab 被「换项目」占用后，它是离开驾驶位的出口
+  // #1008 实审裁决 2：Shift+Tab = 离开触发钮的出口，Base UI trigger focus
+  // guards 原生关面（对齐 registry、不维护两套语义；旧「列表保持开」契约随
+  // 手写壳退役）。换项目结果不受影响（r2-inventory 保持回填）。
   await page.keyboard.press('Shift+Tab');
   await expect(chip).not.toBeFocused();
-  await expect(page.locator('.new-task-project-name')).toHaveText('r2-inventory');
-
-  await page.keyboard.press('Escape'); // 分层 Esc:先收列表
   await expect(menu).toBeHidden();
+  await expect(page.locator('.new-task-project-name')).toHaveText('r2-inventory');
   await expect(dialog(page)).toBeVisible();
   await escapeUntilHidden(page, dialog(page));
 });
@@ -681,11 +685,13 @@ test('the project chip hovers its Tab hint (hidden at rest)', async ({ page }) =
   await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
   const chip = page.locator('.new-task-project');
-  const hint = chip.locator('.kbd-hint');
-  await expect(hint).toBeHidden();
+  // #1008 重钉：Tab 提示 = TooltipTrigger→PopoverTrigger→Button 三层复合上的
+  // Tooltip+Kbd（side=right sideOffset=8 = 旧 chip 右落位）；静息不挂载。
+  const hint = page.locator('[data-slot="tooltip-content"]');
+  await expect(hint).toHaveCount(0);
   await chip.hover();
   await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('Tab');
+  await expect(hint.locator('[data-slot="kbd"]')).toHaveText('Tab');
   await escapeUntilHidden(page, dialog(page));
 });
 

@@ -112,32 +112,42 @@ test.describe('#15 focus ring收编', () => {
   });
 });
 
-test.describe('#10 schedules 新建定时弹层 = FloatingShell 全屏族（tw fade）', () => {
+// #1008 重钉（#983 判决：居中 fixed 模态族 → registry Dialog；原型实审裁决 3：
+// 可见背板 + registry 动效默认赢）：.sched-form-overlay / .sched-form-close
+// 两个手写别名随壳退役——载体换 registry slot（dialog-overlay / dialog-close），
+// 进场机制断言从「computed animation-name=enter」改钉 animate-in 载体类
+// （registry duration-100 的进场窗太短，不足以竞态 computed 值；机制真值 =
+// tw-animate-css 载体在场 + .overlay-mount 旧机制恒零；几何/动效数值面归
+// probe:dump 对账）。
+test.describe('#10 schedules 新建定时弹层 = registry Dialog 全屏族（#1008 族拆）', () => {
   test('scrim covers the full viewport — sidebar included', async ({ page }) => {
     await page.goto(SCHED);
-    await expect(page.locator('.sched-form-overlay')).toBeVisible();
+    await expect(page.locator('[data-slot="dialog-overlay"]')).toBeVisible();
     const covers = await page.evaluate(() => {
       // a point deep inside the sidebar, far from the centered panel
       const el = document.elementFromPoint(100, 400);
-      return el?.closest('.sched-form-overlay') != null;
+      return el?.closest('[data-slot="dialog-overlay"]') != null;
     });
     expect(covers).toBe(true);
   });
 
   test('Esc closes the overlay', async ({ page }) => {
     await page.goto(SCHED);
-    await expect(page.locator('.sched-form-overlay')).toBeVisible();
+    const overlay = page.locator('[data-slot="dialog-overlay"]');
+    await expect(overlay).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(page.locator('.sched-form-overlay')).toBeHidden();
+    await expect(overlay).toBeHidden();
+    await expect(page.getByRole('dialog', { name: '新建定时' })).toBeHidden();
   });
 
-  test('backdrop click closes; entry rides the tw-animate-css fade', async ({ page }) => {
+  test('backdrop click closes; entry rides the registry animate-in carrier', async ({ page }) => {
     await page.goto(SCHED);
-    const overlay = page.locator('.sched-form-overlay');
+    const overlay = page.locator('[data-slot="dialog-overlay"]');
     await expect(overlay).toBeVisible();
-    // #656: the scrim's enter is the tw-animate-css enter keyframe gated on the
-    // FloatingShell group (replaces the retired .anim-fade + .overlay-mount pair).
-    await expect(overlay).toHaveCSS('animation-name', 'enter');
+    // registry DialogOverlay 的进场机制 = data-open:animate-in + fade-in-0
+    // （tw-animate-css 载体类即机制证据；旧 FloatingShell group 门控退役）。
+    await expect(overlay).toHaveClass(/animate-in/);
+    await expect(overlay).toHaveClass(/fade-in-0/);
     await expect(page.locator('.overlay-mount')).toHaveCount(0);
     // scrim far from the 488-wide centered panel
     await page.mouse.click(80, 80);
@@ -147,10 +157,11 @@ test.describe('#10 schedules 新建定时弹层 = FloatingShell 全屏族（tw f
   test('X and 取消 close the fixture face too (no dead buttons)', async ({ page }) => {
     await page.goto(SCHED);
     await page.locator('.sched-form-cancel').click();
-    await expect(page.locator('.sched-form-overlay')).toBeHidden();
+    await expect(page.locator('[data-slot="dialog-overlay"]')).toBeHidden();
 
     await page.goto(SCHED);
-    await page.locator('.sched-form-close').click();
-    await expect(page.locator('.sched-form-overlay')).toBeHidden();
+    // registry DialogContent 自带关闭钮（旧 .sched-form-close 手写 X 退役）。
+    await page.locator('[data-slot="dialog-content"] [data-slot="dialog-close"]').click();
+    await expect(page.locator('[data-slot="dialog-overlay"]')).toBeHidden();
   });
 });

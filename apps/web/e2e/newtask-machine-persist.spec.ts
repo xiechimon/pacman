@@ -50,7 +50,10 @@ function machineChip(dialog: Locator) {
 }
 
 function machineMenu(dialog: Locator) {
-  return dialog.getByRole('listbox', { name: '机器' });
+  // #1008 重钉：机器 popover 迁 registry Popover 后 Portal 落 body（旧
+  // FloatingShell 把 portal 挂回 chip wrap、菜单嵌在 dialog DOM 内）——
+  // 定位器升到页面级；语义不变（同名 listbox 全场唯一）。
+  return dialog.page().getByRole('listbox', { name: '机器' });
 }
 
 async function pick(page: Page, dialog: Locator, name: string) {
