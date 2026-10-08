@@ -358,7 +358,10 @@ function ScheduleForm({
             <div>
               {/* r3 92b observes 今天; further entries unrecorded——单候选，
                   故缺省值就地取 t()（每渲染现取，locale 切换自然跟上，不带
-                  #74 那种「无控 select 重挂」）；选过的回显值优先。 */}
+                  #74 那种「无控 select 重挂」）；选过的回显值优先。
+                  不变量：回显值不进 saveSchedule* 的 at 计算——唯一候选
+                  「今天」正是 at 的计算基准，接线是死逻辑。加入第二个日期
+                  候选的那一天，此值必须进 wire 计算（#1037 review 钉）。 */}
               <SchedSelect
                 value={date ?? t('今天')}
                 options={[{ value: t('今天'), label: t('今天') }]}
@@ -401,10 +404,6 @@ function ScheduleForm({
     </DialogShell>
   );
 }
-
-/** fixture 创建覆面的会话内序号（id 唯一性——同刻两次保存不得撞 id，
- *  否则删除覆面按 id 一出俱出）。 */
-let fixtureCreatedSeq = 0;
 
 export function SchedulesPage() {
   const { t } = useI18n();
@@ -498,7 +497,6 @@ export function SchedulesPage() {
     let nextRunAt = at;
     while (nextRunAt <= fixture.now) nextRunAt += step;
     markScheduleCreated({
-      id: `fixture-created-${++fixtureCreatedSeq}`,
       teamId: todo.teamId,
       projectId: todo.projectId,
       todoId: todo.id,

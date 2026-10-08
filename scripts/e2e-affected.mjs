@@ -81,7 +81,16 @@ const OVERLAY = [
   'hotkeys',
 ];
 const OVERLAYS = ['chip-', 'hotkeys', 'search-', 'plan-diff-full-file'];
-const PAGES = ['project-', 'file-viewer', 'github-issue-writeback', 'segmented-', 'dialog-'];
+const PAGES = [
+  'project-',
+  'file-viewer',
+  'github-issue-writeback',
+  'segmented-',
+  'dialog-',
+  // #1037: the schedules page family (schedules-live.spec pins the form's
+  // live face; src/pages/schedules-page.tsx edits must pull it in).
+  'schedules-',
+];
 const RESOURCES = [
   'machine-',
   'machines-',
