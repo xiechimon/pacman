@@ -34,6 +34,19 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      # 冲突标记闸（2026-10-08）：合并冲突标记被提交进 main 过一次
+      # （`.claude/skills/verify-pacman/SKILL.md` 里嵌套的 `<<<<<<<`，由解冲突
+      # 脚本只处理最外层所致）。这种破损**不报错、不影响构建、也没人读得出来**
+      # ——只有机器能替人抓住。只认带引用名的 `<<<<<<< ` / `>>>>>>> `（行首 +
+      # 空格），不认裸 `=======`（markdown 的 setext 标题就是一行等号，会误伤）。
+      # 零依赖，故意排在 install 之前：一分钟内红。
+      - name: Conflict markers
+        run: |
+          if git grep -nE '^(<<<<<<< |>>>>>>> )' -- . ; then
+            echo "::error::committed conflict markers — resolve the merge, do not commit the markers"
+            exit 1
+          fi
+
       # 施工期止血闸（#851，#908 波 0a）：per-face CSS 逐文件行数与裸控件
       # 总数只许降不许升。比较基准取 PR base sha 上的基线文件（下面先
       # fetch），所以分支内重新冻结基线抬不高自己的天花板（脚本内 D3）。
