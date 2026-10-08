@@ -1045,7 +1045,9 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
       const m = await btn.evaluate((el) => {
         const label = el.querySelector('span') as HTMLElement;
         const cs = getComputedStyle(label);
-        const col = el.closest('.chief-msg-col') as HTMLElement;
+        // 列没有稳定类名（#950 退役 chief.css 后 MSG_COL_CLS 只剩工具类），
+        // 按列上的 data-testid 取——类名靠不住，这是 #1033/#1040 之后的事实。
+        const col = el.closest('[data-testid="chief-msg-col"]') as HTMLElement;
         return {
           textOverflow: cs.textOverflow,
           overflowX: cs.overflowX,
