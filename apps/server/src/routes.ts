@@ -46,6 +46,7 @@ import {
   patchChiefBodySchema,
   patchMachineBodySchema,
   patchProviderBodySchema,
+  patchUserBodySchema,
   phaseSchema,
   planRowSchema,
   SKILL_ENTRY_FILE,
@@ -78,6 +79,7 @@ import {
   tag,
   todo,
   tokenUsage,
+  user,
   whatsNew,
 } from './db/schema.js';
 import { sha256Hex } from './lib/crypto.js';
@@ -361,6 +363,22 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   // —— GET 面 ————————————————————————————————————————————————————————————————
   app.get('/api/auth/session', (c) => c.json(ctx.user));
   app.get('/api/user/me', (c) => c.json(ctx.user));
+
+  // 改名落盘面（#1031：帐号页名称行内编辑）。GET 同名 PATCH [推断]（02 §6.1
+  // REST 同名规则族，wire 未采——wire.test.ts INFERRED_ROUTES 登记）。写两处：
+  // DB user 行（重启后仍是新名）+ ctx.user 内存 seed 副本（GET me/session 与
+  // members actor 三条读面全吃这个引用，只落库不回填内存 = PATCH 成功后读面
+  // 仍报旧名）。displayName 走 patchUserBodySchema 的 trim+min(1)，空白名 400。
+  app.patch('/api/user/me', async (c) => {
+    const body = parseWith(patchUserBodySchema, await jsonBody(c), 'body');
+    ctx.db
+      .update(user)
+      .set({ displayName: body.displayName })
+      .where(eq(user.id, ctx.user.id))
+      .run();
+    ctx.user.displayName = body.displayName;
+    return c.json(ctx.user);
+  });
 
   app.get('/api/teams', (c) => c.json([ctx.team]));
 

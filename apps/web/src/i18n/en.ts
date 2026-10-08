@@ -210,6 +210,10 @@ export const EN: Record<string, string> = {
   名称: 'Name',
   语言: 'Language',
   推送通知: 'Push notifications',
+  // #1031: the switch is a preference; when it's on but the browser permission
+  // is denied, the row explains why nothing will actually fire.
+  '浏览器已拒绝通知权限，需到站点设置重新允许':
+    'Notifications are blocked by the browser — re-allow them in site settings',
 
   // —— team route (r7 12) ——
   设置: 'Settings',
