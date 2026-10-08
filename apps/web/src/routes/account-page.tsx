@@ -10,11 +10,18 @@
 // static /avatar-user.png asset, no upload face exists or will（无
 // PATCH /user/me 头像写路径），M7「已渲染的交互必须生效」底线不收死钮，
 // 移除不渲染；r7 13 的更换 ink 是 SaaS 头像素残面，avatar 头保留。
-// The 推送通知 switch is live — it mirrors Notification.permission and
-// clicking an off switch drives the same requestPermission() path as the
-// #114 banner (shared useNotificationPermission). Fixture mode freezes the
-// switch granted: r7 13 shows it on and the headless chromium
-// reports the real API as 'denied'.
+// The 推送通知 switch (#1031) = user preference (persisted locally) layered
+// over Notification.permission, not a bare mirror of it: clicking either way
+// lands a preference (pacman.notifyEnabled, consumed by sse.ts's desktop-notif
+// gate), and a non-granted "on" click also drives the #114 banner's
+// requestPermission() path (shared useNotificationPermission). So granted+off
+// is a real, persisting action (desktop notifs go quiet), and denied+on shows
+// an inline 拦截 hint instead of silently doing nothing. Fixture mode freezes
+// permission per scenario (ui.notificationPermission — granted/denied/default
+// all expressible); absent that flag it defaults granted so the r7 13 baseline
+// row keeps its on-state knob (headless chromium reports the real API 'denied').
+// The 名称 row (#1031) is inline-editable via the shared ProfileNameRow (agent
+// detail 同款); it used to be inert text + a decorative pencil (假可供性).
 // #947 per-face 清零：secondary.css 退役。三处控件的 per-face 皮肤改挂
 // token utility（语言触发器 = Button ghost 底座 + 七通道中和，#908
 // comment-6001887439 裁决 3）；推送通知开关落 components/ui/Switch 正典
@@ -34,26 +41,28 @@
 
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useSession } from '../api/hooks.js';
+import { useApiMutations, useSession } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { useNotificationPermission } from '../board/notify-banner.js';
+import { type NotifyPref, persistNotifyPref, readNotifyPref } from '../board/notify-pref.js';
 import {
-  PROFILE_ROW_NAME_CLS,
   PROFILE_ROW_TALL_CLS,
   ProfileAvatar,
   ProfileCard,
   ProfileHead,
+  ProfileNameRow,
   ProfileRow,
 } from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Switch } from '../components/ui/switch.js';
+import { toastError } from '../components/ui/toaster.js';
 import { USER_NAME } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { LOCALE_NAMES, LOCALES } from '../i18n/locale.js';
 import { useI18n } from '../i18n/provider.js';
-import { Check, ChevronDown, SquarePen } from '../icons/index.js';
+import { Check, ChevronDown } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
 
 /** 语言触发器（Button ghost 底座）：30px 带框盒形（r7 13 实测 box
@@ -76,6 +85,26 @@ const LANG_MENU_CLS = 'w-auto min-w-[220px] gap-0';
 const LANG_ROW_CLS =
   "h-8 w-full cursor-pointer justify-start gap-0 rounded-[8px] border-0 px-1 text-left text-xs leading-4 font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5";
 
+/* —— #1031 名称行内编辑面配方（account 面几何，与 agent 详情同构、只差档）——
+   ProfileNameRow 是共享模板件，本面只注入自己的几何/皮肤 utility。值钮吃
+   profile-value 缺省的 14px 值墨（agent 面是 15px），ghost 底座差额按七通道
+   律中和（hover 换主题色 = 可点感信号，补齐旧「纯文本假可供性」缺的可点暗示）；
+   铅笔钮 tertiary 墨 hover 回 foreground；编辑器 32 高带框盒、14px 值墨。
+   account 面 e2e 载体走 role/text（#910 裁定 1，类名别名退役），故这里不再挂
+   `.account-name*` 锚类，几何 utility 是唯一职责。 */
+
+/** 名称值钮（14px 值墨，hover 换主题色补可点感）。 */
+const ACCOUNT_NAME_CLS =
+  'h-auto cursor-pointer justify-start gap-0 rounded-none border-none bg-transparent p-0 text-left text-[14px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--card-button) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
+
+/** 编辑铅笔钮（tertiary 墨，hover 回 foreground；icon-only 只留 padding 盒）。 */
+const ACCOUNT_ICON_EDIT_CLS =
+  'p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
+
+/** 名称编辑器（32 高带框盒，14px 值墨同显示态；focus 环走件底座 #855 律）。 */
+const ACCOUNT_NAME_INPUT_CLS =
+  'border-(--border) bg-(--card) text-[14px] text-(--foreground) md:text-[14px] dark:bg-(--card)';
+
 export function AccountPage() {
   const { locale, setLocale, t } = useI18n();
   const [searchParams] = useSearchParams();
@@ -83,13 +112,41 @@ export function AccountPage() {
   const [langOpen, setLangOpen] = useState(fixture.ui?.langDropdownOpen === true);
   // M5 live：名称 = GET /api/user/me（seed 单用户 displayName，02 §2.1）。
   // 邮箱行已删（XMON-107 用户裁决）：无邮箱账位面，占位无信息量。
-  const { live } = useLiveData();
+  const { live, teamId } = useLiveData();
   const sessionQ = useSession(live);
-  const userName = live ? (sessionQ.data?.displayName ?? USER_NAME) : USER_NAME;
-  // #148: the switch mirrors the real permission (live); fixture freezes
-  // granted so the r7 13 baseline row keeps its on-state knob.
-  const { permission, request } = useNotificationPermission(live ? null : 'granted');
-  const notifyOn = permission === 'granted';
+  const mutations = useApiMutations(teamId);
+  // #1031 改名：live 落 PATCH /api/user/me（既有资料更新通道，成功后 session
+  // 读面失效重取回显）；fixture 面本地态覆写（scenario 无后端，改名只回显）。
+  const [fixtureName, setFixtureName] = useState<string | null>(null);
+  const userName = live ? (sessionQ.data?.displayName ?? USER_NAME) : (fixtureName ?? USER_NAME);
+  const commitName = (next: string) => {
+    if (!live) {
+      setFixtureName(next);
+      return;
+    }
+    mutations.patchUser.mutate(
+      { displayName: next },
+      { onError: (error) => toastError(t('保存失败，请重试。'), error) },
+    );
+  };
+  // #1031 推送通知开关 = 用户偏好档（本地持久化）× 浏览器权限，两层分离：
+  //  · 偏好档（pacman.notifyEnabled）：显示态主源。null（未表态）时跟随权限
+  //    ——granted 显示开、其余显示关；一旦点过就以偏好为准，不再被权限推导。
+  //  · 权限（Notification.permission）：只决定「真弹与否」（sse.ts 闸门）与
+  //    非 granted 态点开时驱动一次 requestPermission（#114 banner 同一路径）。
+  // 这样 granted 态点「关」落地为偏好 off（sse 停弹），denied 态点「开」落地
+  // 为偏好 on + 拦截解释——两侧点击都有可解释结果，不再是单向空操作。
+  // fixture 面权限由 scenario 冻结（可表达 granted/denied/default 三态，不再
+  // 硬编 granted）；无 scenario 位时缺省 granted 保 r7 13 基线行的开态。
+  const [notifyPref, setNotifyPref] = useState<NotifyPref | null>(() =>
+    readNotifyPref(localStorage),
+  );
+  const { permission, request } = useNotificationPermission(
+    live ? null : (fixture.ui?.notificationPermission ?? 'granted'),
+  );
+  const notifyOn = notifyPref === null ? permission === 'granted' : notifyPref === 'on';
+  // 开着但权限被拒 = 显示开而实际不弹，必须给出解释（不能裸奔成新的假可供性）。
+  const notifyBlocked = notifyOn && permission === 'denied';
   return (
     <SecondaryShell route="account" fixture={fixture} sidebarSelected="team" title={t('帐号')}>
       {/* XMON-117：卡盒 / 头像头 / 行 / label / 值槽落 components/profile-card
@@ -111,10 +168,16 @@ export function AccountPage() {
             />
           </ProfileAvatar>
         </ProfileHead>
-        <ProfileRow className={PROFILE_ROW_NAME_CLS} label={t('名称')}>
-          {userName}
-          <SquarePen width={14} height={14} />
-        </ProfileRow>
+        {/* #1031：名称行接共享 ProfileNameRow（agent 详情同款行内编辑）——
+            旧面是纯文本 + 装饰铅笔（无 button/onClick 的假可供性），现在点
+            文本或铅笔都进编辑态，Enter/失焦提交、Esc 放弃、空白不提交。 */}
+        <ProfileNameRow
+          value={userName}
+          onCommit={commitName}
+          nameClassName={ACCOUNT_NAME_CLS}
+          editClassName={ACCOUNT_ICON_EDIT_CLS}
+          inputClassName={ACCOUNT_NAME_INPUT_CLS}
+        />
         <ProfileRow className={PROFILE_ROW_TALL_CLS} label={t('语言')}>
           <span className="relative flex">
             {/* #1008（#983 判决：floating-shell 族拆退役，锚定 absolute 族 →
@@ -168,21 +231,26 @@ export function AccountPage() {
             </Popover>
           </span>
         </ProfileRow>
-        <ProfileRow label={t('推送通知')}>
+        <ProfileRow
+          label={t('推送通知')}
+          hint={notifyBlocked ? t('浏览器已拒绝通知权限，需到站点设置重新允许') : undefined}
+        >
           {/* #947：Switch 正典默认档（spec/22 §2.5 冻结几何），role=switch 与
               aria-checked 由底座透出，e2e 载体 = getByRole('switch')。皮肤
               不再 per-face：track --input（off）/--primary（on），thumb
               --background——§4-1 记的亮模 thumb 1.52:1 是正典已知打磨项
               （状态可辨由 track 翻转 11.03:1 满足，WCAG 1.4.11），处置权在
-              视觉方向票，本票不加描边/投影。 */}
+              视觉方向票，本票不加描边/投影。
+              #1031：checked = 偏好档（不再单向镜像权限）；点击一律落偏好，
+              非 granted 态点开额外驱动一次 requestPermission（#114 同路径）。 */}
           <Switch
             aria-label={t('推送通知')}
             checked={notifyOn}
             onCheckedChange={(checked) => {
-              // one-way affordance: the OS permission cannot be revoked from
-              // the page, so a granted switch has no click behavior; an off
-              // switch drives the #114 banner's requestPermission() path.
-              if (checked) request();
+              const next: NotifyPref = checked ? 'on' : 'off';
+              setNotifyPref(next);
+              persistNotifyPref(next, localStorage);
+              if (checked && permission !== 'granted') request();
             }}
           />
         </ProfileRow>

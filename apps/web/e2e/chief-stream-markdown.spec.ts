@@ -71,12 +71,16 @@ function stubEventSource(page: Page) {
 }
 
 /** dicebear 桩：fixture 面用户头像走名字种子（avatarUrl null），mock 掉
- *  外网（avatar-dicebear.spec 先例），img 立即加载完成不悬 8s。 */
+ *  外网（avatar-dicebear.spec 先例），img 立即加载完成不悬 8s。
+ *  桩形态必须与真 Lorelei 响应一致（#1033）：无 width/height 属性、只有
+ *  viewBox="0 0 980 980"。无固有尺寸的 SVG 在消费面漏挂 [&_img]:size-N
+ *  约束时会撑满容器宽——旧 24×24 桩自带尺寸，恰好把约束缺失掩蔽成
+ *  「看着还是小的」，CI 恒绿测不到 #1033 这类断裂。 */
 function stubDicebear(page: Page) {
   return page.route('**/api.dicebear.com/**', (route) =>
     route.fulfill({
       contentType: 'image/svg+xml',
-      body: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><rect width="24" height="24" fill="#888"/></svg>',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 980"><rect width="980" height="980" fill="#888"/></svg>',
     }),
   );
 }
@@ -793,6 +797,44 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     // 从不产出此行，故本断言同时钉住「fixture 零漂移」的反面。
     const thinking = drawer.locator('.chief-msg', { hasText: '先把凭证面捋一遍' });
     await expect(thinking).toHaveCount(1);
+    // #1033 几何钉（失败方式先列后写）：a) 头像槽丢 [&_img]:size-6 约束 →
+    // 无固有尺寸的 dicebear SVG 撑满列宽（现场实测 380×380 巨图）；b) 行丢
+    // flex → display:block，头像独占一行、正文被推到图下方；c) 消息列丢
+    // min-w-0 flex-1 → flex-grow:0，长文不再撑满剩余宽。三条任一红 = 死类名
+    // 回潮。桩已换成真 Lorelei 形态（无 width/height），约束缺失必被量到。
+    // 几何必须同帧量（单 evaluate + poll 收敛）：抽屉入场是整帧位移，img 与
+    // 列分两次 boundingBox 采样会跨动画帧，产出「列在头像左边」的假倒挂。
+    await expect
+      .poll(
+        () =>
+          thinking.evaluate((row) => {
+            const img = row.querySelector('img')?.getBoundingClientRect();
+            const colEl = row.querySelector(':scope > div');
+            const col = colEl?.getBoundingClientRect();
+            if (img == null || colEl == null || col == null) return null;
+            const colCs = getComputedStyle(colEl);
+            return {
+              display: getComputedStyle(row).display,
+              grow: colCs.flexGrow,
+              minW: colCs.minWidth,
+              imgW: img.width,
+              imgH: img.height,
+              // 头像在文字左侧、同一行（不是上下堆叠）。
+              colRightOfImg: col.x > img.x,
+              colBesideImg: col.y < img.bottom,
+            };
+          }),
+        { message: 'thinking 行几何（#1033：24px 头像槽 + flex 行 + min-w-0 flex-1 列）' },
+      )
+      .toEqual({
+        display: 'flex',
+        grow: '1',
+        minW: '0px',
+        imgW: 24,
+        imgH: 24,
+        colRightOfImg: true,
+        colBesideImg: true,
+      });
     await expect(thinking.locator('pre')).toHaveCount(0);
     await thinking.getByRole('button', { name: '展开思考' }).click();
     await expect(thinking.locator('pre')).toHaveText('先把凭证面捋一遍');
@@ -800,7 +842,12 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     const toolRow = drawer.locator('.chief-msg', { hasText: '正在调用 todo_write' });
     await expect(toolRow).toHaveCount(1);
     await expect(toolRow.locator('span.tabular-nums')).toHaveText(/^[3-9]s$/);
-    await expect(drawer.locator('.chief-turn-tools')).toHaveCount(0);
+    // #1033：行骨架同律——工具行也是 flex 行、消息列拿到 min-w-0 flex-1。
+    await expect(toolRow).toHaveCSS('display', 'flex');
+    await expect(toolRow.locator('> div')).toHaveCSS('flex-grow', '1');
+    // 披露面钉 testid（.chief-turn-tools 类已随 #950 退役，类选择器恒 0 =
+    // 空断言，测不到「平铺不进披露」的本意）。
+    await expect(drawer.getByTestId('chief-turn-tools')).toHaveCount(0);
   });
 
   test('F-R20: 在飞工具行带出具体命令（不是裸工具名）', async ({ page }) => {
