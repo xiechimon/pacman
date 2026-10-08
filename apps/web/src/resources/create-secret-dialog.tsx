@@ -7,7 +7,7 @@
 //
 // #942 正典表抽查实装点：老 ui/ 原语消费清零——Input 换 components/ui 件
 // （36px→h-8 32px，§2.6-1）、裸 textarea → Textarea 件、裸 button
-// .dlg-secret-create → Button brand（§2.6-3 迁移位）、.dlg-form* 族类 →
+// .dlg-secret-create → Button default（§2.6-3 迁移位）、.dlg-form* 族类 →
 // utility 等值迁移（spec/22 §5.4）。label 的 htmlFor/id 配对保留：它是
 // getByLabel 一级载体依赖的语义资产，不是类名别名。
 
@@ -55,12 +55,7 @@ export function CreateSecretDialog({ open, onClose, onCreate }: CreateSecretDial
       onClose={onClose}
       footer={
         <div className="flex flex-col px-4 pb-4">
-          <Button
-            variant="brand"
-            className="w-full"
-            disabled={name.trim() === '' || value === ''}
-            onClick={submit}
-          >
+          <Button className="w-full" disabled={name.trim() === '' || value === ''} onClick={submit}>
             {t('添加密钥')}
           </Button>
         </div>

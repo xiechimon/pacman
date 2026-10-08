@@ -39,14 +39,14 @@ export function EditCharterDialog({ open, onClose, charter, onSave }: EditCharte
       onClose={onClose}
       footer={
         // #950 per-face 清零：.dlg-form-foot/.dlg-form-actions 容器 utility
-        // 等值迁移（spec/22 §5.4）；钮 = outline/brand 件正典 + chief 内联档
+        // 等值迁移（spec/22 §5.4）；钮 = outline/default 件正典 + chief 内联档
         // 保留消费点既有 px-3/text-[13px]。e2e 载体 = getByRole('button')。
         <div className="flex flex-col px-4 pb-4">
           <div className="flex justify-end gap-2">
             <Button variant="outline" className="px-3 text-[13px]" onClick={onClose}>
               {t('取消')}
             </Button>
-            <Button variant="brand" className="px-3 text-[13px]" onClick={save}>
+            <Button className="px-3 text-[13px]" onClick={save}>
               {t('保存章程')}
             </Button>
           </div>

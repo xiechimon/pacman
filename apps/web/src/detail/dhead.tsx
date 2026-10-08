@@ -186,7 +186,6 @@ export function DetailHead({
         </Button>
         {ui.action != null && (
           <Button
-            variant="brand"
             className="detail-head-action h-7 w-[50.5px] flex-none cursor-pointer border-none p-0 text-xs leading-7 font-normal active:not-aria-[haspopup]:translate-y-0"
             onClick={onAction}
           >

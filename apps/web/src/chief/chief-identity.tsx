@@ -39,6 +39,7 @@ export function ChiefIdentity({ agent }: ChiefIdentityProps) {
     <>
       <span className={AVATAR_IMG_CLS}>
         <SeededAvatar
+          className="size-6"
           name={agent.displayName}
           src={agent.avatarUrl}
           fallback="/avatar-robot-1.svg"

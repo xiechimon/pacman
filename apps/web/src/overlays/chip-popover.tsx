@@ -54,7 +54,12 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
       <div className="flex-none pt-2">
         <div className={SECTION_LABEL}>{t('任务')}</div>
         <div className={POPOVER_ROW} data-row-kind="owner">
-          <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
+          <SeededAvatar
+            className="size-3"
+            name={user.displayName}
+            src={user.avatarUrl}
+            fallback="/avatar-user.png"
+          />
           {user.displayName}
         </div>
       </div>
@@ -62,6 +67,7 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
         <div className={SECTION_LABEL}>{t('执行对话')}</div>
         <div className={POPOVER_ROW} data-row-kind="agent">
           <SeededAvatar
+            className="size-3"
             name={todo.agent?.displayName}
             src={todo.agent ? (agentAvatarUrl.get(todo.agent.id) ?? null) : null}
             fallback="/avatar-robot-1.svg"

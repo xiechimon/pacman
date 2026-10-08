@@ -352,11 +352,7 @@ export function AgentDetailPage() {
     >
       <div className="agent-detail flex flex-col gap-4">
         <Tabs value={tab} onValueChange={(value) => setTab(value as AgentTab)}>
-          <TabsList
-            variant="segmented"
-            className={`agent-tabs ${SEG_GROUP_CLS}`}
-            aria-label={t('Agent')}
-          >
+          <TabsList className={`agent-tabs ${SEG_GROUP_CLS}`} aria-label={t('Agent')}>
             {TAB_LABELS.map((item) => (
               <TabsTrigger
                 key={item.id}
@@ -964,7 +960,6 @@ function RoleRow({
           />
           <div className="agent-role-actions flex justify-end gap-2">
             <Button
-              variant="brand"
               size="sm"
               className="agent-role-save"
               onClick={() => {

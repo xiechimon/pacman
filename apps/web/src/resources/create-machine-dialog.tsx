@@ -12,7 +12,7 @@
 // #944 per-face 清零:.dlg-enroll* 族(规则住 detail/overlays.css,detail-b
 // 的清零账)消费面在本票随改迁 utility——等值迁移,别名类退役后 overlays.css
 // 里的规则成孤儿,detail-b 删规则时不再有此消费点。裸 button ×4(复制 ×3 +
-// disclosure)收编 Button(#851 账):复制钮 = brand/xs(24px 高、10px 垫,原
+// disclosure)收编 Button(#851 账):复制钮 = default/xs(24px 高、10px 垫,原
 // .dlg-enroll-copy 等值);disclosure = ghost 文字钮(正典表 §5.4
 // model-add 同族配方:贴左、无框、secondary 墨)。
 
@@ -69,7 +69,6 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
         <div className={CMD_CLS}>
           <code className={CMD_CODE_CLS}>{installCmd}</code>
           <Button
-            variant="brand"
             size="xs"
             className="shrink-0 px-2.5"
             onClick={() => void navigator.clipboard?.writeText(installCmd)}
@@ -81,7 +80,6 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
         <div className={CMD_CLS}>
           <code className={CMD_CODE_CLS}>{startCmd}</code>
           <Button
-            variant="brand"
             size="xs"
             className="shrink-0 px-2.5"
             onClick={() => void navigator.clipboard?.writeText(startCmd)}
@@ -104,7 +102,6 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
             <div className={CMD_CLS}>
               <code className={CMD_CODE_CLS}>{apiKeyCmd}</code>
               <Button
-                variant="brand"
                 size="xs"
                 className="shrink-0 px-2.5"
                 onClick={() => void navigator.clipboard?.writeText(apiKeyCmd)}

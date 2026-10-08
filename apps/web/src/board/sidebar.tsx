@@ -436,6 +436,7 @@ export function BoardSidebar({
               aria-label={user.displayName}
             >
               <SeededAvatar
+                className="size-6"
                 name={user.displayName}
                 src={user.avatarUrl}
                 fallback="/avatar-user.png"
@@ -647,6 +648,7 @@ export function BoardSidebar({
             aria-label={user.displayName}
           >
             <SeededAvatar
+              className="size-6"
               name={user.displayName}
               src={user.avatarUrl}
               fallback="/avatar-user.png"

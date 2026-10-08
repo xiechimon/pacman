@@ -22,7 +22,6 @@ import { expect, test } from '@playwright/test';
 //   （#987 §3.1），destructive 改按 base-nova 形 text-destructive 消费。
 // - P4 行 hover：more-menu 普通行 hover = --accent-soft，删除行 =
 //   --danger-soft（与 token 值探针逐值比对，不估算）。
-// - P4 主钮提亮：brand 档 hover filter = brightness(1.07)（原型 L365）。
 // - 侧栏底 = 主区 --card: 断言行放在 visual-polish.spec.ts (原 #123
 //   层级断言的翻转, 同票更新)。
 
@@ -296,18 +295,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(del).toHaveCSS('background-color', danger);
   });
 
-  test(`P4 brand button hover brightens 1.07 (${theme})`, async ({ page }) => {
-    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
-    await page.goto('/app?scenario=01');
-    await page.locator('.sidebar-new-task').click();
-    const dialog = page.locator('.new-task-dialog');
-    await expect(dialog).toBeVisible();
-    // the brand start button enables once the spec field is non-empty
-    await page.locator('.new-task-spec').fill('hover probe');
-    const start = page.locator('.new-task-start');
-    await expect(start).toBeEnabled();
-    await start.hover();
-    await page.waitForTimeout(300);
-    await expect(start).toHaveCSS('filter', 'brightness(1.07)');
-  });
+  // P4 主钮提亮（brand 档 hover brightness 1.07，#791）的探针已随 brand 档
+  // 退役删除（#982/#991 判决，#1003 施工）：主钮 = registry default 档，
+  // hover 形态由上游类串承载并被 ui-registry-gate hash 账本钉住（#989）。
 }

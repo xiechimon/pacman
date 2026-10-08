@@ -1,13 +1,14 @@
-// SeededAvatar 适配层（XMON-14）：仓内 #387 的 dicebear Lorelei 头像语义，
-// 落到 components/ui/avatar.tsx（registry 件）上。
+// SeededAvatar 适配层（XMON-14 建；#1003 随 #983 判决弃 contents 根）：
+// 仓内 #387 的 dicebear Lorelei 头像语义，落到 components/ui/avatar.tsx
+// （registry 件）上。
 //
-// 为什么是适配层而不是让调用点直接用 registry 三件套：本仓的尺寸正本在
-// per-face 几何规则（`.foo img` / `[&_img]:size-N`），而 registry 的 Avatar
-// Root 是一个定尺盒（size-8 + after 环）。逐点手写 Root/Image/Fallback 会把
-// 同一套种子/兜底逻辑抄 12 遍，且插进去的盒子会打断百分比链——chief-fab.spec
-// 把 FAB 头像钉在 48×48、user-menu-trigger.spec 用 img 的 boundingBox 量锚定
-// 间距，都是 img 几何。故本层做两件事：把语义收成一处，Root 走 `contents`
-// 让 img 的 containing block 仍是各面的 per-face 容器。
+// 为什么是适配层而不是让调用点直接用 registry 三件套：逐点手写
+// Root/Image/Fallback 会把同一套种子/兜底逻辑抄 22 遍。Root 是定尺盒——
+// 上游的 after: 发丝环需要真实 containing block（contents 根上 absolute
+// 伪元素会爬到页级祖先，成为整页点击拦截层，XMON-14 实测；#1003 重拉后
+// 环回归源）。几何落点在 Root：消费点显式传 className="size-N"（与各面
+// wrapper 的 [&_img]:size-N utility 同值同构，img 由 registry 件的
+// size-full 随 Root）。
 //
 // 三条契约（与迁移前的 apps/web/src/ui/avatar.tsx 逐条等价，e2e
 // avatar-dicebear.spec.ts 是正本）：
@@ -45,8 +46,8 @@ export function SeededAvatar({ name, src, fallback, className }: SeededAvatarPro
   const [failedFor, setFailedFor] = useState<string | null>(null);
   const failed = failedFor === resolved;
   return (
-    // contents：不生成盒，per-face 容器仍是 img 的 containing block（几何正本）
-    <Avatar className={className != null ? `contents ${className}` : 'contents'}>
+    // Root 定尺盒：几何由消费点 className（size-N）承载，img 走件内 size-full
+    <Avatar className={className}>
       <AvatarImage
         keepMounted
         src={failed ? fallback : resolved}

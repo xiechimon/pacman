@@ -210,20 +210,23 @@ function DimensionSection({
           <div className="filter-dimension-allrow flex items-center">
             {/* #952 回收（#943 deliberate-official 直消费 Root 的收口，#908
                 comment-6001887439 裁决 1②）：三态走共享 Checkbox 件——
-                indeterminate 官方一等 prop 已在件上透出（aria-checked="mixed"
-                与隐藏原生 input 的键盘/表单/读屏语义白送），皮肤回件上单源
-                （关态 --border-strong 内描边空盒 / 开态与 mixed --card-button
-                实底 + currentColor 勾/横杠），不再自绘第二套。整行可点 =
-                件契约（label 包裹，点文案即 toggle）。 */}
-            <Checkbox
-              checked={allSelected}
-              indeterminate={someSelected && !allSelected}
-              onCheckedChange={() => (allSelected ? dimension.onClear() : dimension.onSelectAll())}
-              label={t('全选')}
-              className="h-7 min-w-0 flex-1 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft"
-            >
+                indeterminate 官方一等 prop 直通 Root（aria-checked="mixed"
+                与隐藏原生 input 的键盘/表单/读屏语义白送），mixed 视觉 =
+                件上零皮肤语义映射（横杠图标，#952/#982）。#1003 起件为
+                registry 同源，皮肤 = 上游默认；整行可点 = 消费点 label 包裹，
+                点文案即 toggle。 */}
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
+            <label className="inline-flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
+              <Checkbox
+                checked={allSelected}
+                indeterminate={someSelected && !allSelected}
+                onCheckedChange={() =>
+                  allSelected ? dimension.onClear() : dimension.onSelectAll()
+                }
+                aria-label={t('全选')}
+              />
               <span className="min-w-0 flex-1 truncate text-left">{t('全选')}</span>
-            </Checkbox>
+            </label>
             <Button
               variant="link"
               className="filter-dimension-invert mr-2 h-auto shrink-0 rounded border-none px-1 text-xs font-normal text-(--card-button) active:not-aria-[haspopup]:translate-y-0"
