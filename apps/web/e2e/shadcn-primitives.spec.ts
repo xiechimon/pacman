@@ -81,13 +81,14 @@ test('avatar 落点定尺盒（#983/#1003）：Root 生成真盒承上游发丝�
 test('kbd 落点：悬浮提示是 registry Kbd，静息隐藏 / 悬浮浮出不变', async ({ page }) => {
   await page.goto('/app?scenario=01');
   // #950 载体：.chief-fab → aria-label 总管钮（board inline FAB）。
+  // #983/#1004：kbd-hint 退役为 registry Tooltip+Kbd——静息不挂载
+  // （count 0，取代旧 visibility 隐藏律），悬浮浮出 registry Kbd。
   const fab = page.getByRole('button', { name: '总管', exact: true });
-  const hint = fab.locator('.kbd-hint');
-  await expect(hint).toHaveCount(1);
-  await expect(hint).toHaveAttribute('data-slot', 'kbd');
-  await expect(hint).toBeHidden();
+  const hint = page.locator('[data-slot="tooltip-content"] [data-slot="kbd"]');
+  await expect(hint).toHaveCount(0);
   await fab.hover();
   await expect(hint).toBeVisible();
+  await expect(hint).toHaveAttribute('data-slot', 'kbd');
   await expect(hint).toHaveText('⌘J');
 });
 
