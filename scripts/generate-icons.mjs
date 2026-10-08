@@ -191,6 +191,19 @@ const EXTRA_ICONS = [
     contexts: ['chief window Minimize button (ADR 0013 D3)'],
     trace: 'lucide minus shape (ISC), adopted for ADR 0013 D3 (Multica chat-window minimize)',
   },
+  {
+    // #1009 A1: the registry MessageScrollerButton (jump-to-latest) renders
+    // its own ArrowDownIcon from lucide-react inside the pristine file; the
+    // consumption point overrides children with the repo icon + t() sr-only
+    // label, so the repo seam needs the same lucide arrow-down shape.
+    name: 'ArrowDown',
+    size: [16, 16],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>',
+    contexts: [
+      'chief stream jump-to-latest button (#1009 A1, MessageScrollerButton children override)',
+    ],
+    trace: 'lucide arrow-down shape (ISC), the registry message-scroller default glyph',
+  },
 ];
 
 // D5 replacement batch (#249, 素材替换计划 D5): the five todos.dev custom

@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "897e96b7c7c69b5f1221c92535bde28c8bf34e7a",
+    "sha": "d62bc4803b247b3854868aa050b0d1c562ab84d2",
     "date": "2026-10-08"
   },
   "scope": "apps/web/src/components/ui (#989, map #980). kind registry = shadcn base-nova registry item (upstreamItem names it; status pristine = hash must equal the vendored snapshot in scripts/ui-upstream-snapshots.json, deviated = registered divergence with reason). kind adapter = local composition over registry items or a repo-specific primitive (reason required). hash = sha256 over the comment-stripped, line-normalized file content (scripts/ui-normalize.mjs); comment-only edits do not move it, code edits always do. Scope is exactly this directory — domain-directory skins are ui-debt-gate/ui-drift-gate territory.",
@@ -16,6 +16,12 @@
       "status": "pristine",
       "hash": "5e533e471a0c22035b300d2f615756a57153c366da71626d10e4f5d7283dcd2e"
     },
+    "attachment.tsx": {
+      "kind": "registry",
+      "upstreamItem": "attachment",
+      "status": "pristine",
+      "hash": "33d34435ad9af4e1a078d200fea6ffbbd96673c9c269a01b38ea5597295af64f"
+    },
     "avatar.tsx": {
       "kind": "registry",
       "upstreamItem": "avatar",
@@ -27,6 +33,12 @@
       "upstreamItem": "badge",
       "status": "pristine",
       "hash": "d0e5e9a1757981cf46abe24a29cad025af2fb931a621cc4fa0bf2a69e1958703"
+    },
+    "bubble.tsx": {
+      "kind": "registry",
+      "upstreamItem": "bubble",
+      "status": "pristine",
+      "hash": "b6812e3fd3a90902554bc7456f96a6c3bc14a27a607d8427621f77849ec533f0"
     },
     "button.tsx": {
       "kind": "registry",
@@ -111,6 +123,24 @@
       "upstreamItem": "label",
       "status": "pristine",
       "hash": "9329c8768cc5a156f39bc2dddb54cc67f32d88fdacd53cefa6c3601c8fa1c99c"
+    },
+    "marker.tsx": {
+      "kind": "registry",
+      "upstreamItem": "marker",
+      "status": "pristine",
+      "hash": "59574fed3eb44e6bf6601fe1f8c5df0a9ecb41bd70065dc02f3f0060cd52e5ed"
+    },
+    "message-scroller.tsx": {
+      "kind": "registry",
+      "upstreamItem": "message-scroller",
+      "status": "pristine",
+      "hash": "ed1dd557a9b8eda743c01077f35ea7d608595aef46461d1551cb88d2262de4bd"
+    },
+    "message.tsx": {
+      "kind": "registry",
+      "upstreamItem": "message",
+      "status": "pristine",
+      "hash": "dc60c69f3903e0df81ad2a2d1eaf3bce66308f0527ff7bdec905d5bf4724f2c4"
     },
     "panel.tsx": {
       "kind": "adapter",

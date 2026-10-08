@@ -19,14 +19,16 @@
 
 （上面这段是机器门读的终态名单：旧轨已删空，名单恒空；`src/ui/` 目录重新出现即报错。）
 
-## 二、新轨原语（30）
+## 二、新轨原语（35）
 
 <!-- inventory:new-track -->
 ```text
 alert-dialog-shell.tsx   # 确认面共用底座（删除确认 / 丢草稿确认），走 Base UI AlertDialog
 alert-dialog.tsx
+attachment.tsx           # shadcn Attachment 族（Attachment/Media/Content/Title/Description/Actions/Trigger/Group）：附件卡片原语（#1009 B 段附件面消费；别手写附件盒）
 avatar.tsx               # shadcn Avatar 族（Root/Image/Fallback/Badge/Group，底座 Base UI，上游发丝环在位）；头像消费别直接用三件套，走 seeded-avatar.tsx
 badge.tsx                # 计数 / 标签 pill；任务状态语义色族见 DESIGN.md
+bubble.tsx               # shadcn Bubble 族（Bubble/Content/Group/Reactions）：聊天流消息气泡（#1009 A1 chief 消息流 / A2 detail 对话列消费）；皮肤走 variant 档 + 消费点中和，别发明底色
 button.tsx               # registry 同源 + 仓内语义映射（type=button 默认、data-variant/data-size 观测点，#411）；主 CTA = default 档（brand 档已退役，#982/#991）
 card.tsx
 checkbox.tsx             # 复选（registry 同源 + 一件零皮肤语义映射：indeterminate 渲染横杠，#952/#982）；行盒 = 消费点 label 包裹；**别直接摆裸 `<input type="checkbox">`**——浏览器自带方框与仓内复选行不同族
@@ -41,6 +43,9 @@ input-group.tsx          # 输入组合件（InputGroupInput/InputGroupAddon/Inp
 kbd-hint.tsx             # 快捷键悬浮提示 chip（控件 hover/focus-visible 浮出、静息 visibility:hidden）；#468 快捷键提示一律用它
 kbd.tsx                  # 按键角标原语（文档正文里的 ⌘K 角标）；悬浮提示 chip 是 kbd-hint.tsx
 label.tsx                # 表单标签原语（配合 field.tsx 的 FieldLabel 使用；独立 label 场景直用）
+marker.tsx               # shadcn Marker 族（Marker/Icon/Content，separator/border 档）：聊天流内标注行（系统提示/失败行/分隔等居中 annotation）
+message-scroller.tsx     # shadcn MessageScroller 族（Provider/Root/Viewport/Content/Item/Button + useMessageScroller hooks）：聊天流滚动容器唯一实现（autoScroll 贴底跟随 + jump-to-latest + messageId 贯通）；别再手写 overflow-y-auto 对话列
+message.tsx              # shadcn Message 族（Message/Avatar/Content/Header/Footer/Group）：聊天流消息行骨架（头像列 + 内容列）；行皮肤归 bubble/marker
 panel.tsx                # 静息内容容器消解（Panel/PanelHead/PanelRow/PanelLabel/PanelValue）：贴在页面里的方框一律用它；皮肤档 quiet/outlined，per-face 数值留属地 css
 popover.tsx              # 仓内语义映射：z 走 --z-dialog 单梯（#733）；动效 = 上游默认（#991 Q9）
 seeded-avatar.tsx        # dicebear 种子头像适配层（src 覆盖 > name 种子 > 兜底换图，img 常驻 DOM；Root 定尺盒，几何走消费点 className size-N，#983/#1003）；头像一律用它

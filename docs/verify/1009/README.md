@@ -181,3 +181,93 @@ UI 字形 3）。全局色板不重测（#988 双模 109 对 0 fail 封账）。
 - A1 五件原语 vendoring 暂存 `/tmp/a1-primitives-1009/`（未提交，A0 合并后启用）；
 - 草稿跨整页刷新持久化 = #1056（实审裁决 4 另票）；
 - registry anchoring（scrollAnchor）= 实审裁决 2 不采（保 #873 跟随律）。
+
+## 11. A1 段原型（chat 原语装件 + chief 消息流换装）
+
+> 状态：**原型就绪，等滚动实审**。A0 已合并（squash `99ffb54a`，PR #1062）。
+> A1 范围（票面）：五件原语装件（MessageScroller/Message/Bubble/Attachment/Marker）
+> + 消息流替换 + 滚动模型替换 + 行 id 贯通 + Bubble 默认皮几何中和；
+> jump-to-latest 随原语带入（#991 Q6，实审过目）；composer 输入区不在射程（#991 Q7）。
+
+### 11.1 装件链（验收模板 v3 第 7 项）
+
+`node scripts/ui-registry-refresh.mjs --items message-scroller,message,bubble,attachment,marker`
+（shadcn@4.21.3 view → R1–R5 改写 → biome 归一 → 快照账本）——五件 hash 与开工侦察
+暂存（/tmp/a1-primitives-1009/）**逐字节同源**：ed1dd557 / dc60c69f / b6812e3f /
+33d34435 / 59574fed。落 `components/ui/` + 账本 `pristine` ×5（35 entries = 26 registry
+〔19 pristine〕+ 9 adapters，frozen from d62bc480）→ gate PASS（幂等复验 no change）→
+COMPONENTS.md new-track 登记 5 行（30→35）→ inventory 闸 4/4 绿。
+
+### 11.2 换装面（结构映射）
+
+| 现状面 | 换装后 | 中和（消费点 className/style，文件 pristine 零触碰） |
+|---|---|---|
+| body div（overflow-y auto，bodyRef + useChatFollow） | `MessageScroller` Root/Viewport/Content/Item | Root `h-auto min-h-0 flex-1`（原语 size-full 的 h-full 会顶爆 flex 链）；Viewport 承接 chief-body testid（F-R6/R8 overflowY auto 面 = 原语自带） |
+| chief-stream div（px-17 pt-3.5） | Content + chief-stream testid | `block gap-0`（行距留行 margin——原语 flex gap-6 会双倍行距） |
+| 行 div（key=index） | Item（key/messageId = 源 chief_message id） | inline style `content-visibility: visible`（原语 auto 会让离屏行跳布局——探针/e2e 随滚动相位漂；380px 窗数十行规模，确定性 > 虚拟化收益） |
+| user 行气泡（BUBBLE_CLS div） | Message + MessageContent + `Bubble variant=secondary` + BubbleContent（chief-bubble testid 随迁） | 二次档 --secondary 底 = 原槽位（--secondary-foreground 双主题与 --foreground 等值，#1002 色板实测）；`border-0`（原语 border-transparent 吃 2px——F-R16 44px 药丸 canon）；rounded-(--radius-popover)/px-3/py-2.5/leading-6/w-full（80% cap 退役） |
+| robot 行裸文本 | Message + `Bubble variant=ghost` + BubbleContent | ghost 档 p-0/bg-transparent/rounded-none = 裸文本面；w-full + leading-6 补正 |
+| note/error 行（居中 div） | `Marker` + MarkerContent（error 带 role=alert 二段面） | 居中/12px/墨色钉回现状 |
+| thinking/tool/streaming 行 | Message 骨架 + 既有行件（ThinkingRow/ToolActivityRow/LiveRow 共享件不动，A2 面） | `.chief-msg` 类载体保留（F-R19/R20 联合选择器） |
+| gate/hero（滚动区内） | 移出滚动区（flex-none 兄弟） | 两面只在无流状态出场——移出后视觉等价 |
+| — | `MessageScrollerButton direction=end`（jump-to-latest，#991 Q6 随原语带入） | children 覆写 = 仓 ArrowDown 字形（生成器新增）+ t('滚动到最新') sr-only（pristine 面英文字面量不进 i18n 账） |
+
+**滚动律映射（#873 逐条 → 原语机制，实审裁决 2 = 不采 scrollAnchor）**：
+贴底阈值 80px = `scrollEdgeThreshold={80}`（FOLLOW_THRESHOLD 同值）；关窗解除武装 =
+`autoScroll={open}`（旧 active 同律）；打开落底 = `defaultScrollPosition="end"`；
+切线程落底 = threadTitle 守卫 effect → `scrollToEnd()`（旧 resetDep 等价）；
+发送跳最新 = wire.onSend 里 `scrollToEnd()`（旧 requestFollow 等价）。
+useChatFollow 本体保留（详情页对话列 = A2 段的替换面，本段不动）。
+
+**行 id 贯通（票面「mapper 视图侧」）**：`ChiefStreamItem` robot/thinking/tool 三 kind
+扩 `id?: string`；collectChiefStream 三投影点 `id: m.id`（每行源 message 互异，直投
+不冲突；wire 零触碰——ADR 0011 封段在写入端）。单测契约同步（chief-segments
+F2/F4/F6 toEqual 含 id，7/7 绿）。fixture 捕获形无 id → key 回落 index、Item 无
+messageId（S10 钉）；live 面 messageId pin 归施工段 e2e（live-mock 桩带 id）。
+
+**Provider 拆分**：Dialog 壳（Root/Portal/Popup/aside）+ `MessageScrollerProvider` 住
+外层 ChiefDrawer；threadsOpen 状态上提（Root onOpenChange 的 Esc 代收要读写它）；
+整列窗内容下沉 ChiefDrawerInner（hook 面消费 useMessageScroller——同组件 hook 吃不到
+自己渲染树的 context，拆分点即此）。
+
+### 11.3 原型态账面
+
+- 域 e2e 24 spec：**247 绿 / 2 红**——两条红都是重钉账（行为断言语义不动）：
+  ① hero 面 `chief-stream` count-0 → 常驻 Content 载体（D6 同族：容器常驻、行零个）；
+  ② XMON-102「草稿/空面等高 60px」→ **#860 grow 律已取代固定轨**（chief-drawer
+  growCap:120 注记原文 "the XMON-102 fixed-height law is superseded"）。实证：A1 前
+  scrollHeight=120 而 inline height=''——grow 副作用因隐藏挂载时序在 fixture 面
+  **从未触发**（另检出 A0 态 worktree 建 build 实测），XMON-102 pin 钉的是副作用
+  未触发的意外面；A1 挂载结构下首次触发 = 律的真面目（草稿面 120px 顶格 + 盒内
+  滚动）。施工段按 #860 语义重钉。
+- 探针三方链：`probe-a1-pre/`（开工基线 KEPT 119/140 行）→ `probe-after-a1/`
+  **KEPT 115 / DRIFT 1 / NOT-RUN 3 / VIOLATION 0**——DRIFT+NOT-RUN 四条全部落在
+  XMON-102 那一个测试（304 断言 + 其后续 308–310），其余几何/皮肤行全 KEPT
+  （44px 药丸、行节奏、chip 几何、头像 24px 逐值保住）。
+- fixture smoke（`drive-1009-a1-smoke.mjs`）：**19/19 PASS**（S1 结构/S2 中和/S3
+  Bubble 皮/S4 Marker/S5 hero+grow/S6 打开落底/S7 jump-to-latest 三面/S8 重开落底/
+  S9 载体守恒/S10 id 面）。
+- 单测 468 全绿（chief-segments 契约更新后 7/7）；typecheck / lint 干净。
+- 截图：a1-01 线程面 / a1-02 jump 钮浮出 / a1-03 重开落底 / a1-04 hero+grow 面 /
+  a1-05 identity chip 面 / a1-06 dark / a1-07 light。
+
+### 11.4 实审裁决点（滚动实审过目）
+
+1. **jump-to-latest 按钮形态本体**（#991 Q6：删除才是定制——原语默认皮 = 仓
+   Button secondary/icon-sm 档、底缘居中、上翻浮出/近底退场）：a1-02 截图。
+2. **S8 判据翻面**：最小化重开 = **落底看最新**（chat 通行律，与旧 dock 时代一致）。
+   实测发现：Base UI keepMounted 关态 = `hidden` = display:none——浏览器丢弃滚动
+   位置，A0 宣称的 D6「滚动存活」在最小化面物理不可达（A0 期同样如此，未取证到
+   这一面；草稿/线程态存活不受影响）。Multica 原形态 = opacity+inert 常驻**不**
+   display:none，滚动才真保。若要真保留需换壳层关态载体（超 A1 射程）——采「重开
+   落底」还是开壳层票，请裁决。
+3. **#860 grow 律在 fixture 面首发**（XMON-102 重钉）：草稿 6 行面 composer 120px
+   顶格（a1-04）——按 #860 已裁决律重钉，还是维持固定轨（需关 fixture 面 grow），
+   请确认。
+
+### 11.5 A1 未消费原语面（残留声明预登）
+
+MessageAvatar/MessageHeader/MessageFooter/MessageGroup/BubbleGroup/BubbleReactions/
+MarkerIcon/Attachment 全族（B 段消费）——头像槽仍走 recipes 单源 span（原语自带
+bg-muted/min-w-8 皮，中和成本高于收益，A2 再裁）；`scroll-fade-b`/`scrollbar-thin`/
+`scrollbar-gutter-stable` 是 shadcn hosted utility 死类（仓未 vendor，零生效零副作用）。
