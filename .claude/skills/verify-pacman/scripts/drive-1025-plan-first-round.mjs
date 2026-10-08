@@ -393,7 +393,12 @@ try {
   await warm.goto(`${WEB}/app`, { waitUntil: 'networkidle', timeout: 90_000 });
   await warm.close();
   await waitFor(() => daemonLogLines().some((l) => l.includes('[wake] push channel connected')), 60_000, 'daemon online');
-  check('真 daemon 上线（--server 指本栈）', true, DAEMON_HOME);
+  // waitFor 超时即抛 → catch 兜底成红 check；此处再读同一事实让 check 本身承载断言。
+  check(
+    '真 daemon 上线（--server 指本栈，wake 通道连通）',
+    daemonLogLines().some((l) => l.includes('[wake] push channel connected')),
+    DAEMON_HOME,
+  );
 
   // ——— A 腿：首轮契约注入 + 首轮即落 plan 行 v1 ———
   const taskA = await makeTask(seeded.projects.a, seeded.agents.a, TASK_TITLE_A, TASK_SPEC_A);
@@ -422,10 +427,12 @@ try {
   const todoA = await waitPhase(taskA.todoId, ['confirm', 'failed'], 300_000, 'leg A confirm');
   const stepsA = dbSteps(taskA.buildId);
   const planStepsA = stepsA.filter((s) => s.kind === 'plan');
+  const plansA = dbPlans(taskA.buildId);
+  const buildRowA = dbBuild(taskA.buildId);
   check(
     'A3：plan 行 v1 首轮落库 + build.planDocId 指向该行（#904 A 腿同面，对照「首次规划即落 v1」）',
-    dbPlans(taskA.buildId).length === 1 && dbPlans(taskA.buildId)[0].version === 1 && dbPlans(taskA.buildId)[0].content === PLAN_A && dbBuild(taskA.buildId).planDocId === dbPlans(taskA.buildId)[0].id,
-    `rows=${dbPlans(taskA.buildId).length} byteEqual=${dbPlans(taskA.buildId)[0]?.content === PLAN_A}`,
+    plansA.length === 1 && plansA[0].version === 1 && plansA[0].content === PLAN_A && buildRowA.planDocId === plansA[0].id,
+    `rows=${plansA.length} byteEqual=${plansA[0]?.content === PLAN_A}`,
   );
   check(
     'A4：恰一个 plan 步且 done（首轮产出方案，无补写轮——契约在正典提示词里就不需要它）',
@@ -449,8 +456,8 @@ try {
     rowTextA === null ? `row=${JSON.stringify(promptRowA)?.slice(0, 120)}` : `len=${rowTextA.length} equal=${rowTextA === EXPECTED_PROMPT_A}`,
   );
   save('leg-a-steps.json', stepsA);
-  save('leg-a-build.json', dbBuild(taskA.buildId));
-  save('leg-a-plan-row.json', dbPlans(taskA.buildId));
+  save('leg-a-build.json', buildRowA);
+  save('leg-a-plan-row.json', plansA);
   save('leg-a-todo.json', todoA);
   save('leg-a-message-rows.json', dbMessageRows(taskA.buildId));
 
