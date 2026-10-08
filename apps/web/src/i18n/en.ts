@@ -676,6 +676,9 @@ export const EN: Record<string, string> = {
   需要访问令牌: 'Access token required',
   '服务端已开启令牌鉴权，输入访问令牌后继续使用。':
     'This server has token authentication enabled. Enter your access token to continue.',
+  // #1048 令牌来源指引（{tokenVar} 经 BRAND 槽 ENV_VARS.token 插值）
+  '令牌由部署方在服务端用环境变量 {tokenVar} 设定，页面无法读出它的值：自己部署的服务，去启动它的环境里找这个变量（systemd 部署看单元 EnvironmentFile 指向的文件）；别人部署的，向部署者索取。删除该变量并重启服务端即可关闭令牌鉴权。':
+    'The token is set on the server by whoever deployed it, as the {tokenVar} environment variable — this page cannot read its value. If you deployed the server yourself, look for that variable in the environment it was started from (for systemd, the file the unit EnvironmentFile points at); if someone else deployed it, ask them. Remove the variable and restart the server to turn token authentication off.',
   访问令牌: 'Access token',
   进入: 'Continue',
   '令牌无效，请重试。': 'Invalid token — please try again.',
