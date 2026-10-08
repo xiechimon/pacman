@@ -1,3 +1,4 @@
+import { buildPlanFirstRoundInstruction } from '@pacman/shared';
 import { expect, type Page, test } from '@playwright/test';
 
 // 会话列用户话语面（#612）：live transcript 的 role-user wire 行里混着系统
@@ -11,6 +12,8 @@ import { expect, type Page, test } from '@playwright/test';
 //  4. 真实 steer 话语丢 markdown（围栏成字面 ``` 文本）
 //  5. 单段短消息的气泡几何漂移（24px 药丸高度，chat-type-measure 同律）
 //  6. taskline（#seq+标题行）在任务文本行退场后错挂到 steer 气泡上
+//  7. 首轮 plan 契约组合行（任务文本 + 契约指令同串，#1025 buildTaskPrompt
+//     注入形）渲染成用户气泡——任务原文与契约指令都该退场
 
 const TEAM_ID = 'team-1';
 const USER_ID = 'user-1';
@@ -27,7 +30,9 @@ const SPEC = [
   '',
   '- 悬停态加过渡',
 ].join('\n');
-const TASK_PROMPT = `${TITLE}\n\n${SPEC}`;
+// #1025：withPlan build 的首轮 plan 步 wire 行 = 任务文本 + 契约指令同串
+//（daemon buildTaskPrompt 注入形，fixture 与现行 daemon 写侧同形）。
+const TASK_PROMPT = `${TITLE}\n\n${SPEC}\n\n${buildPlanFirstRoundInstruction()}`;
 
 const TEAM = { id: TEAM_ID, name: 'Team', createdAt: 0, plan: 'free', avatarStyle: null };
 const USER = { id: USER_ID, displayName: 'Xmon Dai', avatarUrl: null };
@@ -87,7 +92,8 @@ function msg(role: 'system' | 'user' | 'assistant', content: unknown, at: number
   return { id: `msg-${msgSeq}`, role, content, createdAt: at };
 }
 
-/** 一次真实运行落库后的 wire 行序（2026-10-02 live 栈实测同形）：任务文本 →
+/** 一次真实运行落库后的 wire 行序（2026-10-02 live 栈实测同形；#1025 起首轮
+ *  plan 步行为「任务文本 + 契约指令」组合串）：首轮任务 prompt →
  *  machine_selected → agent 答复 → CONTINUE 指令 → 审核宣告 → 用户 steer 两条
  *  → agent 收尾。 */
 const MESSAGES = [
@@ -184,6 +190,10 @@ test('1. 任务原文只出现一次：描述区承担，气泡不再复述（�
   ).toHaveCount(0);
   await expect(
     page.getByTestId('user-bubble').filter({ hasText: '把圆角改成' }),
+  ).toHaveCount(0);
+  // #1025：首轮 plan 契约指令段同串退场（组合行不成气泡）
+  await expect(
+    page.getByTestId('user-bubble').filter({ hasText: '本步的交接物是' }),
   ).toHaveCount(0);
 });
 
