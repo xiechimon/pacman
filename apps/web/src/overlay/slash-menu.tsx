@@ -7,24 +7,24 @@
 // sections (builtins first, then skills); a zero total renders the empty
 // state (rule 51 isomorph).
 //
-// SlashHelp: the `/help` panel. A read-only FloatingShell listing the
+// SlashHelp: the `/help` panel. A read-only registry Dialog listing the
 // currently available builtins with their descriptions — the only builtin
 // that needs its own surface (proposal §2).
 //
-// #948 per-face 清零：slash-menu.css 规则 1:1 迁 utility——listbox 与
-// `.mention-inline` 同锚同几何（composer 相对卡，bottom calc(100%+6px)、
-// max-h 220、局部 z40＝#688 阶梯外，绘制收编于宿主面 stacking context）；
-// /help 面板 = 居中 picker 家族形（fixed 228 / 400 宽 / 负 margin 居中，
-// transform 留给动画层独占——#448/#656 律）。行钮收编 components/ui Button
-// （ghost 档七通道中和，#908 comment-6001887439 裁决 3；行不在 motion.css
-// hover 家族名单，hover 底中和为透明、高亮只走 --active 类）。面板投影是
-// 无 token 槽的一次性字面量（§3.1(a)），逐值保留。
+// #1008（#983 判决：floating-shell 族拆退役）：/help 面板 = 居中 fixed 模态
+// 族 → registry Dialog。旧冻结坐标（top-228 / 400 宽 / 负 margin 居中）与
+// 手写皮肤/ClickCatcher 退役，居中与动效归 DialogContent 默认（#991 Q9
+// registry 默认赢）；400 宽与 70vh 封顶留 layout 槽。标题走 DialogTitle
+// 语义映射（别名 slash-help-title 随行）。listbox 面（SlashMenu 本体）
+// 仍是 composer 相对锚的内联面板（无壳，非本票射程）。
+// 行钮收编 components/ui Button（ghost 档七通道中和，#908
+// comment-6001887439 裁决 3；行不在 motion.css hover 家族名单，hover 底
+// 中和为透明、高亮只走 --active 类）。
 
 import { Fragment, type Ref, useEffect } from 'react';
 import { Button } from '../components/ui/button.js';
-import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
+import { Dialog, DialogContent, DialogTitle } from '../components/ui/dialog.js';
 import { useI18n } from '../i18n/provider.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import type { SlashRow } from './slash-commands.js';
 
 export interface SlashMenuSection {
@@ -146,15 +146,17 @@ export interface SlashHelpProps {
 export function SlashHelp({ open, onClose, commands, skillCount }: SlashHelpProps) {
   const { t } = useI18n();
   return (
-    <FloatingShell open={open} onClose={onClose} className="slash-help-shell">
-      <ClickCatcher onClose={onClose} />
-      <div
-        className={`slash-help fixed top-[228px] left-1/2 z-(--z-picker) ml-[-200px] max-h-[70vh] w-[400px] max-w-[calc(100vw-32px)] overflow-auto rounded-[12px] border border-(--border) bg-(--popover) p-3 text-(--foreground) shadow-[0_18px_48px_rgb(0_0_0/0.22)] ${FLOATING_POP_ANIM}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('命令说明')}
-      >
-        <div className="slash-help-title mb-2 text-sm font-semibold">{t('命令说明')}</div>
+    <Dialog
+      open={open}
+      onOpenChange={(next: boolean) => {
+        if (!next) onClose();
+      }}
+    >
+      {/* layout 槽：400 宽（窄视口回件默认 calc 律）、70vh 封顶滚动；皮肤/
+          居中/动效/z 归 DialogContent 默认。registry 关闭钮（X）是官网
+          confirm 形态一部分，缺省开启。别名 slash-help 随行（e2e 句柄）。 */}
+      <DialogContent className="slash-help max-h-[70vh] w-[400px] max-w-[calc(100vw-2rem)] gap-0 overflow-auto p-3 sm:max-w-[400px]">
+        <DialogTitle className="slash-help-title mb-2">{t('命令说明')}</DialogTitle>
         <div className="slash-help-list flex max-h-[320px] flex-col gap-0.5 overflow-auto">
           {commands.map((row) => (
             <div key={row.name} className="slash-help-row flex items-baseline gap-2 px-2 py-1.5">
@@ -168,7 +170,7 @@ export function SlashHelp({ open, onClose, commands, skillCount }: SlashHelpProp
         <div className="slash-help-foot mt-2 border-t border-(--border) pt-2 text-xs text-(--text-tertiary)">
           {t('团队技能来自技能页面（共 {count} 个）', { count: skillCount })}
         </div>
-      </div>
-    </FloatingShell>
+      </DialogContent>
+    </Dialog>
   );
 }

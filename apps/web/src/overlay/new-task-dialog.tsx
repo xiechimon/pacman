@@ -4,8 +4,8 @@
 // 首行截断，执行 agent 接单后经 set_task_meta 回填正式标题，ADR 0002）；
 // footer = composer-style toolbar + 保存 / 保存并开始（闸 = 正文非空）。
 // #176: the project chip is a selector — click opens an anchored popover
-// (family law #67/#127: FloatingShell + ClickCatcher + Esc——#656 起壳归
-// Base UI layer 栈, dhead chip popover precedent), rows = the project set (live = useProjects truth;
+// (#1008 起壳 = registry Popover, Esc 归 Base UI layer 栈, dhead chip
+// popover precedent), rows = the project set (live = useProjects truth;
 // fixture = scenario projectNames / canon default), selection backfills the
 // chip and rides the submit's projectId（rememberProject 面另落一份
 // localStorage 记忆，见下 XMON-87 段）。
@@ -43,24 +43,18 @@
 // 设计裁决（无条件记忆、不加 hover 线索）与两条恢复降级路径（悬空 → 自动、
 // 离线 → 如实显示）见记忆位与 machinePin 处注释。
 
-import { cn } from 'cn';
 import type { ClipboardEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertDialog, AlertDialogContent } from '../components/ui/alert-dialog.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
-import {
-  EXIT_BRIDGE_CLS,
-  EXIT_BRIDGE_SLOW_CLS,
-  FLOATING_POP_ANIM,
-  FloatingShell,
-} from '../components/ui/floating-shell.js';
 import { Kbd } from '../components/ui/kbd.js';
-import { KbdHint } from '../components/ui/kbd-hint.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { Textarea } from '../components/ui/textarea.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.js';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Paperclip, X } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import { isEditableTarget, useChordHotkey, useProjectCycleHotkey } from '../overlays/hotkeys.js';
 import {
   createPastedNameCounter,
@@ -85,40 +79,35 @@ import { usePendingAttachments } from './pending-attachments.js';
 /** head 项目 chip（原 .new-task-project）：透明无框触发钮，Button ghost
  *  七通道中和（#908 裁决 3）；svg 墨 tertiary（chevron 12px 属性原值）。 */
 const PROJECT_CHIP_CLS =
-  "new-task-project flex h-auto min-w-0 cursor-pointer items-center justify-start gap-2 rounded-none border-none bg-transparent p-0 font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "new-task-project flex h-auto min-w-0 cursor-pointer items-center justify-start gap-2 border-none bg-transparent p-0 font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
 /** 底栏机器 chip（原 .new-task-machine）：有边界控件（方角选择触发钮，
  *  .dlg-machine 惯用法）；30px 高对齐工具钮（光学同排，better-ui 对齐律）；
  *  hover 吃 #791 家族同值 --accent-soft；shrink=0（机器标签是派发关键短
  *  数据，永不截断）。 */
 const MACHINE_CHIP_CLS =
-  "new-task-machine flex h-[30px] flex-none cursor-pointer items-center justify-start gap-2 rounded-none border border-(--border) bg-(--card) pl-2.5 pr-3 text-[13px] font-normal text-(--foreground) hover:bg-(--accent-soft) hover:text-(--foreground) dark:hover:bg-(--accent-soft) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "new-task-machine flex h-[30px] flex-none cursor-pointer items-center justify-start gap-2 border border-(--border) bg-(--card) pl-2.5 pr-3 text-[13px] font-normal text-(--foreground) hover:bg-(--accent-soft) hover:text-(--foreground) dark:hover:bg-(--accent-soft) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
-/** 项目/机器 popover（原 .new-task-project-menu）：V2 弹层壳（#790 P3——
- *  12px 内垫 / 1px 墨线框 / 直角 / 顶部锚距 8px）+ 上指触发 chip 左上的
- *  描边 Arrow（12×6 外三角压 10×5 内三角）；z 档 --z-popover（#688 家族
- *  catcher 之上），落对话框内不被 overflow:hidden 裁。 */
-const PROJECT_MENU_CLS =
-  "new-task-project-menu absolute left-0 top-[calc(100%+8px)] z-(--z-popover) flex w-[220px] flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+/** 项目/机器 popover 面板 layout 槽（#1008：V2 弹层壳皮肤 / 描边 Arrow /
+ *  absolute 定位 / z 档全退役——皮肤与动效归 PopoverContent 默认，定位归
+ *  Positioner 参数，z 归件内 --z-dialog 单梯）：220 宽是内容 layout（行 =
+ *  avatar+名+勾 的捕获节奏），行距归零（旧面行带紧贴）。别名类原样（e2e）。 */
+const PROJECT_MENU_CLS = 'new-task-project-menu w-[220px] gap-0';
 
-/** 机器 popover（原 .new-task-machine-menu）：自底栏向上开（footer 在底，
- *  向下开会出对话框边界被裁），Arrow 翻到底边下指。 */
-const MACHINE_MENU_CLS = cn(
-  PROJECT_MENU_CLS,
-  'new-task-machine-menu top-auto bottom-[calc(100%+8px)] before:top-auto before:bottom-px before:[clip-path:polygon(0_0,50%_100%,100%_0)] after:top-auto after:bottom-0.5 after:[clip-path:polygon(0_0,50%_100%,100%_0)]',
-);
+/** 机器 popover：自底栏向上开（footer 在底，向下开出对话框边界）——
+ *  Positioner side=top 承载（#1008，旧 bottom CSS + Arrow 翻转退役）。 */
+const MACHINE_MENU_CLS = 'new-task-machine-menu w-[220px] gap-0';
 
 /** popover 选项行（原 .new-task-project-row）：32px 行、8px 圆角；hover
  *  tint 归 motion.css #73 家族律（此处不写 hover bg，件配方被家族压掉）。 */
 const OPTION_ROW_CLS =
   'new-task-project-row flex h-8 w-full cursor-pointer items-center justify-start gap-2 rounded-[8px] border-none bg-transparent pr-1 pl-0 text-left text-xs leading-4 font-normal text-(--foreground) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto';
 
-/** 未保存闸确认层（原 .new-task-discard，#318 r9 §3.4）：delete-confirm
- *  家族形——448 居中（translate 独立属性居中，#656：tw enter/exit keyframe
- *  独占 transform，复合不闪位）、12px 圆角、dialog 底与投影；z 档
- *  --z-confirm（压低档面板 21 与家族 catcher 29）。 */
-const DISCARD_PANEL_CLS =
-  'new-task-discard fixed left-1/2 top-1/2 z-(--z-confirm) w-[448px] -translate-x-1/2 -translate-y-1/2 rounded-[12px] bg-(--card) px-4 pt-5 pb-4 shadow-(--dialog-shadow)';
+/** 未保存闸确认层（#318 r9 §3.4）layout 槽（#1008：居中 fixed / 圆角 /
+ *  底色投影 / --z-confirm 档全退役——registry AlertDialogContent 默认承载
+ *  居中与皮肤，z-50 = --z-dialog 值，数值上仍压 DialogShell 低档面板）：
+ *  448 宽是捕获设计的内容 layout。别名 new-task-discard 原样（e2e）。 */
+const DISCARD_PANEL_CLS = 'new-task-discard w-[448px] max-w-[448px] sm:max-w-[448px]';
 
 /** Spec textarea template lines, verbatim r2 §5.2 / r7 04 placeholder
  *  block — dict keys so the en fallback carries them too. */
@@ -305,11 +294,29 @@ export function NewTaskDialog({
   const [machineId, setMachineId] = useState<string | null>(() =>
     readRememberedMachine(localStorage),
   );
-  // #656：popover 的 FloatingShell 把 Portal 挂回 chip wrap（absolute 面板的
-  // containing block 原位保真）；wrap 随 dialog 内容先挂，popover 开态翻转时
-  // ref 必已就位。机器 popover 同律（#682 的 chip 面随 #656 家族迁壳）。
-  const projectWrapRef = useRef<HTMLSpanElement | null>(null);
-  const machineWrapRef = useRef<HTMLSpanElement | null>(null);
+  // #1060 手势消费闸（CI 偶发双关的根因位）：非模态 registry Popover 的外点
+  // 自收与 dialog 自己的关闭判定（React 背板 onClick 链、Base UI native
+  // outside-press dismiss → onClose）消费同一次 click；判定读到的是内层关前
+  // 还是关后的 state，取决于 React flush 与监听器注册序——调度竞态，两关全落
+  // 时一次外点把两层一起关（newtask-project-select「outside click closes the
+  // popover layer only」的偶发红即此）。ref 在同一次原生事件分发内同步写入，
+  // 免疫 flush 时序：内层 popover 因 outside-press 自收时置闸，requestClose
+  // 汇流点见闸即收束本次手势（关闸判定必须过 ref 而非 state，state 正是竞态
+  // 的当事方）。清闸交给下一手势的 pointerdown / keydown（capture 相先于新
+  // 手势的任何关闭判定）——不用 0ms 定时器：touch 的 sloppy 档下自收与后续
+  // click 之间隔着宏任务，定时器会提前放闸。
+  const gestureConsumedRef = useRef(false);
+  const markGestureConsumed = () => {
+    if (gestureConsumedRef.current) return;
+    gestureConsumedRef.current = true;
+    const clear = () => {
+      gestureConsumedRef.current = false;
+      document.removeEventListener('pointerdown', clear, true);
+      document.removeEventListener('keydown', clear, true);
+    };
+    document.addEventListener('pointerdown', clear, true);
+    document.addEventListener('keydown', clear, true);
+  };
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
@@ -357,18 +364,70 @@ export function NewTaskDialog({
     returnFocusRef.current = null;
     if (el && el !== document.body && document.contains(el)) el.focus();
   };
+  // #1060 闸位镜像：requestClose 可能经 Base UI store 持有的**旧世代闭包**被
+  // 调（Root 的 onOpenChange prop 同步同样落后于弹层可见），闭包里读 state 会
+  // 拿到旧值——ref 穿透闭包世代：旧闭包也读到当代表。渲染期幂等写（同一渲染
+  // 世代写同一值；弹层 DOM 可见 ⇒ 该世代的写已发生）。
+  const gateRef = useRef({
+    discardOpen: false,
+    pickerOpen: false,
+    projectOpen: false,
+    machineOpen: false,
+    dirty: false,
+  });
+  gateRef.current = { discardOpen, pickerOpen, projectOpen, machineOpen, dirty };
   const requestClose = () => {
-    if (dirty) {
+    // #1060 双闸（汇流点）：dialog 的一切关闭意图——Base UI native dismiss
+    // （经 DialogShell onClose）、背板 onClick、X 钮、保存/放弃之外的落穿——
+    // 统一汇流到本函数，闸设在汇流点一处生效。
+    // 闸一（ref，同步）：内层已接线并自收（outside-press 等）时置位——ref 在
+    // 同一次原生事件分发内写入，免疫 React flush 时序（内层开态 state 可能已
+    // 在闸判读前翻假）。清闸在下一手势（见 markGestureConsumed）。
+    if (gestureConsumedRef.current) return;
+    // 闸二（内层开态镜像，补 Base UI 的接线窗）：dismiss 监听、层栈树节点、
+    // Root 的 prop 同步全挂在被动 effect 上，而弹层 DOM 在 commit 即可见——
+    // 快速点击（合成输入/高负载，插桩重放实测 60 轮中 13 次）可落进这扇窗：内层来不及
+    // 自收，dialog 误判自己是最上层直接收下本次关闭。此时镜像里的内层开态仍
+    // 为真，代内层执行「只关最上层」：确认层 → 提及 picker → 项目 popover →
+    // 机器 popover（旧 #318 分层链的语义，位置从背板链上移到全部关闭路径的
+    // 汇流点）。每个收束分支同时置闸一——同一次手势会二次进闸（native
+    // dismiss 与背板 onClick 都汇流到此，插桩重放实测相隔 ~3.5ms），第二次进来
+    // 时 React 可能已 flush 掉内层开态，镜像拦不住，须由同步 ref 收束。
+    const gate = gateRef.current;
+    if (gate.discardOpen) {
+      markGestureConsumed();
+      closeDiscard();
+      return;
+    }
+    if (gate.pickerOpen) {
+      markGestureConsumed();
+      setPickerOpen(false);
+      return;
+    }
+    if (gate.projectOpen) {
+      markGestureConsumed();
+      setProjectOpen(false);
+      return;
+    }
+    if (gate.machineOpen) {
+      markGestureConsumed();
+      setMachineOpen(false);
+      return;
+    }
+    if (gate.dirty) {
+      // 未保存闸开确认层同样消费本次手势（二次进闸不得把刚开的确认层又收掉）。
+      markGestureConsumed();
       setDiscardOpen(true);
       return;
     }
     returnFocusToInvoker();
     onClose();
   };
-  // Esc 分层 4 层(内层优先):确认层 → 提及 picker → 项目 popover → dialog 关闸
-  // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 各由自己的壳接管 Esc
-  // ——ClickCatcher / FloatingShell(#425 B1 起 picker 走 Base UI layer 栈),
-  // 本文件只控 dialog 自身的 Esc 关闸。)
+  // 分层关闭(内层优先,合并 #311 picker + #318 闸):各内层常态由自己的
+  // registry 壳收 Esc / 外点——AlertDialog / Dialog / Popover 同在 Base UI
+  // layer 栈,escapeKey isTopmost 自己收;requestClose 的双闸(#1060)在全部
+  // 关闭意图的汇流点兜底同一套层级——关闸语义不止 Esc 一路,漏到 dialog 层
+  // 的关闭意图一律先喂最上层内层。
   // retained mount:dialog 关闭一并收 popover(重开不得带回开态) + 确认层
   // + picker,并重置表单(重开不得带回开态/脏字——闸判定以净面起步)
   useEffect(() => {
@@ -403,12 +462,12 @@ export function NewTaskDialog({
     }
     returnFocusToInvoker();
   }, [open]);
-  // #723 真回归修：闸层拥有键盘时焦点显式落闸内。overlay-mount 退役前送焦
-  // 走注册表；#656 起壳 = FloatingShell 缺省 initialFocus，sibling root 不
-  // 再送焦——焦点停 composer，keep 钮 toBeFocused 落空（hotkeys /
-  // dead-buttons 双面钉）。父 effect 后于壳子树 effect 落子，开层提交后钮
-  // 必已挂载。关层（继续编辑三路）焦点回 composer，还旧终态；drop 路关整
-  // dialog，走 dialog 自身归还，不经此。
+  // #723 真回归修：闸层拥有键盘时焦点显式落闸内。#1008 起壳 = registry
+  // AlertDialog（缺省 initialFocus 入层，但落点不保证是 keep 钮），本 effect
+  // 继续显式钉 keep 钮（hotkeys / dead-buttons 双面钉 toBeFocused）。父
+  // effect 后于壳子树 effect 落子，开层提交后钮必已挂载。关层（继续编辑
+  // 三路）焦点回 composer，还旧终态；drop 路关整 dialog，走 dialog 自身
+  // 归还，不经此。
   const keepBtnRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     if (discardOpen) keepBtnRef.current?.focus();
@@ -607,32 +666,20 @@ export function NewTaskDialog({
         bare
         open={open}
         onClose={requestClose}
-        // 外点内层优先（旧 backdrop 上的三分支逻辑）：项目浮层 / 提及 picker
-        // 开着先关内层；discard 层由它自己的底座接管；剩余走未保存闸。
-        onBackdropClick={() => {
-          if (projectOpen) {
-            setProjectOpen(false);
-            return;
-          }
-          if (machineOpen) {
-            setMachineOpen(false);
-            return;
-          }
-          if (pickerOpen) {
-            setPickerOpen(false);
-            return;
-          }
-          requestClose();
-        }}
-        // #318/#656 分层 Esc：五个内层（picker / 项目 popover / 机器 popover /
-        // discard 闸）全部走 FloatingShell（Base UI layer 栈，escapeKey
-        // isTopmost 自己收），onEscapeWhileNested 代收闸退役——壳只控 dialog
-        // 自身的 Esc 关闸。#682 机器 popover 是同族 chip 面（双开由开面互斥
-        // 先行收掉，见两 chip 的 onClick），随 #656 家族一并迁壳。
-        // #688 阶梯 --z-panel-low：低档面板（--z-panel-low < ClickCatcher
-        // --z-catcher < 确认层 --z-confirm）——缺省的 --z-dialog 会压住本
-        // 文件的 discard 确认层，故吃低档；低档仍恒压常驻侧板（--z-docked），
-        // 抽屉开着时本面排上方（#688 裁决，e2e/z-ladder.spec 钉扎）。
+        // #1060：背板不再自持分支链——外点与 Esc / X 一样汇流 requestClose
+        // （DialogShell 缺省 onClick=onClose），内层优先由汇流点双闸承载。
+        // #318/#1008 分层 Esc：五个内层（picker / 项目 popover / 机器 popover /
+        // discard 闸）全部走 registry 壳（Dialog / Popover / AlertDialog，
+        // Base UI layer 栈 escapeKey isTopmost 自己收）。#1060 返工：层栈的
+        // 接线窗（dismiss 监听/树节点挂被动 effect，落后于弹层 DOM 可见）会让
+        // dialog 偶发误判自己是最上层——分层兜底从背板分支链上移到
+        // requestClose 汇流点（双闸，见该处注记），覆盖全部关闭路径。
+        // #682 机器 popover 是
+        // 同族 chip 面（双开由开面互斥先行收掉，见两 chip Trigger 的
+        // onClick）。#688 阶梯 --z-panel-low：本面板吃低档恒压常驻侧板
+        // （--z-docked），抽屉开着时本面排上方；内层 registry 壳自带
+        // z-50/--z-dialog 档，数值恒压本低档面板（e2e/z-ladder.spec 钉扎，
+        // 阶梯 token 接法 = #983 横切待裁决面）。
         zIndex="var(--z-panel-low)"
         className="new-task-dialog"
         // #910 一级载体：bare 面缺省无可及名，title 只进 aria-label（不可见）——
@@ -653,50 +700,68 @@ export function NewTaskDialog({
           {/* #682 第三轮（用户三审）：标题行回归抓拍形态——项目 chip + 居中
               标题 + 关闭，机器选择搬去底栏选项区（执行选择与「保存并开始」
               同族）。项目名 max-width 截断（长名不压居中标题）。 */}
-          <span className="new-task-project-wrap relative flex items-center" ref={projectWrapRef}>
-            <Button
-              variant="ghost"
-              type="button"
-              className={PROJECT_CHIP_CLS}
-              data-testid="new-task-project-chip"
-              aria-haspopup="listbox"
-              aria-expanded={projectOpen && rows.length > 0}
-              onClick={() => {
-                setMachineOpen(false);
-                setProjectOpen((value) => !value);
+          <span className="new-task-project-wrap relative flex items-center">
+            {/* #176/#1008:anchored popover 家族律——#983 判决族拆退役，壳 =
+                registry Popover（Esc 归 Base UI 嵌套 layer 栈不变；定位从
+                wrap container + absolute CSS 迁 Positioner 参数 side=bottom
+                align=start sideOffset=8 = 原「left-0 top calc(100%+8px)」）。
+                空集不开面(live 无项目时提交走建默认项目路径)。选中回填
+                chip,提交携带 projectId。#666 律:chip 是 toggle 面——
+                initialFocus=false 焦点留触发位、toggle/aria-expanded 归
+                Trigger 原语（旧双写 state 竞态根因消失）;外点关走原生
+                outside-press（ClickCatcher 退役,穿透与否 = #983 遗留待
+                原型实审裁决项）。Tab 提示 chip 换官网 Tooltip+Kbd 组合
+                （#983 kbd-hint 判决;TooltipTrigger→PopoverTrigger→Button
+                三层 render 复合,同一只 chip 钮）。 */}
+            <Popover
+              open={projectOpen && rows.length > 0}
+              onOpenChange={(next: boolean, details) => {
+                // #1060：外点自收先于 dialog 侧的一切关闭判定（元素级原生
+                // 监听在委托根之前），置手势消费闸——同一次点击里汇流点不再落穿。
+                if (!next && details.reason === 'outside-press') markGestureConsumed();
+                setProjectOpen(next);
               }}
             >
-              <span className="new-task-project-avatar size-5 rounded-[6px] bg-(--project-avatar-bg) text-[11px] leading-5 text-center uppercase text-(--project-avatar-fg)">
-                {projectName.charAt(0).toLowerCase()}
-              </span>
-              <span className="new-task-project-name min-w-0 max-w-[220px] truncate text-[13px] leading-4 text-(--foreground)">
-                {projectName}
-              </span>
-              <ChevronDown width={12} height={12} />
-              {/* XMON-87 续二:Tab 提示 chip(#468 悬浮 chip 族,静息隐藏,
-                  hover/focus-visible chip 时浮出);label 字面量沿 ⌘K/⌘J
-                  先例,不做平台探测。 */}
-              <KbdHint label="Tab" placement="right" />
-            </Button>
-            {/* #176:anchored popover 家族律(#67/#127)——#656 起壳 =
-                FloatingShell(Esc 归 Base UI 嵌套 layer 栈)+ ClickCatcher;
-                Portal 挂回 chip wrap,absolute 面板几何原位保真。空集不开面
-                (live 无项目时提交走建默认项目路径)。选中回填 chip,提交携带
-                projectId。#666 律:chip 是 toggle 面——焦点留触发位、原生
-                outsidePress 关闭(外点归 catcher)。 */}
-            <FloatingShell
-              open={projectOpen && rows.length > 0}
-              onClose={() => setProjectOpen(false)}
-              container={projectWrapRef.current}
-              className={EXIT_BRIDGE_CLS}
-              initialFocus={false}
-              disablePointerDismissal
-            >
-              <ClickCatcher onClose={() => setProjectOpen(false)} />
-              <div
-                className={cn(PROJECT_MENU_CLS, FLOATING_POP_ANIM)}
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <PopoverTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          type="button"
+                          className={PROJECT_CHIP_CLS}
+                          data-testid="new-task-project-chip"
+                          aria-haspopup="listbox"
+                          onClick={() => setMachineOpen(false)}
+                        />
+                      }
+                    />
+                  }
+                >
+                  <span className="new-task-project-avatar size-5 rounded-[6px] bg-(--project-avatar-bg) text-[11px] leading-5 text-center uppercase text-(--project-avatar-fg)">
+                    {projectName.charAt(0).toLowerCase()}
+                  </span>
+                  <span className="new-task-project-name min-w-0 max-w-[220px] truncate text-[13px] leading-4 text-(--foreground)">
+                    {projectName}
+                  </span>
+                  <ChevronDown width={12} height={12} />
+                </TooltipTrigger>
+                {/* XMON-87 续二:Tab 提示(#468 族);label 字面量沿 ⌘K/⌘J
+                    先例,不做平台探测。side=right sideOffset=8 = 旧 chip
+                    「图标右侧 8px、垂直居中」落位。 */}
+                <TooltipContent side="right" sideOffset={8}>
+                  <Kbd>Tab</Kbd>
+                </TooltipContent>
+              </Tooltip>
+              <PopoverContent
+                side="bottom"
+                align="start"
+                sideOffset={8}
+                initialFocus={false}
                 role="listbox"
                 aria-label={t('项目')}
+                className={PROJECT_MENU_CLS}
               >
                 {rows.map((row) => (
                   <Button
@@ -725,8 +790,8 @@ export function NewTaskDialog({
                     )}
                   </Button>
                 ))}
-              </div>
-            </FloatingShell>
+              </PopoverContent>
+            </Popover>
           </span>
           <div className="new-task-title-label pointer-events-none absolute inset-x-0 text-center text-[13px] leading-4 font-medium text-(--foreground)">
             {t('新建任务')}
@@ -758,7 +823,7 @@ export function NewTaskDialog({
           <Textarea
             ref={focusSpecRef}
             data-testid="new-task-spec"
-            className="new-task-spec min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent p-0 text-sm leading-5 tabular-nums text-(--foreground) field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent md:text-sm"
+            className="new-task-spec min-h-0 flex-1 resize-none border-0 bg-transparent p-0 text-sm leading-5 tabular-nums text-(--foreground) field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent md:text-sm"
             placeholder={SPEC_TEMPLATE_LINES.map((line) => t(line)).join('\n')}
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
@@ -817,55 +882,54 @@ export function NewTaskDialog({
                 2× 律）。popover 向上开（footer 在底，向下开会出对话框边界）。
                 类名独立 new-task-machine* 家族：e2e 的 `.new-task-project*`
                 选择器钉单元素（strict mode），双 chip 共类名会打红整组。 */}
-            <span
-              className="new-task-machine-wrap relative ms-3 flex flex-none items-center"
-              ref={machineWrapRef}
-            >
-              <Button
-                variant="ghost"
-                type="button"
-                className={MACHINE_CHIP_CLS}
-                aria-haspopup="listbox"
-                aria-expanded={machineOpen && machineRows.length > 0}
-                data-testid="new-task-machine-chip"
-                onClick={() => {
-                  setProjectOpen(false);
-                  setMachineOpen((value) => !value);
+            <span className="new-task-machine-wrap relative ms-3 flex flex-none items-center">
+              {/* #656/#1008：壳 = registry Popover，与 head 的项目 popover
+                  同族同律（#666 toggle 面：initialFocus=false 焦点留触发位，
+                  toggle/aria-expanded 归 Trigger 原语）。向上开几何从
+                  bottom:calc(100%+8px) CSS 迁 Positioner side=top。 */}
+              <Popover
+                open={machineOpen}
+                onOpenChange={(next: boolean, details) => {
+                  // #1060：与项目 popover 同款手势消费闸（外点自收先行）。
+                  if (!next && details.reason === 'outside-press') markGestureConsumed();
+                  setMachineOpen(next);
                 }}
               >
-                {/* 机器状态点（项目 chip 的 avatar 槽位换成 dot，dlg-machine-dot /
-                    res-dot 同族几何）；data-on=false = 离线机器——可钉选（钉选
-                    语义 = 步等它上线），灰点不是禁选态（属性载体 #910 裁定 3，
-                    newtask-machine-persist.spec 钉）。 */}
-                <span
-                  className="new-task-machine-dot size-1.5 flex-none rounded-full bg-(--col-dot-done) data-[on=false]:bg-(--col-dot-idle)"
-                  data-testid="new-task-machine-dot"
-                  data-on={machineSelected?.online ?? true}
-                  aria-hidden="true"
-                />
-                <span className="new-task-machine-name min-w-0 max-w-[120px] truncate text-[13px] leading-4 text-(--foreground)">
-                  {machineLabel}
-                </span>
-                <ChevronDown width={12} height={12} />
-              </Button>
-              {/* #656：壳 = FloatingShell，与 head 的项目 popover 同族同律
-                  （#666 toggle 面：initialFocus=false 焦点留触发位 + 外点归
-                  ClickCatcher，原生 outsidePress 只接得住键盘合成 click，与
-                  toggle onClick 双写会把面「关不掉」）。Portal 挂回本 wrap，
-                  bottom:calc(100%+4px) 的向上开几何原位保真。 */}
-              <FloatingShell
-                open={machineOpen}
-                onClose={() => setMachineOpen(false)}
-                container={machineWrapRef.current}
-                className={EXIT_BRIDGE_CLS}
-                initialFocus={false}
-                disablePointerDismissal
-              >
-                <ClickCatcher onClose={() => setMachineOpen(false)} />
-                <div
-                  className={cn(MACHINE_MENU_CLS, FLOATING_POP_ANIM)}
+                <PopoverTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      className={MACHINE_CHIP_CLS}
+                      aria-haspopup="listbox"
+                      data-testid="new-task-machine-chip"
+                      onClick={() => setProjectOpen(false)}
+                    />
+                  }
+                >
+                  {/* 机器状态点（项目 chip 的 avatar 槽位换成 dot，dlg-machine-dot /
+                      res-dot 同族几何）；data-on=false = 离线机器——可钉选（钉选
+                      语义 = 步等它上线），灰点不是禁选态（属性载体 #910 裁定 3，
+                      newtask-machine-persist.spec 钉）。 */}
+                  <span
+                    className="new-task-machine-dot size-1.5 flex-none rounded-full bg-(--col-dot-done) data-[on=false]:bg-(--col-dot-idle)"
+                    data-testid="new-task-machine-dot"
+                    data-on={machineSelected?.online ?? true}
+                    aria-hidden="true"
+                  />
+                  <span className="new-task-machine-name min-w-0 max-w-[120px] truncate text-[13px] leading-4 text-(--foreground)">
+                    {machineLabel}
+                  </span>
+                  <ChevronDown width={12} height={12} />
+                </PopoverTrigger>
+                <PopoverContent
+                  side="top"
+                  align="start"
+                  sideOffset={8}
+                  initialFocus={false}
                   role="listbox"
                   aria-label={t('机器')}
+                  className={MACHINE_MENU_CLS}
                 >
                   <Button
                     variant="ghost"
@@ -924,8 +988,8 @@ export function NewTaskDialog({
                       )}
                     </Button>
                   ))}
-                </div>
-              </FloatingShell>
+                </PopoverContent>
+              </Popover>
             </span>
             <div className="new-task-buttons">
               {/* e2e 别名叠加：integration/test/m5-web-e2e.test.ts 钉
@@ -964,34 +1028,36 @@ currentColor 系而非 border-border/muted-foreground。
           </div>
         </div>
       </DialogShell>
-      {/* #318 未保存闸确认层(r9 §3.4 copy 逐字):独立层不入 dialog 面板
-          ——面板 transform 会吞 fixed 定位(#176 注记同坑);ClickCatcher
-          z29 压 dialog z21,外点 = 只收确认层(继续编辑语义),面板 z31 居顶。
-          #656:壳 = FloatingShell(sibling root,MentionPicker 先例);fade 沿
-          旧淡入配方的 200ms(--dur-overlay),桥走 slow 变体撑满退场窗。
-          initialFocus 走缺省(焦点入层)而非 false:sibling root 的 Esc 路由
-          依赖焦点在本层内——实测 initialFocus=false 时(焦点留在 dialog)
-          Esc 全被 modal dialog 吃掉(→requestClose→重开本层,确认层关不掉);
-          MentionPicker 同款缺省。#247 Tab 可达性不受损(焦点入层后 Tab 即达
-          两个动作钮),Tab 循环/⌘↵ 的 discardOpen 缺席门原样。外点归
-          catcher,故原生 outsidePress 关闭(#666 律的 catcher 半边)。 */}
-      <FloatingShell
+      {/* #318 未保存闸确认层(r9 §3.4 copy 逐字)。#1008（#983 判决：居中
+          fixed 模态族 → Dialog，discard 走 AlertDialog）：壳 = registry
+          AlertDialog（sibling root 不变），role=alertdialog / aria-modal /
+          Esc 分层（Base UI layer 栈最顶先收）/ 外点关（modal 背板不穿透，
+          旧 ClickCatcher 同语义）全归原语；手写 fade 200ms + slow 退场桥
+          退役（#991 Q9 registry 动效默认赢）。焦点入层走件缺省（旧实测：
+          焦点留 dialog 会让 Esc 被外层吃掉、确认层关不掉），keepBtnRef
+          显式送焦照旧（hotkeys / dead-buttons 双面钉 keep 钮 toBeFocused）。
+          #247 Tab 可达性不受损(焦点入层后 Tab 即达两个动作钮),Tab 循环/
+          ⌘↵ 的 discardOpen 缺席门原样。 */}
+      <AlertDialog
         open={discardOpen}
-        onClose={closeDiscard}
-        className={EXIT_BRIDGE_SLOW_CLS}
-        disablePointerDismissal
+        onOpenChange={(next: boolean) => {
+          if (!next) {
+            // #1060：确认层自收（Esc/外点）同样消费本次手势——外层 dialog
+            // 不得在同一次手势里跟着关（闸语义见 requestClose）。「放弃并
+            // 关闭」走 discardAndClose 直连 onClose，不经本闸。
+            markGestureConsumed();
+            closeDiscard();
+          }
+        }}
       >
-        <ClickCatcher onClose={closeDiscard} />
-        <div
-          className={`${DISCARD_PANEL_CLS} duration-200 group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0`}
-          role="alertdialog"
-          aria-modal="true"
+        <AlertDialogContent
+          className={DISCARD_PANEL_CLS}
           aria-label={t('放弃新建任务？未保存的内容将丢失。')}
         >
           <div className="new-task-discard-title text-sm leading-5 font-medium text-(--foreground)">
             {t('放弃新建任务？未保存的内容将丢失。')}
           </div>
-          <div className="new-task-discard-actions mt-5 flex h-[30px] items-center justify-end gap-2.5">
+          <div className="new-task-discard-actions flex h-[30px] items-center justify-end gap-2.5">
             {/* 原 .new-task-discard-keep：透明无框 12px 钮（ghost 七通道中和）。
                 墨色换 muted-foreground：旧 --text-dim 亮模 on --dialog-bg 实测
                 2.89:1，连正典给 dim 槽自留的 3:1 地板都不过（#943
@@ -1000,7 +1066,7 @@ currentColor 系而非 border-border/muted-foreground。
             <Button
               variant="ghost"
               size="default"
-              className="new-task-discard-keep h-auto cursor-pointer rounded-none justify-start gap-0 border-none bg-transparent p-0 text-xs leading-4 font-normal text-muted-foreground active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-muted-foreground [&_svg:not([class*='size-'])]:size-auto"
+              className="new-task-discard-keep h-auto cursor-pointer justify-start gap-0 border-none bg-transparent p-0 text-xs leading-4 font-normal text-muted-foreground active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-muted-foreground [&_svg:not([class*='size-'])]:size-auto"
               ref={keepBtnRef}
               onClick={closeDiscard}
             >
@@ -1015,12 +1081,16 @@ currentColor 系而非 border-border/muted-foreground。
               {t('放弃并关闭')}
             </Button>
           </div>
-        </div>
-      </FloatingShell>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* #311 mention picker(sibling layer)。Esc/backdrop 顺序见上分层注记。 */}
       <MentionPicker
         open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        onClose={() => {
+          // #1060：内层自收 = 本次手势已被消费（闸语义见 requestClose）。
+          markGestureConsumed();
+          setPickerOpen(false);
+        }}
         groups={groups}
         onInsert={(tokens) => {
           insertTokens(tokens);

@@ -185,6 +185,9 @@ export function TodoDetailPage() {
   // route then renders without it; the fixture phase has no backend.
   // M5: live 模式走 DELETE /api/todos/{id}。
   const [moreOpen, setMoreOpen] = useState(false);
+  // #1008：MoreMenu 迁 registry DropdownMenu——触发钮住 dhead、菜单体住本页，
+  // 锚 ref 页面层持有双投（DetailHead.moreButtonRef ↔ MoreMenu.anchor）。
+  const moreAnchorRef = useRef<HTMLButtonElement | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   // M7 #310 附件 wire：live editable composer 把 draft 提到此处，附件 token
   // 才能注入；send 时与 text 一起随 content 发出（#280 steer / #75 reject）。
@@ -862,6 +865,7 @@ export function TodoDetailPage() {
           onAction={handlePrimaryAction}
           chipPopoverOpen={fixture.ui?.chipPopoverOpen === true}
           onEditAssign={() => setAssignOpen(true)}
+          moreButtonRef={moreAnchorRef}
         />
         <div className="detail-body relative flex min-h-0 flex-1" data-testid="detail-body">
           <div className="detail-center flex min-w-0 flex-1 flex-col" data-testid="detail-center">
@@ -1150,6 +1154,7 @@ export function TodoDetailPage() {
       {!live && detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
       <MoreMenu
         open={moreOpen}
+        anchor={moreAnchorRef}
         onClose={() => setMoreOpen(false)}
         onDelete={() => {
           setMoreOpen(false);

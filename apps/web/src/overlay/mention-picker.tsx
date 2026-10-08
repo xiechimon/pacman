@@ -18,10 +18,13 @@
 // pattern (#286): fixture mode keeps DOM-stable; live mode wires the
 // real entity endpoints.
 //
-// #948 per-face 清零：mention-picker.css 规则 1:1 迁 utility。面板居中不借
-// transform（负 margin——transform 归动画层独占，#448/#656 律，
-// mention-picker-center.spec 钉 computed transform='none' + width=400 +
-// 居中 ±1px）；z 档 --z-picker（#688 阶梯顶档，嵌套压过 dialog 族）。
+// #1008（#983 判决：floating-shell 族拆退役）：居中 fixed 模态族 → registry
+// Dialog。壳皮肤（top-228 冻结坐标 / 负 margin 居中 / --z-picker / 12px 圆角
+// 描边投影 / 手写 ClickCatcher）退役，几何与动效归 DialogContent 默认（居中
+// translate + zoom-95，#991 Q9 registry 默认赢）；400 宽与 70vh 封顶是内容
+// layout 槽，消费点 className 承载。外点关走 modal Dialog 原生背板（不穿透，
+// 旧 ClickCatcher 同语义）。mention-picker-center.spec 钉的旧「transform=
+// none 负 margin 居中」随重钉迁 registry 形（相位二）。
 // 行钮收编 components/ui Button（ghost 七通道中和，#908 裁决 3；本族行不在
 // motion.css hover 家族名单——「提及/下拉选中行 hover 即选中语义」是家族律
 // 的登记例外，故 hover 底中和为透明，高亮只走 --selected/--active 类）。
@@ -29,7 +32,7 @@
 
 import { type Ref, useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
-import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
+import { Dialog, DialogContent } from '../components/ui/dialog.js';
 import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
 import {
@@ -42,7 +45,6 @@ import {
   Users,
   X,
 } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import { mentionIconClass } from './mention-chip.js';
 import type { InlineCompletionRow, MentionKind, MentionToken } from './mention-token.js';
 
@@ -88,18 +90,16 @@ const CATEGORIES: { kind: MentionKind; Icon: typeof FileCheck }[] = [
   { kind: 'machine', Icon: Server },
 ];
 
-/** 壳退场桥（#656 配方，原 .mention-picker-shell 规则）。 */
-const SHELL_CLS =
-  'mention-picker-shell [transition:visibility_0s_linear_var(--dur-fast)] data-[ending-style]:invisible';
-
-/** 面板（原 .mention-picker）：400 宽居中（负 margin，transform 留给动画
- *  层）、70vh 封顶、picker 顶档 z。投影为无 token 槽的一次性字面量。 */
+/** 面板 layout 槽（#1008：皮肤/定位退役，registry DialogContent 默认赢）：
+ *  400 宽（窄视口回 calc(100vw-2rem) 件默认律）、70vh 封顶、列布局内部分段
+ *  （head/list/foot 各自的 border 全出血，故 p-0 gap-0）。别名 mention-picker
+ *  原样（e2e 句柄）。 */
 const PANEL_CLS =
-  'mention-picker fixed top-[228px] left-1/2 z-(--z-picker) ml-[-200px] flex max-h-[70vh] w-[400px] flex-col overflow-hidden rounded-[12px] border border-(--border) bg-(--popover) shadow-[0_18px_48px_rgb(0_0_0/0.22)]';
+  'mention-picker flex max-h-[70vh] w-[400px] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[400px]';
 
 /** 类目/实体行基底（原 .mention-row，Button ghost 七通道中和）。 */
 const ROW_CLS =
-  'mention-row flex w-full cursor-pointer items-center justify-start gap-2.5 rounded-none border-0 bg-transparent px-3.5 py-0 text-left text-sm font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:cursor-default';
+  'mention-row flex w-full cursor-pointer items-center justify-start gap-2.5 border-0 bg-transparent px-3.5 py-0 text-left text-sm font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:cursor-default';
 
 /** head 返回/关闭钮（原 .mention-picker-back/-close：22px 方钮、6px 圆角、
  *  tertiary 墨，hover 吃 #73 家族同值 --accent-soft tint + primary 墨）。 */
@@ -249,16 +249,16 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
   };
 
   return (
-    // #425 B1：壳换 FloatingShell（Base UI 非模态 Dialog）；壳类只余退场桥
-    // utility（原 CSS 钩子规则已随 mention-picker.css 退役），别名锚类逐字保留。
-    <FloatingShell open={open} onClose={onClose} className={SHELL_CLS}>
-      <ClickCatcher onClose={onClose} />
-      <div
-        className={`${PANEL_CLS} ${FLOATING_POP_ANIM}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('提及')}
-      >
+    // #1008：壳 = registry Dialog（居中 fixed 模态族判决，#983）。Esc/背板
+    // 外点关归 Base UI 原生（modal 档外点不穿透，旧 ClickCatcher 同语义）；
+    // 自带 head 关闭钮，故 registry 的 showCloseButton 关掉（双 X 重复）。
+    <Dialog
+      open={open}
+      onOpenChange={(next: boolean) => {
+        if (!next) onClose();
+      }}
+    >
+      <DialogContent className={PANEL_CLS} showCloseButton={false} aria-label={t('提及')}>
         <div className="mention-picker-head flex items-center gap-2 border-b border-(--border) px-4 pt-3.5 pb-2.5">
           {layer !== 'top' ? (
             <Button
@@ -301,7 +301,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
             <div className="mention-picker-search border-b border-(--border) px-3.5 pt-2.5 pb-1.5">
               <Input
                 type="text"
-                className="mention-picker-search-input h-7 rounded-none border-(--border) bg-(--background) px-2.5 py-0 text-xs text-(--foreground) dark:bg-(--background) md:text-xs"
+                className="mention-picker-search-input h-7 border-(--border) bg-(--background) px-2.5 py-0 text-xs text-(--foreground) dark:bg-(--background) md:text-xs"
                 placeholder={t('搜索…')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -348,7 +348,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           <Button
             variant="ghost"
             size="default"
-            className="mention-picker-cancel h-auto cursor-pointer rounded-none justify-start gap-0 px-1.5 py-1 text-xs font-normal text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
+            className="mention-picker-cancel h-auto cursor-pointer justify-start gap-0 px-1.5 py-1 text-xs font-normal text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
             onClick={onClose}
           >
             {t('取消')}
@@ -356,15 +356,15 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           <Button
             variant="ghost"
             size="default"
-            className="mention-picker-insert h-auto cursor-pointer rounded-none justify-start gap-0 px-1.5 py-1 text-xs font-medium text-(--card-button) transition-[filter] duration-(--dur-fast) ease-(--ease-standard) hover:bg-transparent hover:brightness-[1.07] dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--card-button) disabled:cursor-default disabled:text-(--text-tertiary) disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            className="mention-picker-insert h-auto cursor-pointer justify-start gap-0 px-1.5 py-1 text-xs font-medium text-(--card-button) transition-[filter] duration-(--dur-fast) ease-(--ease-standard) hover:bg-transparent hover:brightness-[1.07] dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--card-button) disabled:cursor-default disabled:text-(--text-tertiary) disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             disabled={allSelected.length === 0}
             onClick={insert}
           >
             {t('插入 ({count})', { count: allSelected.length })}
           </Button>
         </div>
-      </div>
-    </FloatingShell>
+      </DialogContent>
+    </Dialog>
   );
 }
 

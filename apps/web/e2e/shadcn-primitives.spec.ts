@@ -78,7 +78,7 @@ test('avatar 落点定尺盒（#983/#1003）：Root 生成真盒承上游发丝�
   expect(probe.chipBox.h).toBe(44);
 });
 
-test('kbd 落点：悬浮提示是 registry Kbd，静息隐藏 / 悬浮浮出不变', async ({ page }) => {
+test('kbd 落点：悬浮提示 = registry Tooltip+Kbd 组合，静息不挂载 / 悬浮浮出', async ({ page }) => {
   await page.goto('/app?scenario=01');
   // #950 载体：.chief-fab → aria-label 总管钮（board inline FAB）。
   // #983/#1004：kbd-hint 退役为 registry Tooltip+Kbd——静息不挂载
