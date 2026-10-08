@@ -441,7 +441,11 @@ test.describe('推送通知点击闭环（XMON-106）', () => {
     await page.goto('/app?chief=chief-zzz');
 
     await expect.poll(() => page.url()).not.toContain('chief=');
-    await expect(page.locator('.chief-drawer')).toHaveCount(0);
+    // #1009 A0（ADR 0013 D6）：悬浮窗是根 host 常驻单实例——「不开窗」的
+    // 载体从 count-0 翻成 hidden + count-1（关 = 在 DOM 但 inert）。
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toHaveCount(1);
+    await expect(drawer).toBeHidden();
     // 看板本体照常渲染（安静降级，不崩）。
     await expect(page.locator('[data-route="board"]')).toBeVisible();
   });

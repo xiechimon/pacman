@@ -356,11 +356,18 @@ export function TodoDetailPage() {
   // clean ESC. The composer's inline mention state consumes the key with
   // preventDefault (defaultPrevented guard). Only a clean ESC with nothing
   // open goes home, carrying the search string — same law as the back link.
+  // ADR 0013 D6/D3 exception: the chief floating window is a persistent
+  // root-host [role=dialog] node (keepMounted, hidden when closed) whose own
+  // law is "Esc never closes it" — it never owns this key, so the guard
+  // excludes the whole window (an open window does not block the detail exit
+  // either; it survives the navigation as a cross-route resident). Its inner
+  // popovers (thread switcher etc.) portal as separate nodes without the
+  // .chief-drawer class and still consume the key first per the layering law.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       const openSurface = document.querySelector(
-        '.overlay, [role="dialog"], [role="menu"], [role="listbox"]',
+        '.overlay, [role="dialog"]:not(.chief-drawer), [role="menu"], [role="listbox"]',
       );
       if (openSurface !== null) return;
       const query = searchParams.toString();

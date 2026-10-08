@@ -174,10 +174,10 @@ async function openChiefSettings(page: Page) {
   await expect(drawer).toBeVisible();
   await drawer.locator('button[aria-label="总管设置"]').click();
   await expect(page.getByRole('heading', { name: '总管设置' })).toBeVisible();
-  // 抽屉退场腿是 absolute 离流滑出（data-closed，~500ms 后卸载）——滑出途中
-  // 会瞬时把 documentElement.scrollWidth 顶宽（既有 chrome，与本票无关）。
-  // F4 的页面级溢出面必须等它卸载后再量，否则按动画相位随机红。
-  await expect(page.locator('.chief-drawer')).toHaveCount(0);
+  // #1009 A0（ADR 0013）：设置面 = 悬浮窗内内容交换，不再有抽屉卸载腿——
+  // 旧贴右竖板的退场腿（absolute 滑出瞬时顶宽 documentElement.scrollWidth，
+  // F4 页面级溢出量的噪声源）随形态反转消失；窗体稳定在场即可量。
+  await expect(page.locator('.chief-drawer')).toBeVisible();
 }
 
 test('总管设置三个长内容 tab 都能滚到底 (#1032)', async ({ page }) => {
