@@ -80,6 +80,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Spec 解析闸（#1052）：e2e spec 少一个 `  });` 不进任何本地快速闸——
+      # biome 只警告、apps/web 的 tsconfig 不含 e2e/，第一道红是 CI e2e 分片
+      # 在收集期炸（分钟级反馈：fixture build + 分片启动）。`playwright test
+      # --list` 只解析收集不执行、不构建、不起浏览器（实测 109 文件 / 849
+      # 用例 1.6s），integration/test 那半交给它自己的 tsc（~0.5s）。排在
+      # chromium 安装之前：坏 spec 的红灯不陪跑浏览器安装。
+      # 「排在 e2e 分片之前」是**信号序**不是 DAG 序：e2e 是独立 job（#693），
+      # 与本 job 并行，不给它加 needs——串行化会把所有健康 PR 的 e2e 反馈压后
+      # 整个 check job 的时长，恰是 #693 要消掉的延迟。本步在 job 开头 ~1 分钟
+      # （install 后 3s）出信号，分片要等 ffmpeg + chromium + fixture build
+      # 才进收集期：坏 spec 时这里总是先红。分片白跑的 runner 分钟数是接受的
+      # 代价，换健康 PR 的并行反馈不降速。
+      - name: Spec parse gate (#1052)
+        run: pnpm spec:parse
+
       - name: Install Playwright chromium
         run: pnpm exec playwright install chromium --with-deps
 

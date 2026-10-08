@@ -1,7 +1,8 @@
 // 系统合成 prompt 词表（#612）：transcript 的 role-user wire 行不全是用户
 // 的话——daemon 把任务文本（title+spec）、续轮指令与 #720 组合行（任务文本
-// + 重启指令同串）记进会话（runner.ts），server 把 replan/restart 反馈指令与
-// 审核材料记进会话（builds.ts）。呈现层（web mapTranscript）需要按本词表把
+// + 重启指令同串）、#1025 首轮 plan 契约组合行（任务文本 + 契约指令同串）记
+// 进会话（runner.ts），server 把 replan/restart 反馈指令与审核材料记进会话
+// （builds.ts）。呈现层（web mapTranscript）需要按本词表把
 // 合成行从用户话语里择出去，否则它们以用户气泡冒名顶替（任务原文还会与描
 // 述区双渲染）。写侧与过滤侧单源在此，文本逐字节即 wire 值——改任何一个
 // 字符串都是改双端契约。
@@ -101,6 +102,18 @@ export function buildPlanRewritePrompt(): string {
   return `规划步未产出 ${PLAN_FILE_NAME} 交接文件。请将方案写入工作区根目录的 ${PLAN_FILE_NAME}（覆盖 Context/Changes/Edge cases/Verification 四段）再结束本步；若改动已在规划轮完成，${PLAN_FILE_NAME} 如实记录改动内容与验证方式即可。`;
 }
 
+/** 首轮 plan 步的 plan.md 契约指令（#1025 单源）：此前契约只存在于纠错
+ *  提示词（补写轮 #113 / 驳回重规划 / 审核打回 / 失败重启），首个 plan 步
+ *  claim 载荷 instruction 缺席 → agent 只拿到 title+spec，写不写 plan.md 全凭
+ *  模型自觉（#892 实测 28 build / 0 行 plan.md 的结构性根因）。daemon
+ *  buildTaskPrompt 对无 instruction 的 plan 步把本指令组合进任务文本
+ *  （composeTaskPromptWithInstruction 形状）；纠错轮指令自带契约句不叠注。
+ *  四段名与补写轮同族逐字对齐；呈现层过滤侧按 SYNTHETIC_EXACT 收录识别
+ *  （组合行不是用户话语）。 */
+export function buildPlanFirstRoundInstruction(): string {
+  return `本步的交接物是 ${PLAN_FILE_NAME}：结束本步前，将方案写入工作区根目录的 ${PLAN_FILE_NAME}（覆盖 Context/Changes/Edge cases/Verification 四段）。`;
+}
+
 /** 开始任务编排请求（#640 / r14 §5.2：编排回合的会话 user 消息 = 总目标
  *  正本，任务原文逐字内嵌 = 稳定锚点；实体引用 [#n](todo:<id>) 走 chief
  *  正文引用族）。首行短且无 markdown——chiefThreadTitle 取首行前 12 字符做
@@ -130,10 +143,13 @@ export function buildOrchestratePrompt(todo: {
 }
 
 /** 非空续轮指令集（chief/review 的占位空串不入集——空文本行由呈现层自有
- *  规则跳过，不属「合成 prompt」语义）。#703 补写指令为固定文本，同集收录。 */
+ *  规则跳过，不属「合成 prompt」语义）。#703 补写指令与 #1025 首轮契约指令
+ *  为固定文本，同集收录——首轮契约组合行（任务文本前缀 + 契约余段）走
+ *  classifyUserText 组合行分支整行退场。 */
 const SYNTHETIC_EXACT: ReadonlySet<string> = new Set([
   ...Object.values(CONTINUE_PROMPTS).filter((v) => v !== ''),
   buildPlanRewritePrompt(),
+  buildPlanFirstRoundInstruction(),
 ]);
 
 function wrappedBy(text: string, head: string, tail: string): boolean {

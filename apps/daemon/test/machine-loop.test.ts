@@ -16,7 +16,12 @@ import type {
   ToolCallRecord,
   TranscriptUpload,
 } from '@pacman/shared';
-import { formatAttachmentToken } from '@pacman/shared';
+import {
+  buildPlanFirstRoundInstruction,
+  buildTaskPromptText,
+  composeTaskPromptWithInstruction,
+  formatAttachmentToken,
+} from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { PI_CAPABILITIES } from '../src/backend/pi.js';
 import type { ClaudeCodeAuthProbe } from '../src/claude-code-auth.js';
@@ -497,7 +502,14 @@ describe('步执行全链（02 §5.7 生命周期行 + journal 端点词表）',
       provider: { providerId: string };
       modelId: string;
     };
-    expect(opts.prompt).toBe('探针任务\n\n写一行探针');
+    // #1025：plan 步（无 instruction）首轮任务 prompt = 任务文本 + plan.md 契约
+    // 指令组合串（buildTaskPrompt 注入；compose 单源形状）。
+    expect(opts.prompt).toBe(
+      composeTaskPromptWithInstruction(
+        buildTaskPromptText('探针任务', '写一行探针'),
+        buildPlanFirstRoundInstruction(),
+      ),
+    );
     // agent.description 注入（02 §4.4 同缝）+ spec 15 #394 元信息回填指令块
     // （todo 语境步注入,词表 = FIXED_TAGS 单源）。
     expect(opts.systemPrompt).toContain('职责说明');

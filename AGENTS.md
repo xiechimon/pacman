@@ -29,6 +29,7 @@
 pnpm lint       # biome ci . —— CI 视角
 pnpm format     # biome format --write . —— 不写文件就别跑
 pnpm typecheck  # pnpm -r typecheck
+pnpm spec:parse # spec 解析闸（#1052）：只收集不执行、秒级，覆盖 apps/web/e2e + integration/test
 ```
 三类必须先通过才能提交。**别跑 `pnpm build`**（vite 全量；不值得 commit 前做）。
 
@@ -37,7 +38,7 @@ pnpm typecheck  # pnpm -r typecheck
 - **E2E 为主**：复杂功能用真 e2e 验证能跑通；开发期跑受影响面——`pnpm --filter @pacman/web e2e:affected`（改 `src/ui` / styles / i18n / api / fixtures 等共享面时自动回落全量）。**全量 e2e 的执行点在 CI**（4 分片，覆盖面不降）；本地全量仅在收尾复核确需时跑——实测 617 用例 154s（不是旧口径的 1h+），但它是多 lane 内存压力的主力，别当日常。
 - unit 受影响面缩窄：`pnpm exec vitest related --changed`（vitest 5 原生，跨 project 生效，2026-10-03 实测）。
 - **先列失败方式，再写实现**：动某块系统前，先枚举它可能失败的所有场景，写代码是让场景通过的手段。
-- **e2e spec 文件合并/解冲突后必跑 `npx playwright test <spec> --list` 验解析**（M7 实战：typecheck 不覆盖 spec 语法，手工解冲突吞 `});` 到 EOF 才炸——typecheck 绿≠playwright 能解析）。
+- **e2e spec 文件合并/解冲突后必跑 `pnpm spec:parse` 验解析**（#1052 起有秒级闸：playwright `--list` 收集全部 web spec + integration tsc；M7 实战：typecheck 不覆盖 spec 语法，手工解冲突吞 `});` 到 EOF 才炸——typecheck 绿≠playwright 能解析）。
 - **机制类改动，验收取实物**：「X 生效了」的机制声称（CSS/动效、落盘/wire 格式、schema、shim 流量、判据字段）必须从**编译产物 / 运行时日志 / 快照套件 / 该形态运行时真值**上取实物；读源码、看配置、装好依赖都不算验收——声称→实物→实案路径表见 `.claude/skills/verify-pacman/SKILL.md`「机制生效验收:实物判据」（#656/#677、#735、#700 等六实例）。
 
 跑验证服务（port 与 dist/ 互斥）：
