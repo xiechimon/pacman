@@ -45,6 +45,7 @@ import { Checkbox } from '../components/ui/checkbox.js';
 import { EmptyDescription } from '../components/ui/empty.js';
 import { Input } from '../components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
+import { Separator } from '../components/ui/separator.js';
 import { TagChip } from '../components/ui/tag-chip.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Funnel, X } from '../icons/index.js';
@@ -90,12 +91,12 @@ function CheckBox({ state }: { state: 'off' | 'on' | 'mixed' }) {
   return (
     <span
       aria-hidden
-      className={`flex size-4 flex-none items-center justify-center rounded-none border transition-colors ${
+      className={`flex size-4 flex-none items-center justify-center rounded-[4px] border transition-colors ${
         state === 'off'
           ? 'border-input'
           : state === 'on'
-            ? 'border-(--card-button) bg-(--card-button) text-primary-foreground'
-            : 'border-(--card-button) text-(--card-button)'
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'border-primary text-primary'
       }`}
     >
       {state === 'on' && <Check className="size-3" />}
@@ -124,6 +125,10 @@ export function FilterChips({
         <Button
           key={chip.key}
           data-dimension={chip.key}
+          /* 实审裁决 4（2026-10-08，#1004）：rounded-full 药丸 = 登记在案的有
+             理由偏离——生效筛选条是「板被收窄」的解释面，刻意做全屏最重的实底
+             墨（header 注），圆药丸与方/圆角面板形成材质对比；不向 registry
+             button 默认几何对齐，理由见对账声明。 */
           className="filter-chip h-5 flex-none gap-1 rounded-full border border-transparent bg-foreground px-2 text-[11px] leading-none font-medium text-background hover:bg-foreground active:not-aria-[haspopup]:translate-y-0"
           aria-label={t('清除{name}筛选', { name: chip.label })}
           onClick={chip.onClear}
@@ -174,7 +179,7 @@ function DimensionSection({
     <section className="filter-dimension flex flex-col" data-dimension={dimension.key}>
       {/* 维度间分隔线全出血（壳 p-1 内 -mx-1，DropdownMenuSeparator 同形）；
           my-1 节奏 = 线上线下各 4px，故 divided 时标题不再另加 pt。 */}
-      {divided && <div aria-hidden className="-mx-1 mt-1 mb-1 border-t border-border" />}
+      {divided && <Separator className="-mx-1 mt-1 mb-1" />}
       {/* 标题行只留标题 + 已选读数（参考站形：标题带不挂批次键）；批次操作
           下沉到行表首的全选行。 */}
       <header
@@ -229,7 +234,7 @@ function DimensionSection({
             </label>
             <Button
               variant="link"
-              className="filter-dimension-invert mr-2 h-auto shrink-0 rounded border-none px-1 text-xs font-normal text-(--card-button) active:not-aria-[haspopup]:translate-y-0"
+              className="filter-dimension-invert mr-2 h-auto shrink-0 rounded border-none px-1 text-xs font-normal text-primary active:not-aria-[haspopup]:translate-y-0"
               onClick={dimension.onInvert}
             >
               {t('反选')}
@@ -365,7 +370,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         side="bottom"
         sideOffset={6}
         aria-label={t('筛选')}
-        className="type-filter-popover board-filter-panel w-[268px] gap-0 rounded-[var(--radius-popover)] p-1"
+        className="type-filter-popover board-filter-panel w-[268px] gap-0 p-1"
       >
         {dimensions.map((dimension, index) => (
           <DimensionSection

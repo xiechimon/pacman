@@ -27,6 +27,10 @@ export function DoneConfirmDialog({ open, onClose, onConfirm }: DoneConfirmDialo
       title={t('把任务标记为已完成？')}
       open={open}
       onClose={onClose}
+      // 挂账（#1004 PR body / thread report task #5）：等 #1006 的 registry
+      // dialog-shell 进 main 并合入本分支后，剥本消费点自携垫改裸内容进
+      // DialogFooter 防双垫，并撤 ACCEPT_FOOTER / ACCEPT_CANCEL_BTN 的
+      // import。此刻不做：L3 的 registry 壳尚未进 main。
       footer={
         <div className={ACCEPT_FOOTER}>
           <Button variant="ghost" className={ACCEPT_CANCEL_BTN} onClick={onClose}>

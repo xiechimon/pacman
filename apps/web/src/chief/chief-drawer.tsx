@@ -820,7 +820,7 @@ export function ChiefDrawer({
                               fallback="/avatar-user.png"
                             />
                           </span>
-                          <div className={MSG_COL_CLS}>
+                          <div className={MSG_COL_CLS} data-testid="chief-msg-col">
                             {/* #742：live 用户行的 markdown 槽（详情页用户行
                                 transcript.tsx #612 同款配方）——经共用块级解析器
                                 渲染，todo 提及 chip / 粗体 / 行内 code / 围栏不再
@@ -903,7 +903,7 @@ export function ChiefDrawer({
                           ) : (
                             <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
                           )}
-                          <div className={MSG_COL_CLS}>
+                          <div className={MSG_COL_CLS} data-testid="chief-msg-col">
                             <ThinkingRow text={item.text} />
                           </div>
                         </div>
@@ -915,7 +915,7 @@ export function ChiefDrawer({
                       return (
                         <div key={i} className="chief-msg mt-3.5 flex gap-2.5">
                           <span className="w-6 shrink-0" aria-hidden="true" />
-                          <div className={MSG_COL_CLS}>
+                          <div className={MSG_COL_CLS} data-testid="chief-msg-col">
                             <ToolActivityRow
                               name={item.label}
                               {...(item.startedAt !== undefined
@@ -1032,7 +1032,7 @@ export function ChiefDrawer({
                         {identity ?? (
                           <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
                         )}
-                        <div className={MSG_COL_CLS}>
+                        <div className={MSG_COL_CLS} data-testid="chief-msg-col">
                           {item.markdown != null ? (
                             // #650: live 回复原文走共用块级解析器（chat-markdown，
                             // transcript robot 行 #469 同律）——bold / 行内 code /

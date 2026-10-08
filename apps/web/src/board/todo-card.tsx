@@ -88,7 +88,7 @@ export function TodoCard({
        （标题链接 -webkit-user-drag）在下方 Link。 */
     <Card
       data-todo-id={todo.id}
-      className="todo-card relative w-full gap-0 rounded-none px-[13.5px] pt-[9.5px] pb-[11.5px] select-none"
+      className="todo-card relative w-full gap-0 px-[13.5px] pt-[9.5px] pb-[11.5px] select-none"
     >
       <div className="todo-card-row1 flex min-h-4 items-center">
         <ProjectAvatar char={chipInitial} />
@@ -210,7 +210,7 @@ export function TodoCard({
           <Button
             variant={action.kind === 'primary' ? 'default' : 'outline'}
             size="xs"
-            className={`todo-card-action todo-card-action--${action.kind} relative z-10 h-[26px] flex-none rounded-none px-[7.25px] text-xs`}
+            className={`todo-card-action todo-card-action--${action.kind} relative z-10 h-[26px] flex-none px-[7.25px] text-xs`}
             onClick={() => onAction?.(todo)}
           >
             {t(action.label)}
