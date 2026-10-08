@@ -172,15 +172,41 @@ test('#1050 装了 + 没配：主句转「已安装，未配置模型槽」+ 配
   ).toHaveCount(0);
 });
 
-test('#1050 没装（bin 缺席）：不出细字行、不写「未知」', async ({ page }) => {
+test('#1050 没装（bin: null = 探过了没有）：主句「未安装」+ 安装指引 + 零细字行', async ({
+  page,
+}) => {
   await page.goto('/app/resources/providers?scenario=10-cc-missing&runtime=claude-code');
   const head = page.locator(
     `${SHELL} [data-testid="runtime-head"][data-runtime="claude-code"]`,
   );
+  await expect(head).toHaveAttribute('data-state', 'bin-missing');
   await expect(head).toContainText('未安装');
+  await expect(head).toContainText('安装 Claude Code 并完成一次登录后');
   await expect(head.locator('[data-testid="runtime-bin"]')).toHaveCount(0);
   await expect(head).not.toContainText('未知');
-  await expect(head).not.toContainText('claude 2.1.289');
+});
+
+test('#1050 配置文件在但二进制没了：不再假报「已安装在」（旧行为是假绿）', async ({ page }) => {
+  await page.goto('/app/resources/providers?scenario=10-cc-bin-gone&runtime=claude-code');
+  const head = page.locator(
+    `${SHELL} [data-testid="runtime-head"][data-runtime="claude-code"]`,
+  );
+  await expect(head).toHaveAttribute('data-state', 'bin-missing');
+  await expect(head).toContainText('未安装');
+  await expect(head).not.toContainText('已安装');
+});
+
+test('#1050 bin 键缺席（老 daemon 没探过）：维持只看 installed 的旧行为，不写「未知」', async ({
+  page,
+}) => {
+  await page.goto('/app/resources/providers?scenario=10-cc-legacy&runtime=claude-code');
+  const head = page.locator(
+    `${SHELL} [data-testid="runtime-head"][data-runtime="claude-code"]`,
+  );
+  await expect(head).toHaveAttribute('data-state', 'installed');
+  await expect(head).toContainText(`已安装在 ${CANON_HOST}`);
+  await expect(head.locator('[data-testid="runtime-bin"]')).toHaveCount(0);
+  await expect(head).not.toContainText('未知');
 });
 
 test('几何：tablist/header/模型行卡同贴内容列左缘，tab 序 pi 左 claude-code 右', async ({

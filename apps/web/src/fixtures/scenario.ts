@@ -78,6 +78,8 @@ import {
   r7,
   rerunDialog12,
   rerunDialog15,
+  resourcesCcBinGone,
+  resourcesCcLegacy,
   resourcesCcLoggedOut,
   resourcesCcMissing,
   resourcesCcNoConfig,
@@ -340,6 +342,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '10-cc-noconfig': resourcesCcNoConfig,
       // #1050 未登录态（二进制与配置都在、auth=not-logged-in）→ 细字行尾「未登录」角标
       '10-cc-loggedout': resourcesCcLoggedOut,
+      // #1050 配置在但二进制没了（消假绿）→ 主句「未安装」
+      '10-cc-bin-gone': resourcesCcBinGone,
+      // #1050 老 daemon（bin 键缺席）→ 维持只看 installed 的旧行为
+      '10-cc-legacy': resourcesCcLegacy,
       // #895 机器页三态读标注（spec 21 A8）：主力机徽标 / 回合进行中 /
       // 等待机器——machines 路由用（06 同面，命名场景手法同 newtask-machines）
       'machines-chief-state': machinesChiefState,

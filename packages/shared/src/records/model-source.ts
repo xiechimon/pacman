@@ -68,9 +68,12 @@ export const modelSourceSchema = z.object({
    *  #707 起跟随执行机，不再是 server 主机。 */
   hostname: z.string(),
   models: z.array(modelSourceModelSchema),
-  /** claude 二进制事实（#1050）：装了才有；缺席 = 老 daemon 未上报，
-   *  UI 闭嘴（不写「未知」——只有一台机器时那是纯噪音）。 */
-  bin: claudeBinInfoSchema.optional(),
+  /** claude 二进制事实（#1050）。三态，别压平：
+   *  - 对象 = 探到了（path + version）；
+   *  - `null` = **探过了、没有**（PATH 上没有 / 不可执行 / 超时）——这是
+   *    「配置文件在而二进制缺失」那条假绿的判据，页面对它说「未安装」；
+   *  - 缺席 = 没探过（老 daemon 未上报），UI 闭嘴（不写「未知」）。 */
+  bin: claudeBinInfoSchema.nullable().optional(),
   /** 机器本地凭据态（#1050）：由步内预检回填，随节拍上行；缺席同 bin。 */
   auth: claudeAuthStateSchema.optional(),
 });
@@ -136,7 +139,7 @@ export const claudeCodeReportSchema = z.object({
   installed: z.boolean(),
   hostname: z.string(),
   models: z.array(modelSourceModelSchema),
-  bin: claudeBinInfoSchema.optional(),
+  bin: claudeBinInfoSchema.nullable().optional(),
   auth: claudeAuthStateSchema.optional(),
 });
 export type ClaudeCodeReport = z.infer<typeof claudeCodeReportSchema>;

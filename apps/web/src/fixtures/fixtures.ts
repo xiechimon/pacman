@@ -2299,16 +2299,42 @@ export const resourcesDefault: FixtureSet = {
 };
 
 /** #356 未安装分支 canon（spec 11 §A4）：机器上既没有 settings.json 也没有
- *  claude 二进制（#1050 起 `bin` 缺席）→ header 转「未安装」指引态、模型行
- *  零渲染。scenario = 10-cc-missing。 */
+ *  claude 二进制 → header 转「未安装」指引态、模型行零渲染。#1050 起
+ *  「没装」在 wire 上是 `bin: null`（探过了没有），不是键缺席。 */
 export const resourcesCcMissing: FixtureSet = {
   ...resourcesDefault,
   resources: {
     ...RESOURCES,
     providerSources: [
       PROVIDER_SOURCE_PI,
-      { runtime: 'claude-code', installed: false, hostname: MACHINE_NAME, models: [] },
+      {
+        runtime: 'claude-code',
+        installed: false,
+        hostname: MACHINE_NAME,
+        models: [],
+        bin: null,
+      },
     ],
+  },
+};
+
+/** #1050 配置文件在但二进制没了：settings.json 照常解出模型槽，探测结论是
+ *  没有二进制 → 主句「未安装」（消掉旧行为的假绿）。scenario = 10-cc-bin-gone。 */
+export const resourcesCcBinGone: FixtureSet = {
+  ...resourcesDefault,
+  resources: {
+    ...RESOURCES,
+    providerSources: [{ ...PROVIDER_SOURCE_CC, bin: null }],
+  },
+};
+
+/** #1050 老 daemon（没探过）：`bin` 键整个缺席 → 页面维持「只看 installed」
+ *  的旧行为，且不出现细字行、不写「未知」。scenario = 10-cc-legacy。 */
+export const resourcesCcLegacy: FixtureSet = {
+  ...resourcesDefault,
+  resources: {
+    ...RESOURCES,
+    providerSources: [{ ...PROVIDER_SOURCE_CC, bin: undefined }],
   },
 };
 

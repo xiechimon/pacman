@@ -21,9 +21,8 @@ import {
 import type { ClaudeCodeAuthProbe } from './claude-code-auth.js';
 import type { ClaudeBinInfo } from './claude-code-bin.js';
 
-/** #1050 附加事实位：`bin` 缺席/null = 探测说「没有」（PATH 里没有、不可
- *  执行、超时、无输出）——上报侧一律省略键，不让 null 与「老 daemon 没报」
- *  在 wire 上长得一样却又语义不同。 */
+/** #1050 附加事实位：`bin` = 探测结果（对象 = 探到了，null = 探过了没有）；
+ *  键缺席 = 调用方没探（测试注入面 / 未来某条不探的路径）。 */
 export interface ClaudeCodeReportExtra {
   bin?: ClaudeBinInfo | null;
   auth?: ClaudeCodeAuthProbe;
@@ -58,7 +57,9 @@ export function readClaudeCodeReport(
     installed: source.installed,
     hostname: source.hostname,
     models: source.models,
-    ...(extra.bin ? { bin: extra.bin } : {}),
+    // bin 三态原样透出（#1050）：对象 = 探到了；null = 探过了没有；键缺席
+    // 只在调用方没探时出现——三种在页面上的渲染各不相同，不合并。
+    ...(extra.bin !== undefined ? { bin: extra.bin } : {}),
     ...(extra.auth ? { auth: toWireAuth(extra.auth) } : {}),
   };
 }
