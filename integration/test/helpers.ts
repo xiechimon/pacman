@@ -15,7 +15,7 @@ import type { ProjectRepoKind, Scheduler } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { createApp } from '../../apps/server/src/app.js';
-import { openMemoryDb } from '../../apps/server/src/db/client.js';
+import { openDbWithHandle, openMemoryDb } from '../../apps/server/src/db/client.js';
 import {
   agent as agentTable,
   provider as providerTable,
@@ -62,8 +62,15 @@ export async function bootRealServer(opts: {
   /** spec 13（#368）：MCP 本地 config 读路径；缺省 = 唯一不存在路径
    *  （空列表语义，既有测试零改动）。 */
   mcpConfigPath?: string;
+  /** #1028 重启对拍：文件库路径（缺省 :memory:）。同路径二次 boot = 进程
+   *  重启的持久化语义（机器 token / 步 / plan 行跨「重启」存活，uploads
+   *  Map 等进程内存面归零）。 */
+  dbPath?: string;
+  /** 固定监听端口（缺省随机）；重启对拍传旧 server 的端口——同端口重绑 =
+   *  daemon/预签名 URL 的 origin 不变。 */
+  port?: number;
 }): Promise<RealServer> {
-  const db = openMemoryDb();
+  const db = opts.dbPath !== undefined ? openDbWithHandle(opts.dbPath).db : openMemoryDb();
   const { user, team } = seed(db);
   const hub = new TeamStreamHub();
   const machineHub = new MachineWakeHub();
@@ -128,42 +135,47 @@ export async function bootRealServer(opts: {
     return app.fetch(input as never, init);
   };
 
-  const server = serve({ fetch: fetchImpl, port: 0 });
+  const server = serve({ fetch: fetchImpl, port: opts.port ?? 0 });
   await new Promise<void>((resolve) => server.once('listening', resolve));
   const port = (server.address() as AddressInfo).port;
   const url = `http://127.0.0.1:${port}`;
 
-  // 世界 seed：custom provider（指向 stub LLM，无 key 网关）+ agent。
-  db.insert(providerTable)
-    .values({
-      id: 'prov-it',
-      teamId: team.id,
-      kind: 'custom',
-      providerId: 'stub-gw',
-      label: 'Stub Gateway',
-      baseUrl: opts.providerBaseUrl,
-      api: 'openai-completions',
-      authHeader: true,
-      compat: { supportsDeveloperRole: false },
-      models: [{ id: 'stub-model', name: 'stub-model' }],
-      createdBy: user.id,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    })
-    .run();
-  db.insert(agentTable)
-    .values({
-      id: AGENT_ID,
-      teamId: team.id,
-      displayName: 'it-builder',
-      description:
-        opts.agentDescription ?? '你是集成测试执行 Agent：直接简短回答，不使用任何工具。',
-      provider: 'stub-gw',
-      modelId: 'stub-model',
-      // XMON-77 权限闸：lifecycle 类用例走 build push + merge 全链，两开关先授。
-      tools: ['合并分支', '推送分支'],
-    })
-    .run();
+  // 世界 seed：custom provider（指向 stub LLM，无 key 网关）+ agent。文件库
+  // 二次 boot（#1028 重启对拍）= 幂等插入（seed 本身幂等，这两行加存在性闸）。
+  if (db.select().from(providerTable).where(eq(providerTable.id, 'prov-it')).get() === undefined) {
+    db.insert(providerTable)
+      .values({
+        id: 'prov-it',
+        teamId: team.id,
+        kind: 'custom',
+        providerId: 'stub-gw',
+        label: 'Stub Gateway',
+        baseUrl: opts.providerBaseUrl,
+        api: 'openai-completions',
+        authHeader: true,
+        compat: { supportsDeveloperRole: false },
+        models: [{ id: 'stub-model', name: 'stub-model' }],
+        createdBy: user.id,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      .run();
+  }
+  if (db.select().from(agentTable).where(eq(agentTable.id, AGENT_ID)).get() === undefined) {
+    db.insert(agentTable)
+      .values({
+        id: AGENT_ID,
+        teamId: team.id,
+        displayName: 'it-builder',
+        description:
+          opts.agentDescription ?? '你是集成测试执行 Agent：直接简短回答，不使用任何工具。',
+        provider: 'stub-gw',
+        modelId: 'stub-model',
+        // XMON-77 权限闸：lifecycle 类用例走 build push + merge 全链，两开关先授。
+        tools: ['合并分支', '推送分支'],
+      })
+      .run();
+  }
 
   return {
     url,

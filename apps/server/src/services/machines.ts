@@ -1732,23 +1732,54 @@ export function createUploadUrls(
 /** plan.md 产物落库（M3b；02 §4.2/r5 §4「plan 即文件（plan.md），版本 =
  * 文件版本」）：每上传一版插一行 plan（version = max+1，驳回重规划轮自然
  * v2）+ build.planDocId 指向最新版（documents/{id}/diff 的 {id} 同值，
- * diff 端点面归 M4）。 */
+ * diff 端点面归 M4）。
+ * #1027 入参校验：只接受处于规划语义的步（kind=plan 且未收尾）——此前只验
+ * 机器归属，机器可对自持的 build/review 步落方案版本。非 plan kind = 400
+ * （chiefStepToken「is not a … step」同族）；已收尾 = 409（恢复真路径只对
+ * 仍 claimed 的步重传——recover 只返回 claimed，收尾后的迟到上传是改写
+ * 历史版本面）。
+ * #1026 幂等（键 = 步+内容）：「PUT 成功 / done 失败 → 恢复重传」把同一份
+ * 内容再传一次时不落重复版本——最新版本就是本步同文产物时原样复用（版本/
+ * 内容不动，planDocId 重指同 id = 幂等）。换步同文（驳回重规划轮照抄）不
+ * 去重：版本面如实记录「新一轮规划发生过」。 */
 export function receivePlanUpload(deps: MachineDeps, upload: PendingUpload, content: string): void {
-  ownedStep(deps, upload.machineId, upload.stepId);
-  const stepRow = deps.db.select().from(step).where(eq(step.id, upload.stepId)).get();
-  const buildId = stepRow?.buildId;
+  const stepRow = ownedStep(deps, upload.machineId, upload.stepId);
+  if (stepRow.kind !== 'plan') {
+    throw new HttpError(400, `step ${upload.stepId} is a ${stepRow.kind} step, not a plan step`);
+  }
+  if (stepRow.status !== 'claimed') {
+    throw new HttpError(409, `step ${upload.stepId} is ${stepRow.status}, plan upload rejected`);
+  }
+  const buildId = stepRow.buildId;
   if (!buildId) throw new NotFoundError(`step ${upload.stepId}`);
   const last = deps.db
-    .select({ version: planTable.version })
+    .select({
+      id: planTable.id,
+      version: planTable.version,
+      content: planTable.content,
+      stepId: planTable.stepId,
+    })
     .from(planTable)
     .where(eq(planTable.buildId, buildId))
     .orderBy(desc(planTable.version))
     .limit(1)
     .get();
+  if (last !== undefined && last.stepId === upload.stepId && last.content === content) {
+    deps.db.update(build).set({ planDocId: last.id }).where(eq(build.id, buildId)).run();
+    publishStepStatus(deps, upload.stepId);
+    return;
+  }
   const id = newRecordId();
   deps.db
     .insert(planTable)
-    .values({ id, buildId, version: (last?.version ?? 0) + 1, content, createdAt: nowMs() })
+    .values({
+      id,
+      buildId,
+      version: (last?.version ?? 0) + 1,
+      content,
+      stepId: upload.stepId,
+      createdAt: nowMs(),
+    })
     .run();
   deps.db.update(build).set({ planDocId: id }).where(eq(build.id, buildId)).run();
   // 落库即发会话流 step 事件（XMON-59 第二断口）：plan 行此前静默落库，web

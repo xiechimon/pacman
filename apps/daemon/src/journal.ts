@@ -5,7 +5,7 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ClaimedStep, StepKind, TranscriptUpload } from '@pacman/shared';
+import type { ClaimedStep, MachineDoneBody, StepKind, TranscriptUpload } from '@pacman/shared';
 
 export type JournalState = 'claimed' | 'running' | 'awaiting-upload' | 'done' | 'failed';
 
@@ -23,6 +23,13 @@ export interface StepJournalEntry {
   /** claim 载荷快照（非密文面；recover 续跑的 todo/agent 上下文——宿主
    * durable 编排自持，00/D3）。 */
   claimed: ClaimedStep | null;
+  /** #1026 终稿快照（awaiting-upload 残留的 recover 快路径素材）：上传/done
+   * 失败前落 journal——恢复时重传产物 + 补报 done body，不重跑 agent 轮。
+   * null/缺省（含旧格式条目）= 未到快照点，recover 走整步重跑原路径。 */
+  doneBody?: MachineDoneBody | null;
+  /** 同上快照的 plan 半（plan 步收尾时的 plan.md 原文；非 plan 步/无产物 =
+   * null——快路径无 plan 上传行）。 */
+  planContent?: string | null;
   claimedAt: number;
   updatedAt: number;
 }
