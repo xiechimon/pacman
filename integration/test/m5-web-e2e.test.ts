@@ -527,16 +527,22 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
       hour = (hour + 1) % 24;
     }
     const pad = (n: number) => String(n).padStart(2, '0');
-    // XMON-75：时 / 分从原生 <select> 换成 components/ui/select.tsx（触发钮 +
-    // FloatingShell 弹层 + role=listbox/option 行），原生 select 形态在界面里
-    // 已清零。定位改钉新组件的语义钩子：触发钮与弹层共用同一个 aria-label
-    // （时 / 分），行按值取——选择即关面，故两槽各开一次。
+    // XMON-75 → #1010：时 / 分从原生 <select>（XMON-75 前）到手写 select.tsx
+    // （XMON-75，role=listbox/aria-label 同挂一个 div）再到 registry compound
+    // select（#1010 回源，Base UI）。原生 select 形态在界面里已清零。
+    // #1010 钩子迁移（#735 教训：跨层语义钩子随格式变更同 PR 迁移 integration
+    // 读面）：Base UI 把 role=listbox 放在内层 Select.List 上，而 registry
+    // SelectContent 的 aria-label 落在 role=presentation 的外层 Popup（实测
+    // listbox 的 aria-label 恒 null）——旧 `[role=listbox][aria-label=slot]`
+    // 复合钩子在 pristine 件下不可达，除非偏离上游（违 ADR 0012 D1）。触发钮
+    // 仍带 aria-label=slot（= 可及名 + aria-controls 指向 listbox）。关闭的弹层
+    // 会滞留 DOM 但 display:none（实测：offsetParent=null、0×0），被 Playwright
+    // 的 getByRole 排除在可及树外——故 `getByRole('listbox')` 恒命中唯一可见
+    // 弹层，即便 时(00–23) 与 分(00/15/30/45) 共享值 '00' 也不撞 strict mode
+    // （滞留的 时 '00' 不在可及树）。行按值取，选择即关面，两槽各开一次。
     const pickSelect = async (slot: string, value: string) => {
       await page.locator(`button[aria-label="${slot}"]`).click();
-      await page
-        .locator(`[role="listbox"][aria-label="${slot}"]`)
-        .getByRole('option', { name: value, exact: true })
-        .click();
+      await page.getByRole('listbox').getByRole('option', { name: value, exact: true }).click();
     };
     await pickSelect('时', pad(hour));
     await pickSelect('分', pad(minute));

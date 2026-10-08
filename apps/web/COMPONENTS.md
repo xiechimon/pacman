@@ -35,7 +35,6 @@ dialog.tsx
 dropdown-menu.tsx        # 仓内语义映射：z 走 --z-dialog 单梯（#733）、Content 透出 anchor（#454）；动效 = 上游默认（#991 Q9）
 empty.tsx
 field.tsx                # 表单行组合（FieldGroup/Field/FieldLabel/FieldContent/FieldError…）：表单布局一律用它，别拿 div + space-y 手排
-floating-shell.tsx       # 锚定浮层旧共用底座——#1008（#983 判决）族拆退役完成，唯一存量消费 = select.tsx（#1010 波 2 收尾后删除）；新面一律 dropdown-menu.tsx / popover.tsx / dialog.tsx
 input.tsx
 input-group.tsx          # 输入组合件（InputGroupInput/InputGroupAddon/InputGroupButton…）：输入框里要挂按钮/图标/前后缀时用它，别把裸 Input 塞进自制盒子
 kbd.tsx                  # 按键角标原语（文档正文里的 ⌘K 角标）；悬浮快捷键提示 = TooltipContent 内放 Kbd（官网组合，#1008）
@@ -43,7 +42,7 @@ label.tsx                # 表单标签原语（配合 field.tsx 的 FieldLabel 
 panel.tsx                # 静息内容容器消解（Panel/PanelHead/PanelRow/PanelLabel/PanelValue）：贴在页面里的方框一律用它；皮肤档 quiet/outlined，per-face 数值留属地 css
 popover.tsx              # 仓内语义映射：z 走 --z-dialog 单梯（#733）；动效 = 上游默认（#991 Q9）
 seeded-avatar.tsx        # dicebear 种子头像适配层（src 覆盖 > name 种子 > 兜底换图，img 常驻 DOM；Root 定尺盒，几何走消费点 className size-N，#983/#1003）；头像一律用它
-select.tsx               # 单选下拉（现为 XMON-75 手写形：触发钮 + FloatingShell 弹层；退役回上游 compound 族 = #1010，波 2）；**别再用原生 `<select>`**——它弹的是系统菜单，跟自制弹层并排就是两套弹窗
+select.tsx               # 单选下拉（registry 同源 compound 族：Select/SelectTrigger/SelectValue/SelectContent/SelectItem，#1010 回源，XMON-75 手写形退役；清空档 = value=null 的 SelectItem，几何/锚位归 Base UI Positioner 默认）；**别再用原生 `<select>`**——它弹的是系统菜单，跟自制弹层并排就是两套弹窗
 separator.tsx            # 语义分隔线（field.tsx 的 registryDependency）：替代 <hr> 与 border-t div
 status-chip.tsx          # 任务状态五态 chip（idle/plan/confirm/done/failed，皮肤 = --chip-* token 对）；落在 badge.tsx 上，状态载体 data-tone；替旧轨 ui/chip.tsx（正典表 spec/22 §5.2，#942）
 switch.tsx
@@ -71,8 +70,8 @@ tooltip.tsx              # hover/focus 信息气泡（官网形态；z 走 --z-d
 | 空态 | `components/ui/empty.tsx` | 别每处自写空态文案块 |
 | 确认对话框 | `components/ui/alert-dialog-shell.tsx` | 别手搓 `OverlayMount` + `useEscClose` |
 | 普通对话框 | `components/ui/dialog-shell.tsx` | 消费点只改 import 路径即可（API 逐字相同） |
-| 锚定浮层（下拉 / 菜单 / popover） | `dropdown-menu.tsx`（菜单族）/ `popover.tsx`（面板族，跨组件锚走 Content 的 `anchor`）/ `dialog.tsx`（居中模态族） | 别自造定位壳；`floating-shell.tsx` 只剩 select.tsx 存量（#1010），别上新面 |
-| **单选下拉**（选一个值出来） | `components/ui/select.tsx` | 别用原生 `<select>`（弹系统菜单，与自制弹层并排两套）、别各面自写触发钮+弹层 |
+| 锚定浮层（下拉 / 菜单 / popover） | `dropdown-menu.tsx`（菜单族）/ `popover.tsx`（面板族，跨组件锚走 Content 的 `anchor`）/ `dialog.tsx`（居中模态族） | 别自造定位壳（floating-shell.tsx 已随 #1010 删除） |
+| **单选下拉**（选一个值出来） | `components/ui/select.tsx`（registry compound 族，#1010） | 别用原生 `<select>`（弹系统菜单，与自制弹层并排两套）、别各面自写触发钮+弹层 |
 | 复选 | `components/ui/checkbox.tsx` | 别摆裸 `<input type="checkbox">`——浏览器自带方框与仓内复选行不同族 |
 | **静息方框**（页面里不动的卡 / 面板 / 设置块） | `components/ui/panel.tsx`（`Panel` + `PanelHead` / `PanelRow` / `PanelLabel` / `PanelValue`） | 别新起 `.xxx-card` 手写类——皮肤（描边 / 底色 / 圆角）只住 Panel 一处 |
 | 布局块（要自带皮肤的容器） | `components/ui/card.tsx`（shadcn 布局壳；消费点自覆盖 `ring-0` / `py-0` / 圆角） | 别拿它当视觉原件——它的 `ring-1` + `rounded-xl` + `bg-card` 与仓内需求错配，真卡是 per-face 类族 |

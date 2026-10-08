@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "d93f9709517472dc60104c645e9f7c072c1834e0",
+    "sha": "763c21f25036bfcf70181f2730c557511e3e8623",
     "date": "2026-10-08"
   },
   "scope": "apps/web/src/components/ui (#989, map #980). kind registry = shadcn base-nova registry item (upstreamItem names it; status pristine = hash must equal the vendored snapshot in scripts/ui-upstream-snapshots.json, deviated = registered divergence with reason). kind adapter = local composition over registry items or a repo-specific primitive (reason required). hash = sha256 over the comment-stripped, line-normalized file content (scripts/ui-normalize.mjs); comment-only edits do not move it, code edits always do. Scope is exactly this directory — domain-directory skins are ui-debt-gate/ui-drift-gate territory.",
@@ -78,11 +78,6 @@
       "status": "pristine",
       "hash": "1d0df9a94372f632929cd3d46e846d15a4d8963c378a6085970a029db6641adc"
     },
-    "floating-shell.tsx": {
-      "kind": "adapter",
-      "reason": "#425 B1 shared base for the anchored floating family over non-modal Dialog mechanics; Esc via the Base UI layer stack. #1008 (#983 ruling): the family split-retired to registry popover/dropdown-menu/dialog at the consumption points — sole remaining consumer is select.tsx until #1010 (wave 2), then this adapter is deleted.",
-      "hash": "be2d086c4863c502e22323b2d5844e0499750eedd0848ebd3388d236a3feeafd"
-    },
     "input-group.tsx": {
       "kind": "registry",
       "upstreamItem": "input-group",
@@ -127,9 +122,8 @@
     "select.tsx": {
       "kind": "registry",
       "upstreamItem": "select",
-      "status": "deviated",
-      "reason": "XMON-75: anchored-overlay family rework — FloatingShell + ClickCatcher injected in place of the upstream Positioner, options projected through label/meta, icons from the repo icons system. Retirement to the upstream compound family is #1010 (wave 2, blocked by the #1008 floating-shell retirement).",
-      "hash": "5be4e419aaf898ed4eb627012d0a0dd87708e76ae9467013c4e836bfa2a33411"
+      "status": "pristine",
+      "hash": "ab19e7f4d786d003373d4b1750be5efda931d18d388cbb163b83e2d29e7a93de"
     },
     "separator.tsx": {
       "kind": "registry",

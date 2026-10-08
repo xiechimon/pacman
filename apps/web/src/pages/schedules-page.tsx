@@ -39,7 +39,13 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '../components/ui/empty.js';
-import { Select } from '../components/ui/select.js';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select.js';
 import { StatusChip } from '../components/ui/status-chip.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { toastError } from '../components/ui/toaster.js';
@@ -128,17 +134,21 @@ const FORM_ROW_CLS = 'flex h-9 items-center justify-between rounded-lg border bo
 const FORM_ROW_VALUE_CLS =
   'flex min-w-0 items-center gap-1.5 text-sm text-foreground [&_svg]:flex-none [&_svg]:text-muted-foreground';
 
-/** 时/分/日期选择盒（#946 建局部壳；#952 回收进共享 Select 件——className
- *  透传位已落件上，本面几何走 triggerClassName/menuClassName 两位）：皮肤 =
- *  原 .sched-form-select 触发盒（fit-content / 32 高带框）等值 utility + 件
- *  共用盘/行外观（select.tsx SELECT_* 单源）+ 本面 min-width:100% 覆写。
- *  语义面（aria-haspopup/expanded、role=listbox/option、aria-selected、选中
- *  即关、Esc/外点关归 FloatingShell 家族律）全由件契约承载，integration 面的
- *  语义钩子（button[aria-label=时|分] + [role=listbox][aria-label] + option
- *  名）零漂移。 */
-const SEL_TRIGGER_CLS =
-  "h-8 w-fit min-w-14 cursor-pointer justify-start gap-1.5 rounded-none border border-(--border) bg-transparent px-2 text-[13px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
-
+/** 时/分/日期选择盒（#946 建局部壳；#952 回收进共享 Select 件；#1010 随件
+ *  回源 = registry select compound 族，皮肤/几何归 registry 默认——旧
+ *  SEL_TRIGGER_CLS 方角盒与 min-w-full 菜单覆写退役，ADR 0012 D1。本面只留
+ *  min-w-14 布局位：两位数值 `00` 的触发盒保底宽）。语义面（触发钮 = button +
+ *  aria-haspopup=listbox + aria-expanded + aria-controls→listbox、内层
+ *  Select.List role=listbox、行 role=option + aria-selected、选中即关、Esc 关）
+ *  全归 Base UI 原语，外点关 = 原生 outside-press（#1060 裁决①同律，穿透）。
+ *  integration 面的语义钩子部分迁移（#735 教训，同 PR）：触发钮
+ *  button[aria-label=时|分]（= triggerLabel，可及名 + aria-controls）与 option
+ *  名零漂移；但 Base UI 把 role=listbox 放在内层 Select.List、SelectContent 的
+ *  aria-label 落在 role=presentation 的外层 Popup（实测 listbox 的 aria-label
+ *  恒 null），故 m5 的 `[role=listbox][aria-label]` 复合钩子迁成 `[role=listbox]`
+ *  （同一时刻只开一个 select，无歧义）——pristine 件下不可达的钩子不硬留（违
+ *  ADR 0012 D1）。menuLabel 仍传 SelectContent（registry 件的可及名入口，落
+ *  Popup）。弹层 Portal 落 body，locator 页面级取。 */
 function SchedSelect({
   value,
   options,
@@ -160,17 +170,22 @@ function SchedSelect({
   return (
     <Select
       value={value}
-      options={options}
-      label={label}
-      menuLabel={menuLabel}
-      triggerLabel={triggerLabel}
-      triggerClassName={SEL_TRIGGER_CLS}
-      menuClassName="min-w-full"
-      onPick={(next) => {
-        // 本面词表无清空档（unsetLabel 缺省）：null 不可达，窄回 string。
-        if (next !== null) onPick(next);
+      onValueChange={(next) => {
+        // 本面词表无清空档（无 null item）：null 不可达，窄回 string。
+        if (next !== null) onPick(next as string);
       }}
-    />
+    >
+      <SelectTrigger aria-label={triggerLabel} className="min-w-14">
+        <SelectValue>{label}</SelectValue>
+      </SelectTrigger>
+      <SelectContent aria-label={menuLabel}>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
