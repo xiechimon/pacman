@@ -98,13 +98,14 @@ import { AVATAR_IMG_CLS, AVATAR_SLOT_CLS } from './recipes.js';
  *  （inset shadow spread，分数缩放不断线）与投影合成一条 shadow。z 档 =
  *  --z-floating 新 rung（#688 律：常驻伴随面压 in-flow 内容、让位一切
  *  活动层）。max-w/max-h 夹取 = 视口小于窗时的可用性护栏（非形态分支，
- *  D2「窄窗不做特殊形态」的边界兜底）。12px 圆角走一次性 arbitrary 值
- *  §3.1(a)：--radius-popover 是 #983 退役面 token（ADR 0012 D4），D2 明令
- *  不落它；窗是本值唯一消费点。类名 chief-drawer 保留为零规则机制钩子：
+ *  D2「窄窗不做特殊形态」的边界兜底）。圆角走 --radius-window token
+ *  （A0 实审裁决 3 提 token；值 = Multica rounded-xl 12px 原值，不消费
+ *  #983 退役面的 --radius-popover，ADR 0012 D4 明令）；窗是唯一消费点。
+ *  类名 chief-drawer 保留为零规则机制钩子：
  *  overlays/hotkeys.ts 的 ⌘J 守卫走 closest('.chief-drawer')，e2e 以它做
  *  面板 scope 锚（更名随施工面载体重钉批，D13）。 */
 const WINDOW_CLS =
-  'chief-drawer fixed right-2 bottom-2 z-(--z-floating) flex h-[600px] max-h-[calc(100dvh-1rem)] w-[380px] max-w-[calc(100dvw-1rem)] flex-col overflow-hidden rounded-[12px] bg-(--card) shadow-[var(--edge-ring),var(--floating-shadow)]';
+  'chief-drawer fixed right-2 bottom-2 z-(--z-floating) flex h-[600px] max-h-[calc(100dvh-1rem)] w-[380px] max-w-[calc(100dvw-1rem)] flex-col overflow-hidden rounded-(--radius-window) bg-(--card) shadow-[var(--edge-ring),var(--floating-shadow)]';
 
 /** 进出场腿（ADR 0013 D7：fade + scale 0.95→1、transformOrigin bottom
  *  right——窗从 FAB 角长出；shadcn/Base UI 默认动效家族（dropdown/popover
@@ -492,7 +493,25 @@ export function ChiefDrawer({
   useEffect(() => {
     const wasOpen = prevOpenRef.current;
     prevOpenRef.current = open;
-    if (open && !wasOpen) textareaRef.current?.focus({ preventScroll: true });
+    if (!open || wasOpen) return;
+    // keepMounted 关态 = hidden 驻 DOM：Base UI 摘 hidden 的提交时机晚于本
+    // effect，focus() 打在 display:none 上静默失败（实测首焦全丢）——帧重试
+    // 到节点脱离 [hidden] 祖先再落焦（有界 5 帧；中途关窗则 closest 命中
+    // hidden 自然放弃）。
+    let frames = 0;
+    const tryFocus = () => {
+      const node = textareaRef.current;
+      if (node == null) return;
+      if (node.closest('[hidden]') == null) {
+        node.focus({ preventScroll: true });
+        return;
+      }
+      if (frames < 5) {
+        frames += 1;
+        requestAnimationFrame(tryFocus);
+      }
+    };
+    requestAnimationFrame(tryFocus);
   }, [open, textareaRef]);
   const attachComposer = useCallback(
     (node: HTMLTextAreaElement | null) => {

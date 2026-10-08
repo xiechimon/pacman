@@ -1,7 +1,7 @@
-# #1009 A0 原型证据（ADR 0013 壳形态反转：贴右竖板 → Multica 式悬浮窗）
+# #1009 A0 证据（ADR 0013 壳形态反转：贴右竖板 → Multica 式悬浮窗）
 
-> 阶段：**原型就绪，等用户实审**（#991 正典车道生命周期：原型 commit → 滚动实审 →
-> 同分支续跑施工）。施工面（载体重钉 ⑨ / 验收模板 v3 / A1–A2–B）不在本证据集内。
+> 阶段：**实审通过（2026-10-08 用户「全按推荐走」）→ 施工段**。原型证据（§1–§5）+
+> 施工证据（§6–§8：载体重钉 ⑨、探针重钉清零、better-colors 增量实测）同册归档。
 > 复跑配方见各节命令；栈纪律 = verify-pacman SKILL.md（隔离 live 栈，绝不碰 8787/5173）。
 
 ## 0. 结论速览
@@ -10,8 +10,11 @@
 |---|---|---|
 | fixture 位形 smoke（五路由 + 交互契约，50 checks） | **50/50 PASS** | `drive-1009-a0-smoke.mjs` + `result-a0-fixture-smoke.json` + 截图 01–13 |
 | live 栈取证（真数据，24 checks） | **24/24 PASS** | `drive-1009-a0-live.mjs`（skill scripts/ 内）+ `result-a0-live.json` + `live-*.png` |
-| chief 域 + 邻接 e2e（17 spec / 179 用例） | 136 绿 / 43 红（红 = 重钉账，逐条分类见 §3） | `e2e-domain-status.txt` + `e2e-failed-list.txt` |
+| chief 域 + 邻接 e2e（17 spec / 179 用例）原型态 | 136 绿 / 43 红（红 = 重钉账，逐条分类见 §3） | `e2e-domain-status.txt` + `e2e-failed-list.txt` |
+| 同域 e2e 重钉后 | **178 绿 / 0 红**（43 红全数重钉，见 §6） | 重跑命令同 §1 |
 | 视觉探针三方 diff（开工侦察 vs 原型后 vs #953 封版） | KEPT 52 / DRIFT 5 / NOT-RUN 33 / VIOLATION 0 | `probe-pre-a0/` + `probe-after-a0/` |
+| 视觉探针重钉后（验收模板 v3 第 2 项） | **KEPT 109 / DRIFT 0 / NOT-RUN 0 / VIOLATION 0**（91 用例全绿） | `probe-repinned/` |
+| better-colors 增量实测（验收模板 v3 第 3 项） | **双模 14 对全过**（下限 4.5 正文 / 3 UI 字形） | `measure-a0-colors.mjs` + `colors-a0.json` |
 | 单测（web 全量 468） | 全绿（含 i18n-coverage 新键「最小化」） | — |
 | typecheck / lint | 全绿 | — |
 
@@ -101,3 +104,60 @@ fixture：01 board FAB 关态 / 02 board 窗开 / 03 新建任务 dialog 压窗�
 10·10b fixture 111 hero·114 线程捕获形 / 11 抑制路由 / 12 设置视图内容交换 / 13 live 窗开。
 live：live-01 真线程窗开 / live-03 刷新恢复开态 / live-05 schedules 常驻 / live-06 detail 覆盖位形 /
 live-07 设置深链 / live-09 抑制路由。
+
+## 6. 施工段：载体重钉（验收模板 v3 第 1 项，ADR 0013 D11）
+
+43 红全数重钉后同域 17 spec **178 绿 / 0 红**。逐族处置（行为断言语义一字不动，
+只换载体/换已裁决行为）：
+
+| spec | 原红 | 处置 |
+|---|---|---|
+| chief-panel | 11 | 整 describe 翻面「floating form」：418 docked 几何 → 380×600@8 + fixed + radius token + z15 + 双层投影 + 不压侧栏；让位 pin → 零让位对拍；Esc 关窗 → Esc 永不关（D3）+ 内层先收保留；D9 刷新即关 → D5 刷新恢复（live-mock 桩面，fixture 面零存储律另钉）；count-0 → hidden+count1 |
+| hotkeys | 9 | count-0 族 → toBeHidden；escapeUntilHidden(drawer) → toggleUntilHidden（⌘J 是唯一键盘收起）；pressesStayClosed(drawer) → pressesStayHidden 新helper（count-0 律留给 dialog 族）；FAB 互斥注释翻 D4 |
+| board-docked-reflow | 8 | 整 spec 翻面「覆盖层零 reflow」：停靠地板/让位横滚 pin → 开合零几何跳变对拍（1440/1024/RTL/最坏数据/卡宽/滚动条披露九条失败方式重写）；FLOOR 280 → 200 单态 |
+| shell-consistency | 5 | 五族 FAB 类名载体 → 单实例 .chief-fab；「close returns」→ Minimize 收起；关态 count-0 → hidden+count1 |
+| chief-fab | 5 | .detail-fab → .chief-fab；48×48/right504/bottom104 → 40×40@8 fixed（D4）；fab-avatar 捕获形翻关窗态（fixture view drawer→none，D4 互斥的捕获面必然） |
+| chief-stream-markdown | 2 | F-R16/F-R18 加进场动画 settle 谓词（fade+scale 期间 boundingBox 含 transform）；44px 药丸值不变（380 宽下单行不 wrap，实测保真） |
+| detail-3pane | 1 | 488/418 两态 composer 宽 → 单态 488 + 开窗零位移对拍（D7 互斥退役） |
+| chief-drawer-model | 1 | 关窗回收 popover 的 count-0 → hidden 载体（portaled 弹层 open 态清零后节点归零不变） |
+| board-zoom-fit | 1 | data-chief-open 活翻 pin → 开窗零地板复活对拍（两态退役） |
+
+## 7. 施工段：探针重钉清零（验收模板 v3 第 2 项）
+
+`probe-repinned/`：重钉后 chief 域 8 spec 全绿 91 用例，visual rows **KEPT 109 /
+DRIFT 0 / NOT-RUN 0 / VIOLATION 0**（对照表清零）。三方 diff 链：
+`probe-pre-a0/`（开工侦察，旧壳 104 KEPT）→ `probe-after-a0/`（原型态 52 KEPT /
+5 DRIFT / 33 NOT-RUN = 重钉工作面）→ `probe-repinned/`（清零）。人审 diff =
+本册 §3 分类表 + §6 处置表（DRIFT 5 条全部落在「已裁决退役面」，无一条疑似回归）。
+
+## 8. 施工段：better-colors 增量实测（验收模板 v3 第 3 项）
+
+`measure-a0-colors.mjs` + `colors-a0.json`：A0 新合成面 = 窗 chrome + FAB 族
+（token 零新增颜色值，全既有槽的新组合）。双模 14 对全过：dark 正文 13:1 /
+UI 字形 7.18:1 / 徽标 8.14:1；light 正文 16.14:1 / UI 6.31:1 / 徽标 7.38:1；
+FAB 字形 16.14:1、⌘J chip 10.73:1。下限照 spec/22 §1.8 / #950 先例（正文 4.5、
+UI 字形 3）。全局色板不重测（#988 双模 109 对 0 fail 封账）。
+
+## 9. 手写面退役对账声明（验收模板 v3 第 5 项，#983 判决表逐条）
+
+落在 chief 域的 #983 判决行：
+- **panel→Card / dialog-shell 零皮化 / status-chip / tag-chip / seeded-avatar /
+  kbd-hint→Tooltip+Kbd / floating-shell 族拆**：均**不属 A0 段**（属 #1008 L5 与
+  波 2 / 施工批次）——A0 对它们零触碰，现状消费点原样（chief 域内 seeded-avatar /
+  kbd-hint / dialog-shell 消费点保持既有形态）。
+- **F8 registry 弹层件写死 z-50 的接法单点裁决**：随 A0 出（tokens.css --z-floating
+  注记）——渲染中件经已登记 deviation 骑 --z-dialog，未渲染件保持上游 z-50 原文。
+- **dialog-shell 翻面交叉（L3/#1006 实审通报）**：rewind 确认层是 dialog-shell 常规
+  消费点；L3 合入后按示范对齐（去自携 padding、裸内容进 DialogFooter）——归属
+  A0 施工面与 #1006 的合并序协调，本 PR 不动（动了撞当前 main）。
+
+## 10. 未迁残留声明（验收模板 v3 第 6 项）
+
+- 标识符残留：`chief-drawer.tsx` 文件名 / `ChiefDrawer` 组件名 / `.chief-drawer`
+  类钩（hotkeys 守卫 + e2e scope 锚）——ADR 0013 D13 记名，更名随后续施工批次；
+- `--chief-shadow` 剩抽屉头切换器 popover 单消费点（悬浮窗改骑 --floating-shadow）；
+  `--dur-drawer` 零消费（motion registry 镜像保留）；`--edge-radius`/`--radius-popover`
+  仍属 #983 退役面待批；
+- A1 五件原语 vendoring 暂存 `/tmp/a1-primitives-1009/`（未提交，A0 合并后启用）；
+- 草稿跨整页刷新持久化 = #1056（实审裁决 4 另票）；
+- registry anchoring（scrollAnchor）= 实审裁决 2 不采（保 #873 跟随律）。

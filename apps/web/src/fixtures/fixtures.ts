@@ -1914,7 +1914,9 @@ export const agentDelete: FixtureSet = {
  *  chiefUnread 2 钉角标与头像共存面。avatarUrl null = dicebear 按
  *  displayName 种子生成，e2e 钉图标来源切换（chief-fab.spec），非像素。 */
 const FAB_AVATAR_CHIEF: ChiefContent = {
-  view: 'drawer',
+  // ADR 0013 D4：FAB 与窗互斥——FAB 面的捕获形 = 关窗态（view: 'none'；
+  // 旧形抽屉开态仍挂 FAB，互斥退役该共存面）；#444 钉面是 FAB 头像，不是窗。
+  view: 'none',
   bound: true,
   modelSlot: 'claude-sonnet-5 · 默认',
   threadTitle: '新主题',

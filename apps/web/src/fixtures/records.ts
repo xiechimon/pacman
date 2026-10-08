@@ -836,11 +836,13 @@ export interface ModelOption {
   modelName: string;
 }
 
-/** The chief surface a scenario renders. `view: 'drawer'` docks the panel
- *  as the right-hand column (#447 / ADR 0004); `view: 'settings'` replaces
- *  the content area (r5 101–104). */
+/** The chief surface a scenario renders. `view: 'drawer'` opens the floating
+ *  window (ADR 0013; the #447 / ADR 0004 docked column is retired);
+ *  `view: 'settings'` replaces the content area (r5 101–104); `view: 'none'`
+ *  (A0, #1009) = the minimized face — the capture form of FAB-only surfaces
+ *  now that window and FAB are mutually exclusive (D4). */
 export interface ChiefContent {
-  view: 'drawer' | 'settings';
+  view: 'drawer' | 'settings' | 'none';
   /** Settings tab rendered when `view: 'settings'`. */
   tab?: ChiefSettingsTab;
   /** Agent bound to the chief: hides the gate bar, fills the model slot

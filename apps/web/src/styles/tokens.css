@@ -150,6 +150,10 @@
      #980 地图） */
   --edge-radius: 14px;
   --radius-popover: 12px;
+  /* 悬浮窗圆角（ADR 0013 D2 Multica rounded-xl 原值；A0 实审裁决 3 提 token，
+     不散落 arbitrary 值）。不消费 #983 退役面的 --radius-popover（ADR 0012 D4
+     明令）；窗是本值唯一消费点。 */
+  --radius-window: 12px;
   /* 投影四档（spec/22 §2.4 分层软投影语言，#909 定版继承；#988 色板重选
      未动投影面）：card 静止 → edge 抬升 → dialog 模态逐档加深加宽 */
   --edge-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
@@ -236,6 +240,7 @@
      to the light surface; the ring rides --border's light value via the
      :root --edge-ring recipe. 投影四档定版 spec/22 §2.4 */
   --radius-popover: 12px;
+  --radius-window: 12px;
   --edge-shadow: 0 8px 24px rgb(28 25 23 / 0.14);
   /* 盘投影 light：定版软 blur 档（暗侧 none，线框承重——见 :root 注与
      spec/22 §2.6-7） */
