@@ -475,7 +475,8 @@ export async function runStep(
   // providerId 与 agent.provider 同值）；非 runtime 步不变。canon 行在
   // backendFor 解析后（失败方式 6：解析入参钉 agent.provider 原值）。
   const backend = deps.backendFor(agent?.provider);
-  logger.raw(`using model ${provider?.providerId ?? agent.provider}/${agent.modelId}`);
+  const modelKey = `${provider?.providerId ?? agent.provider}/${agent.modelId}`;
+  logger.raw(`using model ${modelKey}`);
 
   // workspace 准备（02 §5.5 worktree 契约：基座 clone + `worktree add -b`；
   // 项目未绑 repo = 裸任务目录退化形 [设计]，M3a 兼容）。chief 步 = 只读探索，
@@ -1091,6 +1092,26 @@ export async function runStep(
           case 'message_end': {
             // user 行不重复落（任务文本行 user-<stepId> 已在缓冲；pi 回声同文）。
             if (ev.message.role === 'user') break;
+            // per-message usage 追溯行（#927）：pi 报的 usage（含 cost）随
+            // assistant 消息逐条落行——「落库成本 ← 哪次请求算出来的」的
+            // 运行时对账面（daemon.log）。无 usage 的行（system 回声 /
+            // claude-code 面）静默，行序即消息序。
+            const messageUsage = ev.message.usage as
+              | {
+                  input?: number;
+                  output?: number;
+                  cacheRead?: number;
+                  cacheWrite?: number;
+                  cost?: { total?: number };
+                }
+              | undefined;
+            if (ev.message.role === 'assistant' && messageUsage !== undefined) {
+              logger.step(
+                `message usage: ${modelKey} input=${messageUsage.input ?? 0} output=${messageUsage.output ?? 0} cacheRead=${messageUsage.cacheRead ?? 0} cacheWrite=${messageUsage.cacheWrite ?? 0}${
+                  messageUsage.cost !== undefined ? ` cost=${messageUsage.cost.total ?? 0}` : ''
+                }`,
+              );
+            }
             // 进展 = 模型输出行（#654 语义「assistant message_end」原义）：
             // 仅 assistant 非错误终局行计数。system 行（pi 会话开面的
             // system prompt 回声，每会话必发）不是模型输出——计入进展会把

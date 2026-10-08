@@ -452,6 +452,7 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
       mcpConfig,
       skillsDir,
       customModelReasoning,
+      piCacheRetention,
       ...observed
     } = ENV_VARS;
     expect(observed).toEqual({
@@ -472,6 +473,9 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     // 自有面 [设计]：=1 时 materializeProvider 给自定义端点写 reasoning:true，
     // pi 才下发 reasoning_effort（opt-in，后端容忍度不一，默认关）
     expect(customModelReasoning).toBe('PACMAN_CUSTOM_MODEL_REASONING');
+    // 自有面 [设计]（#927，spec 26）：pi 提示缓存保留档——long 才长保留
+    // （pi 适配器落 ttl 1h / prompt_cache_retention 24h）；缺省 short 显式化
+    expect(piCacheRetention).toBe('PACMAN_PI_CACHE_RETENTION');
   });
 
   it('credential formats match the observed shapes (key prefix 随 BRAND 槽)', () => {

@@ -534,6 +534,14 @@ describe('步骤 journal 全链（02 §5.4 词表 + §4.2 主时序机器侧）'
         output: 980,
         cacheRead: 100,
         cacheWrite: 50,
+        // 成本五列（#927）：done 上报不带 cost 位（旧 daemon / 无价格来源）
+        // → 按 0 记账，四维零变化——mixed-version 兼容面的钉。带价路径的
+        // 数值断言在 integration/test/pi-session-policy.test.ts。
+        costInput: 0,
+        costOutput: 0,
+        costCacheRead: 0,
+        costCacheWrite: 0,
+        costTotal: 0,
       },
     ]);
 

@@ -89,6 +89,150 @@ export const PI_CAPABILITIES: AgentBackendCapabilities = {
 /** pi 内建工具默认面（02 §5.6：其余工具面 = pi-coding-agent 内建）。 */
 const PI_BUILTIN_TOOLS = ['read', 'bash', 'edit', 'write'];
 
+// —— pi 会话运行面与信任面显式策略（#925，spec 26）—————————————————————
+// 三项决定各自显式落码，不吃 pi 的沉默默认值：
+//   D1 project trust = **deny**。pi 的 `SettingsManager.inMemory` 缺省
+//      projectTrusted=true——任务 worktree 里的 `.pi/SYSTEM.md` 会**静默成为
+//      会话系统提示词**（agent-session 消费 loader.getSystemPrompt()），
+//      `.pi/APPEND_SYSTEM.md` 同族。pacman 的授权面全部自有（简报 = runner
+//      写入的 AGENTS.md、skills = catalog+allowlist+读闸 #917、MCP = server
+//      授权桥、命令 = #866 闸），项目级 pi 资源加载即旁路这些面 → 钉
+//      projectTrusted:false，且受保护资源在位时落 `[trust] denied:` 行
+//      （可观测记录，非静默跳过）。
+//   D2 telemetry / 版本检查 = **off**。pi `enableInstallTelemetry` 缺省
+//      true → provider 请求会带 attribution 头（OpenRouter/NVIDIA/Cloudflare
+//      宿主）；env 钉 PI_TELEMETRY=0 + settings 显式 false 双保险。版本检查
+//      与安装遥测本体是 CLI 入口路径（SDK 会话不触发），PI_SKIP_VERSION_CHECK
+//      /PI_OFFLINE 钉住任何子进程继承面。
+//   D3 file-backed settings = **显式声明绕过**。inMemory 存储使 pi 的用户级/
+//      项目级 settings.json 全部失效——绕过清单见 PI_SETTINGS_BYPASS（配置/
+//      文档可见），行为与清单相符由 daemonSettingsManager 单源保证。
+
+/** project trust 保护资源词表（pi docs/security.md §Understand project
+ * trust：`.pi/` 下八件；bare `.pi` 目录本身不触发。词表随 pi 版本核对——
+ * 1.0.4 实测 resource-loader/settings-manager/package-manager 的消费面）。 */
+export const TRUST_PROTECTED_ENTRIES = [
+  'settings.json',
+  'mcp.json',
+  'extensions',
+  'skills',
+  'prompts',
+  'themes',
+  'SYSTEM.md',
+  'APPEND_SYSTEM.md',
+] as const;
+
+/** 检测 cwd（任务 worktree）下在位的 `.pi/` 受保护资源 → `.pi/<entry>` 列表
+ * （TRUST_PROTECTED_ENTRIES 序）。deny 决定的可观测记录数据面：非空即落
+ * `[trust] denied:` 行点名。只读探测，不建会话。 */
+export function detectTrustProtectedResources(cwd: string): string[] {
+  const found: string[] = [];
+  for (const entry of TRUST_PROTECTED_ENTRIES) {
+    if (existsSync(join(cwd, '.pi', entry))) found.push(`.pi/${entry}`);
+  }
+  return found;
+}
+
+/** daemon 会话的声明 settings 面（D3）：inMemory 存储 + 本字面量 = 会话全部
+ * settings。三个键都是**显式决定**：compaction 开（长步上下文护栏，既有）；
+ * 安装遥测/attribution 头关（D2——pi 缺省 true，这里翻成 false）；缓存预热
+ * 关（#927 D6——无人值守不发后台刷新请求，花销只来自 agent 步本身；pi 缺省
+ * `streaming` 会在预设目录模型上自发续命缓存，属隐性支出）。 */
+type PiSettingsSeed = NonNullable<Parameters<typeof SettingsManager.inMemory>[0]>;
+export const PI_DAEMON_SETTINGS: PiSettingsSeed = {
+  compaction: { enabled: true },
+  enableInstallTelemetry: false,
+  cacheWarming: 'off',
+};
+
+/** 会话 SettingsManager 单源（D1+D3）：声明 settings + projectTrusted:false。
+ * open() 与测试共用同一构造——「策略声明」与「会话行为」不可能是两份。 */
+export function daemonSettingsManager(): SettingsManager {
+  return SettingsManager.inMemory(
+    { ...buildPiSessionSettings(), ...PI_DAEMON_SETTINGS },
+    { projectTrusted: false },
+  );
+}
+
+/** file-backed settings 绕过清单（D3 验收面：配置/文档可见的声明）。每条 =
+ * 被绕过的 settings 族 + 绕过后由谁负责（policy）。正源在此，spec 26 引用。 */
+export const PI_SETTINGS_BYPASS = [
+  {
+    setting: 'defaultProjectTrust',
+    policy: '信任决定由宿主钉死 projectTrusted:false（deny），文件位不参与',
+  },
+  {
+    setting: 'retry',
+    policy:
+      'retry 预算由宿主显式钉死（PI_RETRY_SETTINGS，#926），文件位不参与；步级纪律：失败无自动重跑',
+  },
+  {
+    setting: 'modelOverrides',
+    policy: '模型面由 server 配置经 models.json 物化下发，本机覆盖不掺入',
+  },
+  { setting: 'httpProxy', policy: '代理面归 daemon setupProxy（env 级），不经 pi settings' },
+  {
+    setting: 'cacheWarming',
+    policy: '显式 off（PI_DAEMON_SETTINGS）：无人值守不发后台缓存刷新请求',
+  },
+  { setting: 'enableInstallTelemetry', policy: '显式 false + PI_TELEMETRY=0 env 钉（D2）' },
+  {
+    setting: 'packages',
+    policy: '项目级 packages/extensions 不加载：SDK 面无 builtin 注入、无附加路径',
+  },
+  { setting: 'themes', policy: '无 TUI 面，主题不进会话' },
+  { setting: 'promptTemplates', policy: '提示模板是 TUI slash 面，会话组装不消费' },
+] as const;
+
+/** 无人值守 env 钉集（D2 + #927 D6）：返回**需要落**的 process.env 位——
+ * 已显式设置的键不进集（`??` 语义，PI_OFFLINE 既有纪律同形：操作员显式
+ * env 永远压过宿主默认）。PI_CACHE_RETENTION 恒显式（short 也落值）：
+ * 策略从进程环境可读，不靠 pi 的沉默缺省。 */
+export function piUnattendedEnvPins(env: NodeJS.ProcessEnv): Record<string, string> {
+  const pins: Record<string, string> = {
+    PI_OFFLINE: '1', // 模型目录网络刷新关闭（self-host 确定性；pi docs/sdk.md）
+    PI_TELEMETRY: '0', // 安装遥测 + provider attribution 头（D2）
+    PI_SKIP_VERSION_CHECK: '1', // pi.dev latest-version 请求（子进程继承面同钉）
+    PI_CACHE_RETENTION: resolvePiCacheRetention(env),
+  };
+  for (const key of Object.keys(pins)) {
+    if (env[key] !== undefined) delete pins[key];
+  }
+  return pins;
+}
+
+/** 缓存保留档（#927 D6）：`PACMAN_PI_CACHE_RETENTION=long` 才 long，其余
+ * （未设/乱值）一律 short = pi 缺省档显式化。long 的请求面由 pi 适配器落：
+ * anthropic-messages → cache_control ttl 1h；openai-completions →
+ * prompt_cache_retention 24h。缺省 short 的理由：部分网关通道拒未知字段
+ * （#654 store/max_completion_tokens 同族教训），long 是知道自家网关认这个
+ * 字段的操作员的 opt-in。 */
+export function resolvePiCacheRetention(env: NodeJS.ProcessEnv): 'short' | 'long' {
+  return env[ENV_VARS.piCacheRetention] === 'long' ? 'long' : 'short';
+}
+
+/** pi 的 env 真值解析（telemetry.js isTruthyEnvFlag 同形：1/true/yes）。 */
+function truthyEnvFlag(value: string | undefined): boolean {
+  if (!value) return false;
+  return value === '1' || value.toLowerCase() === 'true' || value.toLowerCase() === 'yes';
+}
+
+/** 上线序列的策略宣告行（machine 族 canon）：五位一行，运行面从 daemon.log
+ * 可读，不靠翻代码反推。每位取**生效值**（传入 env 并入宿主钉集——
+ * piUnattendedEnvPins 的 ?? 语义决定操作员显式 env 压过钉）：显式
+ * PI_TELEMETRY=1 时宣告随之翻 on，宣告不谎报。machine-loop 在 PiBackend
+ * 构造（钉已落 process.env）之后调用，传 process.env 即生效面。 */
+export function piSessionPolicyLine(env: NodeJS.ProcessEnv): string {
+  const effective: NodeJS.ProcessEnv = { ...env, ...piUnattendedEnvPins(env) };
+  // PI_TELEMETRY 未设时 pi 回落 settings.enableInstallTelemetry——声明面
+  // PI_DAEMON_SETTINGS 恒 false，故未设 = off。
+  const telemetry = truthyEnvFlag(effective.PI_TELEMETRY) ? 'on' : 'off';
+  // version-check.js 的闸 = 字符串真值（空串视同未设 → 检查仍开）。
+  const versionCheck = effective.PI_SKIP_VERSION_CHECK ? 'off' : 'on';
+  const retention = effective.PI_CACHE_RETENTION === 'long' ? 'long' : 'short';
+  return `pi policy: trust=deny telemetry=${telemetry} version-check=${versionCheck} cache-retention=${retention} settings=in-memory (bypass list: PI_SETTINGS_BYPASS, spec 26)`;
+}
+
 /** 会话 SettingsManager.inMemory 的设置位（#926）：compaction 开 + retry 面显式值
  *  （不吃 pi 内建默认）。抽成导出纯函数 = 可测缝——单测断言 retry 确实接到了
  *  PI_RETRY_SETTINGS（而非摆设/漂移回默认），pi 包不进测试面。retry 单源在
@@ -211,7 +355,7 @@ export function parseMcpAttentionMessage(message: string): McpAttentionLine[] {
   const out: McpAttentionLine[] = [];
   for (const line of message.split('\n').slice(1)) {
     if (line.startsWith('Run /mcp')) break;
-    const m = /^  (\S+): (.+)$/.exec(line);
+    const m = /^ {2}(\S+): (.+)$/.exec(line);
     if (m) out.push({ slug: m[1] ?? '', reason: m[2] ?? '' });
   }
   return out;
@@ -484,6 +628,9 @@ export async function discoverNativeSkills(opts: {
   const loader = new DefaultResourceLoader({
     cwd: opts.cwd,
     agentDir: opts.agentDir,
+    // 刻意不走 daemonSettingsManager（#925）：before 侧探针要复刻 pi 原生
+    // 发现形（含 inMemory 的 projectTrusted 缺省 true），会话面的 deny 策略
+    // 不属于「原生清单」这条对照腿。
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: true } }),
   });
   await loader.reload();
@@ -601,7 +748,21 @@ interface PiMessageLike {
   model?: string;
   stopReason?: string;
   errorMessage?: string;
-  usage?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number };
+  usage?: {
+    input?: number;
+    output?: number;
+    cacheRead?: number;
+    cacheWrite?: number;
+    /** pi calculateCost 产物（#927）：USD 五分项，按模型价格从 token 数算出。
+     * 宿主只累积透传，不自算（pi-ai Usage.cost 的结构投影）。 */
+    cost?: {
+      input?: number;
+      output?: number;
+      cacheRead?: number;
+      cacheWrite?: number;
+      total?: number;
+    };
+  };
 }
 
 /** AgentSessionEvent 的结构化投影（映射输入面）：单测无需 import pi 类型
@@ -649,6 +810,10 @@ function toMessageRecord(msg: PiMessageLike): {
    * 携 stopReason=error）。messageRecordSchema loose 透传，不改 wire 面；
    * runner 消费判「错误行不是进展」（auto_retry 生命周期 / #654 回落闸）。 */
   stopReason?: string;
+  /** per-message 用量（#927 追溯面）：pi 报的 usage（含 cost）原样随行——
+   * 事件流上「该步成本 ← 哪次请求算出来的」可逐条对账。loose schema 透传，
+   * 不改 wire 契约；无 usage 的消息（user/system 行）不带此位。 */
+  usage?: PiMessageLike['usage'];
 } {
   const role =
     msg.role === 'assistant' ? 'assistant' : msg.role === 'user' ? 'user' : ('system' as const);
@@ -656,6 +821,7 @@ function toMessageRecord(msg: PiMessageLike): {
     role,
     content: msg.content ?? null,
     ...(msg.stopReason !== undefined ? { stopReason: msg.stopReason } : {}),
+    ...(msg.usage !== undefined ? { usage: msg.usage } : {}),
   };
 }
 
@@ -712,13 +878,30 @@ export function mapPiSessionEvent(event: AgentSessionEventLike, state: MapState)
           cacheRead: 0,
           cacheWrite: 0,
         };
-        state.usage.set(key, {
+        const next: ModelUsage = {
           model: key,
           input: prev.input + (msg.usage.input ?? 0),
           output: prev.output + (msg.usage.output ?? 0),
           cacheRead: prev.cacheRead + (msg.usage.cacheRead ?? 0),
           cacheWrite: prev.cacheWrite + (msg.usage.cacheWrite ?? 0),
-        });
+        };
+        // 成本维（#927）：pi 报的 cost 原样累加（数值 = pi calculateCost 产物，
+        // 宿主不重算）。混合消息流（个别消息无 cost）不丢已累积组内成本；
+        // 全程无 cost = cost 键不出现（旧 daemon / claude-code 行零回归）。
+        const cost = msg.usage.cost;
+        if (cost !== undefined) {
+          const pc = prev.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
+          next.cost = {
+            input: pc.input + (cost.input ?? 0),
+            output: pc.output + (cost.output ?? 0),
+            cacheRead: pc.cacheRead + (cost.cacheRead ?? 0),
+            cacheWrite: pc.cacheWrite + (cost.cacheWrite ?? 0),
+            total: pc.total + (cost.total ?? 0),
+          };
+        } else if (prev.cost !== undefined) {
+          next.cost = prev.cost;
+        }
+        state.usage.set(key, next);
       }
       if (msg.stopReason === 'aborted') {
         return [{ type: 'message_stop', message: toMessageRecord(msg) }];
@@ -933,6 +1116,9 @@ export interface PiBackendOpts {
   /** `[gate]` 裁决行出口（#866 T5 命令闸：machine-loop 接 logger.gate；只记
    * 非放行裁决，allow 静默）。缺省 = 仍门控，只是不落行。 */
   onGateLog?: (msg: string) => void;
+  /** `[trust]` 裁决行出口（#925 D1：machine-loop 接 logger.trust；只记受保护
+   * 资源在位的 denied 行，空 worktree 静默）。缺省 = 仍 deny，只是不落行。 */
+  onTrustLog?: (msg: string) => void;
   /** 命令闸规则表（#929：PermissionRule[] 通用工具面——bash/MCP/内建工具
    * 一体生效；首命中胜出）。缺省 = 无自定义表（DEFAULT_BASH_PATTERNS 仍
    * 护 bash 面）。产品内暂无馈源（将来服务端统一下发表即进此层）；测试与
@@ -962,8 +1148,12 @@ export class PiBackend implements AgentBackend {
   constructor(private readonly opts: PiBackendOpts) {
     mkdirSync(opts.agentDir, { recursive: true });
     mkdirSync(opts.sessionDir, { recursive: true });
-    // 模型目录网络刷新关闭（self-host 确定性；pi docs/sdk.md PI_OFFLINE）。
-    process.env.PI_OFFLINE = process.env.PI_OFFLINE ?? '1';
+    // 无人值守 env 钉集（#925 D2 / #927 D6）：离线目录刷新、遥测 off、版本
+    // 检查 off、缓存保留档显式。已显式设置的 env 位不抢（piUnattendedEnvPins
+    // 的 ?? 语义）；策略宣告行由 machine-loop 落 [machine] canon。
+    for (const [key, value] of Object.entries(piUnattendedEnvPins(process.env))) {
+      process.env[key] = value;
+    }
     process.env.PI_CODING_AGENT_DIR = opts.agentDir;
   }
 
@@ -1021,7 +1211,15 @@ export class PiBackend implements AgentBackend {
     // `composeSections` 产出、runner 写进 worktree 的上下文文件，不再追加进
     // systemPrompt。这里只透传 runner 给的 systemPrompt——**只有**不具备简报
     // 通道的后端才会拿到非空值。空集 = 不覆盖引擎自身的 system prompt。
-    const settingsManager = SettingsManager.inMemory(buildPiSessionSettings());
+    const settingsManager = daemonSettingsManager();
+    // project trust = deny 的可观测记录（#925 D1）：worktree 里带受保护资源
+    // 时点名落行——决定生效（资源不加载）且留痕，不是静默跳过。
+    const protectedPresent = detectTrustProtectedResources(opts.cwd);
+    if (protectedPresent.length > 0) {
+      this.opts.onTrustLog?.(
+        `denied: ${protectedPresent.join(', ')} present in worktree — project trust is denied by policy, protected resources are not loaded (spec 26)`,
+      );
+    }
     // —— #929 命令闸：inline extension 的 tool_call handler（pi 原生阻断缝）
     // ——拦截缝换挂点（策略表不动，见 command-gate.ts 头注）：bash 面 =
     // 规则表 + DEFAULT_BASH_PATTERNS 全量裁决；MCP/嵌套调用同过此管线，规则
@@ -1293,6 +1491,10 @@ export function materializeProvider(modelsPath: string, provider: ProviderConfig
       id: m.id,
       name: m.name,
       ...CUSTOM_MODEL_DEFAULTS,
+      // 成本声明位（#927）：server 下发的价格（USD / 1M tokens）覆盖零默认
+      // ——pi calculateCost 据此算 per-message cost。未声明维持零价（诚实 0，
+      // 宿主不造价格表）。
+      ...(m.cost !== undefined ? { cost: m.cost } : {}),
       ...customModelReasoning(),
     })),
   };

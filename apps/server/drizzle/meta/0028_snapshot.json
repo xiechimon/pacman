@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "53900df0-b0fb-427a-bfb3-61f04df3d4c3",
-  "prevId": "d283ac80-5fc4-4f0f-bb92-a87c971adb82",
+  "id": "d0e1eea6-150f-4903-9f51-4e5d9b829d24",
+  "prevId": "53900df0-b0fb-427a-bfb3-61f04df3d4c3",
   "tables": {
     "agent": {
       "name": "agent",
@@ -2477,6 +2477,46 @@
         "cacheWrite": {
           "name": "cacheWrite",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "costInput": {
+          "name": "costInput",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "costOutput": {
+          "name": "costOutput",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "costCacheRead": {
+          "name": "costCacheRead",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "costCacheWrite": {
+          "name": "costCacheWrite",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "costTotal": {
+          "name": "costTotal",
+          "type": "real",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,

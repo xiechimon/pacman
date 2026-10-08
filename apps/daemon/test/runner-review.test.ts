@@ -61,6 +61,7 @@ function captureLogger(): DaemonLogger {
     wake: noop,
     skills: noop,
     gate: noop,
+    trust: noop,
     mcp: noop,
   };
 }

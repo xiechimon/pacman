@@ -186,6 +186,95 @@ describe('mapPiSessionEvent（AgentSessionEvent → StepEvent 投影）', () => 
     ]);
   });
 
+  // —— #927 成本维：pi 报的 per-message usage.cost 原样累积（不自造价格表，
+  // 数值 = pi calculateCost 产物），message_end 行携 per-message usage 供追溯。
+  test('#927 cost：per-message usage.cost 累积进 per-model 行；done 携 cost', () => {
+    const state = newMapState();
+    const first = map(
+      {
+        type: 'message_end',
+        message: {
+          role: 'assistant',
+          provider: 'stub-gw',
+          model: 'stub-model',
+          stopReason: 'stop',
+          usage: {
+            input: 0,
+            output: 980,
+            cacheRead: 100,
+            cacheWrite: 0,
+            cost: { input: 0, output: 1960, cacheRead: 50, cacheWrite: 0, total: 2010 },
+          },
+        },
+      },
+      state,
+    );
+    // 事件流追溯面：message_end 行携该条消息的 usage（含 cost）原样。
+    expect((first[0] as { message: { usage?: unknown } }).message.usage).toEqual({
+      input: 0,
+      output: 980,
+      cacheRead: 100,
+      cacheWrite: 0,
+      cost: { input: 0, output: 1960, cacheRead: 50, cacheWrite: 0, total: 2010 },
+    });
+    map(
+      {
+        type: 'message_end',
+        message: {
+          role: 'assistant',
+          provider: 'stub-gw',
+          model: 'stub-model',
+          stopReason: 'stop',
+          usage: {
+            input: 3,
+            output: 2,
+            cacheRead: 1,
+            cacheWrite: 0,
+            cost: { input: 3, output: 4, cacheRead: 0.5, cacheWrite: 0, total: 7.5 },
+          },
+        },
+      },
+      state,
+    );
+    const done = map({ type: 'agent_settled' }, state);
+    expect(done).toEqual([
+      {
+        type: 'done',
+        usage: [
+          {
+            model: 'stub-gw/stub-model',
+            input: 3,
+            output: 982,
+            cacheRead: 101,
+            cacheWrite: 0,
+            cost: { input: 3, output: 1964, cacheRead: 50.5, cacheWrite: 0, total: 2017.5 },
+          },
+        ],
+      },
+    ]);
+  });
+
+  test('#927 回归：usage 无 cost（旧形投影）→ 四维累积零变化、不产 cost 键', () => {
+    const state = newMapState();
+    map(
+      {
+        type: 'message_end',
+        message: {
+          role: 'assistant',
+          provider: 'p',
+          model: 'm',
+          stopReason: 'stop',
+          usage: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4 },
+        },
+      },
+      state,
+    );
+    const done = map({ type: 'agent_settled' }, state);
+    const usage = (done[0] as { usage: Record<string, unknown>[] }).usage[0]!;
+    expect(usage).not.toHaveProperty('cost');
+    expect(usage).toEqual({ model: 'p/m', input: 1, output: 2, cacheRead: 3, cacheWrite: 4 });
+  });
+
   test('stopReason=error → message_end + error{retryable 判定}；aborted → message_stop', () => {
     const err = map({
       type: 'message_end',
