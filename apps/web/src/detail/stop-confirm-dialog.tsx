@@ -53,15 +53,17 @@ export function StopConfirmDialog({ open, onClose, onConfirm }: StopConfirmDialo
       }
     >
       <div className={ACCEPT_ROW}>
-        {/* XMON-72：与 accept-dialog 同族同病（.dlg-accept-check 不藏 input），
-            一并收口 components/ui/checkbox 原语。 */}
-        <Checkbox
-          checked={discard}
-          onCheckedChange={setDiscard}
-          label={t('丢弃本轮修改——方案和代码回到上一个版本')}
-        >
+        {/* XMON-72：与 accept-dialog 同族，收口 components/ui/checkbox 原语
+            （#1003 起 = registry 同源件，行盒由消费点 label 承载）。 */}
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
+        <label className="inline-flex cursor-pointer items-center gap-2">
+          <Checkbox
+            checked={discard}
+            onCheckedChange={setDiscard}
+            aria-label={t('丢弃本轮修改——方案和代码回到上一个版本')}
+          />
           <span className={ACCEPT_LABEL}>{t('丢弃本轮修改——方案和代码回到上一个版本')}</span>
-        </Checkbox>
+        </label>
       </div>
     </DialogShell>
   );

@@ -12,7 +12,7 @@
 // 名称输入落 components/ui/Input 正典默认档（spec/22 §5.3：h-8 32px /
 // rounded-none / border-input / 件自带 focus 环——旧 36px 盒与 2px outline
 // 环覆写按 §2.6-1 退役，36px 不以别名/utility/size 档任何形式存续）。
-// 底部双钮走 Button brand/ghost 件档（旧 py-8 散写高吸附 h-8 控件高正本），
+// 底部双钮走 Button default/ghost 件档（旧 py-8 散写高吸附 h-8 控件高正本），
 // ghost 取消钮与两枚快捷钮按七通道律归零（#908 comment-6001887439 裁决 3）。
 
 import { CHIEF_REMOTE_TOOLS } from '@pacman/shared';
@@ -91,7 +91,6 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
       footer={
         <div className="flex gap-2 px-4 py-3">
           <Button
-            variant="brand"
             className="border-0 px-4 text-[13px] leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
             onClick={submit}
           >
@@ -123,25 +122,27 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
         />
         {/* XMON-75：这两行与下面的读写位此前是裸 checkbox 原生控件，画出来
             是浏览器自带的方框，跟仓内 .dlg-accept-check 那一族的复选 tile
-            不同形。改用 components/ui/checkbox.tsx 统一形态（行盒布局由
-            件内 .ui-checkbox 承载，此处只并字体档）。 */}
+            不同形。改用 components/ui/checkbox.tsx 统一形态（#1003 起件为
+            registry 同源；行盒布局由消费点 label 承载，此处只并字体档）。 */}
         <div className="flex flex-col gap-1.5">
-          <Checkbox
-            className="text-[13px] text-(--text-secondary)"
-            checked={gitAccess}
-            onCheckedChange={setGitAccess}
-            label={t('Git 读写（托管仓库 push/pull）')}
-          >
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
+          <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-(--text-secondary)">
+            <Checkbox
+              checked={gitAccess}
+              onCheckedChange={setGitAccess}
+              aria-label={t('Git 读写（托管仓库 push/pull）')}
+            />
             {t('Git 读写（托管仓库 push/pull）')}
-          </Checkbox>
-          <Checkbox
-            className="text-[13px] text-(--text-secondary)"
-            checked={mcpAccess}
-            onCheckedChange={setMcpAccess}
-            label={t('MCP 访问（MCP 客户端接入）')}
-          >
+          </label>
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
+          <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-(--text-secondary)">
+            <Checkbox
+              checked={mcpAccess}
+              onCheckedChange={setMcpAccess}
+              aria-label={t('MCP 访问（MCP 客户端接入）')}
+            />
             {t('MCP 访问（MCP 客户端接入）')}
-          </Checkbox>
+          </label>
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-xs text-(--text-tertiary)">{t('工具权限位')}</span>
@@ -167,14 +168,14 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
                 <Checkbox
                   checked={read.has(tool)}
                   onCheckedChange={() => setRead((set) => toggle(set, tool))}
-                  label={`${t('读')} ${tool}`}
+                  aria-label={`${t('读')} ${tool}`}
                 />
               </span>
               <span className="w-8 text-center text-(--text-tertiary)">
                 <Checkbox
                   checked={write.has(tool)}
                   onCheckedChange={() => setWrite((set) => toggle(set, tool))}
-                  label={`${t('写')} ${tool}`}
+                  aria-label={`${t('写')} ${tool}`}
                 />
               </span>
             </div>

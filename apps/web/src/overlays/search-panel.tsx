@@ -502,6 +502,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
                         className={`${ROW_ICON} bg-transparent [&_img]:size-4 [&_img]:rounded-full`}
                       >
                         <SeededAvatar
+                          className="size-4"
                           name={agent.displayName}
                           src={agent.avatarUrl}
                           fallback="/avatar-robot-1.svg"

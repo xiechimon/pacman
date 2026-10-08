@@ -53,7 +53,7 @@ import {
   THINKING_LEVELS,
 } from '@pacman/shared';
 import { cn } from 'cn';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import {
   useAgent,
@@ -71,13 +71,13 @@ import { useLiveData } from '../api/provider.js';
 import {
   PROFILE_HINT_CLS,
   PROFILE_ROW_AUTO_CLS,
-  PROFILE_ROW_NAME_CLS,
   PROFILE_VALUE_EDITOR_CLS,
-  PROFILE_VALUE_GROW_CLS,
   ProfileAvatar,
   ProfileCard,
   ProfileHead,
+  ProfileNameRow,
   ProfileRow,
+  useEditorFocus,
 } from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
 import {
@@ -352,11 +352,7 @@ export function AgentDetailPage() {
     >
       <div className="agent-detail flex flex-col gap-4">
         <Tabs value={tab} onValueChange={(value) => setTab(value as AgentTab)}>
-          <TabsList
-            variant="segmented"
-            className={`agent-tabs ${SEG_GROUP_CLS}`}
-            aria-label={t('Agent')}
-          >
+          <TabsList className={`agent-tabs ${SEG_GROUP_CLS}`} aria-label={t('Agent')}>
             {TAB_LABELS.map((item) => (
               <TabsTrigger
                 key={item.id}
@@ -390,9 +386,14 @@ export function AgentDetailPage() {
                   />
                 </ProfileAvatar>
               </ProfileHead>
-              <NameRow
+              <ProfileNameRow
                 value={agent.displayName}
                 onCommit={(displayName) => patch({ displayName })}
+                nameClassName={AGENT_NAME_CLS}
+                editClassName={`agent-name-edit ${AGENT_ICON_EDIT_CLS}`}
+                inputClassName={AGENT_NAME_INPUT_CLS}
+                inputId="agent-name-input"
+                labelClassName="agent-field-label"
               />
               <RoleRow
                 value={agent.description}
@@ -841,78 +842,6 @@ export function AgentDetailPage() {
   );
 }
 
-/** 进输入态即聚焦。聚焦走 ref + effect 而非 autoFocus：biome 的
- *  a11y/noAutofocus 在本仓是 error 档，composer / mention-picker 同法。 */
-function useEditorFocus<T extends HTMLElement>(editing: boolean) {
-  const ref = useRef<T | null>(null);
-  useEffect(() => {
-    if (editing) ref.current?.focus();
-  }, [editing]);
-  return ref;
-}
-
-/** 名称行内编辑（r3 §4：名称（行内编辑））——点文本进输入态，Enter 或失焦
- *  提交，Esc 放弃。空串不算提交（displayName 有 min(1) 约束）。
- *  行内的编辑图标（r3 §4 实测：名称行带编辑图标）与文本同为入口：图标钮是
- *  图标-only，靠 aria-label 拿可访问名（SquarePen 自带 aria-hidden）。 */
-function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) => void }) {
-  const { t } = useI18n();
-  const [draft, setDraft] = useState<string | null>(null);
-  const inputRef = useEditorFocus<HTMLInputElement>(draft !== null);
-  if (draft === null) {
-    // 行高 49 = 个人页的名称行（r7 13 探测值，模板里唯一加高的一档）
-    return (
-      <ProfileRow
-        className={PROFILE_ROW_NAME_CLS}
-        label={t('名称')}
-        labelClassName="agent-field-label"
-      >
-        <Button variant="ghost" className={AGENT_NAME_CLS} onClick={() => setDraft(value)}>
-          {value}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className={`agent-name-edit ${AGENT_ICON_EDIT_CLS}`}
-          aria-label={t('编辑')}
-          onClick={() => setDraft(value)}
-        >
-          <SquarePen width={14} height={14} />
-        </Button>
-      </ProfileRow>
-    );
-  }
-  const commit = () => {
-    const next = draft.trim();
-    if (next !== '' && next !== value) onCommit(next);
-    setDraft(null);
-  };
-  return (
-    <ProfileRow
-      className={PROFILE_ROW_NAME_CLS}
-      label={t('名称')}
-      labelClassName="agent-field-label"
-      valueClassName={PROFILE_VALUE_GROW_CLS}
-    >
-      {/* #855：名称编辑进 Input 原语；#952：几何/皮肤改 AGENT_NAME_INPUT_CLS
-          utility（agent-detail.css 退役）；focus 行为收敛底座环（#849 方向），
-          不再是 UA 默认 outline。 */}
-      <Input
-        id="agent-name-input"
-        ref={inputRef}
-        className={AGENT_NAME_INPUT_CLS}
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') commit();
-          if (event.key === 'Escape') setDraft(null);
-        }}
-      />
-    </ProfileRow>
-  );
-}
-
 /** 职责编辑（r3 §4 原文注：「用一两句话说明该 Agent 的职责。…」）。未设置时
  *  出 canon 空态文案（团队页卡同一串）。 */
 function RoleRow({
@@ -964,7 +893,6 @@ function RoleRow({
           />
           <div className="agent-role-actions flex justify-end gap-2">
             <Button
-              variant="brand"
               size="sm"
               className="agent-role-save"
               onClick={() => {

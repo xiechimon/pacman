@@ -29,11 +29,13 @@
 //
 //   R1  `@/registry/base-nova/ui/<x>` -> `@/components/ui/<x>.js`
 //       (registry-internal path -> repo alias, ESM .js suffix per repo law).
-//   R2  `<IconPlaceholder lucide="XIcon" ... />` -> `<X />` imported from
-//       the repo icons system (`../../icons/index.js`). The lucide attribute
-//       names the icon; the `Icon` suffix is the registry's own convention.
-//       A className on the placeholder survives (minus cn-* tokens via R4).
-//       Fails loudly if the icon has no apps/web/src/icons/<Name>.tsx.
+//   R2  `<IconPlaceholder lucide="XIcon" ... />` -> `<XIcon />` imported from
+//       `lucide-react`. components.json declares iconLibrary=lucide, and the
+//       #982 drift audit ruled the generated icon seam a visual skin (its
+//       strokeWidth 2.5 / 14px defaults are not lucide-equivalent), so
+//       registry items consume lucide-react directly (#1003, map #980). The
+//       lucide attribute is the export name verbatim. A className on the
+//       placeholder survives (minus cn-* tokens via R4).
 //   R3  `"use client"` dropped — components.json sets rsc:false, exactly the
 //       condition under which `shadcn add` strips the directive itself.
 //   R4  `cn-*` class tokens dropped — those utilities live in shadcn's own
@@ -53,7 +55,8 @@
 //
 // Usage:
 //   node scripts/ui-registry-refresh.mjs                # all manifest+detected items
-//   node scripts/ui-registry-refresh.mjs --items a,b    # subset
+//   node scripts/ui-registry-refresh.mjs --items a,b    # subset (merges into
+//                                                       # the existing snapshot)
 //   node scripts/ui-registry-refresh.mjs --cli shadcn@X # override the pin (recorded)
 //   node scripts/ui-registry-refresh.mjs --skip-detect  # skip `info --json` cross-check
 //
@@ -69,7 +72,6 @@ import { hashFile, normalizedHash } from './ui-normalize.mjs';
 const REPO_ROOT = resolve(import.meta.dirname, '..');
 const WEB_DIR = join(REPO_ROOT, 'apps/web');
 const UI_DIR = join(WEB_DIR, 'src/components/ui');
-const ICONS_DIR = join(WEB_DIR, 'src/icons');
 const SNAPSHOT_PATH = join(REPO_ROOT, 'scripts/ui-upstream-snapshots.json');
 const SNAPSHOT_REL = 'scripts/ui-upstream-snapshots.json';
 const REGISTRY_PATH = join(REPO_ROOT, 'scripts/ui-registry.json');
@@ -81,7 +83,7 @@ const CLI_PIN = 'shadcn@4.21.3';
 
 const REWRITE_NOTES = [
   'R1 @/registry/base-nova/ui/<x> -> @/components/ui/<x>.js',
-  'R2 <IconPlaceholder lucide="XIcon"> -> <X> from ../../icons/index.js',
+  'R2 <IconPlaceholder lucide="XIcon"> -> <XIcon> from lucide-react (iconLibrary contract)',
   'R3 "use client" dropped (components.json rsc:false)',
   'R4 cn-* class tokens dropped (shadcn-hosted utilities not vendored; dropped tokens printed)',
   'R5 import type * as React added when React. referenced without a react import',
@@ -132,33 +134,25 @@ function rewriteIconPlaceholders(content, itemName, warnLog) {
   const icons = new Set();
   let unresolved = false;
   const rewritten = content.replace(/<IconPlaceholder\b([^>]*?)\/>/gs, (match, attrs) => {
-    const lucide = /lucide="([A-Za-z0-9]+?)Icon"/.exec(attrs);
+    const lucide = /lucide="([A-Za-z0-9]+)"/.exec(attrs);
     if (!lucide) {
       unresolved = true;
-      warnLog.push(`${itemName}: IconPlaceholder without a lucide="…Icon" attribute kept as-is`);
+      warnLog.push(`${itemName}: IconPlaceholder without a lucide="…" attribute kept as-is`);
       return match;
     }
-    const name = lucide[1];
-    if (!existsSync(join(ICONS_DIR, `${name}.tsx`))) {
-      unresolved = true;
-      warnLog.push(
-        `${itemName}: icon '${name}' has no apps/web/src/icons/${name}.tsx — placeholder kept as-is; the item cannot match a pristine claim`,
-      );
-      return match;
-    }
-    icons.add(name);
+    icons.add(lucide[1]);
     const cls = /className="([^"]*)"/.exec(attrs);
-    return cls ? `<${name} className="${cls[1]}" />` : `<${name} />`;
+    return cls ? `<${lucide[1]} className="${cls[1]}" />` : `<${lucide[1]} />`;
   });
   if (icons.size === 0) return rewritten;
-  const importLine = `import { ${[...icons].sort().join(', ')} } from '../../icons/index.js';\n`;
+  const importLine = `import { ${[...icons].sort().join(', ')} } from 'lucide-react';\n`;
   const placeholderImport = /(import \{ IconPlaceholder \} from "[^"]*icon-placeholder";?\n)/;
   if (unresolved) {
-    // Some placeholders stay: keep their import, add the repo-icon import
+    // Some placeholders stay: keep their import, add the lucide import
     // next to it (biome sorts both into place).
     const replaced = rewritten.replace(placeholderImport, `$1${importLine}`);
     if (replaced === rewritten)
-      die(`${itemName}: repo icons resolved but the IconPlaceholder import line was not found`);
+      die(`${itemName}: lucide icons resolved but the IconPlaceholder import line was not found`);
     return replaced;
   }
   const replaced = rewritten.replace(placeholderImport, importLine);
@@ -222,9 +216,9 @@ function fetchItems(cliSpec, items) {
   try {
     parsed = JSON.parse(raw);
   } catch (err) {
-    die(`\`view\` did not emit JSON: ${err.message}`);
+    throw new Error(`\`view\` did not emit JSON: ${err.message}`);
   }
-  if (!Array.isArray(parsed)) die('`view` output is not a JSON array');
+  if (!Array.isArray(parsed)) throw new Error('`view` output is not a JSON array');
   const byName = new Map();
   for (const item of parsed) {
     if (!item?.name || !Array.isArray(item.files))
@@ -236,9 +230,33 @@ function fetchItems(cliSpec, items) {
     byName.set(item.name, uiFiles[0].content);
   }
   for (const name of items) {
-    if (!byName.has(name)) die(`item '${name}' missing from the view output`);
+    if (!byName.has(name)) throw new Error(`item '${name}' missing from the view output`);
   }
   return byName;
+}
+
+/** The CLI `view` batch truncates stdout at exactly 64KiB (measured in #1003:
+ *  21 items cut mid-string at position 65536, exit 0). Fetch in chunks and
+ *  halve any chunk that comes back truncated; a single item that still fails
+ *  is an operational error. */
+function fetchAllItems(cliSpec, items) {
+  const out = new Map();
+  const grab = (list) => {
+    try {
+      for (const [name, content] of fetchItems(cliSpec, list)) out.set(name, content);
+    } catch (err) {
+      if (list.length === 1) die(err.message);
+      console.log(
+        `[ui-registry-refresh] batch of ${list.length} came back truncated (${String(err.message).slice(0, 90)}) — halving`,
+      );
+      const mid = Math.floor(list.length / 2);
+      grab(list.slice(0, mid));
+      grab(list.slice(mid));
+    }
+  };
+  const CHUNK = 6;
+  for (let i = 0; i < items.length; i += CHUNK) grab(items.slice(i, i + CHUNK));
+  return out;
 }
 
 // --- main --------------------------------------------------------------------
@@ -289,7 +307,7 @@ if (items.length === 0) die('nothing to refresh');
 console.log(
   `[ui-registry-refresh] fetching ${items.length} item(s) via ${cliSpec}: ${items.join(', ')}`,
 );
-const contents = fetchItems(cliSpec, items);
+const contents = fetchAllItems(cliSpec, items);
 
 const droppedCnTokens = [];
 const rewriteWarnings = [];
@@ -329,6 +347,18 @@ try {
     snapshotItems[name] = { hash: normalizedHash(normalized), content: normalized };
   }
 
+  // Subset runs merge into the existing snapshot: items not fetched this time
+  // keep their pinned content. The gate validates every pristine entry against
+  // this file, so dropping unfetched items would redden untouched entries.
+  let priorItems = {};
+  if (existsSync(SNAPSHOT_PATH)) {
+    try {
+      priorItems = JSON.parse(readFileSync(SNAPSHOT_PATH, 'utf8'))?.items ?? {};
+    } catch {
+      priorItems = {}; // a broken snapshot is the gate's problem; this run overwrites it
+    }
+  }
+
   doc = {
     fetchedAt: new Date().toISOString(),
     cli: cliSpec,
@@ -336,9 +366,9 @@ try {
     registryUrlTemplate: 'https://ui.shadcn.com/r/styles/{style}/{name}.json',
     normalization: REWRITE_NOTES,
     items: Object.fromEntries(
-      Object.keys(snapshotItems)
+      Object.keys({ ...priorItems, ...snapshotItems })
         .sort()
-        .map((k) => [k, snapshotItems[k]]),
+        .map((k) => [k, snapshotItems[k] ?? priorItems[k]]),
     ),
   };
   writeFileSync(SNAPSHOT_PATH, `${JSON.stringify(doc, null, 2)}\n`);

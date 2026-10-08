@@ -76,13 +76,17 @@ export type CreateProjectBody = z.infer<typeof createProjectBodySchema>;
 // code；server 校验抛 code，web 按 code 分译，词汇三端同源）———————————————
 
 /** `POST /api/projects kind=local` 校验 400 的 reason 值域（services/git.ts
- * validateLocalRepoPath 抛出；required 态 = body 形状缺失，不分类）。 */
+ * validateLocalRepoPath 抛出；required 态 = body 形状缺失，不分类）。
+ * #1030 起读面同词表复用：local 项目文件读端点族（tree/file/…）对
+ * localPath 失格抛 404 + 同名 reason（not_found/not_git；not_absolute
+ * 只属创建面），web 两面共用一套分译。 */
 export const PROJECT_LOCAL_ERROR_REASONS = ['not_found', 'not_git', 'not_absolute'] as const;
 export type LocalErrorReason = (typeof PROJECT_LOCAL_ERROR_REASONS)[number];
 
 /** reason → zh 分译键（web t() 的 zh-CN 权威键，en 词典以同键收编；#386
  *  前这些键散落在 project-new-page 的子串匹配分支里，收编为映射单源——
- *  键集恒等于词表，词表扩族漏译 = 编译期红）。 */
+ *  键集恒等于词表，词表扩族漏译 = 编译期红）。消费方：创建面内联错误行
+ *  （project-new-page）+ local 读面不可达降级行（project-page，#1030）。 */
 export const LOCAL_ERROR_REASON_COPY: LocalErrorReasonMap<string> = {
   not_found: '路径不存在',
   not_git: '不是 git 仓库',
@@ -90,8 +94,8 @@ export const LOCAL_ERROR_REASON_COPY: LocalErrorReasonMap<string> = {
 };
 
 /** 分类错误的 wire 封套：错误形状仍是 `{error}` 单形状（r5 §1），可分类的
- * 400 额外携带 `reason`——消费方以 `reason in map` 判别，缺键 = 未分类，
- * 降级为 error 原文直透。 */
+ * 错误面额外携带 `reason`（#1030 起不限 400——local 读面 404 同形携带）——
+ * 消费方以 `reason in map` 判别，缺键 = 未分类，降级为 error 原文直透。 */
 export type LocalErrorBody = { error: string; reason?: LocalErrorReason };
 
 /** reason → 分译键的映射形状：键集恒等于词表（Record 全集约束——server 词表

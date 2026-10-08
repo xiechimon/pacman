@@ -21,7 +21,7 @@
 // #944 正典表执行（spec/22 §5.1/§5.3/§5.4）：老 ui/input 六处 →
 // components/ui Input（36px→h-8 32px，§2.6-1，getByLabel/placeholder 载体
 // 不动）；.dlg-form* 族 → utility 等值迁移；.dlg-provider-create → Button
-// brand w-full；.dlg-provider-model-add / -back → Button ghost（§5.4 配方：
+// default w-full；.dlg-provider-model-add / -back → Button ghost（§5.4 配方：
 // 贴左、无框、secondary 墨）；.dlg-form-seg/.dlg-provider-seg-tab → Tabs 件
 // default 档（block 形态 = TabsList w-full + TabsTrigger flex-1，选中态载体
 // = role=tab + aria-selected，data-active 断言退役）；.dlg-provider-* per-face
@@ -254,12 +254,7 @@ export function CreateProviderDialog({
       footer={
         view === 'form' ? (
           <div className="flex flex-col px-4 pb-4">
-            <Button
-              variant="brand"
-              className="w-full"
-              disabled={!ready || pending === true}
-              onClick={submit}
-            >
+            <Button className="w-full" disabled={!ready || pending === true} onClick={submit}>
               {t('添加模型服务')}
             </Button>
           </div>
@@ -404,19 +399,21 @@ export function CreateProviderDialog({
             placeholder={t('无密钥网关可留空')}
           />
           <div className="flex items-center gap-2">
-            {/* XMON-72：收口 components/ui/checkbox 原语。改之前 .dlg-provider-check
-                藏了 input 但白勾无条件渲染——未选中态在空 tile 上露勾。id 保留：
-                provider-add-dialog.spec 的 pin 骑它。 */}
-            <Checkbox
-              id="dlg-provider-authheader"
-              checked={authHeader}
-              onCheckedChange={setAuthHeader}
-              label={t('以 Authorization: Bearer 请求头发送 API 密钥')}
-            >
+            {/* XMON-72：收口 components/ui/checkbox 原语（#1003 起 = registry
+                同源件，行盒由消费点 label 承载）。id 保留：Base UI 契约 id 落
+                隐藏原生 input，provider-add-dialog.spec 的 pin 骑它。 */}
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
+            <label className="inline-flex cursor-pointer items-center gap-2">
+              <Checkbox
+                id="dlg-provider-authheader"
+                checked={authHeader}
+                onCheckedChange={setAuthHeader}
+                aria-label={t('以 Authorization: Bearer 请求头发送 API 密钥')}
+              />
               <span className="text-[13px] text-(--foreground)">
                 {t('以 Authorization: Bearer 请求头发送 API 密钥')}
               </span>
-            </Checkbox>
+            </label>
           </div>
           <p className={NOTE_CLS}>{t('密钥将加密存储，保存后无法再次查看。')}</p>
           <div className={LABEL_CLS}>{t('模型（可选）')}</div>

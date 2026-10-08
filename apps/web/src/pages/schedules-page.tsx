@@ -431,7 +431,7 @@ function ScheduleForm({
           </div>
           <footer className="flex items-center justify-end gap-2 px-4 pt-3 pb-[13px]">
             {/* XMON-25 收编：取消 = ghost（surface-secondary 底皮按七通道律
-                钉回静息值），保存 = brand（--card-button 实底的等价迁移位）。 */}
+                钉回静息值），保存 = default（等价迁移位）。 */}
             <Button
               variant="ghost"
               className="sched-form-cancel h-[30px] cursor-pointer rounded-none border-none bg-(--secondary) px-4 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) active:not-aria-[haspopup]:translate-y-0"
@@ -440,7 +440,6 @@ function ScheduleForm({
               {t('取消')}
             </Button>
             <Button
-              variant="brand"
               className="h-[30px] cursor-pointer rounded-none border-none px-4 text-[13px] font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
               onClick={live?.onSave}
             >
@@ -543,11 +542,10 @@ export function SchedulesPage() {
               )}
             </p>
             <div className="mt-5 flex items-center">
-              {/* XMON-25 收编：brand（--card-button 实底等价迁移位）；75×30
+              {/* XMON-25 收编：default（等价迁移位）；75×30
                   几何与 cursor 迁 utility。sched-empty-new 类名留存 =
                   dead-buttons 跨域别名。 */}
               <Button
-                variant="brand"
                 className="sched-empty-new h-[30px] w-[75px] cursor-pointer rounded-none border-none p-0 text-[13px] font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
                 onClick={live ? () => setFormOpen(true) : undefined}
               >

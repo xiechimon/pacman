@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { stubNotification } from './helpers.js';
 
 // Issue #114 acceptance: the 看板顶部通知引导条 (r2 §1.3 / 02 §9.1) shows
 // while Notification.permission === 'default', the 开启 button drives
@@ -15,42 +16,6 @@ import { expect, type Page, test } from '@playwright/test';
 // #943/#910 重钉：banner 的载体 = region role（<section aria-label=标题>），
 // 三段文案走一级 text，开启钮走 role+name——.board-notify-banner* 类名钉
 // 退役（board.css 清零，类名按 §5.0 别名残留律留在 DOM）。
-
-declare global {
-  interface Window {
-    __permCalls: number;
-  }
-}
-
-/** Replace window.Notification: permission reads `initial` until
- *  requestPermission() settles it to `resolution` (mirroring the real
- *  API, where the property reflects the decision), counting calls. */
-function stubNotification(
-  page: Page,
-  initial: string,
-  resolution: string,
-) {
-  return page.addInitScript(
-    ({ p, r }) => {
-      let perm = p;
-      window.__permCalls = 0;
-      Object.defineProperty(window, 'Notification', {
-        configurable: true,
-        value: {
-          get permission() {
-            return perm;
-          },
-          requestPermission() {
-            window.__permCalls++;
-            perm = r;
-            return Promise.resolve(r);
-          },
-        },
-      });
-    },
-    { p: initial, r: resolution },
-  );
-}
 
 const banner = (page: Page) => page.getByRole('region', { name: '浏览器通知未开启' });
 
