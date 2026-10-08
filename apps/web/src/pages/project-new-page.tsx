@@ -75,13 +75,18 @@ const REPO_TRIGGER_CLS = 'flex-1 justify-between font-normal';
  *  三角随手写壳退役；消费点只留布局位——宽随锚（--anchor-width，
  *  Positioner 自定义属性）+ 原面最小宽 220。data-testid = 面板焦点判定
  *  与 e2e 的二级载体（面板语义由内层 role=listbox 承载）。 */
-const PICKER_PLATE_CLS = 'w-(--anchor-width) min-w-[220px]';
+// 板宽 = 锚（触发钮）宽 + swap 钮位（32+8）= 旧 inset-x-0 的 field wrap 全跨：
+// 窄于 wrap 时 wrap 同行的提交钮会从板右缘露出深色残块（#1061 实审截图点名）。
+const PICKER_PLATE_CLS = 'w-[calc(var(--anchor-width)+40px)] min-w-[220px]';
 
 /** picker 仓库行：ghost 件默认形态（hover 涂底 = registry 可供性），只留
  *  布局位；whitespace-normal 复原长 owner/repo 的换行面（base nowrap 会
  *  禁掉）。键盘契约（roving/typeahead/Enter 即选即关）在下方手搓面不变。 */
+// 焦点/选中指示走 registry 菜单行词汇（focus:bg-accent + outline-hidden，
+// dropdown-menu item 同形）——Button 基类的 border-ring + ring-3 在板内行上
+// 过重（#1061 实审点名「描边+阴影偏重」）。
 const GH_ROW_CLS =
-  'h-auto w-full cursor-pointer justify-start px-2 py-1.5 text-left font-normal whitespace-normal';
+  'h-auto w-full cursor-pointer justify-start px-2 py-1.5 text-left font-normal whitespace-normal outline-hidden focus:bg-accent focus:text-accent-foreground focus-visible:border-transparent focus-visible:ring-0';
 
 /** 兜底链接钮：registry link 变体（手写 tertiary 下划线配方退役）；
  *  体级 mt-2 / picker 内 mt-0+px-1 的位差由消费点补。 */
@@ -742,11 +747,12 @@ export function ProjectNewPage() {
                     {(reposQ.error as Error).message}
                   </div>
                 ) : null}
-                {/* picker 内的兜底链接贴 plate 内边距（原 picker 上下文覆写：
-                mt-0 + px-1）。 */}
+                {/* picker 内的兜底行与 repo 行同族（ghost 行钮几何/字重，
+                2026-10-08 复核：link 件 text-xs+font-medium 在行表里读作
+                异族）；语义仍是切手动面的动作，故留在 listbox 外。 */}
                 <Button
-                  variant="link"
-                  className={`${GH_LINK_CLS} mt-0 px-1`}
+                  variant="ghost"
+                  className={GH_ROW_CLS}
                   onClick={() => {
                     setPickerOpen(false);
                     setManualRepo(true);
