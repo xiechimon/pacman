@@ -1,8 +1,8 @@
 # Probe dump — old baseline → new measured (#921)
 
-Run 2026-10-08T15:15:36.896Z · commit `d62bc480` · port 8397 · playwright 1.63.0 · workers 4
+Run 2026-10-08T16:01:01.985Z · commit `69adbb37` · port 8397 · playwright 1.63.0 · workers 4
 
-Specs: chief-panel chief-stream-markdown chief-send-fallback chief-composer-tools chief-drawer-slash chief-drawer-model chief-fab chief-settings agent-identity-chip (9 files) · tests 99 passed / 2 failed
+Specs: chief-panel chief-stream-markdown chief-send-fallback chief-composer-tools chief-drawer-slash chief-drawer-model chief-fab chief-settings agent-identity-chip (9 files) · tests 102 passed / 0 failed
 
 ## Coverage
 
@@ -14,29 +14,13 @@ Enumerated = static scan of spec source. Collected = distinct runtime call sites
 | probe-carrying evaluate/waitForFunction call sites | 23 | 24 |
 | .boundingBox() call sites | 24 | 24 |
 | .toHaveCSS() call sites | 2 | 2 |
-| visual-matcher assertion sites | 118 | 137 joined |
+| visual-matcher assertion sites | 120 | 142 joined |
 
-Comparison rows: 119 — KEPT 115, DRIFT 1, NOT-RUN 3, VIOLATION 0, other 0.
+Comparison rows: 121 — KEPT 121, DRIFT 0, NOT-RUN 0, VIOLATION 0, other 0.
 
 Review procedure (#910 裁定 5): every DRIFT row is either expected drift (the new canon — re-pin the spec inline value to “new measured”) or a suspected regression (fix the code, keep the baseline). KEPT rows need no action. NOT-RUN rows are assertion sites whose test failed earlier, was skipped, or was filtered out. The `note` column flags values whose source notation is not rgb/hex: `color(srgb …)` is folded to rgba for comparison (re-pin should write the rgb/hex form); oklch/lab/lch and non-sRGB `color()` cannot fold under the #411 contract and are flagged VIOLATION, never converted.
 
-## DRIFT — baseline no longer holds; classify each row (1)
-
-Expected drift → re-pin the spec value to “new measured”. Suspected regression → fix the code, keep the baseline.
-
-| spec | line | matcher | old baseline | new measured | note | test |
-| --- | --- | --- | --- | --- | --- | --- |
-| chief-panel.spec.ts | 304 | toBe | 120 | 60 | — | composer keeps one fixed size whether or not a draft is restored (XMON-102) |
-
-## NOT-RUN — no runtime record for this assertion site (3)
-
-| spec | line | matcher | old baseline | new measured | note | test |
-| --- | --- | --- | --- | --- | --- | --- |
-| chief-panel.spec.ts | 308 | toBe | 60px | — | — |  |
-| chief-panel.spec.ts | 309 | toBe | 60px | — | — |  |
-| chief-panel.spec.ts | 310 | toBe | auto | — | — |  |
-
-## KEPT — baseline holds on this build (115)
+## KEPT — baseline holds on this build (121)
 
 | spec | line | matcher | old baseline | new measured | note | test |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -70,7 +54,7 @@ Expected drift → re-pin the spec value to “new measured”. Suspected regres
 | chief-drawer-slash.spec.ts | 174 | toBe | 0 | 0 | — | Tab completes without running; Enter without highlight sends (F4) |
 | chief-drawer-slash.spec.ts | 179 | toBe | 1 | {"__fn":"() => posts"} | — | Tab completes without running; Enter without highlight sends (F4) |
 | chief-drawer-slash.spec.ts | 191 | toBe | 0 | 0 | — | mid-prompt accept inserts literal text, never runs (F3) |
-| chief-drawer-slash.spec.ts | 211 | toBeGreaterThanOrEqual | ≥ 0 | 229.2230224609375 | — | /help opens the command panel with the drawer builtins |
+| chief-drawer-slash.spec.ts | 211 | toBeGreaterThanOrEqual | ≥ 0 | 228.68968200683594 | — | /help opens the command panel with the drawer builtins |
 | chief-fab.spec.ts | 50 | toEqual | {"width":"40px","height":"40px","right":"8px","bottom":"8px","position":"fixed"} | {"width":"40px","height":"40px","right":"8px","bottom":"8px","position":"fixed"} | — | the FAB keeps the A0 corner geometry (40x40 @ 8px inset, fixed) |
 | chief-fab.spec.ts | 103 | toBeCloseTo | 40 ±0.5 | 40 | — | bound: the board FAB swaps the glyph for the seeded avatar, badge and geometry stay |
 | chief-fab.spec.ts | 104 | toBeCloseTo | 40 ±0.5 | 40 | — | bound: the board FAB swaps the glyph for the seeded avatar, badge and geometry stay |
@@ -125,6 +109,12 @@ Expected drift → re-pin the spec value to “new measured”. Suspected regres
 | chief-panel.spec.ts | 249 | toBeCloseTo | 712 ±0.5 | 712 | — | detail: the right pane coexists with the floating window (D7 reversed) |
 | chief-panel.spec.ts | 250 | toBeCloseTo | 712 ±0.5 | 712 | — | detail: the right pane coexists with the floating window (D7 reversed) |
 | chief-panel.spec.ts | 256 | toBe | 712 | 712 | — | detail: the right pane coexists with the floating window (D7 reversed) |
+| chief-panel.spec.ts | 315 | toBe | 120 | 120 | — | composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102) |
+| chief-panel.spec.ts | 316 | toBe | 60 | 60 | — | composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102) |
+| chief-panel.spec.ts | 317 | toBe | 120px | 120px | — | composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102) |
+| chief-panel.spec.ts | 318 | toBe | 60px | 60px | — | composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102) |
+| chief-panel.spec.ts | 320 | toBe | auto | auto | — | composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102) |
+| chief-panel.spec.ts | 321 | toBe | auto | auto | — | composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102) |
 | chief-send-fallback.spec.ts | 151 | toBe | 1 | {"__fn":"() => posts"} | — | stale slot: send goes out, fallback toast names it, row heals to 默认 |
 | chief-send-fallback.spec.ts | 187 | toBe | 1 | {"__fn":"() => posts"} | — | fresh slot: send goes out with no fallback toast |
 | chief-send-fallback.spec.ts | 191 | toBeGreaterThan | > 0 | {"__fn":"() => chiefGets.length"} | — | fresh slot: send goes out with no fallback toast |
@@ -143,15 +133,15 @@ Expected drift → re-pin the spec value to “new measured”. Suspected regres
 | chief-stream-markdown.spec.ts | 335 | toBe | auto | auto | — | F-R6/R8: 用户行头像 = 真人身份 img（XMON-105 单源），抽屉体可滚动 |
 | chief-stream-markdown.spec.ts | 598 | toBe | 24 | 24 | — | F-R18: 在飞存在行可展开（#822）——点箭头看实时步骤，typing 接管不泄漏 |
 | chief-stream-markdown.spec.ts | 604 | toBe | 1.5 | 1.5 | — | F-R18: 在飞存在行可展开（#822）——点箭头看实时步骤，typing 接管不泄漏 |
-| chief-stream-markdown.spec.ts | 746 | toBe | 44 | 44 | — | F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效 |
-| chief-stream-markdown.spec.ts | 747 | toBe | 14px | 14px | — | F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效 |
-| chief-stream-markdown.spec.ts | 757 | toBe | 0px | 0px | — | F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效 |
-| chief-stream-markdown.spec.ts | 758 | toBe | 0px | 0px | — | F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效 |
-| chief-stream-markdown.spec.ts | 847 | toEqual | {"display":"flex","grow":"1","minW":"0px","imgW":24,"imgH":24,"colRightOfImg":"true","colBesideImg":"true"} | {"__fn":"() => thinking.evaluate(row => {\n      var _row$querySelector;\n      const img = (_row$querySelecto… | — | F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数 |
-| chief-stream-markdown.spec.ts | 864 | toHaveCSS | display: flex | flex | — | F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数 |
-| chief-stream-markdown.spec.ts | 865 | toHaveCSS | flex-grow: 1 | 1 | — | F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数 |
-| chief-stream-markdown.spec.ts | 1073 | toBe | ellipsis | ellipsis | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |
-| chief-stream-markdown.spec.ts | 1074 | toBe | hidden | hidden | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |
-| chief-stream-markdown.spec.ts | 1075 | toBeGreaterThan | > 294 | 774 | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |
-| chief-stream-markdown.spec.ts | 1077 | toBeLessThanOrEqual | ≤ 298 | 298 | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |
-| chief-stream-markdown.spec.ts | 1083 | toBeLessThanOrEqual | ≤ 0 | 0 | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |
+| chief-stream-markdown.spec.ts | 762 | toBe | 44 | 44 | — | F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效 |
+| chief-stream-markdown.spec.ts | 763 | toBe | 14px | 14px | — | F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效 |
+| chief-stream-markdown.spec.ts | 773 | toBe | 0px | 0px | — | F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效 |
+| chief-stream-markdown.spec.ts | 774 | toBe | 0px | 0px | — | F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效 |
+| chief-stream-markdown.spec.ts | 863 | toEqual | {"display":"flex","grow":"1","minW":"0px","imgW":24,"imgH":24,"colRightOfImg":"true","colBesideImg":"true"} | {"__fn":"() => thinking.evaluate(row => {\n      var _row$querySelector;\n      const img = (_row$querySelecto… | — | F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数 |
+| chief-stream-markdown.spec.ts | 880 | toHaveCSS | display: flex | flex | — | F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数 |
+| chief-stream-markdown.spec.ts | 881 | toHaveCSS | flex-grow: 1 | 1 | — | F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数 |
+| chief-stream-markdown.spec.ts | 1089 | toBe | ellipsis | ellipsis | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |
+| chief-stream-markdown.spec.ts | 1090 | toBe | hidden | hidden | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |
+| chief-stream-markdown.spec.ts | 1091 | toBeGreaterThan | > 294 | 774 | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |
+| chief-stream-markdown.spec.ts | 1093 | toBeLessThanOrEqual | ≤ 298 | 298 | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |
+| chief-stream-markdown.spec.ts | 1099 | toBeLessThanOrEqual | ≤ 0 | 0 | — | F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034） |

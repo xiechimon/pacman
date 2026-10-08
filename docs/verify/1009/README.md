@@ -184,7 +184,7 @@ UI 字形 3）。全局色板不重测（#988 双模 109 对 0 fail 封账）。
 
 ## 11. A1 段原型（chat 原语装件 + chief 消息流换装）
 
-> 状态：**原型就绪，等滚动实审**。A0 已合并（squash `99ffb54a`，PR #1062）。
+> 状态：**实审三裁决已回（2026-10-08）→ 施工段完毕，PR #1066 CI 磨绿中**。A0 已合并（squash `99ffb54a`，PR #1062）。
 > A1 范围（票面）：五件原语装件（MessageScroller/Message/Bubble/Attachment/Marker）
 > + 消息流替换 + 滚动模型替换 + 行 id 贯通 + Bubble 默认皮几何中和；
 > jump-to-latest 随原语带入（#991 Q6，实审过目）；composer 输入区不在射程（#991 Q7）。
@@ -271,3 +271,45 @@ MessageAvatar/MessageHeader/MessageFooter/MessageGroup/BubbleGroup/BubbleReactio
 MarkerIcon/Attachment 全族（B 段消费）——头像槽仍走 recipes 单源 span（原语自带
 bg-muted/min-w-8 皮，中和成本高于收益，A2 再裁）；`scroll-fade-b`/`scrollbar-thin`/
 `scrollbar-gutter-stable` 是 shadcn hosted utility 死类（仓未 vendor，零生效零副作用）。
+
+### 11.6 施工段（实审裁决落地 + CI 磨绿，2026-10-08/09）
+
+**实审三裁决（用户「三条都按你的建议」+ 第三条加硬口径）**：
+① jump-to-latest 采纳 registry 默认形态；② reopen 语义采「重新打开落在最新」，
+Multica inert/opacity 载体另开壳票 **#1067**（display:none 物理不可达事实已写进票面，
+本票不做）；③ XMON-102 重钉到 #860 grow 语义，**钉扎值以证据实测读数为准**
+（「截图上是多少就钉多少」，不许钉推定/理论常数）。
+
+**G5 判红与登记偏离（bubble.tsx tinted 档）**：ui-drift-gate G5 抓 pristine 文件里
+上游 tinted 档的相对色 `oklch(from var(--primary) …)`——运行时依赖 --primary、
+折不了静态 token 值，且 #851「颜色走语义槽」无豁免出口。处置 = **不新造 token 槽**
+（协调者明令拿不准就别自拍槽；本处置也没拍）：按 button.tsx 既有偏离先例改写为
+`color-mix(in_oklch, var(--primary) p%, var(--card))` 双 token 混色（同文件上游
+secondary/muted hover 的括号习语），配比按上游 L 目标值（base 0.93 light / 0.30
+dark，hover 0.88 / 0.35）对 #988 实测 token L 值（card 0.9426/0.2553、primary
+0.1706/0.9346）反推：light 2%/8%、dark 7%/14%，四面 |ΔL| ≤ 0.005。账本
+bubble.tsx → **deviated**（第 8 个登记偏离，reason 含完整推导），hash 重冻
+`a1b3b663…`，registry gate + drift gate 双 PASS。与 #988 色板账零冲突（不动任何
+token 值）、与 #1055 品牌墨裁决零冲突（text-foreground 原样，墨槽未挪用）。
+tinted 档本车道零消费（A1 只吃 secondary/ghost）。
+
+**两条重钉账落地（e2e）**：
+- hero 面 `chief-stream` count-0 → 常驻 Content 载体律（D6 同族）：容器 count-1 +
+  Item 零个 + 行载体零个（行为语义「hero 面无流」不动）。
+- XMON-102 → 更名「composer grows with a restored draft to the six-line cap
+  (#860 supersedes XMON-102)」：drafted 120 / empty 60，**值来源 = 实测渲染**
+  （smoke S5/S5b 两行录于 result-a1-fixture-smoke.json，截图对照 a1-04 / a1-01），
+  spec 注释注明非 growCap 常数推定（数值恰合同为实测结果）。overflowY auto 两面保留。
+- 新增 **F-R23**：live 面行 id 贯通 pin——四条 Item 的 data-message-id 逐一
+  对到桩消息 id（m1/m2/m3/m9，存储序）；fixture 面 id 缺省回落 index（S10 已钉）。
+
+**better-colors 增量（模板 v3 第 3 项）**：A1 新合成面 = **零**——user 气泡走
+secondary 档（--secondary 既有槽，A0 册 §8 已双模实测过同槽族）、robot 走 ghost
+（透明底无新对）、marker/jump 钮全既有墨槽；tinted 偏离色零消费不渲染、无可测面。
+故本段不重测（#988 全局 109 对封账 + A0 增量 14 对面不变）。
+
+**收口账面**：本地全量 e2e **849/849**（含 F-R23 新增；main 同期并入 #1007 pages
+大改——全量网兜住零交互红）、根 vitest **2251/2251（206 文件）**、typecheck /
+lint / registry gate / drift gate / inventory 全绿、探针重钉后
+**KEPT 121 / DRIFT 0 / NOT-RUN 0 / VIOLATION 0**（probe-after-a1 重跑覆盖原型态
+dump；三方链 = probe-a1-pre 基线 → 原型 DRIFT 1 → 施工清零）。

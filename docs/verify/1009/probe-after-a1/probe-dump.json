@@ -2,8 +2,8 @@
   "meta": {
     "tool": "probe-dump",
     "ticket": 921,
-    "date": "2026-10-08T15:15:36.896Z",
-    "commit": "d62bc480",
+    "date": "2026-10-08T16:01:01.985Z",
+    "commit": "69adbb37",
     "port": 8397,
     "specs": [
       "chief-panel",
@@ -19,15 +19,15 @@
     "specCount": 9,
     "playwrightVersion": "1.63.0",
     "workers": "4",
-    "testsPassed": 99,
-    "testsFailed": 2
+    "testsPassed": 102,
+    "testsFailed": 0
   },
   "coverage": {
     "styleOccurrences": 25,
     "boxSites": 24,
     "cssSites": 2,
     "evaluateProbeSites": 23,
-    "assertionSites": 118,
+    "assertionSites": 120,
     "collectedStyle": 32,
     "collectedBox": 34,
     "collectedWait": 0,
@@ -35,8 +35,8 @@
     "collectedStyleSites": 24,
     "collectedBoxSites": 24,
     "collectedCssSites": 2,
-    "assertionRecords": 169,
-    "joinedAssertionSites": 137
+    "assertionRecords": 174,
+    "joinedAssertionSites": 142
   },
   "probeSites": [
     {
@@ -293,31 +293,31 @@
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 292,
+      "line": 303,
       "kind": "box",
       "api": "boundingBox"
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 296,
+      "line": 307,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 296,
+      "line": 307,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 297,
+      "line": 308,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 297,
+      "line": 308,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
@@ -413,73 +413,73 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 742,
+      "line": 758,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 744,
+      "line": 760,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 753,
+      "line": 769,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 754,
+      "line": 770,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 755,
+      "line": 771,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 828,
+      "line": 844,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 833,
+      "line": 849,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 835,
+      "line": 851,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 864,
+      "line": 880,
       "kind": "css",
       "api": "toHaveCSS"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 865,
+      "line": 881,
       "kind": "css",
       "api": "toHaveCSS"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 1056,
+      "line": 1072,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 1058,
+      "line": 1074,
       "kind": "style",
       "api": "getComputedStyle"
     }
@@ -663,10 +663,10 @@
       "l": 209,
       "loc": ".slash-help",
       "v": {
-        "x": 522.2338256835938,
-        "y": 229.2230224609375,
-        "width": 395.5323486328125,
-        "height": 216.553955078125
+        "x": 521.2597045898438,
+        "y": 228.68968200683594,
+        "width": 397.4805908203125,
+        "height": 217.6206512451172
       },
       "tt": "/help opens the command panel with the drawer builtins"
     },
@@ -867,16 +867,6 @@
     },
     {
       "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-settings.spec.ts",
-      "l": 73,
-      "loc": "internal:role=dialog[name=\"选择总管 Agent\"i] >> internal:attr=[placeholder=\"搜索 Agent…\"i]",
-      "v": 16,
-      "tt": "agent dialog search keeps its own 16px inset (#872 blast radius)"
-    },
-    {
-      "k": "p",
       "p": "box",
       "cls": "Locator",
       "f": "chief-panel.spec.ts",
@@ -904,6 +894,16 @@
         "height": 732
       },
       "tt": "pages: the main column never narrows while the window is open"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-settings.spec.ts",
+      "l": 73,
+      "loc": "internal:role=dialog[name=\"选择总管 Agent\"i] >> internal:attr=[placeholder=\"搜索 Agent…\"i]",
+      "v": 16,
+      "tt": "agent dialog search keeps its own 16px inset (#872 blast radius)"
     },
     {
       "k": "p",
@@ -1137,10 +1137,80 @@
     },
     {
       "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 303,
+      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
+      "v": {
+        "x": 1081,
+        "y": 542,
+        "width": 322,
+        "height": 120
+      },
+      "tt": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 307,
+      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
+      "v": "120px",
+      "tt": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 308,
+      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
+      "v": "auto",
+      "tt": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 303,
+      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
+      "v": {
+        "x": 1081,
+        "y": 602,
+        "width": 322,
+        "height": 60
+      },
+      "tt": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 307,
+      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
+      "v": "60px",
+      "tt": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 308,
+      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
+      "v": "auto",
+      "tt": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)"
+    },
+    {
+      "k": "p",
       "p": "style",
       "cls": "Locator",
       "f": "chief-stream-markdown.spec.ts",
-      "l": 742,
+      "l": 758,
       "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-bubble\"s] >> internal:has-text=\"收到，谢谢\"i",
       "v": {
         "h": 44,
@@ -1153,67 +1223,13 @@
       "p": "style",
       "cls": "Locator",
       "f": "chief-stream-markdown.spec.ts",
-      "l": 753,
+      "l": 769,
       "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-bubble\"s] >> internal:has-text=\"echo before-and-after\"i >> pre.chat-md-code",
       "v": {
         "top": "0px",
         "bottom": "0px"
       },
       "tt": "F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-stream-markdown.spec.ts",
-      "l": 828,
-      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
-      "v": {
-        "display": "flex",
-        "grow": "1",
-        "minW": "0px",
-        "imgW": 23.0655517578125,
-        "imgH": 23.065460205078125,
-        "colRightOfImg": true,
-        "colBesideImg": true
-      },
-      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-stream-markdown.spec.ts",
-      "l": 828,
-      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
-      "v": {
-        "display": "flex",
-        "grow": "1",
-        "minW": "0px",
-        "imgW": 23.909912109375,
-        "imgH": 23.909942626953125,
-        "colRightOfImg": true,
-        "colBesideImg": true
-      },
-      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-stream-markdown.spec.ts",
-      "l": 828,
-      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
-      "v": {
-        "display": "flex",
-        "grow": "1",
-        "minW": "0px",
-        "imgW": 24,
-        "imgH": 24,
-        "colRightOfImg": true,
-        "colBesideImg": true
-      },
-      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
     },
     {
       "k": "p",
@@ -1259,34 +1275,54 @@
       "p": "style",
       "cls": "Locator",
       "f": "chief-stream-markdown.spec.ts",
-      "l": 1056,
-      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"用户只是打了个招呼「你好」，没有\"i >> internal:role=button[name=\"展开思考\"i]",
+      "l": 844,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
       "v": {
-        "textOverflow": "ellipsis",
-        "overflowX": "hidden",
-        "labelClient": 294,
-        "labelScroll": 774,
-        "btnW": 298,
-        "colW": 298
+        "display": "flex",
+        "grow": "1",
+        "minW": "0px",
+        "imgW": 23.0655517578125,
+        "imgH": 23.06561279296875,
+        "colRightOfImg": true,
+        "colBesideImg": true
       },
-      "tt": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）"
+      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
     },
     {
       "k": "p",
       "p": "style",
       "cls": "Locator",
       "f": "chief-stream-markdown.spec.ts",
-      "l": 1056,
-      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"> The user just \"i >> internal:role=button[name=\"展开思考\"i]",
+      "l": 844,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
       "v": {
-        "textOverflow": "ellipsis",
-        "overflowX": "hidden",
-        "labelClient": 294,
-        "labelScroll": 699,
-        "btnW": 300,
-        "colW": 300
+        "display": "flex",
+        "grow": "1",
+        "minW": "0px",
+        "imgW": 23.909912109375,
+        "imgH": 23.90997314453125,
+        "colRightOfImg": true,
+        "colBesideImg": true
       },
-      "tt": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）"
+      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 844,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
+      "v": {
+        "display": "flex",
+        "grow": "1",
+        "minW": "0px",
+        "imgW": 24,
+        "imgH": 24,
+        "colRightOfImg": true,
+        "colBesideImg": true
+      },
+      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
     },
     {
       "k": "p",
@@ -1320,38 +1356,37 @@
     },
     {
       "k": "p",
-      "p": "box",
+      "p": "style",
       "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 292,
-      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 1072,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"用户只是打了个招呼「你好」，没有\"i >> internal:role=button[name=\"展开思考\"i]",
       "v": {
-        "x": 1081,
-        "y": 542,
-        "width": 322,
-        "height": 120
+        "textOverflow": "ellipsis",
+        "overflowX": "hidden",
+        "labelClient": 294,
+        "labelScroll": 774,
+        "btnW": 298,
+        "colW": 298
       },
-      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
+      "tt": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）"
     },
     {
       "k": "p",
       "p": "style",
       "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 296,
-      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
-      "v": "120px",
-      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 297,
-      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
-      "v": "auto",
-      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 1072,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"> The user just \"i >> internal:role=button[name=\"展开思考\"i]",
+      "v": {
+        "textOverflow": "ellipsis",
+        "overflowX": "hidden",
+        "labelClient": 294,
+        "labelScroll": 699,
+        "btnW": 300,
+        "colW": 300
+      },
+      "tt": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）"
     },
     {
       "k": "p",
@@ -1378,41 +1413,6 @@
         "contained": true
       },
       "tt": "空态卡 centered and growth-proof: memo matches watches (#772)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 292,
-      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
-      "v": {
-        "x": 1081,
-        "y": 602,
-        "width": 322,
-        "height": 60
-      },
-      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 296,
-      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
-      "v": "60px",
-      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 297,
-      "loc": "internal:testid=[data-testid=\"chief-composer-input\"s]",
-      "v": "auto",
-      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
     }
   ],
   "assertions": [
@@ -2052,14 +2052,14 @@
       "source": "expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);",
       "testTitle": "/help opens the command panel with the drawer builtins",
       "old": "≥ 0",
-      "new": "229.2230224609375",
+      "new": "228.68968200683594",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         0
       ],
-      "rawNew": 229.2230224609375
+      "rawNew": 228.68968200683594
     },
     {
       "file": "chief-fab.spec.ts",
@@ -3088,69 +3088,109 @@
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 304,
+      "line": 315,
       "matcher": "toBe",
       "negated": false,
-      "source": "expect(empty.height).toBe(drafted.height);",
-      "testTitle": "composer keeps one fixed size whether or not a draft is restored (XMON-102)",
+      "source": "expect(drafted.height).toBe(120);",
+      "testTitle": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)",
       "old": "120",
-      "new": "60",
-      "status": "DRIFT",
+      "new": "120",
+      "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         120
       ],
+      "rawNew": 120
+    },
+    {
+      "file": "chief-panel.spec.ts",
+      "line": 316,
+      "matcher": "toBe",
+      "negated": false,
+      "source": "expect(empty.height).toBe(60);",
+      "testTitle": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)",
+      "old": "60",
+      "new": "60",
+      "status": "KEPT",
+      "violation": null,
+      "note": null,
+      "rawOld": [
+        60
+      ],
       "rawNew": 60
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 308,
+      "line": 317,
       "matcher": "toBe",
       "negated": false,
-      "source": "expect(drafted.cssHeight).toBe('60px');",
-      "testTitle": null,
-      "old": "60px",
-      "new": null,
-      "status": "NOT-RUN",
+      "source": "expect(drafted.cssHeight).toBe('120px');",
+      "testTitle": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)",
+      "old": "120px",
+      "new": "120px",
+      "status": "KEPT",
       "violation": null,
       "note": null,
-      "rawOld": "60px",
-      "rawNew": null
+      "rawOld": [
+        "120px"
+      ],
+      "rawNew": "120px"
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 309,
+      "line": 318,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(empty.cssHeight).toBe('60px');",
-      "testTitle": null,
+      "testTitle": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)",
       "old": "60px",
-      "new": null,
-      "status": "NOT-RUN",
+      "new": "60px",
+      "status": "KEPT",
       "violation": null,
       "note": null,
-      "rawOld": "60px",
-      "rawNew": null
+      "rawOld": [
+        "60px"
+      ],
+      "rawNew": "60px"
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 310,
+      "line": 320,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(drafted.overflowY).toBe('auto');",
-      "testTitle": null,
+      "testTitle": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)",
       "old": "auto",
-      "new": null,
-      "status": "NOT-RUN",
+      "new": "auto",
+      "status": "KEPT",
       "violation": null,
       "note": null,
-      "rawOld": "auto",
-      "rawNew": null
+      "rawOld": [
+        "auto"
+      ],
+      "rawNew": "auto"
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 328,
+      "line": 321,
+      "matcher": "toBe",
+      "negated": false,
+      "source": "expect(empty.overflowY).toBe('auto');",
+      "testTitle": "composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)",
+      "old": "auto",
+      "new": "auto",
+      "status": "KEPT",
+      "violation": null,
+      "note": null,
+      "rawOld": [
+        "auto"
+      ],
+      "rawNew": "auto"
+    },
+    {
+      "file": "chief-panel.spec.ts",
+      "line": 339,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(await placeholderAt('113')).toBe('向 Agent 补充说明，执行过程中即可送达');",
@@ -3167,7 +3207,7 @@
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 329,
+      "line": 340,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(await placeholderAt('111')).toBe('有什么可以帮你的？');",
@@ -3184,7 +3224,7 @@
     },
     {
       "file": "chief-panel.spec.ts",
-      "line": 330,
+      "line": 341,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(await placeholderAt('114')).toBe('有什么可以帮你的？');",
@@ -3680,7 +3720,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 746,
+      "line": 762,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(geo.h).toBe(44); // 10px padding ×2 + 24px 行盒（现状逐像素同值）",
@@ -3697,7 +3737,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 747,
+      "line": 763,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(geo.font).toBe('14px');",
@@ -3714,7 +3754,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 757,
+      "line": 773,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(margins.top).toBe('0px');",
@@ -3731,7 +3771,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 758,
+      "line": 774,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(margins.bottom).toBe('0px');",
@@ -3748,7 +3788,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 847,
+      "line": 863,
       "matcher": "toEqual",
       "negated": false,
       "source": ".toEqual({",
@@ -3775,7 +3815,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 864,
+      "line": 880,
       "matcher": "toHaveCSS",
       "negated": false,
       "source": "await expect(toolRow).toHaveCSS('display', 'flex');",
@@ -3793,7 +3833,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 865,
+      "line": 881,
       "matcher": "toHaveCSS",
       "negated": false,
       "source": "await expect(toolRow.locator('> div')).toHaveCSS('flex-grow', '1');",
@@ -3811,7 +3851,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 1073,
+      "line": 1089,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(m.textOverflow, tag).toBe('ellipsis');",
@@ -3828,7 +3868,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 1074,
+      "line": 1090,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(m.overflowX, tag).toBe('hidden');",
@@ -3845,7 +3885,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 1075,
+      "line": 1091,
       "matcher": "toBeGreaterThan",
       "negated": false,
       "source": "expect(m.labelScroll, tag).toBeGreaterThan(m.labelClient);",
@@ -3862,7 +3902,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 1077,
+      "line": 1093,
       "matcher": "toBeLessThanOrEqual",
       "negated": false,
       "source": "expect(m.btnW, tag).toBeLessThanOrEqual(m.colW);",
@@ -3879,7 +3919,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 1083,
+      "line": 1099,
       "matcher": "toBeLessThanOrEqual",
       "negated": false,
       "source": "expect(pageOverflow).toBeLessThanOrEqual(0);",

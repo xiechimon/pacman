@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "d62bc4803b247b3854868aa050b0d1c562ab84d2",
+    "sha": "69adbb37b7ec850e9e59e9ba99d9cd5d0c1862b7",
     "date": "2026-10-08"
   },
   "scope": "apps/web/src/components/ui (#989, map #980). kind registry = shadcn base-nova registry item (upstreamItem names it; status pristine = hash must equal the vendored snapshot in scripts/ui-upstream-snapshots.json, deviated = registered divergence with reason). kind adapter = local composition over registry items or a repo-specific primitive (reason required). hash = sha256 over the comment-stripped, line-normalized file content (scripts/ui-normalize.mjs); comment-only edits do not move it, code edits always do. Scope is exactly this directory — domain-directory skins are ui-debt-gate/ui-drift-gate territory.",
@@ -37,8 +37,9 @@
     "bubble.tsx": {
       "kind": "registry",
       "upstreamItem": "bubble",
-      "status": "pristine",
-      "hash": "b6812e3fd3a90902554bc7456f96a6c3bc14a27a607d8427621f77849ec533f0"
+      "status": "deviated",
+      "hash": "a1b3b6633543a769b62ba2f931ed5c60bf2d2ed328c91818ed9826c2b034dd0e",
+      "reason": "#851 G5 / map #980 oklch-fold contract: upstream tinted variant uses relative-color oklch(from var(--primary) L C h) — runtime-dependent, not foldable to a static token value, raw [oklch red under G5. Rewritten as two-token color-mix(in oklch) washes on the file's own bracket idiom (upstream secondary/muted hovers); per-theme ratios derived from the upstream L targets (base 0.93 light / 0.30 dark, hover 0.88 / 0.35) against measured #988 token L values (card 0.9426/0.2553, primary 0.1706/0.9346): 2%/8% light, 7%/14% dark, |dL| <= 0.005 all four faces. No new token slot minted; zero consumers at registration (#1009 A1 consumes secondary/ghost only)."
     },
     "button.tsx": {
       "kind": "registry",

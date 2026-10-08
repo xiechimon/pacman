@@ -220,13 +220,26 @@
     },
     {
       "group": "S5 hero",
-      "name": "composer 草稿面 = #860 grow 律 120px 顶格（XMON-102 固定轨已被取代；盒内滚动保留）",
+      "name": "composer 草稿面 = #860 grow 律顶格（XMON-102 固定轨已被取代；盒内滚动保留）",
       "actual": {
         "h": "120px",
         "ov": "auto"
       },
       "expected": {
         "h": "120px",
+        "ov": "auto"
+      },
+      "ok": true
+    },
+    {
+      "group": "S5b 空面",
+      "name": "composer 空草稿面 = 3 行基座轨（读数以本行为准，非理论常数）",
+      "actual": {
+        "h": "60px",
+        "ov": "auto"
+      },
+      "expected": {
+        "h": "60px",
         "ov": "auto"
       },
       "ok": true

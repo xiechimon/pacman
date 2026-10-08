@@ -733,6 +733,22 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     expect(clip).toBe(MD_USER);
   });
 
+  test('F-R23: 行 id 贯通——live 行 Item 携源 chief_message id（messageId），顺序 = 存储序', async ({
+    page,
+  }) => {
+    const drawer = await boot(page);
+    // #1009 A1 行 id 贯通（票面「mapper 视图侧」；wire 零触碰——ADR 0011
+    // 封段在写入端）：live 行的 React key 与 MessageScroller messageId =
+    // 源 chief_message id，顺序 = createdAt 存储序（m1/m2/m3/m9，本 boot 面
+    // 四行全 user/robot——id 缺省的 fixture 捕获形回落 index，S10 另钉）。
+    const items = drawer.locator('[data-slot="message-scroller-item"]');
+    await expect(items).toHaveCount(4);
+    await expect(items.nth(0)).toHaveAttribute('data-message-id', 'm1');
+    await expect(items.nth(1)).toHaveAttribute('data-message-id', 'm2');
+    await expect(items.nth(2)).toHaveAttribute('data-message-id', 'm3');
+    await expect(items.nth(3)).toHaveAttribute('data-message-id', 'm9');
+  });
+
   test('F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效', async ({
     page,
   }) => {

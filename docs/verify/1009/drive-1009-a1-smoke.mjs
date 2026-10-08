@@ -245,7 +245,7 @@ check('S5 hero', 'examples 在位、流零行', await page.evaluate(() => ({
 })), { examples: 4, items: 0 });
 check(
   'S5 hero',
-  'composer 草稿面 = #860 grow 律 120px 顶格（XMON-102 固定轨已被取代；盒内滚动保留）',
+  'composer 草稿面 = #860 grow 律顶格（XMON-102 固定轨已被取代；盒内滚动保留）',
   await page.getByTestId('chief-composer-input').evaluate((el) => ({
     h: getComputedStyle(el).height,
     ov: getComputedStyle(el).overflowY,
@@ -253,6 +253,20 @@ check(
   { h: '120px', ov: 'auto' },
 );
 await shot(page, 'a1-04-hero-111.png');
+// S5b：空 composer 面（114）= 基座轨实测值——两条 check 的读数即 XMON-102
+// 重钉（grow 语义）的钉扎值来源（实审裁决 3：「截图上是多少就钉多少」，
+// spec 注释引用本 json 的 S5/S5b 行 + a1-04/a1-01 截图）。
+await page.goto(`${BASE}/app?scenario=114`);
+await settled(page);
+check(
+  'S5b 空面',
+  'composer 空草稿面 = 3 行基座轨（读数以本行为准，非理论常数）',
+  await page.getByTestId('chief-composer-input').evaluate((el) => ({
+    h: getComputedStyle(el).height,
+    ov: getComputedStyle(el).overflowY,
+  })),
+  { h: '60px', ov: 'auto' },
+);
 
 await browser.close();
 writeFileSync(
