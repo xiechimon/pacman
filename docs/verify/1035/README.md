@@ -10,8 +10,8 @@ shell，与 detail-shell D7 的 `--detail-pane-right` 两态同式）。轨道�
 
 | 面 | 结果 |
 |---|---|
-| after（本分支栈 8791/5273） | `drive-1035-zoom-fit.mjs --expect=new` **10/10 PASS** |
-| before（origin/main 一次性 worktree 栈 8793/5275） | `--expect=old` **6/6 PASS**（病灶复现） |
+| after（本分支栈 8791/5273） | `drive-1035-zoom-fit.mjs --expect=new` **9/9 PASS** |
+| before（origin/main 一次性 worktree 栈 8793/5275） | `--expect=old` **5/5 PASS**（病灶复现） |
 | fixture e2e | 新增 `apps/web/e2e/board-zoom-fit.spec.ts` 6 用例；`board-docked-reflow` 10 + `chief-panel` 14 全绿；web 全量 824 passed（E2E_PORT 8403） |
 | 机制实物（编译产物 CSS） | `after/compiled-css-after.txt` vs `before/compiled-css-before.txt` |
 
