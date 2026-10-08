@@ -294,6 +294,29 @@ export function NewTaskDialog({
   const [machineId, setMachineId] = useState<string | null>(() =>
     readRememberedMachine(localStorage),
   );
+  // #1060 手势消费闸（CI 偶发双关的根因位）：非模态 registry Popover 的外点
+  // 自收与 dialog 自己的关闭判定（React 背板 onClick 链、Base UI native
+  // outside-press dismiss → onClose）消费同一次 click；判定读到的是内层关前
+  // 还是关后的 state，取决于 React flush 与监听器注册序——调度竞态，两关全落
+  // 时一次外点把两层一起关（newtask-project-select「outside click closes the
+  // popover layer only」的偶发红即此）。ref 在同一次原生事件分发内同步写入，
+  // 免疫 flush 时序：内层 popover 因 outside-press 自收时置闸，requestClose
+  // 汇流点见闸即收束本次手势（关闸判定必须过 ref 而非 state，state 正是竞态
+  // 的当事方）。清闸交给下一手势的 pointerdown / keydown（capture 相先于新
+  // 手势的任何关闭判定）——不用 0ms 定时器：touch 的 sloppy 档下自收与后续
+  // click 之间隔着宏任务，定时器会提前放闸。
+  const gestureConsumedRef = useRef(false);
+  const markGestureConsumed = () => {
+    if (gestureConsumedRef.current) return;
+    gestureConsumedRef.current = true;
+    const clear = () => {
+      gestureConsumedRef.current = false;
+      document.removeEventListener('pointerdown', clear, true);
+      document.removeEventListener('keydown', clear, true);
+    };
+    document.addEventListener('pointerdown', clear, true);
+    document.addEventListener('keydown', clear, true);
+  };
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
@@ -341,18 +364,70 @@ export function NewTaskDialog({
     returnFocusRef.current = null;
     if (el && el !== document.body && document.contains(el)) el.focus();
   };
+  // #1060 闸位镜像：requestClose 可能经 Base UI store 持有的**旧世代闭包**被
+  // 调（Root 的 onOpenChange prop 同步同样落后于弹层可见），闭包里读 state 会
+  // 拿到旧值——ref 穿透闭包世代：旧闭包也读到当代表。渲染期幂等写（同一渲染
+  // 世代写同一值；弹层 DOM 可见 ⇒ 该世代的写已发生）。
+  const gateRef = useRef({
+    discardOpen: false,
+    pickerOpen: false,
+    projectOpen: false,
+    machineOpen: false,
+    dirty: false,
+  });
+  gateRef.current = { discardOpen, pickerOpen, projectOpen, machineOpen, dirty };
   const requestClose = () => {
-    if (dirty) {
+    // #1060 双闸（汇流点）：dialog 的一切关闭意图——Base UI native dismiss
+    // （经 DialogShell onClose）、背板 onClick、X 钮、保存/放弃之外的落穿——
+    // 统一汇流到本函数，闸设在汇流点一处生效。
+    // 闸一（ref，同步）：内层已接线并自收（outside-press 等）时置位——ref 在
+    // 同一次原生事件分发内写入，免疫 React flush 时序（内层开态 state 可能已
+    // 在闸判读前翻假）。清闸在下一手势（见 markGestureConsumed）。
+    if (gestureConsumedRef.current) return;
+    // 闸二（内层开态镜像，补 Base UI 的接线窗）：dismiss 监听、层栈树节点、
+    // Root 的 prop 同步全挂在被动 effect 上，而弹层 DOM 在 commit 即可见——
+    // 快速点击（合成输入/高负载，插桩重放实测 60 轮中 13 次）可落进这扇窗：内层来不及
+    // 自收，dialog 误判自己是最上层直接收下本次关闭。此时镜像里的内层开态仍
+    // 为真，代内层执行「只关最上层」：确认层 → 提及 picker → 项目 popover →
+    // 机器 popover（旧 #318 分层链的语义，位置从背板链上移到全部关闭路径的
+    // 汇流点）。每个收束分支同时置闸一——同一次手势会二次进闸（native
+    // dismiss 与背板 onClick 都汇流到此，插桩重放实测相隔 ~3.5ms），第二次进来
+    // 时 React 可能已 flush 掉内层开态，镜像拦不住，须由同步 ref 收束。
+    const gate = gateRef.current;
+    if (gate.discardOpen) {
+      markGestureConsumed();
+      closeDiscard();
+      return;
+    }
+    if (gate.pickerOpen) {
+      markGestureConsumed();
+      setPickerOpen(false);
+      return;
+    }
+    if (gate.projectOpen) {
+      markGestureConsumed();
+      setProjectOpen(false);
+      return;
+    }
+    if (gate.machineOpen) {
+      markGestureConsumed();
+      setMachineOpen(false);
+      return;
+    }
+    if (gate.dirty) {
+      // 未保存闸开确认层同样消费本次手势（二次进闸不得把刚开的确认层又收掉）。
+      markGestureConsumed();
       setDiscardOpen(true);
       return;
     }
     returnFocusToInvoker();
     onClose();
   };
-  // Esc 分层 4 层(内层优先):确认层 → 提及 picker → 项目 popover → dialog 关闸
-  // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 各由自己的 registry
-  // 壳接管 Esc——AlertDialog / Dialog / Popover 同在 Base UI layer 栈,
-  // 本文件只控 dialog 自身的 Esc 关闸。)
+  // 分层关闭(内层优先,合并 #311 picker + #318 闸):各内层常态由自己的
+  // registry 壳收 Esc / 外点——AlertDialog / Dialog / Popover 同在 Base UI
+  // layer 栈,escapeKey isTopmost 自己收;requestClose 的双闸(#1060)在全部
+  // 关闭意图的汇流点兜底同一套层级——关闸语义不止 Esc 一路,漏到 dialog 层
+  // 的关闭意图一律先喂最上层内层。
   // retained mount:dialog 关闭一并收 popover(重开不得带回开态) + 确认层
   // + picker,并重置表单(重开不得带回开态/脏字——闸判定以净面起步)
   useEffect(() => {
@@ -591,27 +666,15 @@ export function NewTaskDialog({
         bare
         open={open}
         onClose={requestClose}
-        // 外点内层优先（旧 backdrop 上的三分支逻辑）：项目浮层 / 提及 picker
-        // 开着先关内层；discard 层由它自己的底座接管；剩余走未保存闸。
-        onBackdropClick={() => {
-          if (projectOpen) {
-            setProjectOpen(false);
-            return;
-          }
-          if (machineOpen) {
-            setMachineOpen(false);
-            return;
-          }
-          if (pickerOpen) {
-            setPickerOpen(false);
-            return;
-          }
-          requestClose();
-        }}
+        // #1060：背板不再自持分支链——外点与 Esc / X 一样汇流 requestClose
+        // （DialogShell 缺省 onClick=onClose），内层优先由汇流点双闸承载。
         // #318/#1008 分层 Esc：五个内层（picker / 项目 popover / 机器 popover /
         // discard 闸）全部走 registry 壳（Dialog / Popover / AlertDialog，
-        // Base UI layer 栈 escapeKey isTopmost 自己收），onEscapeWhileNested
-        // 代收闸退役——壳只控 dialog 自身的 Esc 关闸。#682 机器 popover 是
+        // Base UI layer 栈 escapeKey isTopmost 自己收）。#1060 返工：层栈的
+        // 接线窗（dismiss 监听/树节点挂被动 effect，落后于弹层 DOM 可见）会让
+        // dialog 偶发误判自己是最上层——分层兜底从背板分支链上移到
+        // requestClose 汇流点（双闸，见该处注记），覆盖全部关闭路径。
+        // #682 机器 popover 是
         // 同族 chip 面（双开由开面互斥先行收掉，见两 chip Trigger 的
         // onClick）。#688 阶梯 --z-panel-low：本面板吃低档恒压常驻侧板
         // （--z-docked），抽屉开着时本面排上方；内层 registry 壳自带
@@ -652,7 +715,12 @@ export function NewTaskDialog({
                 三层 render 复合,同一只 chip 钮）。 */}
             <Popover
               open={projectOpen && rows.length > 0}
-              onOpenChange={(next: boolean) => setProjectOpen(next)}
+              onOpenChange={(next: boolean, details) => {
+                // #1060：外点自收先于 dialog 侧的一切关闭判定（元素级原生
+                // 监听在委托根之前），置手势消费闸——同一次点击里汇流点不再落穿。
+                if (!next && details.reason === 'outside-press') markGestureConsumed();
+                setProjectOpen(next);
+              }}
             >
               <Tooltip>
                 <TooltipTrigger
@@ -819,7 +887,14 @@ export function NewTaskDialog({
                   同族同律（#666 toggle 面：initialFocus=false 焦点留触发位，
                   toggle/aria-expanded 归 Trigger 原语）。向上开几何从
                   bottom:calc(100%+8px) CSS 迁 Positioner side=top。 */}
-              <Popover open={machineOpen} onOpenChange={(next: boolean) => setMachineOpen(next)}>
+              <Popover
+                open={machineOpen}
+                onOpenChange={(next: boolean, details) => {
+                  // #1060：与项目 popover 同款手势消费闸（外点自收先行）。
+                  if (!next && details.reason === 'outside-press') markGestureConsumed();
+                  setMachineOpen(next);
+                }}
+              >
                 <PopoverTrigger
                   render={
                     <Button
@@ -966,7 +1041,13 @@ currentColor 系而非 border-border/muted-foreground。
       <AlertDialog
         open={discardOpen}
         onOpenChange={(next: boolean) => {
-          if (!next) closeDiscard();
+          if (!next) {
+            // #1060：确认层自收（Esc/外点）同样消费本次手势——外层 dialog
+            // 不得在同一次手势里跟着关（闸语义见 requestClose）。「放弃并
+            // 关闭」走 discardAndClose 直连 onClose，不经本闸。
+            markGestureConsumed();
+            closeDiscard();
+          }
         }}
       >
         <AlertDialogContent
@@ -1005,7 +1086,11 @@ currentColor 系而非 border-border/muted-foreground。
       {/* #311 mention picker(sibling layer)。Esc/backdrop 顺序见上分层注记。 */}
       <MentionPicker
         open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        onClose={() => {
+          // #1060：内层自收 = 本次手势已被消费（闸语义见 requestClose）。
+          markGestureConsumed();
+          setPickerOpen(false);
+        }}
         groups={groups}
         onInsert={(tokens) => {
           insertTokens(tokens);
