@@ -1228,10 +1228,37 @@ export const projectTasksEmpty: FixtureSet = {
 
 /** spec 12 / #362 G2-T2 v1: local 仓库项目的 文件 tab 禁用面（占位 +
  *  一行 disable 文案）；任务行 = legacy 双行（切换对照用）。 */
+/** local 形态 Files 面演示集（scenario prj-local-files；#1030 起 Files tab
+ * 开闸）：与 hosted 演示集（projectContent / r2 07e tree 面）同形，内容换
+ * local 语义——本地仓 README、分支钉 trunk（local 仓默认分支任意，非恒
+ * main）。 */
 export const projectLocalFiles: FixtureSet = {
   todos: projectFixture.todos,
   now: projectFixture.now,
-  project: { ...projectContent, repoKind: 'local', hosted: false },
+  project: {
+    ...projectContent,
+    repoKind: 'local',
+    hosted: false,
+    repoName: 'local-repo',
+    branch: 'trunk',
+    fileContents: {
+      'README.md': [
+        '# local-repo',
+        '',
+        '本地仓库：用户本机既有 git 工作树仓，Files tab 直读工作树 HEAD。',
+        '',
+      ].join('\n'),
+    },
+    commits: [
+      {
+        id: 'c1d2e3f4a5b60718293a4b5c6d7e8f90a1b2c3d4',
+        shortSha: 'c1d2e3f',
+        message: 'init local-repo',
+        authorName: 'local-user',
+        at: r7(10, 5),
+      },
+    ],
+  },
   projectTab: 'files',
 }; /** Resource surfaces (r7 06–10, issue #69): the r3 session left one skill,
  *  one MCP server, the online r3 machine and a custom gateway on the free
