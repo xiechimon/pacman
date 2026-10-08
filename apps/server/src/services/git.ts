@@ -7,8 +7,9 @@
 //   PR/issues/CI 读面依赖 GitHub API，server 侧无本地存储）。
 // - local = 用户本机既有 git 工作树仓（spec 12 / #359：server 端只做路径
 //   规范化 + 三态校验（validateLocalRepoPath），镜像 clone 执行面归 daemon）。
-// 文件浏览面（tree?ref=/file?path=&ref=，r3 §8.2）：读裸库，无检出要求；
-// 响应形状 [推断]（端点存在实测、载荷未采，04 附录 A 补采后收紧）。
+// 文件浏览面（tree?ref=/file?path=&ref=，r3 §8.2）：读 repo 目录（hosted =
+// 裸库、#1030 起 local = 用户工作树仓），无检出要求；响应形状 [推断]
+// （端点存在实测、载荷未采，04 附录 A 补采后收紧）。
 
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -199,19 +200,42 @@ export function toProjectRecord(row: ProjectRow, origin?: string): ProjectRecord
  * import 面不动。 */
 export { isGithubRepoRef } from '@pacman/shared';
 
-/** 文件浏览面要求托管形态（GitHub-backed 读面依赖 GitHub API，不在 M2b
- * server 存储面 [设计]）。返回 bare repo 目录。 */
-export function requireHostedRepoDir(ctx: RepoCtx, projectId: string): string {
+/** 文件浏览面的 repo 目录解析（#1030 起 hosted + local 双形态放行；GitHub
+ * 形态无本地存储面仍 404）。hosted = server 侧 bare 目录（自 provisioning
+ * 起恒在位）；local = 行上 localPath（创建时已过 validateLocalRepoPath——
+ * 此刻再失格 = 目录被删/被替换，或多机部署下 server 与仓库不同机）。
+ * local 失格走**分类降级**而非 500/空树：404 + reason code（复用
+ * PROJECT_LOCAL_ERROR_REASONS 词表，web 按 code 分译人话提示）。git 读原语
+ * （resolveCommit/lsTree/…）对工作树仓与裸库同形，无需分叉。 */
+export async function requireRepoReadDir(ctx: RepoCtx, projectId: string): Promise<string> {
   const row = ctx.db.select().from(project).where(eq(project.id, projectId)).get();
   if (!row) throw notFound(`project ${projectId}`);
-  if (row.repoKind !== 'hosted' || row.repoName === null) {
-    throw notFound(`hosted repo for project ${projectId}`);
+  if (row.repoKind === 'hosted' && row.repoName !== null) {
+    return repoDirFor(ctx.reposDir, row.teamId, row.repoName);
   }
-  return repoDirFor(ctx.reposDir, row.teamId, row.repoName);
+  if (row.repoKind === 'local') {
+    if (row.localPath === null) {
+      // 行完整性破（创建闸保证 local 必带 localPath）——显式红，不静默空。
+      throw notFound(`local repo for project ${projectId}`);
+    }
+    if (!existsSync(row.localPath)) {
+      throw new HttpError(404, `local repo path not found: ${row.localPath}`, 'not_found');
+    }
+    if (!(await systemGitOps.isGitRepo(row.localPath))) {
+      throw new HttpError(
+        404,
+        `local repo path is not a git repository: ${row.localPath}`,
+        'not_git',
+      );
+    }
+    return row.localPath;
+  }
+  throw notFound(`hosted repo for project ${projectId}`);
 }
 
-// —— tree/file/branches 面（响应封套单源 = shared projectTree/File/Branches
-// ResponseSchema，[推断] 注记在 shared 侧）———————————————————————————————
+// —— tree/file/branches/commits/files 面（响应封套单源 = shared
+// projectTree/File/Branches/Commits/Files ResponseSchema，[推断] 注记在
+// shared 侧；目录解析 = requireRepoReadDir 单源）———————————————————————
 
 /** ref → commit sha；解析失败 = 404（tree/file 共用）。 */
 async function resolveCommitOr404(dir: string, ref: string): Promise<string> {
@@ -226,7 +250,7 @@ export async function readTree(
   refParam?: string,
   pathParam?: string,
 ): Promise<ProjectTreeResponse> {
-  const dir = requireHostedRepoDir(ctx, projectId);
+  const dir = await requireRepoReadDir(ctx, projectId);
   const ref = refParam ?? 'HEAD';
   const commit = await resolveCommitOr404(dir, ref);
   const subPath = pathParam !== undefined && pathParam !== '' ? pathParam : undefined;
@@ -239,8 +263,8 @@ export async function readTree(
 export const PROJECT_FILES_DEFAULT_LIMIT = 2000;
 export const PROJECT_FILES_MAX_LIMIT = 5000;
 
-/** 全递归文件列举（#760 composer `@` 候选源）：读裸库 ref 全树路径表。
- * 口径与 tree/file 同族——非托管形态/坏 ref = 404（web 侧静默退回
+/** 全递归文件列举（#760 composer `@` 候选源）：读 repo ref 全树路径表。
+ * 口径与 tree/file 同族——github 形态/坏 ref = 404（web 侧静默退回
  * agents-only，不弹错）。limit 非数字/越界即钳制，不 400（补全候选是
  * 渐进增强面，参数宽容）。 */
 export async function readFiles(
@@ -249,7 +273,7 @@ export async function readFiles(
   refParam?: string,
   limitParam?: string,
 ): Promise<ProjectFilesResponse> {
-  const dir = requireHostedRepoDir(ctx, projectId);
+  const dir = await requireRepoReadDir(ctx, projectId);
   const ref = refParam ?? 'HEAD';
   const commit = await resolveCommitOr404(dir, ref);
   const parsed = limitParam === undefined || limitParam === '' ? NaN : Number(limitParam);
@@ -275,7 +299,7 @@ export async function readFile(
 ): Promise<ProjectFileResponse> {
   // 400 前置校验（lib 层同名校验 = 缝契约兜底，双保险 [设计]）。
   if (!isSafeRepoPath(path)) throw new HttpError(400, `invalid query path: ${path}`);
-  const dir = requireHostedRepoDir(ctx, projectId);
+  const dir = await requireRepoReadDir(ctx, projectId);
   const ref = refParam ?? 'HEAD';
   const commit = await resolveCommitOr404(dir, ref);
   const file = await systemGitOps.readFileAt(dir, commit, path);
@@ -297,7 +321,7 @@ export async function readBranches(
   ctx: RepoCtx,
   projectId: string,
 ): Promise<ProjectBranchesResponse> {
-  const dir = requireHostedRepoDir(ctx, projectId);
+  const dir = await requireRepoReadDir(ctx, projectId);
   return systemGitOps.listBranches(dir);
 }
 
@@ -305,8 +329,8 @@ export async function readBranches(
 // GET /api/projects/{id}/commits，wire 未采——行形 = git log 最小投影（封套
 // 单源 shared projectCommitsResponseSchema），登记 wire.test INFERRED_ROUTES。
 // runGit 直调先例 = readBuildChanges（diff 面同款：缝词表外的只读 git 查询
-// 留在 server lib/git.ts spawn 家族内）。非托管形态无本地读面 = 404
-// （tree/file/branches 同族口径）。
+// 留在 server lib/git.ts spawn 家族内）。github 形态无本地读面 = 404
+// （tree/file/branches 同族口径；local = #1030 起放行）。
 
 /** 提交行上限（历史 pane 首屏 [设计]；分页归后票）。 */
 const COMMITS_LIMIT = 50;
@@ -316,7 +340,7 @@ export async function readCommitHistory(
   projectId: string,
   refParam?: string,
 ): Promise<ProjectCommitsResponse> {
-  const dir = requireHostedRepoDir(ctx, projectId);
+  const dir = await requireRepoReadDir(ctx, projectId);
   const { defaultBranch } = await systemGitOps.listBranches(dir);
   const ref = refParam ?? defaultBranch ?? 'HEAD';
   const commit = await systemGitOps.resolveCommit(dir, ref);

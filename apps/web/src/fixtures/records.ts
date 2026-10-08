@@ -210,8 +210,8 @@ export interface ProjectContent {
   /** True = the `Pacman 托管` chip rides beside the repo name (r2 24c). */
   hosted: boolean;
   /** repo 形态（spec 12 三形态，词表单源 = shared ProjectRepoKind；live 面
-   *  = wireProject.repoKind 透传）。local = Files tab 禁用（占位 + 一行
-   *  disable 文案，G2-T2 v1）。 */
+   *  = wireProject.repoKind 透传）。local = Files tab 开闸读本地仓（#1030，
+   * 不可达走降级文案）。 */
   repoKind?: ProjectRepoKind;
   defaultBranch: string;
   description: string | null;
