@@ -1,15 +1,19 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
-// Issue #138 acceptance: the segmented-control family (PageShell .page-tab,
-// sched-form freq, project files seg, tasks view toggle, user-menu 外观,
-// branch-dialog seg, team layout toggle, chief settings tabs) gives
-// unselected items a visible hover tint in both themes, the selected chip
-// keeps its own fill under hover, and the hover highlight rides the SAME
-// box + radius as the selected chip (one geometry, two depths). Group
-// geometry follows the official probes: the page-tab family carries the
-// r2 24b/24c hairline ring (1px border + 2px padding, chip inset). The
-// freq dark active chip must read against its container (the
-// --surface-elevated fill was container-identical in dark = invisible).
+// Issue #138 acceptance, re-pinned by #1007 (wave 1 L4) onto the registry
+// Tabs default form: the segmented-control family (PageShell .page-tab,
+// sched-form freq, project files seg, tasks view toggle) rides
+// components/ui/tabs base-nova — group = TabsList (bg-muted rounded-lg
+// p-[3px] h-8, no hairline border), chip = TabsTrigger (rounded-md, active
+// fill = bg-background light / bg-input/30 dark + shadow/border per the
+// registry variant strings). The #138 hover-tint skin retired with the
+// hand-rolled SEG_* recipes: the registry hover affordance is an INK step
+// (muted-foreground → foreground), not a background tint — so the family
+// law this spec guards becomes "unselected chips answer hover with an ink
+// change on their own box, the selected chip keeps its fill under hover,
+// and both states share one geometry". Faces outside this lane (user-menu
+// 外观, branch-dialog seg, team layout toggle, chief tabs) keep their own
+// carriers below, untouched by #1007.
 // #366: the detail doc/chat tab group is gone from the family (the detail
 // route re-laid out to three panes); the branch-dialog seg now opens from
 // the board card icon — the detail route hosts the branch surface as a
@@ -20,53 +24,97 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 
 const PROJ = '/app/project/ZAQczKCu0MOAzC1ZqcFlX';
 
+// registry Tabs canon values (shadcn.css tokens, #1002 palette): group fill
+// = --muted; active chip fill = --background (light) / --input at 30%
+// (dark); trigger ink rest/hover = muted-foreground → foreground (dark),
+// foreground at 60% → foreground (light).
+const GROUP_DARK = 'rgb(45, 41, 38)'; // --muted dark
+const GROUP_LIGHT = 'rgb(234, 228, 224)'; // --muted light
+const TAB_FILL_DARK = 'rgba(64, 60, 57, 0.3)'; // --input/30 dark (active fill)
+const TAB_FILL_LIGHT = 'rgb(246, 241, 236)'; // --background light (active fill)
+// team layout toggle (L2 face, seg skin not yet migrated) still fills its
+// active chip with --card:
+const CHIP_LIGHT = 'rgb(240, 235, 230)'; // --card light
+const INK_REST_DARK = 'rgb(179, 174, 170)'; // --muted-foreground dark
+const INK_HOVER_DARK = 'rgb(238, 232, 228)'; // --foreground dark
+const INK_REST_LIGHT = 'rgba(18, 15, 11, 0.6)'; // --foreground/60 light
+const INK_HOVER_LIGHT = 'rgb(18, 15, 11)'; // --foreground light
+// Faces OUTSIDE the L4 lane (user-menu 外观, branch-dialog seg, team layout
+// toggle, chief tabs) still ride their domain's hand-rolled seg skins until
+// those lanes migrate — their hover tint stays the #138 --seg-hover value.
 const HOVER_DARK = 'rgba(255, 252, 248, 0.05)'; // --seg-hover dark
 const HOVER_LIGHT = 'rgba(28, 25, 21, 0.05)'; // --seg-hover light
-const CHIP_DARK = 'rgb(38, 34, 31)'; // --card dark (tab-chip-bg merged → card, #1002)
-const CHIP_LIGHT = 'rgb(240, 235, 230)'; // --card light (tab-chip-bg merged → card, #1002)
-const GROUP_DARK = 'rgb(45, 41, 38)'; // --secondary dark (surface-secondary merged → secondary, #1002)
-const GROUP_LIGHT = 'rgb(234, 228, 224)'; // --secondary light (surface-secondary merged → secondary, #1002)
 
-const bg = (loc: Locator) =>
-  loc.evaluate((el) => getComputedStyle(el).backgroundColor);
+// Tailwind v4 opacity modifiers (bg-input/30, text-foreground/60) compute to
+// oklab color-mix strings; the repo value notation (#411) wants rgb/hex —
+// normalize in-page (oklab → sRGB, legacy rgb()/rgba() pass through).
+function cssColor(loc: Locator, prop: 'backgroundColor' | 'color') {
+  return loc.evaluate((el, p) => {
+    const v = getComputedStyle(el)[p];
+    const m = /^oklab\([-\d.e]+\s+[-\d.e]+\s+[-\d.e]+(?:\s*\/\s*[\d.e%]+)?\)$/.exec(v);
+    if (m == null) return v;
+    const parts = v.slice(6, -1).split(/[\s/]+/);
+    const [L, a, b] = [Number(parts[0]), Number(parts[1]), Number(parts[2])];
+    const alpha =
+      parts[3] == null ? 1 : parts[3].endsWith('%') ? Number.parseFloat(parts[3]) / 100 : Number(parts[3]);
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+    const l = l_ ** 3;
+    const mm = m_ ** 3;
+    const s = s_ ** 3;
+    const gam = (x: number) => {
+      x = x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(Math.max(x, 0), 1 / 2.4) - 0.055;
+      return Math.round(Math.min(Math.max(x, 0), 1) * 255);
+    };
+    return `rgba(${gam(4.0767416621 * l - 3.3077115913 * mm + 0.2309699292 * s)}, ${gam(
+      -1.2684380046 * l + 2.6097574011 * mm - 0.3413193965 * s,
+    )}, ${gam(-0.0041960863 * l - 0.7034186147 * mm + 1.707614701 * s)}, ${alpha})`;
+  }, prop);
+}
+const bg = (loc: Locator) => loc.evaluate((el) => getComputedStyle(el).backgroundColor);
+const bgRgb = (loc: Locator) => cssColor(loc, 'backgroundColor');
+const ink = (loc: Locator) => cssColor(loc, 'color');
 
 async function themed(page: Page, theme: 'dark' | 'light', url: string) {
   await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
   await page.goto(url);
 }
 
-test('page-tab: unselected hover tints the chip — dark + light', async ({ page }) => {
+test('page-tab: unselected hover steps the chip ink — dark + light', async ({ page }) => {
   await page.goto(`${PROJ}?scenario=r2-24b`);
   const files = page.locator('.page-tab', { hasText: '文件' });
 
   expect(await bg(files)).toBe('rgba(0, 0, 0, 0)');
+  expect(await ink(files)).toBe(INK_REST_DARK);
   await files.hover();
-  await expect.poll(() => bg(files)).toBe(HOVER_DARK);
+  await expect.poll(() => ink(files)).toBe(INK_HOVER_DARK);
 
   await themed(page, 'light', `${PROJ}?scenario=r2-24b`);
   const lightFiles = page.locator('.page-tab', { hasText: '文件' });
+  expect(await ink(lightFiles)).toBe(INK_REST_LIGHT);
   await lightFiles.hover();
-  await expect.poll(() => bg(lightFiles)).toBe(HOVER_LIGHT);
+  await expect.poll(() => ink(lightFiles)).toBe(INK_HOVER_LIGHT);
 });
 
-test('page-tab: selected chip keeps its fill under hover, same geometry as the hover tint', async ({
+test('page-tab: selected chip keeps its fill under hover, same geometry as the rest state', async ({
   page,
 }) => {
   await page.goto(`${PROJ}?scenario=r2-24b`);
   const tasks = page.locator('.page-tab', { hasText: '任务' });
   const files = page.locator('.page-tab', { hasText: '文件' });
 
-  expect(await bg(tasks)).toBe(CHIP_DARK);
+  expect(await bgRgb(tasks)).toBe(TAB_FILL_DARK);
   await tasks.hover();
-  await page.waitForTimeout(250); // past the 150ms color step
-  expect(await bg(tasks)).toBe(CHIP_DARK); // hover must not wash the chip
+  await page.waitForTimeout(250); // past the registry transition step
+  expect(await bgRgb(tasks)).toBe(TAB_FILL_DARK); // hover must not wash the chip
 
-  // one geometry for both states: same radius, and the hover tint paints
-  // the chip's own box (no layout shift under hover)
+  // one geometry for both states: same radius, and the hover ink step
+  // paints no box (no layout shift under hover)
   const geo = await page.evaluate(() => {
     const [active, plain] = [
-      document.querySelector('.page-tab--active')!,
-      [...document.querySelectorAll('.page-tab')].find((el) => !el.classList.contains('page-tab--active'))!,
+      document.querySelector('.page-tab[aria-selected="true"]')!,
+      document.querySelector('.page-tab[aria-selected="false"]')!,
     ];
     return {
       activeRadius: getComputedStyle(active).borderRadius,
@@ -86,10 +134,12 @@ test('page-tab: selected chip keeps its fill under hover, same geometry as the h
   expect(round((await files.boundingBox())!)).toEqual(restBox);
 });
 
-test('page-tab group rides the official hairline ring (r2 24b/24c probe)', async ({ page }) => {
+test('page-tab group rides the registry TabsList form (bg-muted, 32px, 3px inset)', async ({
+  page,
+}) => {
   await page.goto(`${PROJ}?scenario=r2-24b`);
   const ring = await page.evaluate(() => {
-    const group = document.querySelector('.page-tabs-group')!;
+    const group = document.querySelector('.page-tabs-group [data-slot="tabs-list"]')!;
     const tab = document.querySelector('.page-tab')!;
     const cs = getComputedStyle(group);
     const g = group.getBoundingClientRect();
@@ -102,10 +152,11 @@ test('page-tab group rides the official hairline ring (r2 24b/24c probe)', async
       insetLeft: Math.round(t.left - g.left),
     };
   });
-  expect(ring.border).toBe('1px');
+  expect(ring.border).toBe('0px'); // hairline ring retired with the SEG_* shells
   expect(ring.groupBg).toBe(GROUP_DARK);
-  expect(ring.groupH).toBe(30); // 1 border + 2 pad + 24 chip + 2 pad + 1 border
-  expect(ring.insetTop).toBe(3);
+  expect(ring.groupH).toBe(32); // registry h-8
+  // p-[3px] + the trigger's h-[calc(100%-1px)] centering half-pixel
+  expect(ring.insetTop).toBe(4);
   expect(ring.insetLeft).toBe(3);
 });
 
@@ -114,45 +165,50 @@ test('page-tab click swaps the active chip and the pane', async ({ page }) => {
   const files = page.locator('.page-tab', { hasText: '文件' });
 
   await files.click();
-  await expect(files).toHaveClass(/page-tab--active/);
+  await expect(files).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.prj-files')).toBeVisible();
 
   await page.locator('.page-tab', { hasText: '任务' }).click();
-  await expect(files).not.toHaveClass(/page-tab--active/);
+  await expect(files).toHaveAttribute('aria-selected', 'false');
   await expect(page.locator('.prj-files')).toBeHidden();
 });
 
-test('sched freq: dark active chip reads against the container, hover tints the rest', async ({
+test('sched freq: dark active chip reads against the container, hover steps the rest ink', async ({
   page,
 }) => {
   await page.goto('/app/schedules?scenario=r3-92');
-  const group = page.locator('.sched-form-freq');
-  const active = page.locator('.sched-form-freq-tab--active');
+  const group = page.locator('.sched-form-freq [data-slot="tabs-list"]');
+  const active = page.locator('.sched-form-freq-tab[aria-selected="true"]');
   const weekly = page.locator('.sched-form-freq-tab', { hasText: '每周' });
 
   expect(await bg(group)).toBe(GROUP_DARK);
-  expect(await bg(active)).toBe(CHIP_DARK); // was container-identical = invisible
+  expect(await bgRgb(active)).toBe(TAB_FILL_DARK); // was container-identical = invisible
 
+  expect(await ink(weekly)).toBe(INK_REST_DARK);
   await weekly.hover();
-  await expect.poll(() => bg(weekly)).toBe(HOVER_DARK);
+  await expect.poll(() => ink(weekly)).toBe(INK_HOVER_DARK);
 
   await themed(page, 'light', '/app/schedules?scenario=r3-92');
-  expect(await bg(page.locator('.sched-form-freq-tab--active'))).toBe(CHIP_LIGHT);
+  expect(await bgRgb(page.locator('.sched-form-freq-tab[aria-selected="true"]'))).toBe(
+    TAB_FILL_LIGHT,
+  );
   const lightWeekly = page.locator('.sched-form-freq-tab', { hasText: '每周' });
+  expect(await ink(lightWeekly)).toBe(INK_REST_LIGHT);
   await lightWeekly.hover();
-  await expect.poll(() => bg(lightWeekly)).toBe(HOVER_LIGHT);
+  await expect.poll(() => ink(lightWeekly)).toBe(INK_HOVER_LIGHT);
 });
 
-test('files seg + tasks view toggle: hover tints the unselected (dark)', async ({ page }) => {
+test('files seg + tasks view toggle: hover steps the unselected ink (dark)', async ({ page }) => {
   await page.goto(`${PROJ}?scenario=r2-24`);
   const history = page.locator('.prj-files-seg-tab', { hasText: '历史' });
+  expect(await ink(history)).toBe(INK_REST_DARK);
   await history.hover();
-  await expect.poll(() => bg(history)).toBe(HOVER_DARK);
+  await expect.poll(() => ink(history)).toBe(INK_HOVER_DARK);
 
   await page.goto(`${PROJ}?scenario=prj-tasks`);
   const grid = page.locator('.prj-tasks-view-btn[aria-label="网格视图"]');
   await grid.hover();
-  await expect.poll(() => bg(grid)).toBe(HOVER_DARK);
+  await expect.poll(() => ink(grid)).toBe(INK_HOVER_DARK);
 });
 
 test('user-menu 外观 seg: hover tints, click switches the theme', async ({ page }) => {

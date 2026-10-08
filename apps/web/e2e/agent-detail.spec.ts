@@ -635,7 +635,9 @@ async function assertTopCorner(rows: Locator) {
         topBorder: cs.borderTopWidth,
       };
     });
-    expect(topLeft).toEqual(['11px', '11px']);
+    // #1007 重钉：Card 的 ring-1 是 box-shadow 环、不占布局位，首行逻辑角 =
+    // 卡角原值；半径基 10px（#988）下 rounded-xl = 14px。
+    expect(topLeft).toEqual(['14px', '14px']);
     expect(topBorder).toBe('0px');
   }
 }

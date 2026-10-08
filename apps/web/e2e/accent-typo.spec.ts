@@ -45,13 +45,18 @@ for (const theme of ['light', 'dark'] as const) {
     expect(m.cardTitleWeight).toBe('500');
   });
 
-  test(`headline tier 600 holds (${theme})`, async ({ page }) => {
+  // #1007（wave 1 L4）重钉：schedules 空态迁 registry Empty 件族，标题档 =
+  // EmptyTitle 的 font-medium（500）+ tracking-tight——原 600 semibold 是
+  // 手写空态的皮肤档，随件退役；本面 headline 正典改 registry 档。
+  test(`empty-state headline rides the registry EmptyTitle tier (${theme})`, async ({
+    page,
+  }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app/schedules?scenario=11');
     const w = await page.evaluate(
       () => getComputedStyle(document.querySelector('.sched-empty-title')!).fontWeight,
     );
-    expect(w).toBe('600');
+    expect(w).toBe('500');
   });
 
   test(`sidebar header carries the Pacman brand mark + name (${theme})`, async ({ page }) => {
