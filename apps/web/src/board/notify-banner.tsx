@@ -89,7 +89,7 @@ export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
        类）：条带挂在 topbar 边框下 12px（top 56 = 44 + 12）、64px 高卡片、
        与 scroller 列同 17px 内缩；发丝环 + 卡投影双层。 */
     <section
-      className="board-notify-banner absolute inset-x-[17px] top-14 flex h-16 items-center rounded-none border-0 bg-(--secondary) px-4 [box-shadow:var(--edge-ring),var(--card-shadow)]"
+      className="board-notify-banner absolute inset-x-[17px] top-14 flex h-16 items-center rounded-xl border-0 bg-(--secondary) px-4 [box-shadow:var(--edge-ring),var(--card-shadow)]"
       aria-label={t(NOTIFICATION_BANNER_COPY.title)}
     >
       <span className="board-notify-banner-icon flex size-7 flex-none items-center justify-center rounded-full bg-(--notify-icon-bg) text-(--card-button)">

@@ -125,6 +125,10 @@ export function FilterChips({
         <Button
           key={chip.key}
           data-dimension={chip.key}
+          /* 实审裁决 4（2026-10-08，#1004）：rounded-full 药丸 = 登记在案的有
+             理由偏离——生效筛选条是「板被收窄」的解释面，刻意做全屏最重的实底
+             墨（header 注），圆药丸与方/圆角面板形成材质对比；不向 registry
+             button 默认几何对齐，理由见对账声明。 */
           className="filter-chip h-5 flex-none gap-1 rounded-full border border-transparent bg-foreground px-2 text-[11px] leading-none font-medium text-background hover:bg-foreground active:not-aria-[haspopup]:translate-y-0"
           aria-label={t('清除{name}筛选', { name: chip.label })}
           onClick={chip.onClear}

@@ -192,7 +192,7 @@ const ROW_SELECTED = `before:bg-sidebar-active ${SEARCH_OPEN_DIM}`;
  *  变体链一致才吃得掉件基类）。focus 环件基类与行族同值（#388 canon），
  *  不重复写。 */
 const ROW_BTN =
-  'justify-start gap-0 rounded-none border-none pr-0 font-normal hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'justify-start gap-0 border-none pr-0 font-normal hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 function GroupHeader({
   label,
@@ -240,7 +240,7 @@ function RailGroupChevron({
   return (
     <Button
       variant="ghost"
-      className={`rail-row rail-group group relative h-8 w-10 flex-none cursor-pointer rounded-none border-none bg-transparent text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-muted-foreground active:not-aria-[haspopup]:translate-y-0 ${
+      className={`rail-row rail-group group relative h-8 w-10 flex-none cursor-pointer border-none bg-transparent text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-muted-foreground active:not-aria-[haspopup]:translate-y-0 ${
         collapsed ? 'rail-group--collapsed' : ''
       }`}
       aria-label={groupAria(t, label, collapsed)}
@@ -261,7 +261,7 @@ const RAIL_SELECTED = `rail-row--selected text-foreground before:bg-sidebar-acti
 /** Rail 行钮中和件（#943）：与 ROW_BTN 同理——rail 钮的视觉盒同样是
  *  before: pill，件配方的涂底/圆角/边框/press 位移归零。 */
 const RAIL_BTN =
-  'cursor-pointer rounded-none border-none bg-transparent hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'cursor-pointer border-none bg-transparent hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 /** 用户菜单 popover（#127：两侧栏 avatar chip 共用一开合态，分支各 render
  *  自己的 Popover Root——同一时刻只挂载一支。#854 收编
@@ -352,7 +352,7 @@ export function BoardSidebar({
             该是图标本身（XMON-69，律在 motion.css 的 sidebar toggles 段）。 */}
         <Button
           variant="ghost"
-          className="rail-toggle h-11 w-10 flex-none cursor-pointer rounded-none border-0 border-b border-[var(--border)] bg-transparent text-muted-foreground hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover dark:hover:text-muted-foreground active:not-aria-[haspopup]:translate-y-0"
+          className="rail-toggle h-11 w-10 flex-none cursor-pointer border-0 border-b border-[var(--border)] bg-transparent text-muted-foreground hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover dark:hover:text-muted-foreground active:not-aria-[haspopup]:translate-y-0"
           aria-label={t('展开侧边栏')}
           onClick={onToggle}
         >
@@ -432,7 +432,7 @@ export function BoardSidebar({
           trigger={
             <Button
               variant="ghost"
-              className="rail-user mb-[11px] h-[38px] w-10 flex-none cursor-pointer rounded-none border-none bg-transparent outline-none hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+              className="rail-user mb-[11px] h-[38px] w-10 flex-none cursor-pointer border-none bg-transparent outline-none hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
               aria-label={user.displayName}
             >
               <SeededAvatar
@@ -504,7 +504,7 @@ export function BoardSidebar({
         <Button
           variant="ghost"
           size="icon-sm"
-          className={`sidebar-team-collapse ml-auto size-7 cursor-pointer rounded-none border-none bg-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 ${
+          className={`sidebar-team-collapse ml-auto size-7 cursor-pointer border-none bg-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 ${
             selected === 'team' ? 'mr-[6px]' : 'mr-[14px]'
           }`}
           aria-label={t('收起侧边栏')}
@@ -644,7 +644,7 @@ export function BoardSidebar({
         trigger={
           <Button
             variant="ghost"
-            className="sidebar-user h-11 flex-none cursor-pointer justify-start gap-0 rounded-none border-0 border-t border-[var(--border)] bg-transparent px-2 font-normal hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent aria-expanded:text-muted-foreground outline-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+            className="sidebar-user h-11 flex-none cursor-pointer justify-start gap-0 border-0 border-t border-[var(--border)] bg-transparent px-2 font-normal hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent aria-expanded:text-muted-foreground outline-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
             aria-label={user.displayName}
           >
             <SeededAvatar
