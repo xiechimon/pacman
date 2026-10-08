@@ -301,7 +301,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
             <div className="mention-picker-search border-b border-(--border) px-3.5 pt-2.5 pb-1.5">
               <Input
                 type="text"
-                className="mention-picker-search-input h-7 rounded-none border-(--border) bg-(--background) px-2.5 py-0 text-xs text-(--foreground) dark:bg-(--background) md:text-xs"
+                className="mention-picker-search-input h-7 border-(--border) bg-(--background) px-2.5 py-0 text-xs text-(--foreground) dark:bg-(--background) md:text-xs"
                 placeholder={t('搜索…')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
