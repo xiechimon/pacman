@@ -586,10 +586,15 @@ export function BoardPage() {
     : { ...fixture, todos };
   return (
     // #447 (ADR 0004): data-chief-open marks the docked-drawer state — the
-    // detail shell carries the same marker (D7). The board column floor is
-    // unconditional since #692 (board.css owns the single-source track rule).
+    // detail shell carries the same marker (D7). #1035: the board column
+    // floor splits on this marker (same shape as the detail shell's
+    // --detail-pane-right two-state) — the natural state rides the 200px
+    // root token so zoomed-out-equivalent viewports keep all 4 columns
+    // whole; docking re-arms the 280px reference pitch (#692 scroll
+    // semantics unchanged). The track rule itself stays single-source and
+    // unbranched (board.tsx scroller consumes --board-col-min).
     <div
-      className="board-shell flex h-full overflow-hidden"
+      className="board-shell flex h-full overflow-hidden data-chief-open:[--board-col-min:var(--board-col-min-docked)]"
       data-route="board"
       data-chief-open={chiefView === 'drawer' ? '' : undefined}
     >

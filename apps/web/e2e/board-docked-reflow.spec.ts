@@ -1,7 +1,8 @@
 import { expect, type Page, test } from '@playwright/test';
-// #692 ⌘J 停靠态的 board reflow：单源规则 = 列宽下限 --board-col-min
-// (280px, tokens.css) + 溢出走 .board-scroller 横滚 + 滚动条原生可见
-// (board.css)。病灶（main 实测 2026-10-03）：旧 240px 开态护栏在 1440
+// #692 ⌘J 停靠态的 board reflow：停靠地板 --board-col-min-docked
+// (280px, tokens.css；#1035 起按 data-chief-open 劈两态，常态 200px 地板
+// 由 board-zoom-fit.spec 钉) + 溢出走 .board-scroller 横滚 + 滚动条原生
+// 可见。病灶（main 实测 2026-10-03）：旧 240px 开态护栏在 1440
 // 停靠态恰好排满三列（748 = 3×240+2×14），第四列只剩 ~3px 残边且滚动条
 // 被隐藏——溢出无任何可滚线索，用户读成「栏被裁」。参考站 todos.dev 同刻
 // 实测：列 280px 固定节距从不压缩、横向滚动条原生（scrollbar-width:
@@ -28,7 +29,7 @@ import { expect, type Page, test } from '@playwright/test';
 // data-chief-open 属性。几何期望值不动——board.css 的轨道规则原值迁
 // scroller 工具类（grid-cols-[repeat(4,minmax(var(--board-col-min),1fr))]）。
 const STRESS = '/app?scenario=board-stress';
-const FLOOR = 280; // --board-col-min 的镜像值：钉几何，不读 CSS 变量
+const FLOOR = 280; // --board-col-min-docked（停靠地板，#1035）的镜像值：钉几何，不读 CSS 变量
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
 const scroller = (page: Page) => page.getByTestId('board-scroller');
