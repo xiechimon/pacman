@@ -26,6 +26,7 @@ import type {
 import {
   AGENT_TOOL_MERGE,
   AGENT_TOOL_PUSH,
+  buildPlanFirstRoundInstruction,
   buildTaskPromptText,
   CHANGES_DIFF_MAX_BYTES,
   CONTINUE_PROMPTS,
@@ -186,17 +187,26 @@ export function streamTimeoutMessage(
  * claim 载荷透出 step.prompt）→ 组合串投递（任务文本 + 指令，形状单源 =
  * shared composeTaskPromptWithInstruction，裁决正本 = issue #720 裁决评论）
  * ——此前 instruction 只落 DB 行给 UI 看，用户填的返工理由 agent 从来看不到。
- * 指令缺席或空白 = 纯任务文本（现行行为，负例：不注入空指令）；投递机制沿
- * #703/#719 的形状（instruction 在位即投递），不为 new session 造第二套。 */
+ * 指令缺席或空白 = 纯任务文本（build 步现行行为，负例：不注入空指令）；
+ * 投递机制沿 #703/#719 的形状（instruction 在位即投递），不为 new session
+ * 造第二套。#1025：plan 步指令缺席（首轮规划）→ 注入 plan.md 契约指令
+ * （shared buildPlanFirstRoundInstruction 单源）——此前契约只存在于纠错
+ * 提示词（补写轮/重规划/审核打回/重启），首轮 agent 只拿到 title+spec，
+ * 写不写全凭模型自觉（#892 实测 28 build / 0 行 plan.md 的结构性根因）；
+ * 纠错轮 instruction 自带契约句，走组合分支不叠注。 */
 export function buildTaskPrompt(claimed: ClaimedStep): string {
   const todo = claimed.todo;
   if (!todo) return claimed.instruction ?? '';
   const taskText = buildTaskPromptText(todo.title, todo.spec);
   // 缺席归一（zod optional：无该字段 = undefined ≠ null）。
   const instruction = claimed.instruction ?? null;
-  return instruction !== null && instruction.trim() !== ''
-    ? composeTaskPromptWithInstruction(taskText, instruction)
-    : taskText;
+  if (instruction !== null && instruction.trim() !== '') {
+    return composeTaskPromptWithInstruction(taskText, instruction);
+  }
+  if (claimed.step.kind === 'plan') {
+    return composeTaskPromptWithInstruction(taskText, buildPlanFirstRoundInstruction());
+  }
+  return taskText;
 }
 
 // continue session 续轮指令 = shared CONTINUE_PROMPTS 单源（#612 起 web

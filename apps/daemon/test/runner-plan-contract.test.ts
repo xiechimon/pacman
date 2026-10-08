@@ -1,19 +1,21 @@
-// #720 重启轮反馈投递（daemon runner 面）：new session worker 步在 claim 载荷
-// instruction 在位时，会话 prompt 必须是「任务文本 + 指令」组合串——此前 prompt
-// 恒为 title+spec（buildTaskPrompt），重启轮的返工理由 agent 从来看不到（票面
-// 主 bug）。组合形状单源 = shared composeTaskPromptWithInstruction（裁决正本 =
-// issue #720 裁决评论）；投递机制沿用 #703/#719 的形状（instruction 在位即
-// 投递），不为 new session 发明第二套。
+// #1025 首轮 plan 步契约注入（daemon runner 面）：plan.md 的产出契约此前只
+// 存在于纠错提示词（#113 补写轮 / 驳回重规划 / 审核打回 / 失败重启），首个
+// plan 步 claim 载荷 instruction 缺席 → buildTaskPrompt 只拼 title+spec，写不
+// 写 plan.md 全凭模型自觉（#892 实测 28 build / 0 行 plan.md 的结构性根因）。
+// 本票把契约提到首轮正典提示词：kind=plan、无 instruction 的任务 prompt =
+// 任务文本 + 契约指令（composeTaskPromptWithInstruction 单源形状，指令殿后
+// 拿最强注意力，#720 同律）；纠错轮自带契约句，不叠注。组合行的呈现层过滤
+// 由 shared classifyUserText 承担（F17 见 web 侧单测），此处钉投递面与 wire 面。
 // 失败方式枚举先于实现固化（AGENTS.md 测试规则 3）：
-//   1. 反馈不进会话：new session + instruction 在位 → createSession prompt 只有
-//      title+spec（主 bug：用户填的返工理由 agent 收不到）
-//   2. 组合串形漂移：prompt ≠ shared composeTaskPromptWithInstruction 单源形状
-//   3. wire 行缺位：transcript 上传的 user-<stepId> 行不是组合串（呈现层与
-//      对账面看不到 agent 实际收到什么）
-//   4. 空白指令注入：instruction 空白 → 组合出空壳（负例：不注入空指令）
-//   5. 无指令回归：instruction 缺席的 new session build 步 → prompt = 纯任务
-//      文本（现行行为不动；plan 步自 #1025 起首轮注入 plan.md 契约，见
-//      runner-plan-contract.test.ts）
+//   1. 契约不进会话（主 bug）：首轮 plan 步 prompt 仍只有 title+spec
+//   2. wire 行缺位/漂移：transcript user-<stepId> 行 ≠ 投递串（呈现层与对账
+//      面看不到 agent 实际收到什么）
+//   3. build 步误注入：直执行首步（kind=build、无 instruction）也被注入契约
+//      （执行轮被要求写 plan.md = 语义污染）
+//   4. 纠错轮双重注入：instruction 在位（重启轮等纠错语境）时叠注契约（那些
+//      指令自带契约句，叠注 = 同一指令双份）
+//   5. 空白指令误判：plan 步 + 空白 instruction 被当纠错轮（契约缺席）——
+//      空白 = 无指令（#720 同判），仍是首轮语义，契约必须照注
 
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -29,6 +31,7 @@ import type {
   TranscriptUpload,
 } from '@pacman/shared';
 import {
+  buildPlanFirstRoundInstruction,
   buildRestartPrompt,
   buildTaskPromptText,
   composeTaskPromptWithInstruction,
@@ -41,8 +44,9 @@ import type { MachineApi } from '../src/machine-client.js';
 import { runStep } from '../src/runner.js';
 import { statePaths } from '../src/state.js';
 
-const TASK = { id: 't1', seqNum: 3, title: '重启探针', spec: '第一轮会失败，重启轮要带上反馈。' };
+const TASK = { id: 't1', seqNum: 3, title: '契约探针', spec: '首轮规划要被告知 plan.md 契约。' };
 const TASK_TEXT = buildTaskPromptText(TASK.title, TASK.spec);
+const CONTRACT = buildPlanFirstRoundInstruction();
 
 function captureLogger(): { logger: DaemonLogger; lines: string[] } {
   const lines: string[] = [];
@@ -65,8 +69,8 @@ function captureLogger(): { logger: DaemonLogger; lines: string[] } {
   return { logger, lines };
 }
 
-/** 重启轮首步形（server restart 分支产物）：new session + instruction 携反馈。 */
-function restartStep(opts: { instruction?: string; kind?: 'plan' | 'build' } = {}): ClaimedStep {
+/** 首轮步形（startBuilds 产物）：new session、instruction 缺席。 */
+function firstRoundStep(opts: { kind?: 'plan' | 'build'; instruction?: string } = {}): ClaimedStep {
   return {
     step: { id: 's1', buildId: 'conv-1', kind: opts.kind ?? 'plan', machineId: 'm1', createdAt: 1 },
     conversationId: 'conv-1',
@@ -123,7 +127,6 @@ class FakeClient implements MachineApi {
     };
   }
   async skillsManifest() {
-    // #920：默认空清单 = 零团队技能（selection=whitelist，既有断言零扰动）。
     return { selection: 'whitelist' as const, skills: [] };
   }
   async skillFile(): Promise<Buffer> {
@@ -192,7 +195,7 @@ function handle(sessionId: string): AgentSessionHandle {
 }
 
 async function setup(claimed: ClaimedStep, backend: AgentBackend) {
-  const home = mkdtempSync(join(tmpdir(), 'pacman-runner-restart-'));
+  const home = mkdtempSync(join(tmpdir(), 'pacman-runner-plan-'));
   const workspacesDir = join(home, 'workspaces');
   const paths = statePaths(home, workspacesDir);
   const { logger } = captureLogger();
@@ -214,47 +217,50 @@ async function setup(claimed: ClaimedStep, backend: AgentBackend) {
   return { client };
 }
 
-describe('重启轮反馈投递（#720）', () => {
-  test('new session + instruction 在位 → 会话 prompt = 任务文本 + 重启指令组合串', async () => {
-    const instruction = buildRestartPrompt('把测试也补上');
+describe('首轮 plan 步契约注入（#1025）', () => {
+  test('plan 步 + instruction 缺席 → 会话 prompt = 任务文本 + 契约指令组合串（主 bug 对账面）', async () => {
     const { backend, prompts } = recordingBackend();
-    await setup(restartStep({ instruction }), backend);
+    await setup(firstRoundStep(), backend);
     expect(prompts).toHaveLength(1);
     const delivered = prompts[0];
-    expect(delivered).toBe(composeTaskPromptWithInstruction(TASK_TEXT, instruction));
-    // 反馈真的进了会话（主 bug 的对账面：任务语境与返工理由同串在位）
-    expect(delivered).toContain('把测试也补上');
+    expect(delivered).toBe(composeTaskPromptWithInstruction(TASK_TEXT, CONTRACT));
+    // 契约真的进了会话：文件名 + 四段名同串在位
+    expect(delivered).toContain('plan.md');
+    expect(delivered).toContain('（覆盖 Context/Changes/Edge cases/Verification 四段）');
     expect(delivered?.startsWith(TASK_TEXT)).toBe(true);
   });
 
-  test('transcript 终稿的 user-<stepId> 行 = 组合串（wire 行与投递内容一致）', async () => {
-    const instruction = buildRestartPrompt('把测试也补上');
+  test('transcript 终稿的 user-<stepId> 行 = 同一组合串（wire 行与投递内容一致）', async () => {
     const { backend } = recordingBackend();
-    const { client } = await setup(restartStep({ instruction }), backend);
+    const { client } = await setup(firstRoundStep(), backend);
     const transcript = client.uploads.find((u) => u.stepId === 's1');
     const promptRow = transcript?.messages.find((m) => m.id === 'user-s1');
     expect(promptRow?.role).toBe('user');
-    expect(promptRow?.content).toBe(composeTaskPromptWithInstruction(TASK_TEXT, instruction));
+    expect(promptRow?.content).toBe(composeTaskPromptWithInstruction(TASK_TEXT, CONTRACT));
   });
 
-  test('new session + 空白 instruction → 不注入空壳，prompt = 纯任务文本（build 负例；plan 步空白指令 = 首轮语义，契约照注，见 runner-plan-contract.test.ts）', async () => {
+  test('build 步 + instruction 缺席 → prompt = 纯任务文本（直执行首步不注入，负例）', async () => {
     const { backend, prompts } = recordingBackend();
-    await setup(restartStep({ instruction: '   ', kind: 'build' }), backend);
+    await setup(firstRoundStep({ kind: 'build' }), backend);
     expect(prompts).toHaveLength(1);
     expect(prompts[0]).toBe(TASK_TEXT);
   });
 
-  test('new session + instruction 缺席 → prompt = 纯任务文本（build 步回归钉；plan 步自 #1025 起注入契约，另见 runner-plan-contract.test.ts）', async () => {
+  test('plan 步 + 空白 instruction → 契约照注（空白 = 无指令，仍是首轮语义，不注入空壳）', async () => {
     const { backend, prompts } = recordingBackend();
-    await setup(restartStep({ kind: 'build' }), backend);
+    await setup(firstRoundStep({ instruction: '   ' }), backend);
     expect(prompts).toHaveLength(1);
-    expect(prompts[0]).toBe(TASK_TEXT);
+    expect(prompts[0]).toBe(composeTaskPromptWithInstruction(TASK_TEXT, CONTRACT));
   });
 
-  test('无 withPlan 重启（build 首步）同律：组合串在位', async () => {
-    const instruction = buildRestartPrompt('换一种实现方式');
+  test('plan 步 + 纠错 instruction 在位 → 只组合该指令，不叠注契约（重启轮形）', async () => {
+    const instruction = buildRestartPrompt('把测试也补上');
     const { backend, prompts } = recordingBackend();
-    await setup(restartStep({ instruction, kind: 'build' }), backend);
+    await setup(firstRoundStep({ instruction }), backend);
+    expect(prompts).toHaveLength(1);
     expect(prompts[0]).toBe(composeTaskPromptWithInstruction(TASK_TEXT, instruction));
+    // 契约句不双份（重启指令自带一份，不重复注入首轮契约）
+    const delivered = prompts[0] ?? '';
+    expect(delivered.split('Context/Changes/Edge cases/Verification').length - 1).toBe(1);
   });
 });

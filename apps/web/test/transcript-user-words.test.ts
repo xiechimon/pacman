@@ -22,6 +22,9 @@
 //   F13 组合行（任务文本 + 重启指令同串，#720 composeTaskPromptWithInstruction）
 //       渲染成用户气泡——任务+反馈双渲染；截断形同罪；任务前缀 + 用户自己
 //       话语不是组合行，不得误杀
+//   F17 首轮 plan 契约组合行（任务文本 + 首轮契约指令同串，#1025
+//       buildTaskPrompt 注入形）渲染成用户气泡——任务原文与描述区双渲染
+//       （F1/F13 同族；契约指令进 SYNTHETIC 词表，组合行整行退场）
 
 import {
   type BuildRecord,
@@ -30,6 +33,7 @@ import {
   DONE_ANNOUNCEMENT,
   REVIEW_ANNOUNCEMENT,
   type StepJournalRow,
+  buildPlanFirstRoundInstruction,
   buildPlanRewritePrompt,
   buildReplanPrompt,
   buildRestartPrompt,
@@ -270,6 +274,22 @@ describe('mapTranscript 合成 prompt 过滤（#612）', () => {
     const users = userItems(items);
     expect(users).toHaveLength(1);
     expect(users[0]?.text).toBe(text.trim());
+  });
+
+  // —— #1025 首轮 plan 契约组合行：daemon buildTaskPrompt 对首轮 plan 步注入
+  // 契约指令（任务文本 + 契约同串投递）——任务简报已有描述区，组合行渲染成
+  // 气泡即任务原文双渲染（F1/F13 同族），整行退场。——
+  test('F17 首轮 plan 契约组合行（任务文本 + 契约指令）退场，不成用户气泡', () => {
+    const composed = `${buildTaskPromptText(TITLE, SPEC)}\n\n${buildPlanFirstRoundInstruction()}`;
+    const items = render({
+      messages: [
+        msg('user', composed, NOW - 50_000),
+        msg('assistant', [{ type: 'text', text: '收到，方案落盘 plan.md。' }], NOW - 40_000),
+      ],
+    });
+    expect(userItems(items)).toHaveLength(0);
+    // agent 行不受影响
+    expect(items.some((i) => i.kind === 'robot')).toBe(true);
   });
 
   // —— #931 返工轮界 note（system → note 路，RESUME_FRESH_SESSION_NOTE 同族）：
