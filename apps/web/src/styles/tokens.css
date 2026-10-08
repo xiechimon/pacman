@@ -168,12 +168,21 @@
   --dialog-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
   /* chief 面（r5 100–104, #72）drawer 投影，r5 100 edge gradient 采样 */
   --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
-  /* 看板列宽下限（#692，唯一宽度 token）：参考站 todos.dev 2026-10-03
-     live 实测——列是 280px 固定节距、从不随视口压缩，放不下就走带原生
-     滚动条的横向滚动。静止 1440 视口的流值实测 281px，故 ≥1440 的静止
-     几何与本 token 无关（1fr 段主导）；⌘J 停靠让位或窄窗时下限接管，
-     溢出策略见 board.css 的 .board-scroller 单源规则。 */
-  --board-col-min: 280px;
+  /* 看板列宽下限（#692 → #1035 两态劈开，唯一宽度 token 族）：
+     - 停靠态 --board-col-min-docked = 参考站 todos.dev 2026-10-03 live
+       实测的 280px 固定节距——⌘J 让位后列从不随视口压缩，放不下就走
+       带原生滚动条的横向滚动（#692 语义，board-docked-reflow.spec 钉）。
+     - 常态 --board-col-min = 200px：四列全见优先。1440 物理宽、缩放
+       ≤125%（CSS 视口 ≥1152，每列流值 ≈209）零横滚；更窄才由地板接管
+       回到诚实横滚（board-zoom-fit.spec 钉）。单一 280 地板会让任何
+       >100.3%（1440/1436）的缩放在常态溢出、第 4 列出屏 = #1035 病灶。
+     切换点 = .board-shell 的既有 data-chief-open 标记（board-page.tsx 的
+     data-chief-open:[--board-col-min:…] 工具类，与 detail-shell D7 的
+     --detail-pane-right 两态同式）；轨道规则单源，仍只消费
+     --board-col-min（board.tsx scroller 的 grid-cols 工具类）。静止 1440
+     流值 281px 两态都高于地板，1fr 段主导，静止几何与 token 无关。 */
+  --board-col-min: 200px;
+  --board-col-min-docked: 280px;
   /* 密度与标签几何（spec/22 §2.2/§2.3/§4.4 定版新增，#915 落点 = 本文件；
      主题恒定，消费随各域批次接线）：卡片/面板内边距、页面级留白、列表行高
      （40px = 32px 控件 + 4px×2 竖向 padding，与 shadcn 控件默认高自洽）；

@@ -4,9 +4,11 @@
 // the #58 scrollLeft persistence retired with the horizontal scroll they
 // served. Header 37 with dot/name/count, empty-state copy centered (r7).
 // #692: 列宽单源下限——轨道规则 = scroller 上的 grid-cols 工具类
-// （minmax(var(--board-col-min), 1fr)，280px = 参考站 2026-10-03 实测固定
-// 节距），⌘J 停靠 / 窄窗放不下时横滚回归且滚动条不再隐藏（旧 240px 开态
-// 护栏在 1440 停靠态把第四列裁成 ~3px 残边、无可滚线索 = #692 病灶）。
+// （minmax(var(--board-col-min), 1fr)），⌘J 停靠 / 窄窗放不下时横滚回归
+// 且滚动条不再隐藏（旧 240px 开态护栏在 1440 停靠态把第四列裁成 ~3px
+// 残边、无可滚线索 = #692 病灶）。#1035: 地板值按 .board-shell 的
+// data-chief-open 劈两态——常态 200px（缩放宽视口四列全见）/ 停靠 280px
+// （参考站 2026-10-03 实测固定节距），两值都在 tokens.css。
 // #943: board.css 清零——本文件吃进来的最后三条规则（scroller 轨道、拖拽
 // 落点两级染色、body.board-dragging 手势锁）分别迁为 scroller/列上的工具类
 // 与 motion.css 的 body 级钩子。
@@ -262,13 +264,20 @@ export function BoardSurface({
         onDragCancel={onDragCancel}
       >
         {/* #692 列宽单源规则（原 board.css .board-scroller，取代 #447 /
-            ADR 0004 D8 的开态限定护栏）：列宽下限 = --board-col-min
-            （280px，参考站 todos.dev 2026-10-03 live 实测的固定节距），
-            两态同一条规则、不按 data-chief-open 分支。
+            ADR 0004 D8 的开态限定护栏）：轨道只消费 --board-col-min，
+            规则本身不按状态分支；#1035 起该 token 的值由 .board-shell 的
+            data-chief-open 标记劈开（常态 200px / 停靠 280px，tokens.css
+            单源，board-page.tsx 挂切换工具类）。别把地板写进本轨道做
+            min() 降级——地板会永不生效、停靠态横滚直接消失
+            （board-docked-reflow.spec 会红，#1035 票面反例）。
             - 静止 ≥1440 视口：1fr 段主导（实测 281px），几何与旧
               grid-cols-4 逐值一致；
-            - ⌘J 停靠（board-main 让掉 418px）或窄窗：下限接管，放不下的
-              列走 overflow-x-auto 横滚——旧护栏在 1440 停靠态恰好排满三列
+            - 常态窄窗/缩放：200px 地板让 CSS 视口 ≥1152（1440 物理宽、
+              缩放 ≤125%）四列全见零横滚，更窄才接管横滚
+              （board-zoom-fit.spec 钉两边界）；
+            - ⌘J 停靠（board-main 让掉 418px）：280px 参考站节距
+              （todos.dev 2026-10-03 live 实测）接管，放不下的列走
+              overflow-x-auto 横滚——旧护栏在 1440 停靠态恰好排满三列
               （748 = 3×240+2×14），第四列只剩 ~3px 残边，且滚动条被隐藏、
               无任何可滚线索（#692 病灶：无提示的裁切）。对齐参考站后列恒
               280px 节距、滚动缘露出诚实的部分列，滚动条恢复原生

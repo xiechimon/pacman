@@ -157,7 +157,15 @@ export function PageShell({
             )}
             {action != null && <div className="ml-auto flex items-center pr-5">{action}</div>}
           </header>
-          {children}
+          {/* #1032：内容体自持滚动（secondary/resources 壳同律）——children
+              此前直接挂在 h-full overflow-hidden 的 page-main-col 里，长内容
+              （任务列表/排期卡/设置面板/新建表单）被裁掉且滚轮不动。滚动层
+              保持 flex-col：子页的 flex-1/min-h-0 语义（files tab 的内部自滚、
+              空态垂直居中）原样成立；overflow-x 裁切守住「页面壳是唯一裁切
+              者」的横纵向收口。 */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+            {children}
+          </div>
         </div>
         <ChiefWake fixture={fixture} fabClassName={`page-fab ${PAGE_FAB_CLS}`} />
       </div>
