@@ -492,11 +492,14 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
 
     // 版本对比面：下拉 → 与其他版本对比 → 上一版本 = v1 → v2 unified diff。
     // 行集 = v2 + v1 + 对比入口行（reject-chain spec 同款计数口径）。
+    // #1006 载体迁移（#986 C 层：断言语义不动，与 reject-chain.spec 同步）：
+    // 版本菜单从手搓 Button 行迁 registry DropdownMenu 原语，行载体
+    // button → menuitem（#910 裁定 1 一级）。
     await page.locator('.doc-range-wrap .doc-pane-select').click();
     await pexpect(page.locator('.version-menu-row')).toHaveCount(3, { timeout: 10_000 });
     await pexpect(page.locator('.version-menu-row').first()).toHaveText(/v2/);
-    await page.getByRole('button', { name: '与其他版本对比…' }).click();
-    await page.getByRole('button', { name: '上一版本' }).click();
+    await page.getByRole('menuitem', { name: '与其他版本对比…' }).click();
+    await page.getByRole('menuitem', { name: '上一版本' }).click();
     await pexpect(page.locator('.doc-range-chip')).toHaveText(/v1 → v2/);
     await pexpect(page.locator('.doc-file-row')).toHaveText(/plan\.md/);
 
