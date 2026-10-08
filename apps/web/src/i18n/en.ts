@@ -509,7 +509,6 @@ export const EN: Record<string, string> = {
   '删除 Agent？': 'Delete agent?',
   '将「{name}」移出团队？该 Agent 进行中的任务将被停止。':
     'Remove "{name}" from this team? Active tasks for this agent will be stopped.',
-  关闭菜单: 'Close menu',
   复制链接: 'Copy link',
   完成任务: 'Complete todo',
   将改动合并到默认分支: 'Merge the changes into the default branch',
