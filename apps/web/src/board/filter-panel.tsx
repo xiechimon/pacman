@@ -91,12 +91,12 @@ function CheckBox({ state }: { state: 'off' | 'on' | 'mixed' }) {
   return (
     <span
       aria-hidden
-      className={`flex size-4 flex-none items-center justify-center rounded-none border transition-colors ${
+      className={`flex size-4 flex-none items-center justify-center rounded-[4px] border transition-colors ${
         state === 'off'
           ? 'border-input'
           : state === 'on'
-            ? 'border-(--card-button) bg-(--card-button) text-primary-foreground'
-            : 'border-(--card-button) text-(--card-button)'
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'border-primary text-primary'
       }`}
     >
       {state === 'on' && <Check className="size-3" />}
@@ -217,7 +217,7 @@ function DimensionSection({
                 registry 同源，皮肤 = 上游默认；整行可点 = 消费点 label 包裹，
                 点文案即 toggle。 */}
             {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
-            <label className="inline-flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-none px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
+            <label className="inline-flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
               <Checkbox
                 checked={allSelected}
                 indeterminate={someSelected && !allSelected}
@@ -230,7 +230,7 @@ function DimensionSection({
             </label>
             <Button
               variant="link"
-              className="filter-dimension-invert mr-2 h-auto shrink-0 rounded border-none px-1 text-xs font-normal text-(--card-button) active:not-aria-[haspopup]:translate-y-0"
+              className="filter-dimension-invert mr-2 h-auto shrink-0 rounded border-none px-1 text-xs font-normal text-primary active:not-aria-[haspopup]:translate-y-0"
               onClick={dimension.onInvert}
             >
               {t('反选')}
@@ -257,7 +257,7 @@ function DimensionSection({
                       : { 'data-tag': choice.value })}
                     role="option"
                     aria-selected={active}
-                    className={`${alias} h-7 min-w-0 flex-1 justify-start gap-2 rounded-none border-none px-2 text-xs font-normal text-foreground hover:bg-accent-soft dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0 ${
+                    className={`${alias} h-7 min-w-0 flex-1 justify-start gap-2 rounded-md border-none px-2 text-xs font-normal text-foreground hover:bg-accent-soft dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0 ${
                       active ? 'bg-accent' : ''
                     }`}
                     onClick={() => dimension.onToggle(choice.value)}
@@ -366,7 +366,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         side="bottom"
         sideOffset={6}
         aria-label={t('筛选')}
-        className="type-filter-popover board-filter-panel w-[268px] gap-0 rounded-none p-1"
+        className="type-filter-popover board-filter-panel w-[268px] gap-0 p-1"
       >
         {dimensions.map((dimension, index) => (
           <DimensionSection
@@ -380,7 +380,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         {totalSelected > 0 && (
           <Button
             variant="ghost"
-            className="filter-panel-clear mt-0.5 h-7 w-full rounded-none border-none text-xs font-normal text-muted-foreground hover:bg-accent-soft hover:text-foreground dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0"
+            className="filter-panel-clear mt-0.5 h-7 w-full rounded-md border-none text-xs font-normal text-muted-foreground hover:bg-accent-soft hover:text-foreground dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0"
             onClick={onClearAll}
           >
             {t('清除全部')}
