@@ -32,11 +32,6 @@ export const mcpServerRecordSchema = z.object({
 });
 export type McpServerRecord = z.infer<typeof mcpServerRecordSchema>;
 
-/** 工具名形状 `mcp__<slug>__<tool>`（r3 §5.1 实测；02 §7.1）。 */
-export function mcpToolName(slug: string, tool: string): string {
-  return `mcp__${slug}__${tool}`;
-}
-
 /** 标识符说明文案 canon（r3 §5.1 原文）。 */
 export const MCP_SLUG_COPY =
   '小写字母标识符，将作为工具名前缀（mcp__<标识符>__<工具>），创建后不可修改。';

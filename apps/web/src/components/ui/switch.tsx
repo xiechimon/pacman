@@ -1,20 +1,12 @@
 import { Switch as SwitchPrimitive } from '@base-ui/react/switch';
 import { cn } from 'cn';
 
-// 仓内偏离（#423，一处，勿在重拉时丢）：
-// thumbClassName —— Thumb 的 className 由适配层持有（上游无此口），但迁移
-// 消费点的 per-face 几何住在域 CSS（unlayered 压 utility 的仓律）时，Thumb
-// 上的 checked 位移 utility（group-data-[size]/…:translate-x-…）会与 CSS 的
-// left 定位叠加成双重位移，必须能在消费点递进同 modifier 冲突类把它并掉。
-// Root 侧 className 已有此能力，Thumb 补齐对称口。
 function Switch({
   className,
   size = 'default',
-  thumbClassName,
   ...props
 }: SwitchPrimitive.Root.Props & {
   size?: 'sm' | 'default';
-  thumbClassName?: string;
 }) {
   return (
     <SwitchPrimitive.Root
@@ -28,10 +20,7 @@ function Switch({
     >
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
-        className={cn(
-          'pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground',
-          thumbClassName,
-        )}
+        className="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"
       />
     </SwitchPrimitive.Root>
   );

@@ -2,8 +2,11 @@ import { expect, type Page, test } from '@playwright/test';
 
 // Issue #388 acceptance (弹层与 focus 视觉缺陷组):
 //   #15 — 点击 topbar 钮 / 新建任务钮后键盘交互（Esc/Tab）不再出现 UA 蓝框
-//         (outline auto rgb(0,95,204))；:focus-visible 统一收编为品牌环
-//         （配方沿 .rerun-switch:focus-visible 先例：2px --focus-ring, offset 2）。
+//         (outline auto rgb(0,95,204))；:focus-visible 必有可见环。#1003 起
+//         环配方双轨过渡：ui Button 件级 = 官方 box-shadow 环（ring-3
+//         ring-ring/50，#982 判决回官方形）；仍带 #388 per-face outline 配方
+//         的面（sidebar 行钮等）保持旧环，其退役归波 1 域车道——正向断言因此
+//         配方无关（expectVisibleRing），只钉「换皮，不是删皮」。
 //   #10 — /app/schedules 新建定时弹层升级全屏族（#656 起壳 = FloatingShell，
 //         入场 = tw-animate-css fade）：scrim 盖全视口（含 sidebar——旧 z auto
 //         被 sidebar z1 压过，阴影只盖右 pane）、Esc 关、背板点击关。
@@ -13,8 +16,6 @@ const BOARD = '/app?scenario=01';
 const SCHED = '/app/schedules?scenario=r3-92';
 /** UA (Chromium) default focus ring: outline auto + this blue. */
 const UA_BLUE = 'rgb(0, 95, 204)';
-/** --focus-ring (shadcn.css 值正本) — the family :focus-visible ring color. */
-const RING = 'rgb(242, 148, 216)';
 
 async function focusedOutline(page: Page) {
   return page.evaluate(() => {
@@ -26,9 +27,22 @@ async function focusedOutline(page: Page) {
       style: cs.outlineStyle,
       width: cs.outlineWidth,
       color: cs.outlineColor,
+      shadow: cs.boxShadow,
       focusVisible: el.matches(':focus-visible'),
     };
   });
+}
+
+/** 焦点环正向断言（「换皮，不是删皮」；#1003 起配方无关）：ui Button 面 =
+ *  官方 box-shadow 环（focus-visible:ring-3 ring-ring/50，outline 退场）；仍
+ *  带 #388 per-face outline 配方的面（sidebar 行钮等，其退役归波 1 域车道）=
+ *  solid outline 环。两种形态都合法，缺环非法——本断言只钉「键盘可达面必有
+ *  可见环且永非 UA 蓝框」。注意：上游 transition-all 的过渡属性表含
+ *  outline/ring（#15 的旧窄写随 brand 档退役），读数前必须等过渡落定。 */
+function expectVisibleRing(info: { style: string; color: string; shadow: string }) {
+  const outlineRing = info.style === 'solid' && info.color !== UA_BLUE;
+  const shadowRing = info.shadow !== 'none';
+  expect(outlineRing || shadowRing).toBe(true);
 }
 
 test.describe('#15 focus ring收编', () => {
@@ -52,6 +66,7 @@ test.describe('#15 focus ring收编', () => {
         .catch(() => false);
       if (closed) break;
     }
+    await page.waitForTimeout(250); // transition-all 过渡落定（见 expectVisibleRing 注）
     const info = await focusedOutline(page);
     expect(info).not.toBeNull();
     expect(info!.style).not.toBe('auto');
@@ -59,8 +74,7 @@ test.describe('#15 focus ring收编', () => {
     // 正向堵洞：键盘交互后 Chromium 必命中 :focus-visible——命中即环必须在
     // （防「整环删干净」的回归从负向断言溜过去；换皮，不是删皮）
     if (info!.focusVisible) {
-      expect(info!.style).toBe('solid');
-      expect(info!.color).toBe(RING);
+      expectVisibleRing(info!);
     }
 
     // schedules topbar + 新建 (fixture face: the click is inert, the button
@@ -69,17 +83,17 @@ test.describe('#15 focus ring收编', () => {
     const pageNew = page.locator('.page-new-action');
     await pageNew.click();
     await page.keyboard.press('Escape');
+    await page.waitForTimeout(250); // 同上：过渡落定后读数
     const info2 = await focusedOutline(page);
     expect(info2).not.toBeNull();
     expect(info2!.style).not.toBe('auto');
     expect(info2!.color).not.toBe(UA_BLUE);
     if (info2!.focusVisible) {
-      expect(info2!.style).toBe('solid');
-      expect(info2!.color).toBe(RING);
+      expectVisibleRing(info2!);
     }
   });
 
-  test('Tab focus keeps the brand ring (keyboard reachability preserved)', async ({ page }) => {
+  test('Tab focus keeps the official ring (keyboard reachability preserved)', async ({ page }) => {
     await page.goto(BOARD);
     // tab through the chrome until the 新建任务 button owns focus
     let found = false;
@@ -90,11 +104,11 @@ test.describe('#15 focus ring收编', () => {
       );
     }
     expect(found).toBe(true);
+    await page.waitForTimeout(250); // 同上：过渡落定后读数
     const info = await focusedOutline(page);
     expect(info).not.toBeNull();
     expect(info!.focusVisible).toBe(true);
-    expect(info!.style).toBe('solid');
-    expect(info!.color).toBe(RING);
+    expectVisibleRing(info!);
   });
 });
 

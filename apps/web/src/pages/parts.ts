@@ -5,24 +5,32 @@
 // 经 components/ui/tabs 的 segmented 档）共引同一份，不再有两套同款手搓壳。
 // 值 = 原 pages.css 规则的等值迁移（token 槽引用，spec/22 §1.7/1.8 + §3.1）；
 // 几何 r2 24b/24c 发丝环（1px border + 2px padding，chip 内浮）逐值保持。
-// tabs.tsx segmented 档仍输出 page-tabs-group/page-tab 类名（共享件冻结，
-// #946 不动 components/ui/）——类名自本票起无 CSS 规则，皮肤由这些常量承载；
-// 档收敛进件内归 #952（components/ui/ 授权票）。
+// tabs.tsx 的 segmented 档已随 #1003 退役（#982/#991 判决：手写皮肤档回
+// registry 原生 default/line 机制）：Tabs 承载的消费点走 default 档，皮肤
+// 全量由本文件常量承载，上游基类的穿透面（32px 行高、font-medium、
+// data-active 漆面）由常量内同 modifier 的中和段钉回原 .page-tab 正典值；
+// page-tabs-group/page-tab 类名仅存于 Button 承载（pages/shell.tsx topbar，
+// e2e 定位面），无 CSS 规则。
 
 /** 分段组盒（原 .page-tabs-group / .sched-form-freq / .prj-files-seg /
  *  .prj-tasks-view 共用基）：30px 高 = 1 border + 2 pad + 24 chip + 2 pad +
  *  1 border（#138 发丝环 idiom），方角，surface-secondary 底。
  *  定位差（topbar 的 pointer-events-auto、freq 的 w-fit/mt-3 等）由消费点补。 */
 export const SEG_GROUP_CLS =
-  'flex h-[30px] items-center rounded-none border border-(--border) bg-(--secondary) p-[2px]';
+  'flex h-[30px] items-center rounded-none border border-(--border) bg-(--secondary) p-[2px] group-data-horizontal/tabs:h-[30px]';
 
 /** 分段 chip 基皮（原 .page-tab 族）：24px 高、13/24 字、secondary 墨、
  *  透明底、方角、150ms 标准步的背景过渡（#138 家族律；旧规的
  *  (hover:hover)(pointer:fine) 门由 TW hover: 变体自带 (hover:hover) 承接，
  *  pointer:fine 细分门为 D2 吸收项——桌面探针面等值）。
- *  未选 chip 的 hover 淡 tint 见 SEG_TAB_IDLE_CLS。 */
+ *  未选 chip 的 hover 淡 tint 见 SEG_TAB_IDLE_CLS。
+ *  尾段 = Tabs 件承载的上游基类中和层（#1003，segmented 档退役后 chip 骑
+ *  registry default 档 trigger）：font-medium → 400 字重；data-active 漆面
+ *  （bg-background/shadow-sm/dark:bg-input/30）→ 选中 chip --card 实底无阴影
+ *  （原 .page-tab--active 正典值）。Button 承载无 data-active 属性、字重已被
+ *  GHOST_SEG_BTN_CLS 钉 400，中和段在其上惰性。 */
 export const SEG_TAB_CLS =
-  'h-6 cursor-pointer rounded-none border-none bg-transparent px-3 text-[13px] leading-6 text-(--text-secondary) transition-[background-color] duration-(--dur-fast) ease-(--ease-standard)';
+  'h-6 cursor-pointer rounded-none border-none bg-transparent px-3 text-[13px] leading-6 text-(--text-secondary) transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) font-normal gap-0 data-active:bg-(--card) data-active:shadow-none dark:data-active:bg-(--card)';
 
 /** 未选 chip：hover 吃 --seg-hover 淡 tint（alpha 梯第一级，tint 骑 chip
  *  自身盒 + 圆角 = 选中 chip 同几何，一个几何两个深度）。 */

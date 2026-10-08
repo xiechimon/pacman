@@ -169,7 +169,7 @@ export function TeamPage() {
           onValueChange={(value) => switchLayout(value as TeamLayout)}
           className={layout === 'chart' ? 'ml-auto' : undefined}
         >
-          <TabsList variant="segmented" className={SEG_GROUP_CLS}>
+          <TabsList className={SEG_GROUP_CLS}>
             <TabsTrigger value="grid" className={tabClass(layout === 'grid')} aria-label="grid">
               <Grid2x2 />
             </TabsTrigger>
@@ -202,6 +202,7 @@ export function TeamPage() {
               >
                 <span className="flex size-[52px] flex-none items-center justify-center overflow-hidden rounded-full bg-(--secondary) [&_img]:size-[52px]">
                   <SeededAvatar
+                    className="size-[52px]"
                     name={agent.displayName}
                     src={agent.avatarUrl}
                     fallback="/avatar-robot-1.svg"

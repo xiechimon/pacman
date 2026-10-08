@@ -14,6 +14,7 @@
 import {
   type ProviderApi,
   type ProviderCompat,
+  type ProviderModel,
   type SecretBox,
   stepTakesSecrets,
 } from '@pacman/shared';
@@ -80,8 +81,9 @@ export interface StepCredentialBundle {
     /** 明文密钥；无密钥网关 = null（r3 §2「无密钥网关可留空」）。 */
     apiKey: string | null;
     /** 目录模型集（r3 §2 `探测模型` 面）；M3a：daemon 侧 pi models.json
-     * 物化需要（backend/pi.ts materializeProvider）。 */
-    models: { id: string; name: string }[];
+     * 物化需要（backend/pi.ts materializeProvider）。可选 cost 位（#927）：
+     * 管理员声明的模型价格（USD / 1M tokens）随条目下发，pi 据此算成本。 */
+    models: ProviderModel[];
     /** Agent 侧选定模型（r3 §1.5 `using model <provider>/<modelId>`）。 */
     modelId: string | null;
   } | null;

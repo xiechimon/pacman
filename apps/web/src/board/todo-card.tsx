@@ -145,6 +145,7 @@ export function TodoCard({
           ) : (
             // #387: 执行者头像按 agent displayName 种子生成;未指派退静态资产
             <SeededAvatar
+              className="size-5"
               name={todo.agent?.displayName}
               src={todo.agent ? (agentAvatarUrl.get(todo.agent.id) ?? null) : null}
               fallback="/avatar-robot-1.svg"
@@ -209,7 +210,7 @@ export function TodoCard({
         <span className="todo-card-spacer flex-1" />
         {action != null && (
           <Button
-            variant={action.kind === 'primary' ? 'brand' : 'outline'}
+            variant={action.kind === 'primary' ? 'default' : 'outline'}
             size="xs"
             className={`todo-card-action todo-card-action--${action.kind} relative z-10 h-[26px] flex-none rounded-none px-[7.25px] text-xs`}
             onClick={() => onAction?.(todo)}

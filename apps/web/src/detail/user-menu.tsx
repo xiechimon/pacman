@@ -86,7 +86,12 @@ export function UserMenu({ theme: initialTheme, floating = false, className }: U
       }`}
     >
       <div className="user-menu-head flex flex-none items-center gap-[11px] border-b border-(--border) py-3.5 [&_img]:size-[30px] [&_img]:rounded-full">
-        <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
+        <SeededAvatar
+          className="size-[30px]"
+          name={user.displayName}
+          src={user.avatarUrl}
+          fallback="/avatar-user.png"
+        />
         <div>
           <div className="user-menu-name text-[13px] leading-4 text-(--foreground)">
             {user.displayName}

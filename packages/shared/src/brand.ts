@@ -104,6 +104,11 @@ export const ENV_VARS = {
    * （实测某 relay 只认 low/high/max，传 medium 直接 400），默认打开会让一部分
    * 自定义端点整条挂掉。 */
   customModelReasoning: 'PACMAN_CUSTOM_MODEL_REASONING',
+  /** pi 提示缓存保留档（#927，spec 26）：`long` = 长保留档（anthropic
+   * cache_control ttl 1h / openai prompt_cache_retention 24h，由 pi 适配器
+   * 落请求面）；未设/其它值 = `short`（pi 缺省档，请求面与既往零漂移）。
+   * long 会向网关发送新字段——部分通道拒未知字段（#654 同族），故 opt-in。 */
+  piCacheRetention: 'PACMAN_PI_CACHE_RETENTION',
 } as const;
 
 /** API key 形态 `pacman_<48hex>`（02 §5.8 前缀 = 品牌槽；r3 §6 掩码样例原形

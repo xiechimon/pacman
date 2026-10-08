@@ -97,6 +97,7 @@ function ChartNode({ agent, crown }: { agent: TeamAgentCard; crown?: boolean }) 
     <div className={NODE_CLS} data-testid="team-chart-node">
       <span className="flex size-8 flex-none items-center justify-center overflow-hidden rounded-full bg-(--secondary) [&_img]:size-8">
         <SeededAvatar
+          className="size-8"
           name={agent.displayName}
           src={agent.avatarUrl}
           fallback="/avatar-robot-1.svg"

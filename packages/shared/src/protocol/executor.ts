@@ -58,6 +58,10 @@ export const DAEMON_LOG_PREFIXES = [
   // 命令闸裁决行（#866 T5：`[gate] <ask|reject>: rule=<id> command=<…>`——只记
   // 非放行裁决，allow 静默；词表正源 = daemon backend/command-gate.ts）。
   'gate',
+  // pi project trust 裁决行（#925 D1：`[trust] denied: <.pi/…> present in
+  // worktree …`——只记受保护资源在位的 denied 行，空 worktree 静默；词表
+  // 正源 = daemon backend/pi.ts detectTrustProtectedResources）。
+  'trust',
 ] as const;
 
 /** 本地状态布局（02 §5.3，r3 §1.3 实测；目录名品牌位走 brand.ts 槽）。 */

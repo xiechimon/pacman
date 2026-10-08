@@ -132,8 +132,6 @@
     },
     {
       "includes": [
-        "apps/daemon/test/mcp-bridge.test.ts",
-        "apps/daemon/test/fixtures/**",
         "apps/daemon/test/**/*.test.ts",
         "apps/server/test/**/*.test.ts",
         "integration/test/**"
@@ -143,6 +141,27 @@
           "style": {
             "noRestrictedImports": "off",
             "noNonNullAssertion": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/components/ui/field.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/components/ui/input-group.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off",
+            "useKeyWithClickEvents": "off"
           }
         }
       }

@@ -75,9 +75,13 @@ const LIST_CARD_CLS = 'mt-[17px] rounded-[8px] bg-(--secondary) text-[13px]';
  *  方角透明底；z-[1] 压在滑动指示条之上）。选中态载体 = aria-selected
  *  （Base UI 自带，#910 裁定 3——旧 .is-active 类退役）：primary 墨 + 600。
  *  hover tint 只给未选中 chip、只吃精细指针（#73/#138 律）；过渡只动
- *  background-color（旧律：选中墨切换瞬切不过渡）。 */
+ *  background-color（旧律：选中墨切换瞬切不过渡）。
+ *  尾段 = 上游基类中和层（#1003，bare 档退役后 chip 骑 registry default 档
+ *  trigger）：font-medium → 400；hover 墨提亮钉回次级墨（只打未选中，选中
+ *  chip 的墨由 aria-selected 段承载）；data-active 漆面/阴影中和为透明——
+ *  选中底色由滑动指示条（TAB_INDICATOR_CLS，z-0）承载，chip 本体恒透明。 */
 const TAB_CLS =
-  'relative z-[1] h-[26px] cursor-pointer rounded-none border-none bg-transparent px-[11px] text-[13px] text-(--text-secondary) transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) pointer-fine:hover:aria-[selected=false]:bg-(--seg-hover) aria-selected:font-semibold aria-selected:text-(--foreground)';
+  'relative z-[1] h-[26px] cursor-pointer rounded-none border-none bg-transparent px-[11px] text-[13px] text-(--text-secondary) transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) pointer-fine:hover:aria-[selected=false]:bg-(--seg-hover) aria-selected:font-semibold aria-selected:text-(--foreground) font-normal hover:aria-[selected=false]:text-(--text-secondary) dark:hover:aria-[selected=false]:text-(--text-secondary) data-active:bg-transparent data-active:shadow-none dark:data-active:bg-transparent';
 
 /** 滑动指示条（#644，旧 .chief-tab-indicator 等值）：Base UI 把激活 chip 的
  *  几何写进内联 --active-tab-* 自定义属性，pill 垫在 chip 下层（z-0）按
@@ -222,20 +226,18 @@ export function ChiefSettings({
           overflow-x 保持裁切：窄列内容不该横向溢出（页面壳仍是唯一裁切者）。 */}
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
         <div className="mx-auto w-[766px]">
-          {/* XMON-23 收编：Tabs bare 档——零 chrome 原语只出语义（role=
-            tablist/tab、aria-selected、roving tabindex），几何/配色/选中态
-            #950 后由 TAB_CLS/TAB_INDICATOR_CLS utility 承载；选中态载体 =
+          {/* XMON-23 收编：Tabs 件——原语只出语义（role=tablist/tab、
+            aria-selected、roving tabindex），几何/配色/选中态由
+            TAB_CLS/TAB_INDICATOR_CLS utility 承载；选中态载体 =
             aria-selected（旧 is-active 类退役，e2e 钉 role=tab+selected）。
-            根 contents 出树，不产生布局盒。 */}
+            #1003 起 bare 档退役：骑 registry default 档，上游基类穿透由
+            TAB_CLS 尾段中和。根 contents 出树，不产生布局盒。 */}
           <Tabs
             value={tab}
             onValueChange={(value) => setTab(value as ChiefSettingsTab)}
             className="contents"
           >
-            <TabsList
-              variant="bare"
-              className="relative inline-flex rounded-none bg-(--secondary) p-0.5"
-            >
+            <TabsList className="relative inline-flex rounded-none bg-(--secondary) p-0.5 group-data-horizontal/tabs:h-auto">
               {/* #644 滑动指示条：选中 chip 的底色不再画在 chip 上，改由这根
                 pill 承载——切 tab 时它按参考站实测的过渡滑到新位并变宽。 */}
               <TabsIndicator data-testid="chief-tab-indicator" className={TAB_INDICATOR_CLS} />
@@ -269,6 +271,7 @@ export function ChiefSettings({
                       请求；XMON-105 --img 律：图即 24 圆盘，去 chip 底边）。 */
                     <span className={ROW_AVATAR_IMG_CLS}>
                       <SeededAvatar
+                        className="size-6"
                         name={boundAgent.name}
                         src={boundAgent.avatarUrl}
                         fallback="/avatar-robot-1.svg"

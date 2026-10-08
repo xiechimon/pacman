@@ -173,7 +173,7 @@ export function ProvidersPage() {
           aria-hidden，文案照常渲染——可访问名 = RUNTIME_LABELS，读屏与
           e2e 的 toHaveText('pi'/'Claude Code') 都不受影响。 */}
       <Tabs value={runtime} onValueChange={(value) => selectRuntime(value as ModelSourceRuntime)}>
-        <TabsList variant="segmented" aria-label={t('模型服务')} className={SEG_GROUP_CLS}>
+        <TabsList aria-label={t('模型服务')} className={SEG_GROUP_CLS}>
           {MODEL_SOURCE_RUNTIMES.map((rt) => {
             const Mark = RUNTIME_MARKS[rt];
             return (
@@ -241,11 +241,10 @@ export function ProvidersPage() {
                 {t('尚未添加服务商。添加后，服务商的模型会出现在这里。')}
               </p>
               {/* #423 原语消费点切换（#422 清单）：轨 A3 ui/Button primary/
-                  compact → components/ui Button brand/sm（A3 等价档，
+                  compact → components/ui Button default/sm（A3 等价档，
                   button.tsx 偏离注 3）；12px 垫/13px 常规字重是 A3 compact
                   同值的消费面差异（原 .res-runtime-empty-action 等值）。 */}
               <Button
-                variant="brand"
                 size="sm"
                 className="mt-3 px-3 text-[13px] font-normal"
                 onClick={() => setCreateOpen(true)}

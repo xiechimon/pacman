@@ -14,6 +14,7 @@ import type {
   ProjectRepoKind,
   ProviderApi,
   ProviderCompat,
+  ProviderModel,
   StepKind,
   TodoSourceKind,
   TriggerSource,
@@ -393,7 +394,7 @@ export const provider = sqliteTable('provider', {
   api: text('api').$type<ProviderApi>().notNull(),
   authHeader: bool('authHeader').notNull().default(true),
   compat: json<ProviderCompat>('compat').notNull(),
-  models: json<{ id: string; name: string }[]>('models').notNull().default(sql`'[]'`),
+  models: json<ProviderModel[]>('models').notNull().default(sql`'[]'`),
   /** [内部] SecretBox 信封（v1 头 + iv + ciphertext + authTag，01 §4.2）；只写不读（02 §8）。 */
   apiKeyCipher: text('apiKeyCipher'),
   createdBy: text('createdBy').notNull(),
@@ -492,7 +493,9 @@ export const shellCommand = sqliteTable('shell_command', {
   finishedAt: epochMs('finishedAt'),
 });
 
-// —— token_usage（build × model 四维计数，02 §6.2/r3 §3.8；记账归 M3）———————————
+// —— token_usage（build × model 四维计数，02 §6.2/r3 §3.8；记账归 M3。成本五
+// 列 = #927：pi 报的 USD 成本按 per-message usage 累积，real 列——pi
+// calculateCost 产物是小数；无价格来源的行恒 0）———————————
 export const tokenUsage = sqliteTable(
   'token_usage',
   {
@@ -503,6 +506,11 @@ export const tokenUsage = sqliteTable(
     output: integer('output').notNull().default(0),
     cacheRead: integer('cacheRead').notNull().default(0),
     cacheWrite: integer('cacheWrite').notNull().default(0),
+    costInput: real('costInput').notNull().default(0),
+    costOutput: real('costOutput').notNull().default(0),
+    costCacheRead: real('costCacheRead').notNull().default(0),
+    costCacheWrite: real('costCacheWrite').notNull().default(0),
+    costTotal: real('costTotal').notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.buildId, t.model] })],
 );

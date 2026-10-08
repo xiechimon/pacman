@@ -15,7 +15,7 @@ import {
   ORPHAN_WORKTREE_TTL_MS,
 } from '@pacman/shared';
 import { createClaudeCodeBackend } from './backend/claude-code.js';
-import { createPiBackend } from './backend/pi.js';
+import { createPiBackend, piSessionPolicyLine } from './backend/pi.js';
 import { type ClaudeCodeAuthProbe, probeClaudeCodeAuth } from './claude-code-auth.js';
 import { readClaudeCodeReport } from './claude-code-models.js';
 import type { DaemonConfig } from './config.js';
@@ -113,9 +113,17 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       onSkillsLog: (msg) => logger.skills(msg),
       // [gate] 裁决行（#866 T5 命令闸；只记非放行裁决，allow 静默）。
       onGateLog: (msg) => logger.gate(msg),
+      // [trust] 裁决行（#925 D1：受保护资源在位的 denied 行，空 worktree 静默）。
+      onTrustLog: (msg) => logger.trust(msg),
       // 非 SSE 响应诊断文案的「哪台机器」位（#882；与 #867 同值来源）。
       machineName: config.name,
     });
+  // 策略宣告行（#925/#927，spec 26）：trust/telemetry/version-check/
+  // cache-retention/settings 五面从 daemon.log 可读。只在真 PiBackend 构造
+  // （env 钉已落）时宣告——注入后端的测试面不谎报。
+  if (opts.backend === undefined) {
+    logger.machine(piSessionPolicyLine(process.env));
+  }
 
   // —— per-step 后端解析 registry（spec 17 A3：runner 的 backendFor 唯一
   // 分叉，此处供解析目标）——claude-code 后端惰性初始化：首 runtime 步才

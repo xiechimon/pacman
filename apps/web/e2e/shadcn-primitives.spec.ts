@@ -45,7 +45,9 @@ test('avatar 落点：侧栏人像 / 看板执行者面共用同一个 component
   await expect(page.locator('.rail-user [data-slot="avatar-image"]')).toHaveCount(1);
 });
 
-test('avatar 落点不生成盒：img 的 containing block 仍是 per-face 容器', async ({ page }) => {
+test('avatar 落点定尺盒（#983/#1003）：Root 生成真盒承上游发丝环，img 几何不变', async ({
+  page,
+}) => {
   await stubDicebear(page);
   await page.goto('/app?scenario=22d');
   const probe = await page.evaluate(() => {
@@ -58,14 +60,19 @@ test('avatar 落点不生成盒：img 的 containing block 仍是 per-face 容�
     };
     return {
       display: getComputedStyle(root).display,
+      rootBox: box(root),
       imgBox: box(img),
       chipBox: box(chip),
-      hasOwnBox: root.getBoundingClientRect().height > 0,
     };
   });
-  expect(probe.display).toBe('contents');
-  expect(probe.hasOwnBox).toBe(false);
-  // 旧原语的 img 尺寸契约：24×24（`.sidebar-user [&_img]:size-6`）
+  // contents 根已随 #983 判决退役（#1003 施工）：上游 after: 发丝环需要真实
+  // containing block——contents 宿主上 absolute 伪元素会爬到页级祖先，成为
+  // 整页点击拦截层（XMON-14 实测）。
+  expect(probe.display).not.toBe('contents');
+  // 定尺盒 = 消费点 className（size-6），img 走件内 size-full 随 Root——
+  // img 尺寸契约不变：24×24（`.sidebar-user [&_img]:size-6` 同值同构）。
+  expect(probe.rootBox.w).toBe(24);
+  expect(probe.rootBox.h).toBe(24);
   expect(probe.imgBox.w).toBe(24);
   expect(probe.imgBox.h).toBe(24);
   expect(probe.chipBox.h).toBe(44);

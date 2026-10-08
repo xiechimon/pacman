@@ -31,9 +31,9 @@ export const SELECT_TRIGGER_CLS =
 export const SELECT_VALUE_CLS = 'min-w-0 flex-auto truncate';
 
 /** 24px 头像槽（XMON-105 律单源，旧 .chief-avatar / .chief-avatar--img
- *  等值）：glyph 形只出墨色与不伸缩；img 形图即 24 圆盘（SeededAvatar
- *  contents 律——img 的 containing block 在消费面，几何由 wrapper 的
- *  [&_img] 承载）。 */
+ *  等值）：glyph 形只出墨色与不伸缩；img 形图即 24 圆盘（SeededAvatar Root
+ *  定尺盒——几何由 Root 的 className 与 wrapper 的 [&_img] 同值承载，
+ *  #1003）。 */
 export const AVATAR_SLOT_CLS = 'flex-none text-(--text-tertiary)';
 export const AVATAR_IMG_CLS =
   'flex-none text-(--text-tertiary) [&_img]:block [&_img]:size-6 [&_img]:rounded-full';

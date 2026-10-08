@@ -1,6 +1,6 @@
 // 本机 MCP config 解析缝（spec 13/#368）：claim 载荷 mcpServers = slug 列表
 // → 读本机 `~/.claude.json`（config.mcpConfigPath）解析 McpEndpoint[] →
-// 喂既有 connectMcpBridge（backend/mcp-bridge.ts，桥零改动）。
+// 喂 pi 原生 MCP（backend/pi.ts registerMcpServer，#930）。
 // 缝纪律：归 backend/（MCP provider 缝）——runner 经本模块消费，不直接触
 // config 文件形状；解析与归一律单源 = shared parseClaudeMcpEntries（server
 // 投影面同一份消费形状与规则）。
@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import type { McpEndpoint } from '@pacman/shared';
 import {
   type ClaudeMcpEntry,
+  MCP_CONNECT_FAILED_CANON,
   MCP_NOT_IN_CONFIG_CANON,
   parseClaudeMcpEntries,
 } from '@pacman/shared';
@@ -82,4 +83,12 @@ export function resolveMcpEndpoints(
  * logger.mcp 落，与 connectFailedLine 同律）。 */
 export function notInConfigLine(slug: string): string {
   return `${slug}: ${MCP_NOT_IN_CONFIG_CANON}`;
+}
+
+/** canon 连接失败行文本（r3 §1.5 实测行形 `[mcp] <slug>: connect failed —
+ * its tools are unavailable this turn: <reason>`；前缀由 logger.mcp 落）。
+ * #930 起来源两路：注册期 registerMcpServer 抛错（非法名/非法 config）、
+ * 连接期 pi MCP 扩展的 attention 通知解析（backend/pi.ts）。 */
+export function connectFailedLine(slug: string, reason: string): string {
+  return `${slug}: ${MCP_CONNECT_FAILED_CANON}: ${reason}`;
 }
