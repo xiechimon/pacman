@@ -210,6 +210,10 @@ export const EN: Record<string, string> = {
   名称: 'Name',
   语言: 'Language',
   推送通知: 'Push notifications',
+  // #1031: the switch is a preference; when it's on but the browser permission
+  // is denied, the row explains why nothing will actually fire.
+  '浏览器已拒绝通知权限，需到站点设置重新允许':
+    'Notifications are blocked by the browser — re-allow them in site settings',
 
   // —— team route (r7 12) ——
   设置: 'Settings',
@@ -635,6 +639,10 @@ export const EN: Record<string, string> = {
     'Model slots from the executor machine’s Claude Code config (~/.claude/settings.json).',
   '已安装在 {hostname}': 'Installed on {hostname}',
   未安装: 'Not installed',
+  '已安装，未配置模型槽': 'Installed, no model slots configured',
+  未登录: 'Not signed in',
+  '在该机器上写 ~/.claude/settings.json 的 env.ANTHROPIC_*_MODEL 槽后，此处自动展示其模型槽。':
+    'Add ANTHROPIC_*_MODEL slots to env in ~/.claude/settings.json on that machine and its model slots show up here.',
   '安装 Claude Code 并完成一次登录后，此处自动展示其模型槽。':
     'Install Claude Code and sign in once; its model slots appear here automatically.',
   '尚未添加服务商。添加后，服务商的模型会出现在这里。':

@@ -466,3 +466,20 @@ test('机器槽默认面(101):无 resources → 清单仅「自动」行且选�
   await expect(menu.getByRole('option')).toHaveCount(1);
   await expect(menu.locator('[data-testid="chief-host-auto"]')).toHaveAttribute('aria-selected', 'true');
 });
+
+// —— #903(ADR 0014):派发设置槽已删——「派发方式」行退场,判定权归
+// chief(run_builds withPlan 逐次判定 + dispatchReason 回执)。失败方式:
+// 1. 僵尸控件:设置槽删了但 Agent tab 还留着「派发方式」行/触发钮(哑控件,
+//    用户拨了不生效 = 比没有更坏);
+// 2. 拆过头:邻座决策行(绑定 Agent/压缩模型/机器)被连带拆掉。
+// chief 判定面(缺省先规划 / withPlan:false 直修 / 理由回显)是 server 缝,
+// 归 chief.test.ts + live 探针(docs/verify/903/)钉,不在 fixture 面。
+
+test('Agent tab 无「派发方式」行:设置槽已删,邻座决策行健在(#903)', async ({ page }) => {
+  await page.goto(AGENT_TAB);
+  await expect(page.getByRole('heading', { name: '派发方式' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '派发方式' })).toHaveCount(0);
+  // 邻座行不受牵连:压缩模型 + 机器触发钮仍各自唯一在位(strict mode 钉)。
+  await expect(modelSelect(page)).toHaveCount(1);
+  await expect(machineSelect(page)).toHaveCount(1);
+});
