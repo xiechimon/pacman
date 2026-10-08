@@ -4,6 +4,10 @@
 // models[] 投影；claude-code 段 = 各执行机 daemon 读本机
 // ~/.claude/settings.json 经 presence/enroll 上报、server 按机器聚合
 // （#707；文件缺失/解析失败 → installed:false，不空报不崩）。
+//
+// #1050 起 claude-code 段另带两个可用性事实位（`bin` / `auth`）：`installed`
+// 只说「配置文件在」，说不了「二进制在不在、什么版本、登没登」——两个方向
+// 都曾是说谎的（配置在而二进制缺失 → 假绿；装好了没写配置 → 假红）。
 
 import { z } from 'zod';
 
@@ -34,15 +38,41 @@ export const modelSourceModelSchema = z.object({
 });
 export type ModelSourceModel = z.infer<typeof modelSourceModelSchema>;
 
+/** claude 二进制事实（#1050）：`path` 必填——有 path 就是「这台机器装了」的
+ *  判据（探测侧只在校验通过时产出行）；`version: null` = 二进制在但输出里
+ *  没有版本号（wrapper 打了别的东西），版本是信息位不是判据。 */
+export const claudeBinInfoSchema = z.object({
+  path: z.string().min(1),
+  version: z.string().nullable(),
+});
+export type ClaudeBinInfoWire = z.infer<typeof claudeBinInfoSchema>;
+
+/** 机器本地凭据态（#1050）：取自 `claude auth status` 预检三态
+ *  （claude-code-auth.ts）。`unknown` = 探针说不清（CLI 缺失/超时/输出不可
+ *  解析），不是「未登录」——UI 只在明确 not-logged-in 时出角标。 */
+export const claudeAuthStateSchema = z.object({
+  state: z.enum(['logged-in', 'not-logged-in', 'unknown']),
+  method: z.string().optional(),
+  provider: z.string().optional(),
+  reason: z.string().optional(),
+});
+export type ClaudeAuthStateWire = z.infer<typeof claudeAuthStateSchema>;
+
 export const modelSourceSchema = z.object({
   runtime: modelSourceRuntimeSchema,
   /** claude-code：上报机器的 settings.json 存在且解析为对象；pi 恒 true
-   *  （server 在跑 = pacman 自有 runtime 可用）。 */
+   *  （server 在跑 = pacman 自有 runtime 可用）。**不是**「二进制装了」的
+   *  判据——那是 `bin`（#1050）。 */
   installed: z.boolean(),
   /** 上报机器的 hostname（os.hostname()）——「已安装在 <hostname>」文案源。
    *  #707 起跟随执行机，不再是 server 主机。 */
   hostname: z.string(),
   models: z.array(modelSourceModelSchema),
+  /** claude 二进制事实（#1050）：装了才有；缺席 = 老 daemon 未上报，
+   *  UI 闭嘴（不写「未知」——只有一台机器时那是纯噪音）。 */
+  bin: claudeBinInfoSchema.optional(),
+  /** 机器本地凭据态（#1050）：由步内预检回填，随节拍上行；缺席同 bin。 */
+  auth: claudeAuthStateSchema.optional(),
 });
 export type ModelSource = z.infer<typeof modelSourceSchema>;
 
@@ -99,10 +129,14 @@ export function parseClaudeCodeModelSource(raw: unknown, hostname: string): Mode
 
 /** daemon → server 上报载荷（presence / enroll body 的 claudeCode 位，#707）：
  *  本机 settings.json 的解析结果 + 本机 hostname。缺席 = 旧 daemon 未上报
- *  （server 视为未知，不下发假清单）。 */
+ *  （server 视为未知，不下发假清单）。`bin`/`auth` 为 #1050 增量，均可选——
+ *  加字段不加迁移（json 列），双向兼容：新 daemon→老 server 的未知键被 zod
+ *  剥掉（两个 body schema 均非 strict），老 daemon→新 server 则缺席。 */
 export const claudeCodeReportSchema = z.object({
   installed: z.boolean(),
   hostname: z.string(),
   models: z.array(modelSourceModelSchema),
+  bin: claudeBinInfoSchema.optional(),
+  auth: claudeAuthStateSchema.optional(),
 });
 export type ClaudeCodeReport = z.infer<typeof claudeCodeReportSchema>;

@@ -78,7 +78,9 @@ import {
   r7,
   rerunDialog12,
   rerunDialog15,
+  resourcesCcLoggedOut,
   resourcesCcMissing,
+  resourcesCcNoConfig,
   resourcesDefault,
   reusedBuilding,
   reusePanel15,
@@ -334,6 +336,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #356 未安装分支（spec 11 §A4）：claude-code settings.json 缺失 →
       // header 未安装指引态的 fixture 钉
       '10-cc-missing': resourcesCcMissing,
+      // #1050 装了没配态（二进制在、settings.json 缺）→ 主句「已安装，未配置模型槽」
+      '10-cc-noconfig': resourcesCcNoConfig,
+      // #1050 未登录态（二进制与配置都在、auth=not-logged-in）→ 细字行尾「未登录」角标
+      '10-cc-loggedout': resourcesCcLoggedOut,
       // #895 机器页三态读标注（spec 21 A8）：主力机徽标 / 回合进行中 /
       // 等待机器——machines 路由用（06 同面，命名场景手法同 newtask-machines）
       'machines-chief-state': machinesChiefState,

@@ -1287,6 +1287,10 @@ const PROVIDER_SOURCE_CC: ModelSource = {
   runtime: 'claude-code',
   installed: true,
   hostname: MACHINE_NAME,
+  // #1050：canon fixture 带上两个可用性事实位（装了 + 已登录），三态的另两支
+  // 由 e2e 按 scenario 覆写（页面断言需要「装了没配」与「没装」同时可见）。
+  bin: { path: '/home/u/.local/bin/claude', version: '2.1.289' },
+  auth: { state: 'logged-in', method: 'oauth_token', provider: 'firstParty' },
   models: [
     { id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'default' },
     { id: 'claude-opus-4-1', name: 'claude-opus-4-1', slot: 'opus' },
@@ -2294,14 +2298,51 @@ export const resourcesDefault: FixtureSet = {
   resources: RESOURCES,
 };
 
-/** #356 未安装分支 canon（spec 11 §A4）：claude-code settings.json 缺失/
- *  解析失败 → header 转「未安装」指引态、模型行零渲染。scenario =
- *  10-cc-missing。 */
+/** #356 未安装分支 canon（spec 11 §A4）：机器上既没有 settings.json 也没有
+ *  claude 二进制（#1050 起 `bin` 缺席）→ header 转「未安装」指引态、模型行
+ *  零渲染。scenario = 10-cc-missing。 */
 export const resourcesCcMissing: FixtureSet = {
   ...resourcesDefault,
   resources: {
     ...RESOURCES,
-    providerSources: [PROVIDER_SOURCE_PI, { ...PROVIDER_SOURCE_CC, installed: false, models: [] }],
+    providerSources: [
+      PROVIDER_SOURCE_PI,
+      { runtime: 'claude-code', installed: false, hostname: MACHINE_NAME, models: [] },
+    ],
+  },
+};
+
+/** #1050 装了没配态：二进制在、settings.json 缺（或没写槽）→ 主句「已安装，
+ *  未配置模型槽」+ 配置补法句（与「没装」的补法不同），模型行零渲染。
+ *  scenario = 10-cc-noconfig。 */
+export const resourcesCcNoConfig: FixtureSet = {
+  ...resourcesDefault,
+  resources: {
+    ...RESOURCES,
+    providerSources: [
+      PROVIDER_SOURCE_PI,
+      {
+        runtime: 'claude-code',
+        installed: false,
+        hostname: MACHINE_NAME,
+        models: [],
+        bin: { path: '/home/u/.local/bin/claude', version: '2.1.289' },
+      },
+    ],
+  },
+};
+
+/** #1050 未登录态：二进制与配置都在、凭据态 = not-logged-in → 细字行尾加
+ *  「未登录」角标（主句不变——「装没装」与「登没登」是两个维度）。
+ *  scenario = 10-cc-loggedout。 */
+export const resourcesCcLoggedOut: FixtureSet = {
+  ...resourcesDefault,
+  resources: {
+    ...RESOURCES,
+    providerSources: [
+      PROVIDER_SOURCE_PI,
+      { ...PROVIDER_SOURCE_CC, auth: { state: 'not-logged-in', provider: 'firstParty' } },
+    ],
   },
 };
 

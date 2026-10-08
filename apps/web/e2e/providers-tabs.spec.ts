@@ -123,6 +123,66 @@ test('settings.json 缺失分支：header 转「未安装」指引态，模型�
   await expect(page.locator(`${SHELL} [data-model-id][data-runtime="pi"]`)).toHaveCount(3);
 });
 
+// #1050 五态：主句由 installed（配置）定、细字行由 bin（二进制）定、角标由
+// auth（凭据）定——三个维度分开，不压平。此三条钉住「装了+已登录」（canon）、
+// 「装了+未登录」、「装了+没配」；「没装」（10-cc-missing，上一条）与
+// 「bin 缺席 = 闭嘴」由负向断言覆盖。
+test('#1050 装了 + 已登录：细字行报版本与路径，无「未登录」角标', async ({ page }) => {
+  await page.goto(`${PAGE}&runtime=claude-code`);
+  const head = page.locator(
+    `${SHELL} [data-testid="runtime-head"][data-runtime="claude-code"]`,
+  );
+  await expect(head).toContainText(`已安装在 ${CANON_HOST}`);
+  await expect(head).toContainText('claude 2.1.289 · /home/u/.local/bin/claude');
+  await expect(head).not.toContainText('未登录');
+  await expect(head).toHaveAttribute('data-auth', 'logged-in');
+  // 主句仍是安装态，不再出现「未配置模型槽」混淆
+  await expect(head).not.toContainText('未配置模型槽');
+});
+
+test('#1050 装了 + 未登录：细字行尾出「未登录」角标（主句不变）', async ({ page }) => {
+  await page.goto(
+    '/app/resources/providers?scenario=10-cc-loggedout&runtime=claude-code',
+  );
+  const head = page.locator(
+    `${SHELL} [data-testid="runtime-head"][data-runtime="claude-code"]`,
+  );
+  await expect(head).toContainText(`已安装在 ${CANON_HOST}`);
+  await expect(head).toContainText('claude 2.1.289 · /home/u/.local/bin/claude');
+  await expect(head).toContainText('未登录');
+  await expect(head).toHaveAttribute('data-auth', 'not-logged-in');
+});
+
+test('#1050 装了 + 没配：主句转「已安装，未配置模型槽」+ 配置补法句，模型行零渲染', async ({
+  page,
+}) => {
+  await page.goto(
+    '/app/resources/providers?scenario=10-cc-noconfig&runtime=claude-code',
+  );
+  const head = page.locator(
+    `${SHELL} [data-testid="runtime-head"][data-runtime="claude-code"]`,
+  );
+  await expect(head).toContainText('已安装，未配置模型槽');
+  await expect(head).toContainText('claude 2.1.289 · /home/u/.local/bin/claude');
+  await expect(head).toContainText('ANTHROPIC_*_MODEL');
+  // 与「没装」的补法句区分开
+  await expect(head).not.toContainText('安装 Claude Code 并完成一次登录后');
+  await expect(
+    page.locator(`${SHELL} [data-model-id][data-runtime="claude-code"]`),
+  ).toHaveCount(0);
+});
+
+test('#1050 没装（bin 缺席）：不出细字行、不写「未知」', async ({ page }) => {
+  await page.goto('/app/resources/providers?scenario=10-cc-missing&runtime=claude-code');
+  const head = page.locator(
+    `${SHELL} [data-testid="runtime-head"][data-runtime="claude-code"]`,
+  );
+  await expect(head).toContainText('未安装');
+  await expect(head.locator('[data-testid="runtime-bin"]')).toHaveCount(0);
+  await expect(head).not.toContainText('未知');
+  await expect(head).not.toContainText('claude 2.1.289');
+});
+
 test('几何：tablist/header/模型行卡同贴内容列左缘，tab 序 pi 左 claude-code 右', async ({
   page,
 }) => {

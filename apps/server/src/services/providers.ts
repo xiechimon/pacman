@@ -183,6 +183,11 @@ export function listClaudeCodeSources(db: Db, teamId: string): ModelSourcesEnvel
           installed: report.installed,
           hostname: report.hostname,
           models: report.models,
+          // #1050 两个事实位原样透传（server 不合成、不猜）：`bin` 缺席 =
+          // 该机器没装 或 老 daemon 没报，两种都让 UI 闭嘴；`auth` 缺席 =
+          // 该机器还没跑过 claude-code 步（预检未发生）。
+          ...(report.bin !== undefined ? { bin: report.bin } : {}),
+          ...(report.auth !== undefined ? { auth: report.auth } : {}),
         },
       ];
     });

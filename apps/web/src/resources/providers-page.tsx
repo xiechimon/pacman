@@ -68,16 +68,28 @@ function parseRuntime(searchParams: URLSearchParams): ModelSourceRuntime {
   return isRuntime(raw) ? raw : 'pi';
 }
 
-/** A2 header 卡：runtime 名 + 一行说明 + 安装态。安装态两分支（A4）：
- *  installed → 「已安装在 <hostname>」；否则 → 「未安装」+ 安装指引。
+/** A2 header 卡：runtime 名 + 一行说明 + 可用性。**主句**由 `installed` 定
+ *  （配置文件在不在，模型清单的前提），**细字行**由 `bin` 定（二进制在不在、
+ *  什么版本、登没登，#1050）——两个维度分开，不压平：配置文件在而二进制缺失
+ *  时主句不再说「已安装在」，装了却没写配置时主句也不再是「未安装」。
+ *  `bin` 缺席（老 daemon / 没装）= 不出细字行，不写「未知」（纯噪音）。
  *  data-testid="runtime-head" = #910 二级结构载体（卡片无 role，几何与
- *  安装态断言的锚；data-runtime 继续做 runtime 维度筛选）。 */
+ *  安装态断言的锚；data-runtime 继续做 runtime 维度筛选）；data-auth 承载
+ *  凭据态供 e2e 断言。 */
 function RuntimeHead({ source }: { source: ModelSource }) {
   const { t } = useI18n();
+  const bin = source.bin;
+  const notLoggedIn = source.auth?.state === 'not-logged-in';
+  // 装了二进制但没配置模型槽：与「没装」是两种病，主句必须分开（补法也不同）。
+  const installedNoConfig = bin !== undefined && !source.installed;
+  const binLine = bin
+    ? `claude${bin.version !== null ? ` ${bin.version}` : ''} · ${bin.path}`
+    : null;
   return (
     <div
       data-testid="runtime-head"
       data-runtime={source.runtime}
+      data-auth={source.auth?.state}
       className="mt-4 rounded-(--radius-popover) border border-(--border) bg-(--secondary) px-4 py-3.5"
     >
       <div className="flex items-center gap-2">
@@ -88,16 +100,30 @@ function RuntimeHead({ source }: { source: ModelSource }) {
           <span className="text-xs leading-4 text-(--text-tertiary)">
             {t('已安装在 {hostname}', { hostname: source.hostname })}
           </span>
+        ) : installedNoConfig ? (
+          <span className="text-xs leading-4 text-(--text-tertiary)">
+            {t('已安装，未配置模型槽')}
+          </span>
         ) : (
           <span className="text-xs leading-4 text-(--tile-orange-fg)">{t('未安装')}</span>
         )}
       </div>
+      {binLine !== null && (
+        <p data-testid="runtime-bin" className="mt-1 mb-0 text-xs leading-4 text-(--text-tertiary)">
+          {binLine}
+          {notLoggedIn && <span className="text-(--tile-orange-fg)">{` · ${t('未登录')}`}</span>}
+        </p>
+      )}
       <p className="mt-1 mb-0 text-xs leading-4 text-(--text-tertiary)">
         {t(RUNTIME_DESCRIPTIONS[source.runtime])}
       </p>
       {!source.installed && (
         <p className="mt-1.5 mb-0 text-xs leading-4 text-(--text-tertiary)">
-          {t('安装 Claude Code 并完成一次登录后，此处自动展示其模型槽。')}
+          {installedNoConfig
+            ? t(
+                '在该机器上写 ~/.claude/settings.json 的 env.ANTHROPIC_*_MODEL 槽后，此处自动展示其模型槽。',
+              )
+            : t('安装 Claude Code 并完成一次登录后，此处自动展示其模型槽。')}
         </p>
       )}
     </div>
