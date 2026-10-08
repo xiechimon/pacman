@@ -2,7 +2,7 @@
 // 既有语义（avatarUrl 覆盖优先于 dicebear 生成，加载失败 onError 退静态
 // 资产，不破图不跳版——原语面钉在 avatar-dicebear.spec）；未绑定保持脚本
 // 生成的静态字形 ChiefFab（资产文件头 Do not edit，切换发生在消费点）。
-// board 路由的 inline 按钮与 ChiefWake 共用本组件，保证两个消费点同步。
+// 唯一消费点 = 根 host 的全站 FAB（chief-root.tsx，ADR 0013 D6 单实例）。
 
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ChiefContent } from '../fixtures/records.js';

@@ -1,8 +1,10 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Issue #129 acceptance: shell consistency + local-first 净化 —
-//   1. every family's 总管 FAB (board / pages / resources / secondary /
-//      detail) wakes the same chief drawer, and closes it again;
+//   1. the single root-host 总管 FAB (ADR 0013 D6 — the five per-family
+//      mount points retired) wakes the same chief window on every shell
+//      family (board / pages / resources / secondary / detail), and
+//      minimize closes it again;
 //   2. the sidebar keeps identical geometry across /app ↔ /app/team ↔
 //      resources hops — including the collapsed rail, whose state now
 //      rides every shell (storage-backed) instead of only the board;
@@ -83,45 +85,35 @@ const headContentX = (page: Page) =>
     };
   });
 
-test.describe('chief FAB wakes on every shell family', () => {
+test.describe('the root FAB wakes the window on every shell family', () => {
   const families = [
-    {
-      name: 'board',
-      route: '/app?scenario=01',
-      fab: '[aria-label="总管"]', // #950: .chief-fab 类名钩退役 → aria-label 一级
-      gear: true,
-    },
-    { name: 'pages', route: '/app/schedules?scenario=11', fab: '.page-fab', gear: true },
-    {
-      name: 'resources',
-      route: '/app/resources/skills?scenario=06',
-      fab: '[aria-label="总管"]', // #944: .res-fab 类名钩退役 → aria-label 一级
-      gear: true,
-    },
-    {
-      name: 'secondary',
-      route: '/app/team?scenario=12',
-      fab: 'button[aria-label="总管"]', // #947: .secondary-fab 类名钩退役 → aria-label 一级（button 限定）
-      gear: true,
-    },
+    { name: 'board', route: '/app?scenario=01', gear: true },
+    { name: 'pages', route: '/app/schedules?scenario=11', gear: true },
+    { name: 'resources', route: '/app/resources/skills?scenario=06', gear: true },
+    { name: 'secondary', route: '/app/team?scenario=12', gear: true },
     {
       name: 'detail',
       // #443: the detail FAB renders only with unread — the row rides the
       // named detail-unread scenario (16's surface + chiefUnread 3), i.e.
-      // 先造未读，再断言 FAB 与抽屉; the no-unread face is pinned in
+      // 先造未读，再断言 FAB 与窗; the no-unread face is pinned in
       // chief-fab.spec.ts.
       route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=detail-unread',
-      fab: '.detail-fab',
       gear: true,
     },
   ] as const;
 
-  for (const { name, route, fab, gear } of families) {
-    test(`${name}: ${fab} opens the drawer, close returns to the surface`, async ({ page }) => {
+  for (const { name, route, gear } of families) {
+    test(`${name}: the root FAB opens the window, minimize returns to the surface`, async ({
+      page,
+    }) => {
       await page.goto(route);
-      await expect(page.locator('.chief-drawer')).toHaveCount(0);
+      // ADR 0013 D6 载体：关态驻 DOM（hidden），count-0 律退役
+      await expect(page.locator('.chief-drawer')).toBeHidden();
+      await expect(page.locator('.chief-drawer')).toHaveCount(1);
 
-      await page.locator(fab).click();
+      // A0：五族 FAB 类名（.page-fab/.res-fab/.secondary-fab/.detail-fab）
+      // 退役——单实例根 host 的 .chief-fab 是全站唯一载体
+      await page.locator('.chief-fab').click();
       await expect(page.locator('.chief-drawer')).toBeVisible();
       // #615: the gear rides every surface (chief 设置 reachability was half
       // of the 四连报 — off-board it lands on the board settings view via the
@@ -131,7 +123,8 @@ test.describe('chief FAB wakes on every shell family', () => {
         gear ? 1 : 0,
       );
 
-      await page.locator('.chief-drawer button[aria-label="关闭"]').click();
+      // D3：收起 = Minimize（无 X）
+      await page.locator('.chief-drawer button[aria-label="最小化"]').click();
       await expect(page.locator('.chief-drawer')).toBeHidden();
     });
   }

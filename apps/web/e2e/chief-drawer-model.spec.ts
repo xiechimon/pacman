@@ -231,7 +231,10 @@ test.describe('chief drawer model row (#615)', () => {
 
   test('the model row carries the runtime mark, not an agent avatar', async ({ page }) => {
     await page.goto('/app?scenario=fab-avatar');
+    // ADR 0013 D4：fab-avatar 捕获形 = 关窗态（FAB 头像面）——模型行面先开窗
+    await page.locator('.chief-fab').click();
     await expect(drawer(page)).toBeVisible();
+    await drawer(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
     const btn = modelBtn(page);
     await expect(btn).toBeVisible();
     // #615 返工裁决：行首 = 运行时标记（fixture 未录 provider 位 = pi 正典
@@ -332,9 +335,11 @@ test.describe('chief drawer model row (#615)', () => {
     const menu = modelMenu(page);
     await expect(menu).toBeVisible();
 
-    // ⌘J 收起抽屉：弹层跟随回收（X/⌘J 同走 open=false，见 chief-drawer）
+    // ⌘J 收起抽屉：弹层跟随回收（Minimize/⌘J 同走 open=false，见
+    // chief-drawer；ADR 0013 D6 载体：窗关态驻 DOM hidden，portaled 弹层
+    // 的 open 态清零后节点归零）
     await page.keyboard.press('Meta+j');
-    await expect(drawer(page)).toHaveCount(0);
+    await expect(drawer(page)).toBeHidden();
     await expect(menu).toHaveCount(0);
 
     // 再按 ⌘J 重开：弹层不带回 stale open 态

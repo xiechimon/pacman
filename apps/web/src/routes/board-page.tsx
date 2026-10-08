@@ -44,15 +44,10 @@ import {
 } from '../board/repo-filter.js';
 import { ResetConfirmDialog } from '../board/reset-confirm-dialog.js';
 import { buildTagOptions, matchesTagFilter, parseTagParam } from '../board/tag-filter.js';
-import { ChiefDrawer } from '../chief/chief-drawer.js';
-import { ChiefFabIcon } from '../chief/chief-fab-icon.js';
+import { useChiefRoot } from '../chief/chief-root.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
-import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
-import { Button } from '../components/ui/button.js';
-import { Kbd } from '../components/ui/kbd.js';
 import { toastError } from '../components/ui/toaster.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
@@ -79,30 +74,12 @@ export function BoardPage() {
   const queryClient = useQueryClient();
   const { live, teamId } = useLiveData();
   const fixture = resolveScenario(searchParams);
-  // chief 面（#72/#129）：三态视图 + live 数据 wiring 由共享 hook 承载，
-  // 与其余 shell 族的 FAB 唤醒同一 surface。
-  // XMON-106：`?chief=<threadId>` 深链（通知点击的落地点之一）——交给
-  // useChiefSurface 按 id 定位开 drawer，消费后剥参（replace 不积历史，
-  // tags/projects 等其余参原样保留，同 writeFilterParams 律）。
-  const chiefParam = searchParams.get('chief');
-  const consumeChiefParam = useCallback(() => {
-    const rest = new URLSearchParams(searchParams);
-    rest.delete('chief');
-    navigate(`?${rest.toString()}`, { replace: true });
-  }, [searchParams, navigate]);
-  const {
-    chiefView,
-    setChiefView,
-    chiefData,
-    chiefUnread,
-    onSend,
-    onThread,
-    onNewThread,
-    modelValue,
-    modelOptions,
-    onPickModel,
-    onRewind,
-  } = useChiefSurface(fixture, { threadId: chiefParam, onConsumed: consumeChiefParam });
+  // chief 面（#72/#129 → ADR 0013 D6）：三态视图 + live 数据 wiring 上收到
+  // 根 layout 单实例（chief-root.tsx——悬浮窗与 FAB 在那里常驻挂载，
+  // `?chief=` 深链消费同批上收）。board 本地只剩设置视图的内容交换态
+  // （r5 101–104，D9 承载不变）经 context 消费。
+  const { surface: chief } = useChiefRoot();
+  const { chiefView, setChiefView, chiefData } = chief;
 
   // —— live 数据面（#83）：查询 + mutations；fixture 模式全部惰性（enabled
   // = live），采集零请求零流。members/skills/machines 归 #389 抽出的
@@ -586,19 +563,12 @@ export function BoardPage() {
     ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }
     : { ...fixture, todos };
   return (
-    // #447 (ADR 0004): data-chief-open marks the docked-drawer state — the
-    // detail shell carries the same marker (D7). #1035: the board column
-    // floor splits on this marker (same shape as the detail shell's
-    // --detail-pane-right two-state) — the natural state rides the 200px
-    // root token so zoomed-out-equivalent viewports keep all 4 columns
-    // whole; docking re-arms the 280px reference pitch (#692 scroll
-    // semantics unchanged). The track rule itself stays single-source and
-    // unbranched (board.tsx scroller consumes --board-col-min).
-    <div
-      className="board-shell flex h-full overflow-hidden data-chief-open:[--board-col-min:var(--board-col-min-docked)]"
-      data-route="board"
-      data-chief-open={chiefView === 'drawer' ? '' : undefined}
-    >
+    // ADR 0013 D1：让位退役——悬浮窗是覆盖层，board 列不再随面板开合变轨。
+    // #1035 的两态地板（常态 200 / 停靠 280）随 data-chief-open 标记收敛回
+    // 单态：--board-col-min 200px（四列全见优先，更窄由地板接管回诚实横滚，
+    // board-zoom-fit.spec 语义不变）；--board-col-min-docked 已删（tokens.css），
+    // 轨道规则单源不分支（board.tsx scroller 只消费 --board-col-min）。
+    <div className="board-shell flex h-full overflow-hidden" data-route="board">
       <AppSidebar
         fixture={fixture}
         todos={todos}
@@ -662,19 +632,6 @@ export function BoardPage() {
         onClose={() => search.setOpen(false)}
         server={live ? searchResults.data : undefined}
       />
-      <ChiefDrawer
-        open={chiefView === 'drawer'}
-        chief={chiefData}
-        onSettings={() => setChiefView('settings')}
-        onClose={() => setChiefView('none')}
-        onSend={onSend}
-        onThread={onThread}
-        onNewThread={onNewThread}
-        modelValue={modelValue}
-        modelOptions={modelOptions}
-        onPickModel={onPickModel}
-        onRewind={onRewind}
-      />
       {/* #389: dialog 接线全走新建任务面（侧栏 C 热键/新任务行的 opener 也
           指这里——openNewTask）；fixture 保存落点 = 本页 onFixtureSave 本地
           卡 append（#66 律）。XMON-93：面体住隔离根叶子，本页只持 ref。 */}
@@ -683,38 +640,6 @@ export function BoardPage() {
         opts={{ fixtureTodos, eager: true, onFixtureSave }}
         apiRef={newTaskApiRef}
       />
-      {/* XMON-23→#950：ghost/icon 原语 + FAB 皮肤 utility（旧 .chief-fab
-          等值：48×48 圆、surface 底、fab-shadow、右下 16 锚位；hover 涂底
-          钉回 surface——旧 unlayered 恒压件配方无反馈）。中和件同
-          ChiefWakeFab：font-normal（badge 10px 字）、active 位移、svg
-          size-auto（ChiefFab 30.8 属性尺寸）。board 内联钮与各族 wake FAB
-          （*-fab 类，几何住各域）保持同配方。 */}
-      {/* #468: ⌘J 悬浮提示（board 内联钮与 ChiefWakeFab 同批；点击维持
-          open-only）。#983/#1004：kbd-hint 退役回 registry Tooltip + Kbd
-          （原 placement 缺省 above → side=top）。 */}
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 bottom-4 size-12 cursor-pointer rounded-full border-none bg-(--card) font-normal shadow-(--fab-shadow) hover:bg-(--card) dark:hover:bg-(--card) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-              aria-label={t('总管')}
-              onClick={() => setChiefView('drawer')}
-            >
-              <ChiefFabIcon chief={chiefData} />
-              {chiefUnread > 0 && (
-                <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
-                  {chiefUnread}
-                </span>
-              )}
-            </Button>
-          }
-        />
-        <TooltipContent side="top" sideOffset={8}>
-          <Kbd>⌘J</Kbd>
-        </TooltipContent>
-      </Tooltip>
       <AcceptDialog
         open={overlay?.kind === 'accept'}
         onClose={closeOverlay}

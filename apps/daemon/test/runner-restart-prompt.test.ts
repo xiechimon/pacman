@@ -11,8 +11,9 @@
 //   3. wire 行缺位：transcript 上传的 user-<stepId> 行不是组合串（呈现层与
 //      对账面看不到 agent 实际收到什么）
 //   4. 空白指令注入：instruction 空白 → 组合出空壳（负例：不注入空指令）
-//   5. 无指令回归：instruction 缺席的 new session 步 → prompt = 纯任务文本
-//      （现行行为不动，startBuilds 首轮零漂移）
+//   5. 无指令回归：instruction 缺席的 new session build 步 → prompt = 纯任务
+//      文本（现行行为不动；plan 步自 #1025 起首轮注入 plan.md 契约，见
+//      runner-plan-contract.test.ts）
 
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -236,16 +237,16 @@ describe('重启轮反馈投递（#720）', () => {
     expect(promptRow?.content).toBe(composeTaskPromptWithInstruction(TASK_TEXT, instruction));
   });
 
-  test('new session + 空白 instruction → 不注入空壳，prompt = 纯任务文本（负例）', async () => {
+  test('new session + 空白 instruction → 不注入空壳，prompt = 纯任务文本（build 负例；plan 步空白指令 = 首轮语义，契约照注，见 runner-plan-contract.test.ts）', async () => {
     const { backend, prompts } = recordingBackend();
-    await setup(restartStep({ instruction: '   ' }), backend);
+    await setup(restartStep({ instruction: '   ', kind: 'build' }), backend);
     expect(prompts).toHaveLength(1);
     expect(prompts[0]).toBe(TASK_TEXT);
   });
 
-  test('new session + instruction 缺席 → prompt = 纯任务文本（现行行为回归钉）', async () => {
+  test('new session + instruction 缺席 → prompt = 纯任务文本（build 步回归钉；plan 步自 #1025 起注入契约，另见 runner-plan-contract.test.ts）', async () => {
     const { backend, prompts } = recordingBackend();
-    await setup(restartStep(), backend);
+    await setup(restartStep({ kind: 'build' }), backend);
     expect(prompts).toHaveLength(1);
     expect(prompts[0]).toBe(TASK_TEXT);
   });
