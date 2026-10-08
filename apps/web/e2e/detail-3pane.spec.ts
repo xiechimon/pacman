@@ -184,7 +184,7 @@ test("composer controls share one bottom row: stop is the send button's sibling"
   await expect(sendBtn).toBeVisible();
 });
 
-test('composer width tracks the center column across both pane states (488 pane / 418 chief dock)', async ({
+test('composer width tracks the center column; the floating window overlays without moving it (ADR 0013 D1)', async ({
   page,
 }) => {
   await page.goto(`${DETAIL_ROUTE}?scenario=detail-unread`);
@@ -197,15 +197,15 @@ test('composer width tracks the center column across both pane states (488 pane 
   const pane = await measure();
   expect(pane.center).toBe(1440 - 240 - 488);
   expect(pane.comp).toBeCloseTo(pane.center - 32, 0);
-  // chief dock (#447 D7): the panel takes the right slot at 418px and the
-  // composer width follows the column — in-flow needs no pane-var resync
-  await page.getByRole('button', { name: '总管' }).click();
-  await expect(page.getByTestId('detail-right')).toHaveCount(0);
+  // A0（ADR 0013 D7 反转）：窗是覆盖层——开窗后右栏在位、中心列与
+  // composer 宽度与关态逐值相同（418 互斥态退役，无 pane-var 重同步）
+  await page.locator('.chief-fab').click();
+  await expect(page.getByTestId('detail-right')).toBeVisible();
   const drawer = page.locator('.chief-drawer');
   await drawer.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-  const docked = await measure();
-  expect(docked.center).toBeCloseTo(1440 - 240 - 418, 0);
-  expect(docked.comp).toBeCloseTo(docked.center - 32, 0);
+  const open = await measure();
+  expect(open.center).toBeCloseTo(pane.center, 0);
+  expect(open.comp).toBeCloseTo(pane.comp, 0);
 });
 
 test('right pane type select switches between the doc surface and the three sections', async ({

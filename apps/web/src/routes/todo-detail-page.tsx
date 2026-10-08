@@ -65,8 +65,7 @@ import {
   ChiefAgentDialog,
   type ChiefAgentOption,
 } from '../chief/chief-agent-dialog.js';
-import { ChiefWakeFab, ChiefWakePanel, useChiefSettingsNav } from '../chief/chief-wake.js';
-import { useChiefSurface } from '../chief/use-chief-surface.js';
+import { useChiefRoot } from '../chief/chief-root.js';
 import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import { useChatFollow } from '../components/chat/use-chat-follow.js';
 import { toastError } from '../components/ui/toaster.js';
@@ -166,23 +165,17 @@ export function TodoDetailPage() {
   const { live, teamId, userName } = useLiveData();
   const { t } = useI18n();
   const fixture = resolveScenario(searchParams);
-  // #447 (ADR 0004 D7)：总管面板占用 .detail-body 的右栏格位（与 RightPane
-  // 互斥）——chiefView 因此提到页面层：FAB（detail-main 绝对锚）与面板
-  // （detail-body flex 末项）分挂两处、共享同一个 surface 实例（⌘J 监听
-  // 与未读角标同源）。
-  // #640：来源面板「总管编排会话」的页内深链——set 后由 useChiefSurface 的
-  // XMON-106 深链消费机制开抽屉定位线程（消费即清，一次性）。
-  const [chiefLinkThreadId, setChiefLinkThreadId] = useState<string | null>(null);
-  const consumeChiefLink = useCallback(() => setChiefLinkThreadId(null), []);
-  const chief = useChiefSurface(fixture, {
-    threadId: chiefLinkThreadId,
-    onConsumed: consumeChiefLink,
-  });
+  // ADR 0013 D1/D6/D7 反转：总管面板不再占用 .detail-body 右栏格位——
+  // 悬浮窗由根 layout 常驻挂载（chief-root.tsx），RightPane 恒在（fresh
+  // 态整栏不渲染的 XMON-55 P0 律不动），detail 特例 FAB 位（right 504/
+  // bottom 104，为躲 488 右栏而生）随族 FAB 退役。
+  // #640：来源面板「总管编排会话」的页内深链改经根 host——set 后由
+  // useChiefSurface 的 XMON-106 深链消费机制开窗定位线程（消费即清，
+  // 一次性）。
+  const { openChiefThread } = useChiefRoot();
   // #640：开始任务单出口——todo 相位主按钮直发总管编排回合（T0 反馈 =
   // toast + 查看会话深链，use-orchestrate-start.ts）。
   const orchestrateStart = useOrchestrateStart();
-  // #615: gear 在 detail 面可达——落 board 设置视图深链（chief-wake 同律）。
-  const chiefSettingsNav = useChiefSettingsNav();
   // 右 pane 视图 (#366)：doc = DocPane（方案/变更/diff，相位派生），其余三
   // 值 = 原 head 图标 overlay 三件的静止 section。纯渲染态，capture 场景经
   // ui.paneView 冻结（r7 30/31/32、r8 57/77 的新家）。
@@ -363,11 +356,18 @@ export function TodoDetailPage() {
   // clean ESC. The composer's inline mention state consumes the key with
   // preventDefault (defaultPrevented guard). Only a clean ESC with nothing
   // open goes home, carrying the search string — same law as the back link.
+  // ADR 0013 D6/D3 exception: the chief floating window is a persistent
+  // root-host [role=dialog] node (keepMounted, hidden when closed) whose own
+  // law is "Esc never closes it" — it never owns this key, so the guard
+  // excludes the whole window (an open window does not block the detail exit
+  // either; it survives the navigation as a cross-route resident). Its inner
+  // popovers (thread switcher etc.) portal as separate nodes without the
+  // .chief-drawer class and still consume the key first per the layering law.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       const openSurface = document.querySelector(
-        '.overlay, [role="dialog"], [role="menu"], [role="listbox"]',
+        '.overlay, [role="dialog"]:not(.chief-drawer), [role="menu"], [role="listbox"]',
       );
       if (openSurface !== null) return;
       const query = searchParams.toString();
@@ -832,22 +832,17 @@ export function TodoDetailPage() {
   };
 
   return (
-    // #447 (ADR 0004 D7): data-chief-open narrows --detail-pane-right to the
-    // docked panel width so the composer / FAB / reject-row anchors skip the
-    // panel exactly like they skip the 488px right pane when it is closed.
-    // #945（detail.css 清零）：三栏壳（240 | fluid | 488，todos.dev 网格）
-    // 迁 utilities。--detail-pane-right 是右栏宽单源（composer-reject/FAB
-    // 锚按它 calc() 跳过右格位，#447 D7：chief 停靠时收窄到 418）；#932
-    // 窄屏折叠走 max-md 变体（<768px 双定宽栏退场、线程列独占视口，pane
-    // 变量归零让锚位停止跳格；(0,2,0) 律由 max-md:data-chief-open: 复合
-    // 变体承接——媒体变体在工具层里恒排非媒体档之后，与老文件内
-    // 特异度注释同一结果）。board-sidebar 是 #943 保留的运行时钩子类，
-    // 子选择器规则随壳迁移（跨域消费面不断）。
+    // ADR 0013 D1：#447 (0004 D7) 的 data-chief-open 两态收窄退役——悬浮窗
+    // 是覆盖层，右栏格位不再被面板顶掉，--detail-pane-right 收敛回单态
+    // 488px（composer-reject 锚照它 calc() 跳过右格位）。#945（detail.css
+    // 清零）：三栏壳（240 | fluid | 488，todos.dev 网格）迁 utilities；
+    // #932 窄屏折叠走 max-md 变体（<768px 双定宽栏退场、线程列独占视口，
+    // pane 变量归零让锚位停止跳格）。board-sidebar 是 #943 保留的运行时
+    // 钩子类，子选择器规则随壳迁移（跨域消费面不断）。
     <div
-      className="detail-shell flex h-full overflow-hidden [--detail-pane-right:488px] data-chief-open:[--detail-pane-right:418px] max-md:[--detail-pane-right:0px] max-md:data-chief-open:[--detail-pane-right:0px] [&>.board-sidebar]:max-md:hidden"
+      className="detail-shell flex h-full overflow-hidden [--detail-pane-right:488px] max-md:[--detail-pane-right:0px] [&>.board-sidebar]:max-md:hidden"
       data-route="todo-detail"
       data-todo-id={id}
-      data-chief-open={chief.chiefView === 'drawer' ? '' : undefined}
     >
       <AppSidebar
         fixture={fixture}
@@ -883,7 +878,7 @@ export function TodoDetailPage() {
                   })
                 }
                 retryPending={mutations.retryGithubIssue.isPending}
-                onOpenThread={setChiefLinkThreadId}
+                onOpenThread={openChiefThread}
               />
             )}
             {detail == null ? (
@@ -1081,14 +1076,13 @@ export function TodoDetailPage() {
               />
             )}
           </div>
-          {/* #447 (ADR 0004 D7)：总管竖板与右栏格位互斥——竖板停靠时
-              RightPane 不渲染，面板作为 detail-body 末项接管其格位；收板
-              即回位（内容瞬时贴合，D4）。pane 状态（paneView/docMode/
-              diff/menu）全住页面层，重挂载无状态损失。
-              XMON-55 P0：fresh（无线程）态整栏不渲染——它的三个 section
-              都要 build 载荷，文档面在无 build 时也只是空占位；488px 让给
-              中心列的任务简报，不让空态各占一半。 */}
-          {chief.chiefView !== 'drawer' && detail != null && (
+          {/* ADR 0013 D1：0004 D7 的「竖板与右栏格位互斥」退役——悬浮窗
+              盖在右栏之上（覆盖代价由无模态 + ⌘J 即关 + clearance 消化），
+              RightPane 恒在。pane 状态（paneView/docMode/diff/menu）全住
+              页面层。XMON-55 P0：fresh（无线程）态整栏不渲染——它的三个
+              section 都要 build 载荷，文档面在无 build 时也只是空占位；
+              488px 让给中心列的任务简报，不让空态各占一半。 */}
+          {detail != null && (
             <RightPane
               view={paneView}
               onView={setPaneView}
@@ -1143,20 +1137,15 @@ export function TodoDetailPage() {
               />
             </RightPane>
           )}
-          <ChiefWakePanel surface={chief} onSettings={chiefSettingsNav} />
         </div>
         {ui.placeholder != null && composerReject != null && (
           <div className="composer-reject absolute bottom-[104px] left-4 right-[calc(var(--detail-pane-right)+16px)] text-center text-xs leading-4 text-(--destructive)">
             {composerReject}
           </div>
         )}
-        {/* #447：FAB 与面板拆挂（面板在 detail-body 右栏格位），共享页面
-            层的 chief surface——#443 的 unreadOnly 门控原样保留。 */}
-        <ChiefWakeFab
-          surface={chief}
-          fabClassName={`detail-fab absolute bottom-4 right-[calc(var(--detail-pane-right)+16px)] flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border) bg-(--card) text-(--text-tertiary) shadow-(--fab-shadow) hover:bg-(--card) hover:text-(--text-tertiary) dark:hover:bg-(--card) dark:hover:text-(--text-tertiary) group-has-[.composer]/detail-main:bottom-[104px] in-data-[chief-open]:max-md:hidden`}
-          unreadOnly
-        />
+        {/* ADR 0013 D4/D6：detail 特例 FAB 位与面板拆挂退役——launcher 与
+            悬浮窗由根 layout 常驻（chief-root.tsx），#443 的 unreadOnly
+            门控在根 host 按路由保留。 */}
       </div>
       {!live && detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
       <MoreMenu

@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // #650/#651 总管抽屉 markdown 单源 + 流式打字面。
 // 失败方式枚举（渲染缝；mapper 缝的钉在 test/chief-markdown.test.ts）：
@@ -229,6 +229,14 @@ async function chiefStream(page: Page) {
         [part, ev] as [string, unknown],
       ),
   };
+}
+
+/** A0 进场动画（fade+scale，ADR 0013 D7）：boundingBox /
+ *  getBoundingClientRect 含 transform——几何断言前先等动画落定
+ *  （chief-panel.spec settled 同谓词；#1033 同帧律管采样配对，本谓词管
+ *  进场腿）。 */
+async function settledDrawer(drawer: Locator) {
+  await drawer.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
 }
 
 test.describe('chief drawer markdown 面（fixture，#650）', () => {
@@ -575,6 +583,7 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
 
     const drawer = page.locator('.chief-drawer');
     await expect(drawer).toBeVisible();
+    await settledDrawer(drawer);
     const presence = drawer.getByTestId('chief-msg').last();
     // 行本体是 button：箭头不再是纯装饰（#950 载体 = disclosure aria-label）。
     const toggle = presence.getByRole('button', { name: /实时步骤/ });
@@ -677,8 +686,10 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     await page.goto('/app?chief=chief-bbb');
     const drawer = page.locator('.chief-drawer');
     await expect(drawer).toBeVisible();
+    await settledDrawer(drawer);
     return drawer;
   }
+
 
   test('F-R14: 用户气泡走同源解析——todo chip 成锚可点导航、bold 成 strong、负例保持字面', async ({
     page,

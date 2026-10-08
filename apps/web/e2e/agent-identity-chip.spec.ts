@@ -35,7 +35,12 @@ test.describe('抽屉 robot 行身份 chip（fixture，#741 缺口 1）', () => 
   test.beforeEach(async ({ page }) => {
     await stubDicebear(page);
     await page.goto(SCENARIO);
-    await expect(page.locator('.chief-drawer')).toBeVisible();
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    // #1009 A0（ADR 0013 D7）：悬浮窗进场 fade+scale(0.95→1)——动画未落定时
+    // boundingBox 读的是缩放值（F-E10 的 24px 几何 canon 会漂成 ~23.6），
+    // settle 谓词同 chief-stream-markdown。
+    await drawer.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
   });
 
   test('F-E1/E2/E10: 头像+名字并排成链，href 指 Agent 设置页，几何 canon 不漂移', async ({

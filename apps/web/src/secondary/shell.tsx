@@ -14,18 +14,9 @@ import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AppSidebar } from '../board/app-sidebar.js';
 import type { SidebarSelected } from '../board/sidebar.js';
-import { ChiefWake } from '../chief/chief-wake.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft } from '../icons/index.js';
-
-/** 总管 FAB（ChiefWake fabClassName 入参）：48px 圆、surface 底、
- *  border-default 描边、fab-shadow、tertiary 墨——各族 *-fab 同几何
- *  （chief-wake 头注），secondary 族的 per-face 正本随 secondary.css 退役，
- *  配方在此。ghost 件默认的 hover/aria-expanded 底色与墨色就地并掉（原形
- *  无 hover 态；七通道律 #908 comment-6001887439 裁决 3，含 dark: 变体）。 */
-const SEC_FAB_CLS =
-  'absolute right-4 bottom-4 flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border) bg-(--card) text-(--text-tertiary) shadow-(--fab-shadow) hover:bg-(--card) hover:text-(--text-tertiary) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--text-tertiary)';
 
 interface SecondaryShellProps {
   /** data-route value, keeps debug selectors per page. */
@@ -54,17 +45,12 @@ export function SecondaryShell({
   return (
     <div className="flex h-full overflow-hidden" data-route={route}>
       <AppSidebar fixture={fixture} selected={sidebarSelected} />
-      {/* #447 (ADR 0004 D2/D6): secondary-main is the docking row — head +
-          body live in .secondary-main-col (flex:1, yields) and the chief
-          panel rides as the last flex item; the wake FAB keeps the
-          secondary-main absolute anchor.
+      {/* ADR 0013 D1/D6：docking row 退役——chief 面是根 layout 的悬浮窗
+          （chief-root.tsx），本列不再让位、不再承载面板。
           `secondary-main`/`secondary-main-col` 类名 = 跨域句柄残留（spec/22
-          §5.0 残留律，res-main 同款）：chief-drawer 的 DOCK_ROWS 走
-          classList.contains 找 dock 行、chief.css 有
-          `.secondary-main > [data-base-ui-portal]` 布局规则、chief-panel.spec
-          钉 .secondary-main-col 的 docking 几何——三处消费点都住 chief 域
-          （#950/#952 面），本票不动共享 JS/CSS，类名以零规则钩子形态存活，
-          摘除归 chief 域票统一裁。 */}
+          §5.0 残留律，res-main 同款）：chief-panel.spec 曾钉
+          .secondary-main-col 的 docking 几何（重钉账见 #1009 A0 ⑨），类名
+          以零规则钩子形态存活，摘除归 chief 域票统一裁。 */}
       <div className="secondary-main relative flex min-w-0 flex-1 bg-(--card)">
         <div className="secondary-main-col flex min-w-0 flex-1 flex-col">
           <header className="relative h-11 flex-none border-b border-(--border)">
@@ -93,9 +79,6 @@ export function SecondaryShell({
             <div className="mx-auto w-[766px]">{children}</div>
           </div>
         </div>
-        {/* 总管 FAB rides every surface (r7 12/13 bottom-right circle) and
-            wakes the shared chief drawer (#129) */}
-        <ChiefWake fixture={fixture} fabClassName={SEC_FAB_CLS} />
       </div>
     </div>
   );
