@@ -1,18 +1,21 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// Issue #443 acceptance: 详情页总管 FAB 仅未读才显示. The detail family is
-// the intentional divergence from the #129 every-family-constant FAB ruling
-// (出处行在 chief-wake.tsx 的 unreadOnly prop，ADR 0002 D7 之律) — the FAB
-// carries the only constant unread-badge surface, so on the detail face it
-// renders exactly when there is something unread. Failure modes pinned here
-// (fixture face; the live 未读归零即消失 path rides the same reactive
-// derivation — chiefUnread is query-derived, the button unmounts in the same
-// render):
-//   1. unread 0 still renders the FAB (gating not wired / prop ignored)
+// Issue #443 acceptance, re-pinned for ADR 0013 (#1009 A0): 详情页总管 FAB
+// 仅未读才显示. The detail family is the intentional divergence from the
+// #129 every-family-constant FAB ruling (出处行原在 chief-wake.tsx 的
+// unreadOnly prop，A0 上收到 chief-root.tsx 的路由门，ADR 0002 D7 之律
+// 记录不变) — the FAB carries the only constant unread-badge surface, so on
+// the detail face it renders exactly when there is something unread.
+// Failure modes pinned here (fixture face; the live 未读归零即消失 path rides
+// the same reactive derivation — chiefUnread is query-derived, the button
+// unmounts in the same render):
+//   1. unread 0 still renders the FAB (gating not wired / route gate ignored)
 //   2. unread > 0 renders no FAB, or the badge value does not pass through
 //      (a 1 would pass on presence alone — the pin rides 3)
-//   3. the gated FAB loses the family geometry (r7 §3.4 48×48, #366
-//      right-pane offset, #347 composer 让位) — gating must not touch layout
+//   3. the FAB loses the A0 geometry (ADR 0013 D4: 40×40 正圆, 距内容区
+//      右/下各 8px, fixed 角落锚定 — 替换 48×48/16 族律与 detail 特例位
+//      right 504/bottom 104；#347 composer 让位随特例位退役，clearance
+//      预约制度接管角落让位)
 //   4. the wake surface unmounts with the FAB — the drawer walk on the
 //      unread face rides the shell-consistency detail row (scenario
 //      detail-unread); the hotkey path stays registered by useChiefSurface
@@ -24,43 +27,49 @@ test.describe('detail FAB renders only with unread (#443)', () => {
   test('unread 0: the detail route renders no FAB', async ({ page }) => {
     await page.goto(`${DETAIL}?scenario=16`);
     await expect(page.locator('[data-route="todo-detail"]')).toBeVisible();
-    await expect(page.locator('.detail-fab')).toHaveCount(0);
+    // A0：FAB 单实例载体 = 根 layout 的 .chief-fab（族类名 .detail-fab 退役）
+    await expect(page.locator('.chief-fab')).toHaveCount(0);
   });
 
   test('unread > 0: the FAB renders with the badge value', async ({ page }) => {
     await page.goto(`${DETAIL}?scenario=detail-unread`);
-    const fab = page.locator('.detail-fab');
+    const fab = page.locator('.chief-fab');
     await expect(fab).toBeVisible();
     await expect(fab.locator('.fab-badge')).toHaveText('3');
   });
 
-  test('the gated FAB keeps the family geometry (48×48, pane offset, composer 让位)', async ({
-    page,
-  }) => {
+  test('the FAB keeps the A0 corner geometry (40x40 @ 8px inset, fixed)', async ({ page }) => {
     await page.goto(`${DETAIL}?scenario=detail-unread`);
-    const geometry = await page.locator('.detail-fab').evaluate((el) => {
+    const geometry = await page.locator('.chief-fab').evaluate((el) => {
       const cs = getComputedStyle(el);
-      return { width: cs.width, height: cs.height, right: cs.right, bottom: cs.bottom };
+      return { width: cs.width, height: cs.height, right: cs.right, bottom: cs.bottom, position: cs.position };
     });
-    // r7 §3.4: 48×48; #366: right = --detail-pane-right 488 + 16; #347:
-    // the planning surface carries a composer → the FAB yields to 104
-    expect(geometry).toEqual({ width: '48px', height: '48px', right: '504px', bottom: '104px' });
+    // ADR 0013 D4: Multica launcher 原值——40px 正圆、距内容区右/下各 8px、
+    // 角落锚定（fixed）；detail 特例位（right 504/bottom 104）与 composer
+    // 让位（bottom 104）随 0004 D7 退役
+    expect(geometry).toEqual({
+      width: '40px',
+      height: '40px',
+      right: '8px',
+      bottom: '8px',
+      position: 'fixed',
+    });
   });
 });
 
 // Issue #444 acceptance: FAB 图标 = 绑定 Agent 头像. The icon source switches
-// at the consumption points (ChiefFabIcon, shared by ChiefWake and the board
-// inline button) — the script-generated ChiefFab asset stays untouched. The
+// at the single consumption point (ChiefFabIcon in the root-host FAB,
+// ADR 0013 D6) — the script-generated ChiefFab asset stays untouched. The
 // avatar semantics belong to the Avatar primitive (dicebear seed / avatarUrl
 // override / onError 退静态资产 — pinned by avatar-dicebear.spec.ts); pinned
 // here is the FAB-level 绑定态二选一 + pass-through. Failure modes:
-//   1. a bound face still renders the static glyph (either consumer missed:
-//      board inline / the ChiefWake families)
+//   1. a bound face still renders the static glyph (the consumption point
+//      missed the switch)
 //   2. an unbound face loses the glyph (avatar or a new placeholder face
 //      renders where the ruling keeps the static asset)
 //   3. the avatarUrl override loses to the generated face (src not passed
 //      through at the FAB level)
-//   4. the avatar does not fill the 48×48 circle, or the badge/geometry
+//   4. the avatar does not fill the 40×40 circle, or the badge/geometry
 //      drift on the avatar face
 
 const R3_SRC = 'https://api.dicebear.com/9.x/lorelei/svg?seed=r3-builder';
@@ -81,31 +90,30 @@ test.describe('FAB icon follows the bound agent (#444)', () => {
   }) => {
     await stubDicebear(page);
     await page.goto('/app?scenario=fab-avatar');
-    // #950: .chief-fab/.fab-avatar 类退役——FAB 载体 = role + aria-label
-    // （resources 家族 #944 同款），头像 img 直取（wrapper 无独立语义）。
+    // #950: .fab-avatar 类退役——FAB 载体 = role + aria-label（A0 起单实例
+    // 根 host，.chief-fab 类钩同载体）；头像 img 直取（wrapper 无独立语义）。
     const fab = page.getByRole('button', { name: '总管', exact: true });
     const img = fab.locator('img');
     await expect(img).toHaveAttribute('src', R3_SRC);
     await expect(fab.locator('svg')).toHaveCount(0);
     await expect(fab.locator('.fab-badge')).toHaveText('2');
-    // 头像铺满 48×48 圆（board 面无边框），FAB 几何不动
+    // 头像铺满 40×40 圆（D4 几何），FAB 位置不动
     const fabBox = await fab.boundingBox();
     const imgBox = await img.boundingBox();
-    expect(fabBox?.width).toBeCloseTo(48, 0);
-    expect(fabBox?.height).toBeCloseTo(48, 0);
+    expect(fabBox?.width).toBeCloseTo(40, 0);
+    expect(fabBox?.height).toBeCloseTo(40, 0);
     expect(imgBox?.x).toBeCloseTo(fabBox?.x ?? Number.NaN, 0);
     expect(imgBox?.y).toBeCloseTo(fabBox?.y ?? Number.NaN, 0);
-    expect(imgBox?.width).toBeCloseTo(48, 0);
-    expect(imgBox?.height).toBeCloseTo(48, 0);
+    expect(imgBox?.width).toBeCloseTo(40, 0);
+    expect(imgBox?.height).toBeCloseTo(40, 0);
   });
 
-  test('bound: a ChiefWake family swaps at the shared consumption point', async ({ page }) => {
+  test('bound: a non-board route swaps at the same single consumption point', async ({ page }) => {
     await stubDicebear(page);
     await page.goto('/app/team?scenario=fab-avatar');
-    // button 限定：fab-avatar 场景抽屉开态即挂载，面板本体也带 aria-label
-    // 总管（chief-drawer.tsx）——裸属性选择器会双匹配（#947 重钉实测）。
+    // A0：五挂载点退役后全站一个 FAB（根 host），team 面与 board 面同载体；
+    // button 限定防与窗 aside 的 aria-label 双匹配（#947 重钉先例）。
     const fab = page.locator('button[aria-label="总管"]');
-    // #950: .fab-avatar wrapper 类退役 → 直取按钮内 img。
     await expect(fab.locator('img')).toHaveAttribute('src', R3_SRC);
     await expect(fab.locator('svg')).toHaveCount(0);
     await expect(fab.locator('.fab-badge')).toHaveText('2');

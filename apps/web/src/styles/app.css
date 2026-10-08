@@ -98,3 +98,26 @@
 .overlay-backdrop {
   z-index: var(--z-modal-scrim);
 }
+
+/* 右下角预约制度（ADR 0013 D10，Multica base.css:10-33 同律同形）：
+   总管 launcher（FAB / 悬浮窗）常驻内容区右下角，吸底元素给该角让位。
+   命名而非逐点写死：意图可读、每个让位点可被这三个类检索到、距离由
+   launcher 自身几何派生（--chief-launcher-*，tokens.css）。选哪个取决于
+   让位点如何接近角落：
+   - 全宽条从左侧到达该角   -> pe-chief-launcher
+   - 滚动内容在那里结束     -> pb-chief-launcher
+   - 居中悬浮物长进该角     -> above-chief-launcher
+   居中工具条（left-1/2 -translate-x-1/2）不能用 padding 系（对称加宽，
+   右缘照旧到达），改走 above- 垂直让位；宽视口下居中物通常够不到角落，
+   消费点自按断点挂（Multica max-md: 先例）。 */
+@utility pe-chief-launcher {
+  padding-inline-end: var(--chief-launcher-clearance);
+}
+
+@utility pb-chief-launcher {
+  padding-bottom: var(--chief-launcher-clearance);
+}
+
+@utility above-chief-launcher {
+  bottom: calc(var(--chief-launcher-clearance) + var(--chief-launcher-inset));
+}

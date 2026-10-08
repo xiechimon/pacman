@@ -15,15 +15,13 @@ import { expect, type Page, test } from '@playwright/test';
 //    （三层 overflow 必须把一切兜在 .board-scroller 里）
 // 3. 地板被整个摘掉（minmax(0,1fr) 作弊修法 / min() 反例的常态侧）：
 //    1024 常态列跌破 200 下限——常态地板仍要生效，放不下走诚实横滚
-// 4. 停靠态地板被连带劈坏（票面 min() 反例：track 里写 min(...) 让地板
-//    永不生效、停靠横滚消失）：窄视口 ⌘J 停靠后列必须回到 ≥280 且
-//    横滚回归（#692 有意行为）
-// 5. 状态劈开不随 data-chief-open 活翻：同一视口内 Escape 关抽屉后
-//    必须回到常态几何（横滚消失、四列全见）
+// 4. 悬浮窗开窗把地板连带劈坏（票面 min() 反例：track 里写 min(...) 让
+//    地板永不生效、窄视口横滚消失）：ADR 0013 D1 让位退役后窗是覆盖层，
+//    窄视口开窗后列几何必须与常态逐值相同（≥200 地板 + _fit 不变）
+// 5. 最小化不回归几何：同一视口内窗开合全程零内容位移（覆盖层契约）
 // 6. 最坏数据在边界宽破栏：125% 档超长标题卡横向溢出列
 const STRESS = '/app?scenario=board-stress';
-const NATURAL_FLOOR = 200; // --board-col-min（常态）的镜像值：钉几何，不读 CSS 变量
-const DOCKED_FLOOR = 280; // --board-col-min-docked（⌘J 停靠态）的镜像值
+const NATURAL_FLOOR = 200; // --board-col-min（单态）的镜像值：钉几何，不读 CSS 变量
 
 // 1440 物理宽下的缩放 → CSS 视口宽（1440/z 取整）
 const ZOOM_LEVELS = [
@@ -34,13 +32,6 @@ const ZOOM_LEVELS = [
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
 const scroller = (page: Page) => page.getByTestId('board-scroller');
-
-/** ⌘J 开抽屉并等入场动画落定（board-docked-reflow.spec dock 同式）。 */
-async function dock(page: Page) {
-  await page.keyboard.press('Meta+j');
-  await expect(page.locator('[data-route="board"][data-chief-open]')).toHaveCount(1);
-  await drawer(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-}
 
 /** scroller 可视窗 + 四列盒（board-docked-reflow.spec measure 同式）。 */
 function measure(page: Page) {
@@ -106,7 +97,7 @@ test.describe('natural-state board fits the zoomed-out-equivalent viewports (#10
     expect(await pageSpill(page)).toBeLessThanOrEqual(0);
   });
 
-  test('floor follows data-chief-open live: ⌘J re-arms 280 with scroll, Escape restores the fit', async ({
+  test('the floating window never re-arms a docked floor (yield retired, ADR 0013 D1)', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1309, height: 732 });
@@ -115,16 +106,21 @@ test.describe('natural-state board fits the zoomed-out-equivalent viewports (#10
     const natural = await measure(page);
     expect(natural.scrollWidth).toBeLessThanOrEqual(natural.clientWidth);
 
-    // 失败方式 4：停靠态地板被连带劈坏。1309 停靠 board-main =
-    // 1309−240−418 = 651 < 1196 → 280 下限接管、横滚回归（有意的 #692）。
-    await dock(page);
-    const docked = await measure(page);
-    for (const c of docked.columns) expect(c.width).toBeGreaterThanOrEqual(DOCKED_FLOOR - 1);
-    expect(docked.scrollWidth).toBeGreaterThan(docked.clientWidth);
+    // 失败方式 4（退役后形态）：悬浮窗是覆盖层——开窗后 board 几何与常态
+    // 逐值相同（无 280 地板复活、无横滚回归；#1035 两态随让位退役收单态）。
+    await page.keyboard.press('Meta+j');
+    await expect(drawer(page)).toBeVisible();
+    await drawer(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const open = await measure(page);
+    expect(open.scrollWidth).toBeLessThanOrEqual(open.clientWidth);
+    for (const c of open.columns) expect(c.width).toBeGreaterThanOrEqual(NATURAL_FLOOR - 1);
+    expect(open.columns.map((c) => Math.round(c.width))).toEqual(
+      natural.columns.map((c) => Math.round(c.width)),
+    );
 
-    // 失败方式 5：劈开不随标记活翻（关抽屉后卡在停靠几何）
-    await page.keyboard.press('Escape');
-    await expect(drawer(page)).toHaveCount(0);
+    // 失败方式 5（退役后形态）：最小化同样零几何变化（覆盖层开合不动内容）
+    await drawer(page).getByRole('button', { name: '最小化' }).click();
+    await expect(drawer(page)).toBeHidden();
     const restored = await measure(page);
     expect(restored.scrollWidth).toBeLessThanOrEqual(restored.clientWidth);
     for (const c of restored.columns) expect(c.width).toBeGreaterThanOrEqual(NATURAL_FLOOR - 1);

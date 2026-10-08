@@ -41,6 +41,7 @@ export { Layers } from './Layers.js';
 export { ListLines } from './ListLines.js';
 export { Lock } from './Lock.js';
 export { MessageSquare } from './MessageSquare.js';
+export { Minus } from './Minus.js';
 export { Monitor } from './Monitor.js';
 export { Network } from './Network.js';
 export { PanelLeftClose } from './PanelLeftClose.js';

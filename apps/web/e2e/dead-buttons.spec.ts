@@ -312,13 +312,14 @@ test('chief drawer drops the ⋮ 更多 button — thread view keeps three head 
   // #306：r8 随拍线程视图五钮中的 ⋮——菜单内容无正典 + server 无线程管理
   // mutation，wontfix 移除（注记在 chief-drawer.tsx 头部）
   await expect(drawer.getByRole('button', { name: '更多', exact: true })).toHaveCount(0);
-  // #447：全屏钮随 is-fullscreen 契约作废（形态唯一 = 贴右竖板）——头部余
-  // 三钮：新主题 / 总管设置 / 关闭（与新线程视图同律）
+  // #447：全屏钮随 is-fullscreen 契约作废——头部余三钮（与新线程视图同律）。
+  // #1009 A0（ADR 0013 D3）：第三钮 关闭(X) → 最小化(Minus)——悬浮窗律下
+  // Esc/X 永不关窗，Minimize + ⌘J 是唯一收起；钮数与顺序语义原样。
   await expect(drawer.getByRole('button', { name: '全屏', exact: true })).toHaveCount(0);
   await expect(actions).toHaveCount(3);
   await expect(actions.nth(0)).toHaveAttribute('aria-label', '新主题');
   await expect(actions.nth(1)).toHaveAttribute('aria-label', '总管设置');
-  await expect(actions.nth(2)).toHaveAttribute('aria-label', '关闭');
+  await expect(actions.nth(2)).toHaveAttribute('aria-label', '最小化');
 });
 
 // —— 11. schedules 卡片「更多」菜单（#306 接真）———————————————————————————
