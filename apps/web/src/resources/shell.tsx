@@ -18,15 +18,14 @@ import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, Plus } from '../icons/index.js';
 
-/** topbar `+ 新建`（Button link 档）：#1005 registry 对齐——形态走件默认
- *  （text-sm / hover underline / svg 16px），品牌墨保留 --card-button 槽
- *  （#991 Q10：品牌色只经 token 层强调面生效）；右墨缘 21px 是 r7 实测
- *  layout，归消费点。 */
-const RES_NEW_CLS = 'ml-auto mr-[21px] text-(--card-button) hover:text-(--card-button)';
+/** topbar `+ 新建`（Button link 档）：#1005 registry 对齐——形态与墨色全走
+ *  件默认（link 档 text-primary / hover underline / svg 16px）。品牌墨当文字
+ *  色的旧形按 2026-10-08 实审裁决收敛：--primary 保 neutral、品牌墨只做 spot
+ *  强调（同 #1006 R4 / #1055 口径）；右墨缘 21px 是 r7 实测 layout，归消费点。 */
+const RES_NEW_CLS = 'ml-auto mr-[21px]';
 
 /** `+ 新建` 的 SPA 链接形态（newHref 分支）：link 档同配方经 buttonVariants
- *  复用（cn 收口墨色冲突），裸 <a>（链接不在 #851 裸控件账内；focus 环走
- *  #388 全局 :where(a) 律）。 */
+ *  复用，裸 <a>（链接不在 #851 裸控件账内；focus 环走 #388 全局 :where(a) 律）。 */
 const RES_NEW_ANCHOR_CLS = cn(buttonVariants({ variant: 'link' }), RES_NEW_CLS);
 
 /** 总管 FAB（ChiefWake fabClassName 入参）：48px 圆、surface 底、

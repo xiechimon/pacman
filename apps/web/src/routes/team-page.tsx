@@ -34,7 +34,7 @@ import {
 } from '../api/hooks.js';
 import { mapTeam, toDisplayTodo, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
-import { Button } from '../components/ui/button.js';
+import { Button, buttonVariants } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { toastError } from '../components/ui/toaster.js';
@@ -122,8 +122,11 @@ export function TeamPage() {
         </>
       }
       right={
+        /* 头右「设置」文本链：品牌墨当文字色按 2026-10-08 实审裁决收敛到
+           registry link 档（--primary 保 neutral、品牌墨只做 spot 强调，
+           同 shell.tsx + 新建 / #1006 R4 / #1055 口径）。 */
         <Link
-          className="cursor-pointer border-0 bg-transparent p-0 text-[13px] text-(--card-button)"
+          className={buttonVariants({ variant: 'link' })}
           to={{ pathname: '/app/account', search }}
           aria-label={t('设置')}
         >
