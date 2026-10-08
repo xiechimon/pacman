@@ -35,9 +35,10 @@ import {
 import { Link, useLocation } from 'react-router';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
-import { KbdHint } from '../components/ui/kbd-hint.js';
+import { Kbd } from '../components/ui/kbd.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.js';
 import { UserMenu } from '../detail/user-menu.js';
 import { isDeleted } from '../fixtures/deletions.js';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
@@ -359,17 +360,27 @@ export function BoardSidebar({
           <PanelLeftOpen />
         </Button>
         <nav className="rail-nav flex flex-none flex-col pt-1">
-          <Button
-            variant="ghost"
-            className={`${RAIL_ROW} ${RAIL_BTN}`}
-            aria-label={t('搜索')}
-            onClick={onSearch}
-          >
-            <Search />
-            {/* #468: rail 态没有常亮 badge 位，悬浮浮出 ⌘K 提示（展开态
-                行的 sidebar-kbd 角标不动）。 */}
-            <KbdHint label="⌘K" placement="right" />
-          </Button>
+          {/* #468: rail 态没有常亮 badge 位，悬浮浮出 ⌘K 提示（展开态行的
+              sidebar-kbd 角标见下）。#983 判决（#1004 施工段执行）：kbd-hint
+              退役回消费点组合 = registry Tooltip + Kbd（side=right 对应原
+              placement=right；Kbd 的 in-tooltip 反色变体由 registry 自带）。 */}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  className={`${RAIL_ROW} ${RAIL_BTN}`}
+                  aria-label={t('搜索')}
+                  onClick={onSearch}
+                >
+                  <Search />
+                </Button>
+              }
+            />
+            <TooltipContent side="right" sideOffset={8}>
+              <Kbd>⌘K</Kbd>
+            </TooltipContent>
+          </Tooltip>
           <Link
             className={`${RAIL_ROW} ${selected === 'board' ? RAIL_SELECTED : ''}`}
             to={{ pathname: '/app', search }}
@@ -524,9 +535,9 @@ export function BoardSidebar({
             <Search />
           </span>
           <span className="sidebar-row-label ml-3 truncate">{t('搜索')}</span>
-          <span className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2 rounded-[3px] border border-border px-[3px] py-px text-[11px] leading-4 text-muted-foreground">
-            ⌘K
-          </span>
+          {/* #983/#1004：手写 kbd 角标退役回 registry Kbd（保留 sidebar-kbd
+              别名类作 e2e 载体与 ROW_BASE 抬层选择器钩）。 */}
+          <Kbd className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2">⌘K</Kbd>
         </Button>
         {/* #389: 新任务行动作行——点击与全局 C 热键同一 opener；行序钉在
             搜索 之后（sidebar-visual 的 .sidebar-kbd 单数探针吃首枚 ⌘K）。
@@ -542,9 +553,7 @@ export function BoardSidebar({
             <Plus />
           </span>
           <span className="sidebar-row-label ml-3 truncate">{t('新任务')}</span>
-          <span className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2 rounded-[3px] border border-border px-[3px] py-px text-[11px] leading-4 text-muted-foreground">
-            C
-          </span>
+          <Kbd className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2">C</Kbd>
         </Button>
         <Link
           className={`sidebar-row ${ROW_BASE} h-9 pl-[18px] ${selected === 'board' ? `sidebar-row--selected ${ROW_SELECTED}` : ROW_HOVER}`}
