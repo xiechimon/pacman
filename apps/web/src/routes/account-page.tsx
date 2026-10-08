@@ -77,7 +77,7 @@ import { SecondaryShell } from '../secondary/shell.js';
 
 /** 名称值钮（14px 值墨，hover 换主题色补可点感）。 */
 const ACCOUNT_NAME_CLS =
-  'h-auto cursor-pointer justify-start gap-0 rounded-none border-none bg-transparent p-0 text-left text-[14px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--card-button) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
+  'h-auto cursor-pointer justify-start gap-0 border-none bg-transparent p-0 text-left text-[14px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--card-button) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** 编辑铅笔钮（tertiary 墨，hover 回 foreground；icon-only 只留 padding 盒）。 */
 const ACCOUNT_ICON_EDIT_CLS =

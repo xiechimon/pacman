@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import { ApiProvider, LiveDataBridge } from './api/provider.js';
 import { ChiefRoot } from './chief/chief-root.js';
 import { Toaster } from './components/ui/toaster.js';
+import { TooltipProvider } from './components/ui/tooltip.js';
 import { I18nProvider } from './i18n/provider.js';
 import { TokenGate } from './overlay/token-gate.js';
 import { ProjectNewPage } from './pages/project-new-page.js';
@@ -80,9 +81,14 @@ export function App() {
   return (
     <ApiProvider>
       <I18nProvider>
-        <RouterProvider router={router} />
-        {/* #253 token 门页：401 触发的全屏唯一面，鉴权关时恒不可见 */}
-        <TokenGate />
+        {/* #1008（#983 判决：kbd-hint 退役换 Tooltip+Kbd 组合）：全站唯一
+            Tooltip Provider——delay=0 复刻旧纯 CSS hover chip 的「悬停立现」，
+            快捷键提示与后续 hover 信息气泡共用同一延迟档。 */}
+        <TooltipProvider>
+          <RouterProvider router={router} />
+          {/* #253 token 门页：401 触发的全屏唯一面，鉴权关时恒不可见 */}
+          <TokenGate />
+        </TooltipProvider>
         {/* #631 toast 原语挂载：全站唯一 toaster（sonner，shadcn 官方配方），
             imperative toast.* 调用面由各 feature 自取。 */}
         <Toaster />

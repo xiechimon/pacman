@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "e1cf000a0bae64f061da28a8ad5c2a57d8da562d",
+    "sha": "d93f9709517472dc60104c645e9f7c072c1834e0",
     "date": "2026-10-08"
   },
   "scope": "apps/web/src/components/ui (#989, map #980). kind registry = shadcn base-nova registry item (upstreamItem names it; status pristine = hash must equal the vendored snapshot in scripts/ui-upstream-snapshots.json, deviated = registered divergence with reason). kind adapter = local composition over registry items or a repo-specific primitive (reason required). hash = sha256 over the comment-stripped, line-normalized file content (scripts/ui-normalize.mjs); comment-only edits do not move it, code edits always do. Scope is exactly this directory — domain-directory skins are ui-debt-gate/ui-drift-gate territory.",
@@ -80,7 +80,7 @@
     },
     "floating-shell.tsx": {
       "kind": "adapter",
-      "reason": "#425 B1: shared base for the anchored floating family (plan-dropdown, chip-popover, more-menu, user menu, skills sort, chief model select, mention-picker) over non-modal Dialog mechanics; Esc via the Base UI layer stack.",
+      "reason": "#425 B1 shared base for the anchored floating family over non-modal Dialog mechanics; Esc via the Base UI layer stack. #1008 (#983 ruling): the family split-retired to registry popover/dropdown-menu/dialog at the consumption points — sole remaining consumer is select.tsx until #1010 (wave 2), then this adapter is deleted.",
       "hash": "be2d086c4863c502e22323b2d5844e0499750eedd0848ebd3388d236a3feeafd"
     },
     "input-group.tsx": {
@@ -94,11 +94,6 @@
       "upstreamItem": "input",
       "status": "pristine",
       "hash": "616200252ff6fd0667c427176016d55928d56f73b5e5830706820cf9828418bf"
-    },
-    "kbd-hint.tsx": {
-      "kind": "adapter",
-      "reason": "XMON-14/#468: hover/focus-visible shortcut-hint chip composed on the registry kbd item (size/color re-tiered via cn overrides).",
-      "hash": "237b1a5dfa9b3b6203ba6f0dd7cbd75c58393a8adcc2417afd8e50486f725d95"
     },
     "kbd.tsx": {
       "kind": "registry",

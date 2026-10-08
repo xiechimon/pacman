@@ -34,7 +34,10 @@ function machineChip(dialog: Locator) {
 }
 
 function machineMenu(dialog: Locator) {
-  return dialog.getByRole('listbox', { name: '机器' });
+  // #1008 重钉：机器 popover 迁 registry Popover 后 Portal 落 body（旧
+  // FloatingShell 把 portal 挂回 chip wrap、菜单嵌在 dialog DOM 内）——
+  // 定位器升到页面级；语义不变（同名 listbox 全场唯一）。
+  return dialog.page().getByRole('listbox', { name: '机器' });
 }
 
 test('the machine chip renders with the 自动 default label', async ({ page }) => {
@@ -93,9 +96,10 @@ test('chip selection survives close and reopen via memory, 自动 clears it (#75
   await page.locator('.sidebar-new-task').click();
   const reopened = page.getByRole('dialog', { name: '新建任务' });
   await expect(machineChip(reopened)).toHaveText(MACHINE);
-  // 选「自动」清记忆位：再一轮关闭重开回自动。
+  // 选「自动」清记忆位：再一轮关闭重开回自动。（listbox 走页面级——#1008
+  // Popover portal 落 body，同 machineMenu helper 注记。）
   await machineChip(reopened).click();
-  await reopened.getByRole('listbox', { name: '机器' }).getByRole('option', { name: '自动' }).click();
+  await page.getByRole('listbox', { name: '机器' }).getByRole('option', { name: '自动' }).click();
   await expect(machineChip(reopened)).toHaveText(/自动/);
   await reopened.getByRole('button', { name: '关闭' }).click();
   await expect(reopened).not.toBeVisible();
