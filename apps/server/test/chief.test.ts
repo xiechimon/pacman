@@ -572,7 +572,7 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
     expect(prompt).toContain('否则自己决定，并说出你决定了什么');
     // 三条可判信号（prose 非硬规则）。
     expect(prompt).toContain('有可复现步骤或失败测试的缺陷 → 直接修');
-    expect(prompt).toContain('引入新能力、或改动跨包 → 先规划');
+    expect(prompt).toContain('引入新能力、或改动跨包 → 先问');
     expect(prompt).toContain('判不准 → 先规划');
     // D3：直接修只跳过方案确认，审阅闸永远在。
     expect(prompt).toContain('审阅关口恒在');

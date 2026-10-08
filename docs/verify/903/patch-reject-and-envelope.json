@@ -9,18 +9,18 @@
     "status": 200
   },
   "chiefEnvelope": {
-    "id": "chief-Bc-teakMJ8lw61hB7EKqA-AxeqNl1_UajNixAhFvcS-",
-    "userId": "Bc-teakMJ8lw61hB7EKqA",
-    "teamId": "AxeqNl1_UajNixAhFvcS-",
+    "id": "chief-mVRUsvdLmSDjaT9mBt7hH-Y__46I5w84rHYP4zvZoO8",
+    "userId": "mVRUsvdLmSDjaT9mBt7hH",
+    "teamId": "Y__46I5w84rHYP4zvZoO8",
     "agent": {
-      "agentId": "EHdYqkNtdVuXYkWaGR10S"
+      "agentId": "PwLnMCAGMd4ud9rP7Uqci"
     },
     "charter": "判定探针章程",
     "compactionModel": null,
     "model": null,
     "machineId": null,
     "lastTurnAt": null,
-    "createdAt": 1791441841671,
+    "createdAt": 1791443168520,
     "tz": "Asia/Shanghai"
   }
 }

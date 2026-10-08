@@ -9,18 +9,18 @@
     "db": "/Users/xmon/.herdr/worktrees/pacman/hp-pacman-t-0240-1016-chief-adr-0013/.claude/verify-run/home/server/server.db"
   },
   "ids": {
-    "teamId": "AxeqNl1_UajNixAhFvcS-",
-    "projectId": "DhrZ5HCiqO4_1R5yTm9aJ",
-    "agentId": "EHdYqkNtdVuXYkWaGR10S",
-    "todoA": "PoRTSZVcEt0eOEyUEZVDE",
-    "todoB": "SE7yD8lGFU9UE20y21SiT",
-    "todoC": "eWQVAWw_tcvql9CvxRgc7"
+    "teamId": "Y__46I5w84rHYP4zvZoO8",
+    "projectId": "L_V6etPR-vcFcMpFb6WQe",
+    "agentId": "PwLnMCAGMd4ud9rP7Uqci",
+    "todoA": "4eb5Ncq2TcFIN6Srqgka5",
+    "todoB": "N_22_nGvw2D1odzTNe9bz",
+    "todoC": "0t7oF0xfCanCexZNOZZ0k"
   },
   "checks": [
     {
       "name": "S0 铺底：project + 三 todo 落库（REST 双真值）",
       "ok": true,
-      "detail": "project=DhrZ5HCiqO4_1R5yTm9aJ"
+      "detail": "project=L_V6etPR-vcFcMpFb6WQe"
     },
     {
       "name": "U1 设置 Agent tab 无「派发方式」行（僵尸控件负向钉），邻座机器/压缩模型行健在",
@@ -55,7 +55,7 @@
     {
       "name": "E1d SQLite：build.withPlan=1 + 首步 kind=plan（缺省先规划实证）",
       "ok": true,
-      "detail": "{\"builds\":[{\"id\":\"01a11a41-3596-790f-8fb5-1e71967e2acb\",\"withPlan\":1,\"triggerSource\":\"chief\"}],\"steps\":[{\"buildId\":\"01a11a41-3596-790f-8fb5-1e71967e2acb\",\"kind\":\"plan\",\"status\":\"pending\"}]}"
+      "detail": "{\"builds\":[{\"id\":\"01a11a55-74ea-75ad-8d0a-d121c6a29139\",\"withPlan\":1,\"triggerSource\":\"chief\"}],\"steps\":[{\"buildId\":\"01a11a55-74ea-75ad-8d0a-d121c6a29139\",\"kind\":\"plan\",\"status\":\"pending\"}]}"
     },
     {
       "name": "E2a relay run_builds withPlan=false → 响应 false（判定权归 chief，无 clamp）+ dispatchReason 原样回显",
@@ -65,7 +65,7 @@
     {
       "name": "E2b SQLite：build.withPlan=0 + 首步 kind=build（直修实证；review 闸在合并路径，与本参数无涉）",
       "ok": true,
-      "detail": "{\"builds\":[{\"id\":\"01a11a41-35ab-7c7a-939a-02e68527b15e\",\"withPlan\":0,\"triggerSource\":\"chief\"}],\"steps\":[{\"buildId\":\"01a11a41-35ab-7c7a-939a-02e68527b15e\",\"kind\":\"build\",\"status\":\"pending\"}]}"
+      "detail": "{\"builds\":[{\"id\":\"01a11a55-74fe-7fcc-bfe6-bcd51d6ff78a\",\"withPlan\":0,\"triggerSource\":\"chief\"}],\"steps\":[{\"buildId\":\"01a11a55-74fe-7fcc-bfe6-bcd51d6ff78a\",\"kind\":\"build\",\"status\":\"pending\"}]}"
     },
     {
       "name": "E3a relay run_builds withPlan=true + 理由 → 响应 true + dispatchReason 原样回显",
@@ -75,7 +75,7 @@
     {
       "name": "E3b SQLite：build.withPlan=1 + 首步 kind=plan",
       "ok": true,
-      "detail": "{\"builds\":[{\"id\":\"01a11a41-35ba-7573-af64-c5ebd9a88993\",\"withPlan\":1,\"triggerSource\":\"chief\"}],\"steps\":[{\"buildId\":\"01a11a41-35ba-7573-af64-c5ebd9a88993\",\"kind\":\"plan\",\"status\":\"pending\"}]}"
+      "detail": "{\"builds\":[{\"id\":\"01a11a55-750c-74c5-a6c4-190f76e2daf3\",\"withPlan\":1,\"triggerSource\":\"chief\"}],\"steps\":[{\"buildId\":\"01a11a55-750c-74c5-a6c4-190f76e2daf3\",\"kind\":\"plan\",\"status\":\"pending\"}]}"
     }
   ],
   "artifacts": [
