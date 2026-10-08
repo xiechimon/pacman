@@ -14,8 +14,10 @@
 //   server 全量返回，隐藏/toggle 是本显示层语义（F16）。
 // - 空目录空态、超大目录截断提示（truncated 旗标，W9/W10）。
 // - localStorage 隐私模式抛 = 读写 try/catch 降级（缺省起点、不记住，W13）。
-// 弹层家族法 #67/#127：FloatingShell + ClickCatcher（#656 起 Esc 归 Base UI
-// layer 栈；gh-picker 同款）。
+// #1008（#983 判决：floating-shell 族拆退役，锚定 absolute 族 → registry
+// Popover）：壳 = Popover + Content anchor（锚不是 Trigger 本体——dockEl
+// 走 Positioner anchor prop，#454 dropdown-menu 同款透出）；Esc 归 Base UI
+// layer 栈不变，外点关走原生 outside-press（ClickCatcher 退役）。
 // #946：per-face 类（dir-browser-*）退役——皮肤迁 token utility 等值，e2e
 // 载体迁语义位（role=dialog/list/listitem、按钮文案、aria-pressed）。
 
@@ -24,25 +26,18 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client.js';
 import { useFsList } from '../api/hooks.js';
 import { Button } from '../components/ui/button.js';
-import {
-  EXIT_BRIDGE_CLS,
-  FLOATING_POP_ANIM,
-  FloatingShell,
-} from '../components/ui/floating-shell.js';
+import { Popover, PopoverContent } from '../components/ui/popover.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, GitCommit } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 
 /** 记住上次位置的 localStorage 键（单租户单机，ADR 0003 D5）。 */
 const LAST_DIR_KEY = 'pacman.dirBrowser.lastDir';
 
-/** 弹层板（原 .dir-browser，#441 family plate / plan-dropdown 律）：V2 弹层壳
- *  （#790 P3——12px 内边距 / 1px 墨线框 / 直角 / 顶部锚距 8px / 最小宽 220）
- *  + 上指锚边左上的描边 Arrow（12×6 外三角压 10×5 内三角，clip-path utility
- *  承载，#944 RES_SORT_MENU_CLS 同形、此面锚左）。geometry [设计]——上游无
- *  像素采集，贴仓内锚定弹层词汇。 */
-const PLATE_CLS =
-  "absolute top-[calc(100%+8px)] inset-x-0 z-(--z-popover) flex min-w-[220px] flex-col gap-1.5 rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+/** 弹层板 layout 槽（#1008：V2 弹层壳皮肤 / 描边 Arrow / absolute 定位 /
+ *  z 档退役——皮肤与动效归 PopoverContent 默认，定位归 Positioner 参数
+ *  side=bottom align=start sideOffset=8）：宽随锚（旧 inset-x-0 满幅，
+ *  w-(--anchor-width) 等值）+ 最小宽 220 / 段距 1.5 是内容 layout。 */
+const PLATE_CLS = 'w-(--anchor-width) min-w-[220px] gap-1.5';
 
 /** 面包屑段钮（原 .dir-browser-crumb，ghost 底座七通道中和）。 */
 const CRUMB_CLS =
@@ -105,9 +100,9 @@ export function DirBrowser({
   const [dir, setDir] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
   const [showDotfiles, setShowDotfiles] = useState(false);
-  // #656：Esc 归 FloatingShell（Base UI layer 栈）。面板是 absolute top:100%，
-  // 旧 containing block = 最近的非 static 祖先；Portal container 取同一个元素，
-  // 几何逐像素不变（锚点 span 原位，向上走到第一个非 static 祖先）。
+  // #1008：Esc 归 registry Popover（Base UI layer 栈）。锚 = 最近的非 static
+  // 祖先（旧 Portal container 同款发现逻辑）——Positioner anchor 直接吃该
+  // 元素，面板贴 field wrap 全幅展开（w-(--anchor-width)）。
   const anchorRef = useRef<HTMLSpanElement | null>(null);
   const [dockEl, setDockEl] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
@@ -164,12 +159,19 @@ export function DirBrowser({
     <>
       <span ref={anchorRef} hidden aria-hidden="true" />
       {dockEl !== null && (
-        <FloatingShell open={open} onClose={onClose} container={dockEl} className={EXIT_BRIDGE_CLS}>
-          <ClickCatcher onClose={onClose} />
-          <div
-            className={`${PLATE_CLS} ${FLOATING_POP_ANIM}`}
-            role="dialog"
+        <Popover
+          open={open}
+          onOpenChange={(next: boolean) => {
+            if (!next) onClose();
+          }}
+        >
+          <PopoverContent
+            anchor={dockEl}
+            side="bottom"
+            align="start"
+            sideOffset={8}
             aria-label={t('浏览本地文件夹')}
+            className={PLATE_CLS}
           >
             <div className="flex items-center gap-2 px-1">
               <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5">
@@ -267,8 +269,8 @@ export function DirBrowser({
                 {t('目录条目过多，只列出前 {n} 条', { n: FS_LIST_MAX_ENTRIES })}
               </div>
             )}
-          </div>
-        </FloatingShell>
+          </PopoverContent>
+        </Popover>
       )}
     </>
   );

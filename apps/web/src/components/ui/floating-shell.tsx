@@ -1,23 +1,16 @@
-// FloatingShell 适配层（#425 B1）：锚定浮层族（plan-dropdown / chip-popover /
-// more-menu / 侧栏用户菜单 / skills-page 排序 / chief-model-select /
-// mention-picker）的共用底座。
+// FloatingShell 适配层（#425 B1）——**退役中（#1008，#983 判决）**：锚定
+// 浮层族已按族拆回 registry 件（面板族 popover.tsx / 菜单族 dropdown-menu.tsx
+// / 居中模态族 dialog.tsx，回消费点组合）。本文件唯一存量消费 = select.tsx
+// （XMON-75 手写件，波 2 #1010 重建后本文件随之删除）；新面禁止再上。
 //
-// 机制换 Base UI Dialog（**非模态**：不圈焦点、无背板），Esc 走 Base UI 的
-// layer 栈；定位仍由各面自己的 capture 坐标 CSS 承载，故不需要 Positioner/anchor。
+// 机制 = Base UI Dialog（**非模态**：不圈焦点、无背板），Esc 走 Base UI 的
+// layer 栈；定位由各面自己的 capture 坐标 CSS 承载，故不需要 Positioner/anchor。
+// `container` prop 把 portal 挂回该面的锚 wrap（absolute 面的 containing
+// block 保真）。`ClickCatcher`（透明全屏 button，overlays/dismiss.tsx）=
+// 「外点只关浮层、不穿透」的旧家族律；registry 面的原生 outside-press 语义
+// 与之差异留 #1008 原型实审裁决。
 //
-// **定位的事实（两条车道独立实测后修正）**：这族**多数是 `position:absolute`
-// 相对各自锚 wrap**（plan-dropdown / chip-popover / chief-model-select /
-// skills 排序），不是 fixed 坐标——portal 到 body 会换掉 containing block 把面
-// 甩出视口。故底座提供 `container` prop：把 portal 挂回该面的锚 wrap，DOM 树位
-// 与几何不变（对 fixed 坐标的面（more-menu / mention-picker）保持缺省 body）。
-//
-// **有意保留**：`ClickCatcher`（透明全屏 button）语义原样——它是「外点只关
-// 浮层、不穿透触发下层元素」的仓内 UX 决策，与 Base UI 原生 outside-press
-// 语义不同。换它是 UX 变更，不是机械迁移，故不在本片混做（已在 #425 车道书
-// 记为该族唯一的待定项）。
-//
-// 别名类原样输出（.plan-dropdown / .chip-popover / .more-menu 等由各面
-// className 透传），三面钉扎零改动（#411 别名优先政策）。
+// 别名类原样输出（#411 别名优先政策）。
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { CSSProperties, ReactNode } from 'react';

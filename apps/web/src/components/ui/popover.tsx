@@ -1,6 +1,9 @@
-// 仓内语义映射（零皮肤；其余与上游 base-nova 逐字同源）：z-50 →
-// z-(--z-dialog)——#733 全仓单一 z 梯。动效 = 上游默认（#991 Q9 判决：
-// scale-fade 仓内正典退役，动效是 base-nova 形态一部分）。
+// 仓内语义映射（零皮肤；其余与上游 base-nova 逐字同源）：
+// ① z-50 → z-(--z-dialog)——#733 全仓单一 z 梯；
+// ② Content 透出 anchor——#1008 调用点定位（dir-browser / project-new-page
+//    gh picker，锚不是 Trigger 本体的面；#454 dropdown-menu 同款先例）。
+// 动效 = 上游默认（#991 Q9 判决：scale-fade 仓内正典退役，动效是 base-nova
+// 形态一部分）。
 import { Popover as PopoverPrimitive } from '@base-ui/react/popover';
 import { cn } from 'cn';
 import type * as React from 'react';
@@ -17,16 +20,21 @@ function PopoverContent({
   className,
   align = 'center',
   alignOffset = 0,
+  anchor,
   side = 'bottom',
   sideOffset = 4,
   ...props
 }: PopoverPrimitive.Popup.Props &
-  Pick<PopoverPrimitive.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>) {
+  Pick<
+    PopoverPrimitive.Positioner.Props,
+    'align' | 'alignOffset' | 'anchor' | 'side' | 'sideOffset'
+  >) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
         align={align}
         alignOffset={alignOffset}
+        anchor={anchor}
         side={side}
         sideOffset={sideOffset}
         className="isolate z-(--z-dialog)"

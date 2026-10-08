@@ -1,15 +1,15 @@
 // Shared dismiss wiring for the anchored overlays (issue #67): the click
 // catcher is a transparent fixed layer one step under the popover (z 29 vs
 // 30) so page content stays clickable-through nowhere while an overlay is
-// open. Close affordances are [推断] — no capture exercises them; pixels are
-// unaffected.
-// #656：家族旧另两件（retained-mount 计时 wrapper 与手写 Esc hook）随全站
-// 收敛退役——卸载窗由 FloatingShell / DialogShell 适配层的零视觉 visibility
-// 桥撑住（Base UI getAnimations 不看子树），Esc 归 Base UI layer 栈（只关
-// 最顶层），进出场动效归 tw-animate-css 缺省档（ADR 0009）。
+// open.
+// #1008（#983 判决：floating-shell 族拆退役）：族内消费点已全部迁 registry
+// 件（外点关归 Base UI 原生 outside-press / modal 背板）——本件唯一存量
+// 消费 = components/ui/select.tsx（#1010 波 2 重建后随 floating-shell.tsx
+// 一并删除）。「外点只关不穿透」vs 原生 outside-press 穿透的 UX 取舍 =
+// #1008 原型实审裁决项。
 // #949：裸 button 收编 components/ui Button（ghost 档全通道中和——捕点击
-// 层无视觉，件配方的涂底/圆角/边框/内距/press 位移/墨色逐位归零，只留
-// fixed inset-0 + --z-catcher 档位，#688 阶梯单源在 tokens.css）。
+// 层无视觉，只留 fixed inset-0 + --z-catcher 档位，#688 阶梯单源在
+// tokens.css）。
 
 import { Button } from '../components/ui/button.js';
 

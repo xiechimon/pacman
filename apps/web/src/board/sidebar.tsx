@@ -35,9 +35,10 @@ import {
 import { Link, useLocation } from 'react-router';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
-import { KbdHint } from '../components/ui/kbd-hint.js';
+import { Kbd } from '../components/ui/kbd.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.js';
 import { UserMenu } from '../detail/user-menu.js';
 import { isDeleted } from '../fixtures/deletions.js';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
@@ -359,17 +360,29 @@ export function BoardSidebar({
           <PanelLeftOpen />
         </Button>
         <nav className="rail-nav flex flex-none flex-col pt-1">
-          <Button
-            variant="ghost"
-            className={`${RAIL_ROW} ${RAIL_BTN}`}
-            aria-label={t('搜索')}
-            onClick={onSearch}
-          >
-            <Search />
-            {/* #468: rail 态没有常亮 badge 位，悬浮浮出 ⌘K 提示（展开态
-                行的 sidebar-kbd 角标不动）。 */}
-            <KbdHint label="⌘K" placement="right" />
-          </Button>
+          {/* #468/#1008: rail 态没有常亮 badge 位，悬浮浮出 ⌘K 提示（展开态
+              行的 sidebar-kbd 角标不动）。kbd-hint 退役（#983 判决）→ 官网
+              Tooltip+Kbd 组合：side=right sideOffset=8 = 旧「图标右侧弹、
+              垂直居中、8px 间距」落位；hover/focus 浮出归 Tooltip 原语
+              （focus-visible 判定与旧 CSS 版同源），静息不挂载（旧
+              visibility:hidden 常驻 DOM 语义变，hotkeys.spec 重钉面）。 */}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  className={`${RAIL_ROW} ${RAIL_BTN}`}
+                  aria-label={t('搜索')}
+                  onClick={onSearch}
+                />
+              }
+            >
+              <Search />
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              <Kbd>⌘K</Kbd>
+            </TooltipContent>
+          </Tooltip>
           <Link
             className={`${RAIL_ROW} ${selected === 'board' ? RAIL_SELECTED : ''}`}
             to={{ pathname: '/app', search }}

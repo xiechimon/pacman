@@ -46,11 +46,7 @@ import {
   ProfileRow,
 } from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
-import {
-  EXIT_BRIDGE_CLS,
-  FLOATING_POP_ANIM,
-  FloatingShell,
-} from '../components/ui/floating-shell.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Switch } from '../components/ui/switch.js';
 import { USER_NAME } from '../fixtures/fixtures.js';
@@ -58,7 +54,6 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { LOCALE_NAMES, LOCALES } from '../i18n/locale.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, SquarePen } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import { SecondaryShell } from '../secondary/shell.js';
 
 /** 语言触发器（Button ghost 底座）：30px 带框盒形（r7 13 实测 box
@@ -70,11 +65,10 @@ import { SecondaryShell } from '../secondary/shell.js';
 const LANG_TRIGGER_CLS =
   "h-[30px] cursor-pointer gap-1.5 rounded-none border border-(--border) bg-(--card) px-2.5 text-xs font-normal leading-[inherit] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
 
-/** 语言盘（V2 弹层壳 #790 P3：最小宽 220 / 12px 内垫 / 1px 墨线框 / 直角 /
- *  顶部锚距 8px / fab-shadow）+ 上指锚边右上的描边 Arrow（12×6 外三角压
- *  10×5 内三角，clip-path utility 承载，RES_SORT_MENU_CLS 同配方）。 */
-const LANG_MENU_CLS =
-  "absolute right-0 top-[calc(100%+8px)] z-(--z-popover) flex min-w-[220px] flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:right-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+/** 语言盘 layout 槽（#1008：V2 弹层壳皮肤 / 描边 Arrow / 冻结锚距退役，
+ *  皮肤归 PopoverContent 默认，定位归 Positioner 参数 side=bottom align=end
+ *  sideOffset=8）：最小宽 220 是内容 layout；行距归零（旧面行带紧贴）。 */
+const LANG_MENU_CLS = 'w-auto min-w-[220px] gap-0';
 
 /** 语言盘选项行（Button ghost 底座）：32px 行 / 8px 圆角 / 12px 字
  *  （壳垫 12px 后行内横缩 4，字墨 inset 落 16）。原形无 hover 态，件配方
@@ -87,12 +81,6 @@ export function AccountPage() {
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const [langOpen, setLangOpen] = useState(fixture.ui?.langDropdownOpen === true);
-  // #656：Esc 归 FloatingShell（Base UI layer 栈），旧 useEscapeClose 退役；
-  // wrap 作 Portal container，absolute 面板的包含块原位保真。dock 走 state
-  // 而非 ref 读值：fixture 面（scenario 13-lang）开态即挂载，首帧 ref 尚未
-  // 就位，Portal container=null 不渲染任何东西——state 在 ref 回调里落成，
-  // 下一帧 Portal 拿到真容器（dir-browser 同款）。
-  const [langDock, setLangDock] = useState<HTMLElement | null>(null);
   // M5 live：名称 = GET /api/user/me（seed 单用户 displayName，02 §2.1）。
   // 邮箱行已删（XMON-107 用户裁决）：无邮箱账位面，占位无信息量。
   const { live } = useLiveData();
@@ -128,34 +116,33 @@ export function AccountPage() {
           <SquarePen width={14} height={14} />
         </ProfileRow>
         <ProfileRow className={PROFILE_ROW_TALL_CLS} label={t('语言')}>
-          <span className="relative flex" ref={setLangDock}>
-            <Button
-              variant="ghost"
-              className={LANG_TRIGGER_CLS}
-              aria-haspopup="listbox"
-              aria-expanded={langOpen}
-              onClick={() => setLangOpen((value) => !value)}
-            >
-              {LOCALE_NAMES[locale]}
-              <ChevronDown width={12} height={12} />
-            </Button>
-            {/* #656：语言 dropdown 壳 = FloatingShell（旧条件渲染无退场窗，
-                进场从无动效到 tw 缺省 pop 档——D3 mount → tw default；#666
-                toggle 面律：焦点留触发位、外点归 catcher）。右锚面板，
-                transform-origin 落右上锚边（more-menu 同律）。 */}
-            <FloatingShell
-              open={langOpen}
-              onClose={() => setLangOpen(false)}
-              container={langDock}
-              className={EXIT_BRIDGE_CLS}
-              initialFocus={false}
-              disablePointerDismissal
-            >
-              <ClickCatcher onClose={() => setLangOpen(false)} />
-              <div
-                className={`${LANG_MENU_CLS} origin-top-right ${FLOATING_POP_ANIM}`}
+          <span className="relative flex">
+            {/* #1008（#983 判决：floating-shell 族拆退役，锚定 absolute 族 →
+                registry Popover）：触发钮 = PopoverTrigger（toggle /
+                aria-expanded 归原语）；#666 键盘契约保留——initialFocus=
+                false 焦点留触发位，同一个键再按一次关面。定位从 wrap
+                container + absolute CSS 迁 Positioner 参数（side=bottom
+                align=end sideOffset=8 = 原「右缘对齐、顶部锚距 8」）。外点
+                关走 Base UI 原生 outside-press（ClickCatcher 退役，穿透
+                与否 = #983 遗留待原型实审裁决项）。listbox 语义照旧手挂
+                （选项行是 Button role=option，非 Base UI Menu 件）。 */}
+            <Popover open={langOpen} onOpenChange={setLangOpen}>
+              <PopoverTrigger
+                render={
+                  <Button variant="ghost" className={LANG_TRIGGER_CLS} aria-haspopup="listbox" />
+                }
+              >
+                {LOCALE_NAMES[locale]}
+                <ChevronDown width={12} height={12} />
+              </PopoverTrigger>
+              <PopoverContent
+                side="bottom"
+                align="end"
+                sideOffset={8}
+                initialFocus={false}
                 role="listbox"
                 aria-label={t('语言')}
+                className={LANG_MENU_CLS}
               >
                 {LOCALES.map((code) => (
                   <Button
@@ -177,8 +164,8 @@ export function AccountPage() {
                     )}
                   </Button>
                 ))}
-              </div>
-            </FloatingShell>
+              </PopoverContent>
+            </Popover>
           </span>
         </ProfileRow>
         <ProfileRow label={t('推送通知')}>

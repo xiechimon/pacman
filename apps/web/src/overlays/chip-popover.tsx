@@ -4,9 +4,10 @@
 // (12px avatar + name + #seq), two-line title, divider, 任务 section
 // (assignee row), the selected 执行对话 section (agent row + indigo check,
 // the highlight covering label and row), divider, 编辑分配 row.
-// #949: overlays.css 清零——V2 弹层壳（#790 P3：12px 内边距 / 1px 墨线框 /
-// 圆角 0）与 12×6 描边 Arrow（双层 clip-path 三角）等值迁 utility；锚定
-// relative 位在被锚 wrap（dhead 的 chipwrap utility）；皮肤选择子零残留。
+// #1008（#983 判决：floating-shell 族拆退役）：壳/定位/皮肤（298×193 冻结
+// 几何、V2 弹层壳、描边 Arrow、手挂 role=dialog）退役——本组件只剩内容列，
+// 外壳归 dhead 的 registry Popover（Positioner 锚定 + Content 默认皮肤，
+// 宽度 layout 槽住消费点）。
 // 选中 section 的状态载体 = data-selected（#910 裁定 3）；两行是纯展示
 // div（无 role），行族载体 = data-row-kind（owner/agent，头像 spec 的
 // 语义盲区继任者）。
@@ -35,11 +36,7 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
   const { user } = useLiveData();
   const agentAvatarUrl = useAgentAvatarUrlById();
   return (
-    <div
-      className="absolute top-[calc(100%+8px)] -left-[18px] z-(--z-popover) flex h-[193px] w-[298px] flex-col overflow-visible rounded-none border border-(--border) bg-(--popover) p-3 text-left shadow-(--fab-shadow) origin-top-left before:absolute before:top-px before:left-6 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[25px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']"
-      role="dialog"
-      aria-label={t('任务分配')}
-    >
+    <div className="chip-popover flex flex-col text-left">
       <div className="flex items-center gap-2 pt-[5px]">
         <span className="flex size-3 flex-none items-center justify-center rounded-[4px] bg-(--project-avatar-bg) text-[8px] font-medium text-(--project-avatar-fg)">
           {PROJECT_INITIAL}

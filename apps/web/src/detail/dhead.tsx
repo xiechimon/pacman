@@ -8,16 +8,15 @@
 // #67: the chip is a real button — it toggles the status popover (r7
 // 19/29), and the chevron rides outside the pill (r7 17 measure).
 
-import { useState } from 'react';
+import { type Ref, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { Button } from '../components/ui/button.js';
-import { FloatingShell } from '../components/ui/floating-shell.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { StatusChip } from '../components/ui/status-chip.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, ChevronLeft, EllipsisVertical } from '../icons/index.js';
 import { ChipPopover } from '../overlays/chip-popover.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 
 /** #945（#942 正典表 §5.2 C1）：头 chip 从老 ui/chip 原语迁 StatusChip
@@ -51,6 +50,9 @@ interface DetailHeadProps {
   /** M7 #312 / r8 §3.1：审核中态旗标——chip 改「审核中」、composer placeholder
    * 改「AI 审核进行中…」、期间显示停止钮（复用 #308）。 */
   reviewActive?: boolean;
+  /** #1008: 更多 钮的定位锚 ref（MoreMenu 迁 DropdownMenu 后触发钮与菜单体
+   *  分住两层，页面层持 ref 双投：这里挂到钮上，Content 走 anchor）。 */
+  moreButtonRef?: Ref<HTMLButtonElement>;
 }
 
 export function DetailHead({
@@ -61,6 +63,7 @@ export function DetailHead({
   chipPopoverOpen,
   onEditAssign,
   reviewActive,
+  moreButtonRef,
 }: DetailHeadProps) {
   const { t } = useI18n();
   // AI 审核中态（M7 #312，r8 §3.1）：chip 文案与 phase 解耦——「审核中」字面
@@ -71,10 +74,6 @@ export function DetailHead({
     : PHASE_UI[phase ?? todo.phase];
   const { search } = useLocation();
   const [popover, setPopover] = useState(chipPopoverOpen === true);
-  // #425 B1：chip popover 是 wrap 锚定面（popover 面板相对本 wrap 绝对
-  // 定位，#949 起 wrap 的 relative 锚位由 utility 承载）——portal 挂进
-  // wrap 子树保几何；Esc 由 FloatingShell（Base UI layer 栈）承载。
-  const [chipWrap, setChipWrap] = useState<HTMLSpanElement | null>(null);
   return (
     <header
       className="detail-head relative flex h-11 flex-none items-center border-b border-(--border) pl-3"
@@ -92,68 +91,65 @@ export function DetailHead({
       </span>
       {/* #949：chipwrap 定位类随 overlays.css 清零退役（relative flex
           items-center 等值 utility）。 */}
-      <span className="relative flex items-center" ref={setChipWrap}>
-        {/* XMON-24 wrapper 钮 shadcn ghost 底座不变；#945 皮肤从
-            .detail-chip per-face 迁 utilities（七通道中和：hover/
-            aria-expanded 底清零、墨色走 inherit 保持老「无 color 规则」的
-            继承形；h-auto/gap-0/字号继承清底座差额）。#951：detail-b 两 spec
-            （reject-chain/review-reject）重钉到 phase-chip testid——断言目标
-            就是这个钮的文案（相位词随链路翻动），按 name 定位即循环，属
-            #910 裁定 1 的真盲区二级载体。detail-chip 基类保留至 #953 终账
-            ——chip-assign/chip-hotzone 与 integration m5/web-plans 仍按它
-            定位（其批次已收官，类名钩零规则存活）。 */}
-        {/* #634: the chevron rides INSIDE the trigger — the whole chip
-            (pill + arrow + the space between) is one hit target; it used to
-            be a sibling span, so the arrow side of the cluster was dead.
-            gap-0 keeps the chevron's own 5px margin as the only spacing. */}
-        <Button
-          variant="ghost"
-          data-testid="phase-chip"
-          className="detail-chip ml-2 flex h-auto flex-none cursor-pointer items-center gap-0 rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit aria-expanded:bg-transparent aria-expanded:text-inherit active:not-aria-[haspopup]:translate-y-0"
-          aria-expanded={popover}
-          onClick={() => setPopover((value) => !value)}
-        >
-          <StatusChip tone={ui.tone} className="shrink-0 whitespace-nowrap">
-            {t(ui.chip)}
-          </StatusChip>
-          {/* #949: chevron 皮肤等值迁 utility（规则原住 overlays.css，随
-              #949 清零；5px 左距 / 三级墨 / flex-none）。testid = 二级
-              载体（触发钮内无 role 的结构钩子，chip-hotzone 的 H1 热区
-              钉扎位，#910 裁定 1）。 */}
-          <span
-            className="ml-[5px] flex flex-none text-(--text-tertiary)"
-            data-testid="chip-chevron"
-          >
-            <ChevronDown width={12} height={12} />
-          </span>
-        </Button>
-        {/* #666: initialFocus=false——焦点留在触发钮。键盘契约（#634）是同一
-            个键再按一次关面；Base UI 缺省会开面即抢焦点进弹层，第二次 Enter
-            落在弹层内部件上（轻则 no-op 关不掉，重则随机激活「编辑分配」）。
-            disablePointerDismissal——外点归 ClickCatcher（家族律），原生
-            outsidePress 只会接住触发钮上的键盘合成 click，与本钮 toggle
-            onClick 双写 state 把关面翻回开面（详见 FloatingShell prop 注）。 */}
-        <FloatingShell
-          open={popover}
-          onClose={() => setPopover(false)}
-          container={chipWrap}
-          initialFocus={false}
-          disablePointerDismissal
-        >
-          <ClickCatcher onClose={() => setPopover(false)} />
-          <ChipPopover
-            todo={todo}
-            onEditAssign={
-              onEditAssign == null
-                ? undefined
-                : () => {
-                    // 先关 popover 再开弹层:两 overlay 不叠(家族律单实例)。
-                    setPopover(false);
-                    onEditAssign();
-                  }
+      <span className="relative flex items-center">
+        {/* #1008（#983 判决：floating-shell 族拆退役，锚定 absolute 族 →
+            registry Popover）：chip 钮 = PopoverTrigger（toggle/aria-expanded
+            归原语，#666 双写 state 竞态的根因随之消失）；面板定位从 wrap
+            container + absolute CSS 迁 Positioner 参数（side=bottom
+            align=start alignOffset=-18 sideOffset=8 = 原「chip 左缘 −18、
+            底缘 +8」捕获几何）。initialFocus=false 保 #666 键盘契约（焦点
+            留触发钮，同一个键再按一次关面）。外点关走 Base UI 原生
+            outside-press（ClickCatcher 退役——穿透与否 = #983 遗留待原型
+            实审裁决项）。触发钮皮肤照旧（#945 utility 七通道中和；
+            .detail-chip 别名保留，chip-assign/chip-hotzone/integration m5
+            按它定位）。#634: chevron 在触发钮内——整只 chip 一个热区。 */}
+        <Popover open={popover} onOpenChange={setPopover}>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="ghost"
+                data-testid="phase-chip"
+                className="detail-chip ml-2 flex h-auto flex-none cursor-pointer items-center gap-0 rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit aria-expanded:bg-transparent aria-expanded:text-inherit active:not-aria-[haspopup]:translate-y-0"
+              />
             }
-          />
-        </FloatingShell>
+          >
+            <StatusChip tone={ui.tone} className="shrink-0 whitespace-nowrap">
+              {t(ui.chip)}
+            </StatusChip>
+            {/* #949: chevron 皮肤等值迁 utility。testid = 二级载体
+                （chip-hotzone 的 H1 热区钉扎位，#910 裁定 1）。 */}
+            <span
+              className="ml-[5px] flex flex-none text-(--text-tertiary)"
+              data-testid="chip-chevron"
+            >
+              <ChevronDown width={12} height={12} />
+            </span>
+          </PopoverTrigger>
+          {/* 298 宽 = 捕获设计的内容 layout 槽（#983 宽度归消费点判例）；
+              皮肤/圆角/描边/投影/Arrow 归 PopoverContent 默认（#991 Q9）。 */}
+          <PopoverContent
+            side="bottom"
+            align="start"
+            alignOffset={-18}
+            sideOffset={8}
+            initialFocus={false}
+            aria-label={t('任务分配')}
+            className="w-[298px]"
+          >
+            <ChipPopover
+              todo={todo}
+              onEditAssign={
+                onEditAssign == null
+                  ? undefined
+                  : () => {
+                      // 先关 popover 再开弹层:两 overlay 不叠(家族律单实例)。
+                      setPopover(false);
+                      onEditAssign();
+                    }
+              }
+            />
+          </PopoverContent>
+        </Popover>
       </span>
 
       {/* XMON-55 P1: the head carries the task subject. Without it the only
@@ -178,6 +174,7 @@ export function DetailHead({
             按自身默认尺寸渲染）。--more 别名保留（8 处 spec 钉）。 */}
         <Button
           variant="ghost"
+          ref={moreButtonRef}
           className={`detail-head-icon detail-head-icon--more ${ICON_BTN} [&_svg:not([class*='size-'])]:size-auto`}
           aria-label={t('更多')}
           onClick={onMore}

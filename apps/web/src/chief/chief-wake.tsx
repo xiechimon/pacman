@@ -24,7 +24,8 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../components/ui/button.js';
-import { KbdHint } from '../components/ui/kbd-hint.js';
+import { Kbd } from '../components/ui/kbd.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChiefDrawer } from './chief-drawer.js';
@@ -55,22 +56,32 @@ export function ChiefWakeFab({
     // surface 底、fab-shadow——unlayered per-face 恒压原语层）。中和件：
     // font-normal（badge 10px 字不吃原语 medium）、active 位移、svg size-auto
     // （ChiefFab 字形带 30.8 尺寸属性，不能被原语 size-4 压成 16）。
-    <Button
-      variant="ghost"
-      size="icon"
-      className={`${fabClassName} font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
-      aria-label={t('总管')}
-      onClick={() => setChiefView('drawer')}
-    >
-      <ChiefFabIcon chief={chiefData} />
-      {/* #468: ⌘J 悬浮提示（四族共用消费点；点击维持 open-only）。 */}
-      <KbdHint label="⌘J" />
-      {chiefUnread > 0 && (
-        <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
-          {chiefUnread}
-        </span>
-      )}
-    </Button>
+    // #468/#1008：⌘J 悬浮提示（四族共用消费点；点击维持 open-only）——
+    // kbd-hint 退役（#983 判决）→ 官网 Tooltip+Kbd 组合，side=top
+    // sideOffset=8 = 旧 above 落位（钮正上方 8px）。
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`${fabClassName} font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
+            aria-label={t('总管')}
+            onClick={() => setChiefView('drawer')}
+          />
+        }
+      >
+        <ChiefFabIcon chief={chiefData} />
+        {chiefUnread > 0 && (
+          <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
+            {chiefUnread}
+          </span>
+        )}
+      </TooltipTrigger>
+      <TooltipContent sideOffset={8}>
+        <Kbd>⌘J</Kbd>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

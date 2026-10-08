@@ -17,12 +17,18 @@ import { mapSchedules, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog.js';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu.js';
-import { EXIT_BRIDGE_SLOW_CLS, FloatingShell } from '../components/ui/floating-shell.js';
 import { Select } from '../components/ui/select.js';
 import { toastError } from '../components/ui/toaster.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
@@ -38,7 +44,6 @@ import {
   PlusSmall,
   Server,
   Trash2,
-  X,
 } from '../icons/index.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { PHASE_UI } from '../phase.js';
@@ -266,13 +271,12 @@ function ScheduleCard({
 /** r3 92/92b dialog. Field values ride the fixture (project + first todo);
  *  the open tab is the scenario's capture state. M5 live 面：`live` 绑定使
  *  tab/时/分受控、保存接真 mutation（DOM 类名与几何不变）。
- *  #388：全屏族——scrim 盖全视口（z 归 dialog 族档 --z-modal-scrim）、Esc / 背板
- *  点击 / X / 取消 四路关闭（家族律 #67/#68；Esc 经 FloatingShell 的 Base UI
- *  layer 栈）。#656：进出场归 tw-animate-css——scrim 走 group-data-open/closed
- *  的 fade（居中弹层 fade-only 律，与 dialog 族同档 duration-200）。
- *  open/onClose 由页面持有：live 面 = formOpen 真值，fixture 冻结
- *  开屏面 = 局部 UI 态（关闭不销毁 scenario，重载还原——deletions.ts
- *  覆面同律）。 */
+ *  #388/#1008：全屏族——壳 = registry Dialog（modal 原生背板盖全视口，
+ *  Esc / 背板点击 / X / 取消 四路关闭全归原语，Base UI layer 栈；旧手搓
+ *  scrim + --z-modal-scrim 档 + fade-only 律随 #983 族拆退役，动效归
+ *  registry 默认，#991 Q9）。open/onClose 由页面持有：live 面 = formOpen
+ *  真值，fixture 冻结开屏面 = 局部 UI 态（关闭不销毁 scenario，重载还原
+ *  ——deletions.ts 覆面同律）。 */
 function ScheduleForm({
   kind,
   fixture,
@@ -296,7 +300,7 @@ function ScheduleForm({
   };
 }) {
   const { t } = useI18n();
-  // #656：Esc 归 FloatingShell（Base UI layer 栈），旧 useEscapeClose 退役。
+  // #1008：Esc 归 registry Dialog（Base UI layer 栈）。
   // 时/分现在是受控选择器（XMON-75），fixture 面没有后端，落局部态承载「选了
   // 就回显」——live 面照旧走 live.hour/onHour。
   const [fixtureHour, setFixtureHour] = useState('09');
@@ -308,147 +312,133 @@ function ScheduleForm({
   const todo = live ? live.todo : fixture.todos[0];
   const repo = live ? live.repo : (fixture.project?.repoName ?? '');
   return (
-    <FloatingShell open={open} onClose={onClose} className={EXIT_BRIDGE_SLOW_CLS}>
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc closes — see comment */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop is a click-to-dismiss surface */}
-      <div
-        className="sched-form-overlay fixed inset-0 z-(--z-modal-scrim) flex items-center justify-center bg-(--overlay-scrim) duration-200 group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0"
-        onClick={(event) => {
-          // only the backdrop itself dismisses; panel clicks bubble harmlessly
-          if (event.target === event.currentTarget) onClose();
-        }}
-      >
-        <div
-          className="w-[488px] rounded-none bg-(--card) shadow-(--fab-shadow)"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('新建定时')}
-        >
-          <header className="flex h-[46px] items-center justify-between border-b border-(--border) px-4">
-            <span className="text-sm font-semibold leading-5 text-(--foreground)">
-              {t('新建定时')}
-            </span>
-            {/* XMON-25 收编：老 ui/Button icon 变体 → ghost + size icon；#946：
-                24×24 皮肤迁 ICON_BTN_24_CLS 配方。 */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`sched-form-close ${ICON_BTN_24_CLS} [&_svg:not([class*='size-'])]:size-auto`}
-              aria-label={t('关闭')}
-              onClick={onClose}
-            >
-              <X />
-            </Button>
-          </header>
-          <div className="p-4">
-            {/* 行盒（原 .sched-form-row）：36 高带框行；首行不带头顶距
+    // #1008（#983 判决：居中 fixed 模态族 → registry Dialog）：壳 =
+    // Dialog + DialogContent（modal 原生背板 = 外点只关不穿透，旧手搓
+    // scrim + target 判定退役；Esc/X 关归原语，旧 sched-form-close 手写 X
+    // 退役 = registry showCloseButton 承载）。头带（h-46 border-b）→
+    // DialogHeader/DialogTitle 语义映射；488 宽是内容 layout 槽。别名
+    // sched-form-overlay / sched-form-close 随壳退役（e2e 重钉面，相位二）。
+    <Dialog
+      open={open}
+      onOpenChange={(next: boolean) => {
+        if (!next) onClose();
+      }}
+    >
+      <DialogContent className="w-[488px] max-w-[488px] gap-0 overflow-hidden p-0 sm:max-w-[488px]">
+        <DialogHeader className="border-b border-(--border) px-4 py-3">
+          <DialogTitle>{t('新建定时')}</DialogTitle>
+        </DialogHeader>
+        <div className="p-4">
+          {/* 行盒（原 .sched-form-row）：36 高带框行；首行不带头顶距
                 （原 .sched-form-body > :first-child 规则）。 */}
-            <div className="flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
-              <span className="text-[13px] leading-5 text-(--text-secondary)">{t('项目')}</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
-                {repo}
-                <ChevronRight width={12} height={12} />
-              </span>
-            </div>
-            <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
-              <span className="text-[13px] leading-5 text-(--text-secondary)">{t('任务')}</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
-                {todo == null ? '' : `#${todo.seqNum} ${todo.title}`}
-                <ChevronRight width={12} height={12} />
-              </span>
-            </div>
-            <div className={`sched-form-freq mt-3 w-fit ${SEG_GROUP_CLS}`}>
-              {(['hourly', 'daily', 'weekly', 'once'] as const).map((k) => (
-                // XMON-25 收编：ghost；#946：13/24 字体与几何迁 SEG_* 配方
-                // （#138 发丝环家族），--active 类名留存 = segmented-controls
-                // 跨域别名，选中皮肤 = tab-chip 填充 utility。
-                <Button
-                  key={k}
-                  variant="ghost"
-                  className={`sched-form-freq-tab ${SEG_TAB_CLS} ${GHOST_SEG_BTN_CLS} ${
-                    k === kind
-                      ? `sched-form-freq-tab--active ${SEG_TAB_ACTIVE_CLS}`
-                      : SEG_TAB_IDLE_CLS
-                  }`}
-                  onClick={live ? () => live.onKind(k) : undefined}
-                >
-                  {t(FREQ_LABEL[k])}
-                </Button>
-              ))}
-            </div>
-            {kind === 'once' && (
-              <>
-                <div className="mt-4 mb-2.5 text-[13px] leading-5 text-(--text-secondary)">
-                  {t('日期')}
-                </div>
-                <div>
-                  {/* r3 92b observes 今天; further entries unrecorded——单候选，
+          <div className="flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
+            <span className="text-[13px] leading-5 text-(--text-secondary)">{t('项目')}</span>
+            <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
+              {repo}
+              <ChevronRight width={12} height={12} />
+            </span>
+          </div>
+          <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
+            <span className="text-[13px] leading-5 text-(--text-secondary)">{t('任务')}</span>
+            <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
+              {todo == null ? '' : `#${todo.seqNum} ${todo.title}`}
+              <ChevronRight width={12} height={12} />
+            </span>
+          </div>
+          <div className={`sched-form-freq mt-3 w-fit ${SEG_GROUP_CLS}`}>
+            {(['hourly', 'daily', 'weekly', 'once'] as const).map((k) => (
+              // XMON-25 收编：ghost；#946：13/24 字体与几何迁 SEG_* 配方
+              // （#138 发丝环家族），--active 类名留存 = segmented-controls
+              // 跨域别名，选中皮肤 = tab-chip 填充 utility。
+              <Button
+                key={k}
+                variant="ghost"
+                className={`sched-form-freq-tab ${SEG_TAB_CLS} ${GHOST_SEG_BTN_CLS} ${
+                  k === kind
+                    ? `sched-form-freq-tab--active ${SEG_TAB_ACTIVE_CLS}`
+                    : SEG_TAB_IDLE_CLS
+                }`}
+                onClick={live ? () => live.onKind(k) : undefined}
+              >
+                {t(FREQ_LABEL[k])}
+              </Button>
+            ))}
+          </div>
+          {kind === 'once' && (
+            <>
+              <div className="mt-4 mb-2.5 text-[13px] leading-5 text-(--text-secondary)">
+                {t('日期')}
+              </div>
+              <div>
+                {/* r3 92b observes 今天; further entries unrecorded——单候选，
                       故值就地取 t()（每渲染现取，locale 切换自然跟上，不带
                       #74 那种「无控 select 重挂」）。 */}
-                  <SchedSelect
-                    value={t('今天')}
-                    options={[{ value: t('今天'), label: t('今天') }]}
-                    label={t('今天')}
-                    menuLabel={t('日期')}
-                    triggerLabel={t('日期')}
-                    onPick={() => undefined}
-                  />
-                </div>
-              </>
-            )}
-            <div className="mt-4 mb-2.5 text-[13px] leading-5 text-(--text-secondary)">
-              {t('时间')}
-            </div>
-            {/* hour at column left, minute at column center (r3 92 probe) */}
-            <div className="grid grid-cols-2">
-              <SchedSelect
-                value={hour}
-                options={HOURS.map((h) => ({ value: h, label: h }))}
-                label={hour}
-                menuLabel={t('时')}
-                triggerLabel={t('时')}
-                onPick={onHour}
-              />
-              <SchedSelect
-                value={minute}
-                options={MINUTE_STEPS.map((m) => ({ value: m, label: m }))}
-                label={minute}
-                menuLabel={t('分')}
-                triggerLabel={t('分')}
-                onPick={onMinute}
-              />
-            </div>
-            <div className="mt-3 mb-1 text-xs leading-4 text-(--text-tertiary)">
-              {t('按你的本地时区运行（Asia/Shanghai）')}
-            </div>
-            <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
-              <span className="text-[13px] leading-5 text-(--text-secondary)">{t('机器')}</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
-                {t('自动')}
-                <ChevronRight width={12} height={12} />
-              </span>
-            </div>
+                <SchedSelect
+                  value={t('今天')}
+                  options={[{ value: t('今天'), label: t('今天') }]}
+                  label={t('今天')}
+                  menuLabel={t('日期')}
+                  triggerLabel={t('日期')}
+                  onPick={() => undefined}
+                />
+              </div>
+            </>
+          )}
+          <div className="mt-4 mb-2.5 text-[13px] leading-5 text-(--text-secondary)">
+            {t('时间')}
           </div>
-          <footer className="flex items-center justify-end gap-2 px-4 pt-3 pb-[13px]">
-            {/* XMON-25 收编：取消 = ghost（surface-secondary 底皮按七通道律
-                钉回静息值），保存 = default（等价迁移位）。 */}
-            <Button
-              variant="ghost"
-              className="sched-form-cancel h-[30px] cursor-pointer rounded-none border-none bg-(--secondary) px-4 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) active:not-aria-[haspopup]:translate-y-0"
-              onClick={onClose}
-            >
-              {t('取消')}
-            </Button>
-            <Button
-              className="h-[30px] cursor-pointer rounded-none border-none px-4 text-[13px] font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
-              onClick={live?.onSave}
-            >
-              {t('保存')}
-            </Button>
-          </footer>
+          {/* hour at column left, minute at column center (r3 92 probe) */}
+          <div className="grid grid-cols-2">
+            <SchedSelect
+              value={hour}
+              options={HOURS.map((h) => ({ value: h, label: h }))}
+              label={hour}
+              menuLabel={t('时')}
+              triggerLabel={t('时')}
+              onPick={onHour}
+            />
+            <SchedSelect
+              value={minute}
+              options={MINUTE_STEPS.map((m) => ({ value: m, label: m }))}
+              label={minute}
+              menuLabel={t('分')}
+              triggerLabel={t('分')}
+              onPick={onMinute}
+            />
+          </div>
+          <div className="mt-3 mb-1 text-xs leading-4 text-(--text-tertiary)">
+            {t('按你的本地时区运行（Asia/Shanghai）')}
+          </div>
+          <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
+            <span className="text-[13px] leading-5 text-(--text-secondary)">{t('机器')}</span>
+            <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
+              {t('自动')}
+              <ChevronRight width={12} height={12} />
+            </span>
+          </div>
         </div>
-      </div>
-    </FloatingShell>
+        {/* 页脚 → DialogFooter 语义映射（registry 官网形态自带 border-t +
+                muted 带；旧「无带 justify-end」是 per-face 皮肤，#991 Q9
+                registry 默认赢，负 margin 归零适配 p-0 内容列）。取消 =
+                ghost（surface-secondary 底皮按七通道律钉回静息值），保存 =
+                default（等价迁移位）。 */}
+        <DialogFooter className="m-0 px-4 py-3">
+          <Button
+            variant="ghost"
+            className="sched-form-cancel h-[30px] cursor-pointer rounded-none border-none bg-(--secondary) px-4 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) active:not-aria-[haspopup]:translate-y-0"
+            onClick={onClose}
+          >
+            {t('取消')}
+          </Button>
+          <Button
+            className="h-[30px] cursor-pointer rounded-none border-none px-4 text-[13px] font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+            onClick={live?.onSave}
+          >
+            {t('保存')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
