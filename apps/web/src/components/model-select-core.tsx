@@ -141,7 +141,7 @@ export interface ModelRowSkin {
  *  （#910 裁定 3 状态类归行为）：行底 --pick-selected-bg、名/勾墨
  *  --pick-selected-fg（#751 单源律随基底走，skin 只做各面几何）。 */
 export const PICK_ROW_BTN_CLS =
-  "w-full cursor-pointer justify-start rounded-none border-none bg-transparent text-left font-normal whitespace-nowrap hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--foreground) aria-selected:bg-(--spot-soft) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  "w-full cursor-pointer justify-start border-none bg-transparent text-left font-normal whitespace-nowrap hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--foreground) aria-selected:bg-(--spot-soft) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
 interface ModelPickRowProps {
   skin: ModelRowSkin;

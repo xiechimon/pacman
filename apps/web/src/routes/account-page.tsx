@@ -72,7 +72,7 @@ import { SecondaryShell } from '../secondary/shell.js';
  *  归零到带框皮肤：hover/aria-expanded 回 surface 底 + primary 墨（原形
  *  无 hover、开态无换装），含 dark: 变体。 */
 const LANG_TRIGGER_CLS =
-  "h-[30px] cursor-pointer gap-1.5 rounded-none border border-(--border) bg-(--card) px-2.5 text-xs font-normal leading-[inherit] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
+  "h-[30px] cursor-pointer gap-1.5 border border-(--border) bg-(--card) px-2.5 text-xs font-normal leading-[inherit] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
 
 /** 语言盘 layout 槽（#1008：V2 弹层壳皮肤 / 描边 Arrow / 冻结锚距退役，
  *  皮肤归 PopoverContent 默认，定位归 Positioner 参数 side=bottom align=end
@@ -95,7 +95,7 @@ const LANG_ROW_CLS =
 
 /** 名称值钮（14px 值墨，hover 换主题色补可点感）。 */
 const ACCOUNT_NAME_CLS =
-  'h-auto cursor-pointer justify-start gap-0 rounded-none border-none bg-transparent p-0 text-left text-[14px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--card-button) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
+  'h-auto cursor-pointer justify-start gap-0 border-none bg-transparent p-0 text-left text-[14px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--card-button) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** 编辑铅笔钮（tertiary 墨，hover 回 foreground；icon-only 只留 padding 盒）。 */
 const ACCOUNT_ICON_EDIT_CLS =

@@ -20,14 +20,16 @@ import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Settings } from '../icons/index.js';
 
-/** 行皮肤（旧 .chip-popover-row 等值）：26px 行 / 10px 列距 / 右垫 4px /
- *  12px 字三级墨；hover 淡 tint = motion.css #73 家族的 --accent-soft 同值
- *  （150ms 背景过渡同档，行随 #949 退出该选择子族、utility 自持）；头像
- *  img 12px 圆形。 */
+/** 行节奏（#1008 用户复核：内里对齐同族浮层）：DropdownMenuItem 同拍——
+ *  min-h-8 行 / rounded-md / px-1.5 / text-sm；hover 淡 tint =
+ *  --accent-soft 同值（150ms 背景过渡同档）；头像 img 12px 圆形（身份
+ *  tile 尺寸是内容语义，不随节奏放大）。旧 26px/11px 密档是 per-face
+ *  捕获残留，registry 节奏赢（ADR 0012 D1）。 */
 const POPOVER_ROW =
-  'flex h-[26px] items-center gap-2.5 pr-1 text-xs leading-4 text-(--text-tertiary) transition-[background-color] duration-150 hover:bg-(--accent-soft) [&_img]:size-3 [&_img]:flex-none [&_img]:rounded-full';
+  'flex min-h-8 items-center gap-2.5 rounded-md px-1.5 text-sm leading-5 text-(--text-tertiary) transition-[background-color] duration-150 hover:bg-(--accent-soft) [&_img]:size-3 [&_img]:flex-none [&_img]:rounded-full';
 
-const SECTION_LABEL = 'p-0 text-[11px] leading-3 font-medium text-(--foreground)';
+/** 节标签 = DropdownMenuLabel 节奏（text-xs medium muted）。 */
+const SECTION_LABEL = 'px-1.5 text-xs leading-4 font-medium text-muted-foreground';
 
 export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
   const { t } = useI18n();
@@ -36,19 +38,22 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
   const { user } = useLiveData();
   const agentAvatarUrl = useAgentAvatarUrlById();
   return (
-    <div className="chip-popover flex flex-col text-left">
-      <div className="flex items-center gap-2 pt-[5px]">
+    <div className="chip-popover flex flex-col gap-1.5 text-left">
+      {/* #1008 用户复核（内里节奏）：micro-padding（pt-[5px]/pb-2/pt-2）退役，
+          段落间距归 root gap-1.5 + PopoverContent 默认 p-2.5；字号抬到
+          registry popover 档（正文 text-sm、meta text-xs）。 */}
+      <div className="flex items-center gap-2 px-1.5">
         <span className="flex size-3 flex-none items-center justify-center rounded-[4px] bg-(--project-avatar-bg) text-[8px] font-medium text-(--project-avatar-fg)">
           {PROJECT_INITIAL}
         </span>
-        <span className="text-[11px] leading-3 text-(--text-tertiary)">{PROJECT_NAME}</span>
+        <span className="text-xs leading-4 text-(--text-tertiary)">{PROJECT_NAME}</span>
         {/* #序号墨 = --text-tertiary（#949 better-colors 换槽，search-panel
             时间列同判：--text-dim × --popover-bg 亮模 2.89 < 地板 3） */}
-        <span className="text-[11px] leading-3 text-(--text-tertiary)">#{todo.seqNum}</span>
+        <span className="text-xs leading-4 text-(--text-tertiary)">#{todo.seqNum}</span>
       </div>
-      <div className="pt-[5px] pb-2 text-xs leading-4 text-(--foreground)">{todo.title}</div>
+      <div className="px-1.5 text-sm leading-5 text-(--foreground)">{todo.title}</div>
       <div className="h-px flex-none bg-(--border)" />
-      <div className="flex-none pt-2">
+      <div className="flex flex-none flex-col gap-0.5">
         <div className={SECTION_LABEL}>{t('任务')}</div>
         <div className={POPOVER_ROW} data-row-kind="owner">
           <SeededAvatar
@@ -60,7 +65,10 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
           {user.displayName}
         </div>
       </div>
-      <div className="flex-none bg-(--spot-soft) pt-2" data-selected="">
+      <div
+        className="flex flex-none flex-col gap-0.5 rounded-md bg-(--spot-soft) px-1 py-1"
+        data-selected=""
+      >
         <div className={SECTION_LABEL}>{t('执行对话')}</div>
         <div className={POPOVER_ROW} data-row-kind="agent">
           <SeededAvatar
@@ -77,14 +85,13 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
         </div>
       </div>
       <div className="h-px flex-none bg-(--border)" />
-      {/* #949: 旧 .chip-popover-edit 规则等值迁 utility——ghost 件配方全
-          通道中和（hover/aria-expanded 涂底与墨色钉回三级墨、press 位移
-          禁掉、1px 透明边归零、font-medium 归 normal），flex-1 吃满壳垫
-          余高，gap 8px 保持图标与文案的 r7 列距。 */}
+      {/* 编辑分配行（#949 ghost 全通道中和保留；#1008 节奏对齐：min-h-8 /
+          rounded-md / px-1.5 / text-sm = 行族同拍，旧 flex-1 吃余高随固定
+          193 高退役）。 */}
       <Button
         variant="ghost"
         size="default"
-        className="h-auto flex-1 cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent p-0 text-left text-xs leading-4 font-normal whitespace-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+        className="min-h-8 flex-none cursor-pointer justify-start gap-2 rounded-md border-none bg-transparent px-1.5 text-left text-sm leading-5 font-normal whitespace-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
         onClick={onEditAssign}
       >
         <Settings width={14} height={14} />

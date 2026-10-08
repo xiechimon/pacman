@@ -41,7 +41,7 @@ const PLATE_CLS = 'w-(--anchor-width) min-w-[220px] gap-1.5';
 
 /** 面包屑段钮（原 .dir-browser-crumb，ghost 底座七通道中和）。 */
 const CRUMB_CLS =
-  'h-auto max-w-40 shrink cursor-pointer truncate rounded-none border-none bg-transparent p-0 text-xs font-normal leading-4 text-(--text-secondary) hover:bg-transparent hover:text-(--foreground) hover:underline dark:hover:bg-transparent aria-[current=location]:font-medium aria-[current=location]:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
+  'h-auto max-w-40 shrink cursor-pointer truncate border-none bg-transparent p-0 text-xs font-normal leading-4 text-(--text-secondary) hover:bg-transparent hover:text-(--foreground) hover:underline dark:hover:bg-transparent aria-[current=location]:font-medium aria-[current=location]:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
 
 /** dotfiles toggle 钮（原 .dir-browser-dots，pill 带框形 + aria-pressed
  *  品牌态；pressed×hover 叠态钉品牌墨 = 旧 unlayered 规则序的等值）。 */
@@ -50,7 +50,7 @@ const DOTS_CLS =
 
 /** 行名钮（原 .dir-browser-name，ghost 底座；行钮自身无 hover 涂底）。 */
 const ROW_NAME_CLS =
-  'h-auto min-w-0 flex-1 cursor-pointer justify-start truncate rounded-none border-none bg-transparent px-1 text-[13px] font-normal leading-[18px] text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'h-auto min-w-0 flex-1 cursor-pointer justify-start truncate border-none bg-transparent px-1 text-[13px] font-normal leading-[18px] text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 /** 「选择」钮（原 .dir-browser-pick）：静息隐身，行 hover（group）/自身
  *  focus-visible 现身。 */

@@ -79,14 +79,14 @@ import { usePendingAttachments } from './pending-attachments.js';
 /** head 项目 chip（原 .new-task-project）：透明无框触发钮，Button ghost
  *  七通道中和（#908 裁决 3）；svg 墨 tertiary（chevron 12px 属性原值）。 */
 const PROJECT_CHIP_CLS =
-  "new-task-project flex h-auto min-w-0 cursor-pointer items-center justify-start gap-2 rounded-none border-none bg-transparent p-0 font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "new-task-project flex h-auto min-w-0 cursor-pointer items-center justify-start gap-2 border-none bg-transparent p-0 font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
 /** 底栏机器 chip（原 .new-task-machine）：有边界控件（方角选择触发钮，
  *  .dlg-machine 惯用法）；30px 高对齐工具钮（光学同排，better-ui 对齐律）；
  *  hover 吃 #791 家族同值 --accent-soft；shrink=0（机器标签是派发关键短
  *  数据，永不截断）。 */
 const MACHINE_CHIP_CLS =
-  "new-task-machine flex h-[30px] flex-none cursor-pointer items-center justify-start gap-2 rounded-none border border-(--border) bg-(--card) pl-2.5 pr-3 text-[13px] font-normal text-(--foreground) hover:bg-(--accent-soft) hover:text-(--foreground) dark:hover:bg-(--accent-soft) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "new-task-machine flex h-[30px] flex-none cursor-pointer items-center justify-start gap-2 border border-(--border) bg-(--card) pl-2.5 pr-3 text-[13px] font-normal text-(--foreground) hover:bg-(--accent-soft) hover:text-(--foreground) dark:hover:bg-(--accent-soft) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
 /** 项目/机器 popover 面板 layout 槽（#1008：V2 弹层壳皮肤 / 描边 Arrow /
  *  absolute 定位 / z 档全退役——皮肤与动效归 PopoverContent 默认，定位归
@@ -755,7 +755,7 @@ export function NewTaskDialog({
           <Textarea
             ref={focusSpecRef}
             data-testid="new-task-spec"
-            className="new-task-spec min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent p-0 text-sm leading-5 tabular-nums text-(--foreground) field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent md:text-sm"
+            className="new-task-spec min-h-0 flex-1 resize-none border-0 bg-transparent p-0 text-sm leading-5 tabular-nums text-(--foreground) field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent md:text-sm"
             placeholder={SPEC_TEMPLATE_LINES.map((line) => t(line)).join('\n')}
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
@@ -985,7 +985,7 @@ currentColor 系而非 border-border/muted-foreground。
             <Button
               variant="ghost"
               size="default"
-              className="new-task-discard-keep h-auto cursor-pointer rounded-none justify-start gap-0 border-none bg-transparent p-0 text-xs leading-4 font-normal text-muted-foreground active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-muted-foreground [&_svg:not([class*='size-'])]:size-auto"
+              className="new-task-discard-keep h-auto cursor-pointer justify-start gap-0 border-none bg-transparent p-0 text-xs leading-4 font-normal text-muted-foreground active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-muted-foreground [&_svg:not([class*='size-'])]:size-auto"
               ref={keepBtnRef}
               onClick={closeDiscard}
             >

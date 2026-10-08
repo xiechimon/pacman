@@ -99,7 +99,7 @@ const PANEL_CLS =
 
 /** 类目/实体行基底（原 .mention-row，Button ghost 七通道中和）。 */
 const ROW_CLS =
-  'mention-row flex w-full cursor-pointer items-center justify-start gap-2.5 rounded-none border-0 bg-transparent px-3.5 py-0 text-left text-sm font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:cursor-default';
+  'mention-row flex w-full cursor-pointer items-center justify-start gap-2.5 border-0 bg-transparent px-3.5 py-0 text-left text-sm font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:cursor-default';
 
 /** head 返回/关闭钮（原 .mention-picker-back/-close：22px 方钮、6px 圆角、
  *  tertiary 墨，hover 吃 #73 家族同值 --accent-soft tint + primary 墨）。 */
@@ -348,7 +348,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           <Button
             variant="ghost"
             size="default"
-            className="mention-picker-cancel h-auto cursor-pointer rounded-none justify-start gap-0 px-1.5 py-1 text-xs font-normal text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
+            className="mention-picker-cancel h-auto cursor-pointer justify-start gap-0 px-1.5 py-1 text-xs font-normal text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
             onClick={onClose}
           >
             {t('取消')}
@@ -356,7 +356,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           <Button
             variant="ghost"
             size="default"
-            className="mention-picker-insert h-auto cursor-pointer rounded-none justify-start gap-0 px-1.5 py-1 text-xs font-medium text-(--card-button) transition-[filter] duration-(--dur-fast) ease-(--ease-standard) hover:bg-transparent hover:brightness-[1.07] dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--card-button) disabled:cursor-default disabled:text-(--text-tertiary) disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            className="mention-picker-insert h-auto cursor-pointer justify-start gap-0 px-1.5 py-1 text-xs font-medium text-(--card-button) transition-[filter] duration-(--dur-fast) ease-(--ease-standard) hover:bg-transparent hover:brightness-[1.07] dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--card-button) disabled:cursor-default disabled:text-(--text-tertiary) disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             disabled={allSelected.length === 0}
             onClick={insert}
           >

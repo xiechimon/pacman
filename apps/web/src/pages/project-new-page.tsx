@@ -78,23 +78,23 @@ const NAME_INPUT_CLS =
  *  只中和涂底通道——本面旧规则无 color 声明，ghost 的 hover/aria-expanded
  *  提亮墨本就生效，等值保留。 */
 const REPO_TRIGGER_CLS =
-  "h-10 flex-1 cursor-pointer justify-between rounded-none border border-(--border) bg-transparent px-3 font-normal leading-[inherit] hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "h-10 flex-1 cursor-pointer justify-between border border-(--border) bg-transparent px-3 font-normal leading-[inherit] hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
 /** swap 钮（原 .prj-new-repo-swap）：40×40 带框图标钮，tertiary 弱化墨
  *  （#946 better-colors 换槽，全域 --text-dim 消费面同律）；
  *  aria-expanded 通道钉回静息值（Menu Trigger 面）。 */
 const SWAP_BTN_CLS =
-  "ml-2 size-10 cursor-pointer rounded-none border border-(--border) bg-transparent text-(--text-tertiary) font-normal leading-[inherit] hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  "ml-2 size-10 cursor-pointer border border-(--border) bg-transparent text-(--text-tertiary) font-normal leading-[inherit] hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
 /** 浏览钮（原 .prj-new-browse，#440）：swap 钮同族 40 高带框文案钮；
  *  在飞 disabled 沿 0.55 淡化律。 */
 const BROWSE_BTN_CLS =
-  'ml-2 flex h-10 cursor-pointer items-center rounded-none border border-(--border) bg-transparent px-3 text-[13px] font-normal leading-[inherit] whitespace-nowrap text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent disabled:opacity-[0.55] active:not-aria-[haspopup]:translate-y-0';
+  'ml-2 flex h-10 cursor-pointer items-center border border-(--border) bg-transparent px-3 text-[13px] font-normal leading-[inherit] whitespace-nowrap text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent disabled:opacity-[0.55] active:not-aria-[haspopup]:translate-y-0';
 
 /** 兜底链接钮（原 .prj-new-gh-link）：12/16 tertiary 下划线（#946 换槽），零内距；
  *  体级 mt-2 / picker 内 mt-0+px-1 的位差由消费点补。 */
 const GH_LINK_CLS =
-  'h-auto cursor-pointer self-start rounded-none border-none bg-transparent p-0 text-xs font-normal leading-4 text-(--text-tertiary) underline hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'h-auto cursor-pointer self-start border-none bg-transparent p-0 text-xs font-normal leading-4 text-(--text-tertiary) underline hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 /** picker 弹层板（原 .prj-new-gh-picker，#361 / V2 弹层壳 #790 P3）：
  *  12px 内边距 / 1px 墨线框 / 直角 / 顶部锚距 8px / 最小宽 220 + 上指锚边
@@ -625,7 +625,7 @@ export function ProjectNewPage() {
                     #946：h40/flex:1 几何迁 utility。 */}
                   <Button
                     id="prj-new-repo"
-                    className="h-10 flex-1 cursor-pointer rounded-none border-none text-sm font-normal active:not-aria-[haspopup]:translate-y-0"
+                    className="h-10 flex-1 cursor-pointer border-none text-sm font-normal active:not-aria-[haspopup]:translate-y-0"
                     onClick={startAuth}
                   >
                     {t('认证 GitHub')}
@@ -744,7 +744,7 @@ export function ProjectNewPage() {
                     normal/text-sm 都会抬高（像素对拍实测 h 16→17）。 */}
                   <Button
                     variant="ghost"
-                    className="h-auto cursor-pointer rounded-none border-none bg-transparent p-0 text-xs font-normal leading-[inherit] text-(--text-tertiary) underline hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
+                    className="h-auto cursor-pointer border-none bg-transparent p-0 text-xs font-normal leading-[inherit] text-(--text-tertiary) underline hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
                     onClick={disconnect}
                   >
                     {t('断开连接')}

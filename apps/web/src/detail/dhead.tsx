@@ -109,7 +109,7 @@ export function DetailHead({
               <Button
                 variant="ghost"
                 data-testid="phase-chip"
-                className="detail-chip ml-2 flex h-auto flex-none cursor-pointer items-center gap-0 rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit aria-expanded:bg-transparent aria-expanded:text-inherit active:not-aria-[haspopup]:translate-y-0"
+                className="detail-chip ml-2 flex h-auto flex-none cursor-pointer items-center gap-0 border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit aria-expanded:bg-transparent aria-expanded:text-inherit active:not-aria-[haspopup]:translate-y-0"
               />
             }
           >

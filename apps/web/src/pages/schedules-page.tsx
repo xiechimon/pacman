@@ -143,7 +143,7 @@ const ICON_BTN_24_CLS =
  *  语义钩子（button[aria-label=时|分] + [role=listbox][aria-label] + option
  *  名）零漂移。 */
 const SEL_TRIGGER_CLS =
-  "h-8 w-fit min-w-14 cursor-pointer justify-start gap-1.5 rounded-none border border-(--border) bg-transparent px-2 text-[13px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
+  "h-8 w-fit min-w-14 cursor-pointer justify-start gap-1.5 border border-(--border) bg-transparent px-2 text-[13px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
 
 function SchedSelect({
   value,
@@ -331,14 +331,14 @@ function ScheduleForm({
         <div className="p-4">
           {/* 行盒（原 .sched-form-row）：36 高带框行；首行不带头顶距
                 （原 .sched-form-body > :first-child 规则）。 */}
-          <div className="flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
+          <div className="flex h-9 items-center justify-between rounded-lg border border-(--border) px-3">
             <span className="text-[13px] leading-5 text-(--text-secondary)">{t('项目')}</span>
             <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
               {repo}
               <ChevronRight width={12} height={12} />
             </span>
           </div>
-          <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
+          <div className="mt-3 flex h-9 items-center justify-between rounded-lg border border-(--border) px-3">
             <span className="text-[13px] leading-5 text-(--text-secondary)">{t('任务')}</span>
             <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
               {todo == null ? '' : `#${todo.seqNum} ${todo.title}`}
@@ -409,7 +409,7 @@ function ScheduleForm({
           <div className="mt-3 mb-1 text-xs leading-4 text-(--text-tertiary)">
             {t('按你的本地时区运行（Asia/Shanghai）')}
           </div>
-          <div className="mt-3 flex h-9 items-center justify-between rounded-none border border-(--border) px-3">
+          <div className="mt-3 flex h-9 items-center justify-between rounded-lg border border-(--border) px-3">
             <span className="text-[13px] leading-5 text-(--text-secondary)">{t('机器')}</span>
             <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5 text-(--foreground) [&_svg]:flex-none [&_svg]:text-(--text-tertiary)">
               {t('自动')}
@@ -425,13 +425,13 @@ function ScheduleForm({
         <DialogFooter className="m-0 px-4 py-3">
           <Button
             variant="ghost"
-            className="sched-form-cancel h-[30px] cursor-pointer rounded-none border-none bg-(--secondary) px-4 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) active:not-aria-[haspopup]:translate-y-0"
+            className="sched-form-cancel h-[30px] cursor-pointer border-none bg-(--secondary) px-4 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) active:not-aria-[haspopup]:translate-y-0"
             onClick={onClose}
           >
             {t('取消')}
           </Button>
           <Button
-            className="h-[30px] cursor-pointer rounded-none border-none px-4 text-[13px] font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+            className="h-[30px] cursor-pointer border-none px-4 text-[13px] font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
             onClick={live?.onSave}
           >
             {t('保存')}
