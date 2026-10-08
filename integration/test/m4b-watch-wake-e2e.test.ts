@@ -118,7 +118,6 @@ beforeAll(async () => {
         name: 'run_builds',
         arguments: {
           todoIds: ['__TODO1__'],
-          withPlan: false,
           assignment: { plan: { agentId: AGENT_ID }, build: { agentId: AGENT_ID } },
         },
       },
@@ -149,7 +148,6 @@ beforeAll(async () => {
         name: 'run_builds',
         arguments: {
           todoIds: ['__TODO2__'],
-          withPlan: false,
           assignment: { plan: { agentId: AGENT_ID }, build: { agentId: AGENT_ID } },
         },
       },
@@ -216,9 +214,9 @@ beforeAll(async () => {
   const dispatch = (todoId: string): StubResponse => ({
     toolCall: {
       name: 'run_builds',
+      // #903：工具面无 withPlan 参数——派发模式 = 团队设置（本环已落 false）。
       arguments: {
         todoIds: [todoId],
-        withPlan: false,
         assignment: { plan: { agentId: AGENT_ID }, build: { agentId: AGENT_ID } },
       },
     },
@@ -226,9 +224,11 @@ beforeAll(async () => {
   script[0] = dispatch(world.todoId);
   script[9] = dispatch(todo2Id);
 
-  // 绑定 chief（PATCH /chief，r5 §2）。
+  // 绑定 chief（PATCH /chief，r5 §2）+ 派发方式落直执行（#903：直派不再是
+  // 硬编码默认，本环测 wake 三触发全链，显式设置保持 worker 直执行脚本语义）。
   const patch = await api(server.url, 'PATCH', `/api/teams/${server.teamId}/chief`, {
     agent: { agentId: AGENT_ID, thinkingLevel: null },
+    dispatchWithPlan: false,
   });
   expect(patch.status).toBe(200);
 }, 150_000);

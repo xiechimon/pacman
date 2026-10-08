@@ -1,0 +1,41 @@
+{
+  "chief": {
+    "id": "chief-OvLorE4L91dEO5fVIUuur-h6iYb49CuIn1SkO0wetVt",
+    "userId": "OvLorE4L91dEO5fVIUuur",
+    "teamId": "h6iYb49CuIn1SkO0wetVt",
+    "agent": {
+      "agentId": "zTVnkDd8of0cPCA5dkeAl"
+    },
+    "charter": "",
+    "compactionModel": null,
+    "model": null,
+    "machineId": null,
+    "dispatchWithPlan": false,
+    "lastTurnAt": null,
+    "createdAt": 1791393653182,
+    "tz": "Asia/Shanghai"
+  },
+  "agentActor": {
+    "id": "zTVnkDd8of0cPCA5dkeAl",
+    "displayName": "验证员 903",
+    "description": null,
+    "status": "active",
+    "avatarUrl": null,
+    "provider": "stub-gw",
+    "modelId": "stub-model",
+    "thinkingLevel": null,
+    "tools": [
+      "推送分支"
+    ],
+    "secrets": [],
+    "skills": [],
+    "mcpServers": []
+  },
+  "context": null,
+  "watches": [],
+  "wakes": [],
+  "orchestration": {
+    "defaultMachineId": null,
+    "activity": []
+  }
+}

@@ -767,6 +767,12 @@ export const EN: Record<string, string> = {
   总管等待机器: 'Chief waiting for machine',
   '总管回合默认在哪台机器上执行。选「自动」时由在线机器认领，并粘住持有会话的那台。':
     'Which machine runs chief turns by default. With Auto, any online machine can claim a turn, sticking to the one that holds the session.',
+  // #903 派发方式槽（ADR 0013）：chief 设置 Agent tab 行——先规划/直接执行 =
+  // 团队级设置，服务端强制（「直接执行」复用方案块的既有键）。
+  派发方式: 'Dispatch mode',
+  先规划: 'Plan first',
+  '总管派发任务时是否先出方案。「先规划」停在确认关口等你批准方案；「直接执行」跳过方案确认，完成后仍停在审阅关口。':
+    'Whether the Chief plans before dispatching. "Plan first" parks at the confirm gate until you approve the plan; "Run directly" skips plan confirmation — finished work still parks at the review gate.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
   团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()

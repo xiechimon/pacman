@@ -542,6 +542,13 @@ export const chief = sqliteTable('chief', {
    *  N7）。钉选律镜像 todo.machineId（todo 表注释同律）：确定性、无自动
    *  回退，解除归用户。存量行不回填。 */
   machineId: text('machineId'),
+  /** 派发方式（#903 ADR 0013）：chief run_builds 派发任务的 withPlan——
+   *  true = 先规划（方案停在确认闸等用户批准），false = 直接执行。服务端
+   *  强制（chief 工具面不收 withPlan 参数），选择权归用户；钉选律同主力机
+   *  （约束由人设定、由人解除，系统不猜）。默认 true = 两道闸是产品主张，
+   *  缺省面不单方撤销 confirm 闸（#892 实证 8/8 chief 直执行即此病灶）。
+   *  存量行不回填（ALTER 的 DEFAULT true 即落）。 */
+  dispatchWithPlan: bool('dispatchWithPlan').notNull().default(true),
   /** 章程 = 常设指示（r5 §2 章程 tab；raw 默认空串）。 */
   charter: text('charter').notNull().default(''),
   /** watch 条目集（records/chief.ts chiefWatchSchema[]；派工即建、settle/failed
