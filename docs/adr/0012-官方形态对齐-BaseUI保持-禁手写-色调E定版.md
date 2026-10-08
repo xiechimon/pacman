@@ -68,3 +68,8 @@ ADR 三条件全中：**难以逆转** = 全站几何正典换锚（官方 61 �
 ## 回读校验
 
 本 ADR 是 docs-only 裁决入账，不落任何「服务端快照式配置」，无回读对象。落地回读面 = ① 本 PR 的 CI 闸实测（#989 已落地的 check job 对 docs-only 改动应绿）；② spec/22 与 ADR 0010 头部注记的 raw diff；③ #909 推翻评论与 #980 地图 Decisions so far 行（合并后追加）。
+
+## 修订
+
+- **2026-10-08 · #991 Q10（#1013 入账）**：D1「brand 档废止（override 3，品牌语义由 token 翻值承接、开放点归 #991）」与 D4「`--primary` 保 neutral 与『default 档是否即成品牌档』的张力归 #991 施工期槽映射决策」两个开放点就此闭合——裁决 = **primary 保持 neutral**（官方 base-nova 形态），品牌色 rosewood hue 338 只存在于 token 层品牌槽（#987 判留的品牌族 9 + drop-tint 3，强调面 / 激活态消费），不上默认按钮。#982「button default 档经 `--primary` 翻值即成品牌档」判决与 #987「`--primary` 保 neutral 是仓裁定」的张力以 **registry 默认赢** 裁定——与 #980 裁决④「用户自行决定只经 token 层生效」及 #988 已完成翻值形态（品牌走 spot 族）一致，零返工。执行面已先行落 main：button brand 档随 #1003 退役（36 处 / 26 文件迁 default，PR #1045 @ `da5972ce`）、E 翻值随 #1002 落地（PR #1021 @ `7a4434e3`）。
+- **2026-10-08 · #991 Q9（#1013 入账）**：D6 保留面所记「唯一悬置 = F8 归属冲突，归 #991」就此闭合——scale-fade 退役、registry 默认动效赢（保留自定义 = 皮肤适配超出语义映射，违背零皮肤裁决②）；ADR 0009 D3② 修订以该 ADR 头部 superseded-in-part 注记入账，执行载体 = #1003。
