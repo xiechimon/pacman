@@ -69,6 +69,16 @@ if [ -n "$HAS_DEEP_TS" ]; then
   pnpm -r typecheck
 fi
 
+# 3.5 spec parse gate (#1052) — e2e specs live outside every tsconfig
+#     (apps/web's includes src+test only), so the typecheck above can never
+#     see their syntax; a dropped `});` used to go red only in the CI e2e
+#     shard's collection phase. When the commit touches spec territory,
+#     parse-collect both territories (playwright --list + integration tsc).
+HAS_SPEC=$(printf '%s\n' "$STAGED" | grep -E '^(apps/web/e2e/|integration/(test|eval)/)' || true)
+if [ -n "$HAS_SPEC" ]; then
+  pnpm spec:parse
+fi
+
 # 4. Restage anything biome format --write modified
 for f in $STAGED; do
   [ -f "$f" ] && git add "$f"
