@@ -9,24 +9,24 @@
 // 等值迁移；topbar 44px = h-11、back 钮 28px = size-7 均在 §2 阶梯上）。
 // 标题带 pointer-events-none 是 #133 的 pure-label hit-test 律：band 不许
 // 吞掉 back / 新建 的点击。
+import { cn } from 'cn';
 import type { ReactNode } from 'react';
 import { AppSidebar } from '../board/app-sidebar.js';
 import type { SidebarSelected } from '../board/sidebar.js';
-import { Button } from '../components/ui/button.js';
+import { Button, buttonVariants } from '../components/ui/button.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, Plus } from '../icons/index.js';
 
-/** topbar `+ 新建`（Button link 底座）：brand 墨 13px 文字钮，右墨缘 21px
- *  （r7 实测）；件默认的 underline/hover/svg 档就地并掉（原形无 hover、
- *  图标 13px 走属性）。 */
-const RES_NEW_CLS =
-  "ml-auto mr-[21px] h-auto gap-2 p-0 text-[13px] leading-4 font-normal text-(--card-button) no-underline hover:text-(--card-button) hover:no-underline [&_svg:not([class*='size-'])]:size-auto";
+/** topbar `+ 新建`（Button link 档）：#1005 registry 对齐——形态与墨色全走
+ *  件默认（link 档 text-primary / hover underline / svg 16px）。品牌墨当文字
+ *  色的旧形按 2026-10-08 实审裁决收敛：--primary 保 neutral、品牌墨只做 spot
+ *  强调（同 #1006 R4 / #1055 口径）；右墨缘 21px 是 r7 实测 layout，归消费点。 */
+const RES_NEW_CLS = 'ml-auto mr-[21px]';
 
-/** `+ 新建` 的 SPA 链接形态（newHref 分支）：同款皮肤，裸 <a>（链接不在
- *  #851 裸控件账内；focus 环走 #388 全局 :where(a) 律）。 */
-const RES_NEW_ANCHOR_CLS =
-  'ml-auto mr-[21px] flex items-center gap-2 text-[13px] leading-4 font-normal text-(--card-button) no-underline';
+/** `+ 新建` 的 SPA 链接形态（newHref 分支）：link 档同配方经 buttonVariants
+ *  复用，裸 <a>（链接不在 #851 裸控件账内；focus 环走 #388 全局 :where(a) 律）。 */
+const RES_NEW_ANCHOR_CLS = cn(buttonVariants({ variant: 'link' }), RES_NEW_CLS);
 
 interface ResourceShellProps {
   /** Centered topbar title (`技能` / `MCP 服务器` / …). */

@@ -33,34 +33,16 @@ const SECTION_ROWS: Array<{ view: PaneView; label: PaneRowLabel }> = [
   { view: 'history', label: '运行历史' },
 ];
 
-/** #949: 旧 .plan-dropdown 壳规则等值迁 utility——V2 弹层壳（#790 P3：
- *  12px 内边距 / 1px 墨线框 / 圆角 0 / 最小宽 220）+ #854 盘三件套的硬偏移
- *  投影（--plate-shadow，用户 2026-10-05 取向）+ 12×6 描边 Arrow（双层
- *  clip-path 三角，anchor 边内侧）+ origin 顶右（#73 锚定 pop 家族律）。
- *  ring-0 中和 Content 底座的 ring-1 描边圈（旧 per-face box-shadow 是
- *  unlayered 单值，天然压掉 layered ring——utility 化后必须显式归零，否则
- *  多出一圈 1px 环）。定位正本仍在 Positioner 参数（side=bottom align=end
- *  sideOffset=8）；面板是 Positioner 的静态子级（relative 承 Arrow 伪元）。 */
-const DROPDOWN_PANEL =
-  "relative flex min-w-[220px] flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--plate-shadow) ring-0 origin-top-right before:absolute before:top-px before:right-5 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[21px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
-
-/** #949: 旧 .plan-dropdown-row 规则等值迁 utility——36px 行 / 直角（#854
- *  参考站实测：选中行底四角满色）/ 16px 左垫 4px 右垫 / 12px 一级墨。
- *  RadioItem 底座的 focus:bg-accent 家族按旧「行 transparent 底恒压」语义
- *  中和成 focus:bg-transparent（选中行 focus 底保持 --spot-soft，复合变体
- *  压在透明档之后）；hover 淡 tint = motion.css #73 家族 --accent-soft
- *  同值（行随本票退出该选择子族、utility 自持，hover 压过选中底 = 迁移前
- *  实测同序）。Base UI Menu 里 hover 即移焦（hover⇒focus 同刻在体），
- *  focus 透明档与 hover tint 同特异性时按 TW 变体序 focus 后位恒压——故
- *  hover tint 一律带 hover:focus（及 data-checked:hover:focus）复合档，
- *  特异性抬一级钉死「悬停必亮」的迁移前实测序；键盘 roving focus 环 =
- *  #388 canon 2px --focus-ring（底座 outline-hidden 之上按 focus-visible
- *  变体补钉）；勾形色钉
- *  --card-button（indicator 槽选择器吃 wrapper 的 data-slot 契约，同旧
- *  per-face 选择器；focus 态勾色随底座 ** 家族走一级墨 = 迁移前 layered
- *  focus tint 的同值中和，见 PR 对照表）。 */
-const DROPDOWN_ROW =
-  "h-9 w-full flex-none cursor-pointer justify-start rounded-none py-0 pl-4 pr-1 text-left text-xs leading-4 font-normal whitespace-normal text-(--foreground) transition-[background-color] duration-150 hover:bg-(--accent-soft) hover:focus:bg-(--accent-soft) data-checked:bg-(--spot-soft) data-checked:hover:bg-(--accent-soft) data-checked:hover:focus:bg-(--accent-soft) focus:bg-transparent focus:text-(--foreground) focus:**:text-(--foreground) data-checked:focus:bg-(--spot-soft) data-checked:focus:**:text-(--foreground) focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button) [&_svg:not([class*='size-'])]:size-auto";
+// #1006 原型（#980 前提②④）：DROPDOWN_PANEL / DROPDOWN_ROW 两串手写皮律
+// 退役——V2 弹层壳（方角 / --plate-shadow 硬偏移投影 / 双层 clip-path 描边
+// Arrow）与 36px 行距 / hover-focus 中和 / --spot-soft 选中漆 / --card-button
+// 勾色全部让位 registry DropdownMenu 默认形态（rounded-lg p-1 shadow-md
+// ring-1、item rounded-md focus:bg-accent、RadioItemIndicator 原生槽）。
+// 保留的是行为与 layout：select-and-close 家族律（closeOnClick #306）、
+// Positioner 定位参数（side=bottom align=end sideOffset=8）、盘最小宽 220
+// （r8 §2.7 行词长度 layout 位）、.doc-select-wrap / .doc-pane-select 别名
+// （spec/22 §5.0 残留律）。
+const DROPDOWN_PANEL_LAYOUT = 'min-w-[220px]';
 
 /** Type-select button + dropdown, shared by the doc-pane head and the three
  *  section heads (#366). #854 收编到 components/ui/dropdown-menu（Base UI
@@ -68,8 +50,8 @@ const DROPDOWN_ROW =
  *  缺省 false，原生 radio 保开语义；本面家族律是 select-and-close #306）；
  *  勾形改由 RadioItemIndicator 原生槽承载（同位旧 margin-left:auto 勾）；
  *  roving focus / typeahead / Esc / 外点关 / 焦点归还全归原语（modal 默认
- *  档 = 外点不穿透，ClickCatcher 家族律同语义）。皮肤/几何正本 = 上方
- *  DROPDOWN_PANEL / DROPDOWN_ROW utility（#949 per-face 清零）；定位正本
+ *  档 = 外点不穿透，ClickCatcher 家族律同语义）。皮肤/几何正本 = registry
+ *  DropdownMenu 件默认形态（#1006 原型，#980 前提④）；定位正本
  *  从 CSS inset 迁到 Positioner 参数（side=bottom align=end sideOffset=8 =
  *  原 top:calc(100%+8px) right:0）。The button label is the active view's
  *  own word.
@@ -105,15 +87,10 @@ export function PaneTypeSelect({
       <DropdownMenu defaultOpen={initiallyOpen}>
         <DropdownMenuTrigger
           render={
-            // #945（detail.css 清零，跨域消费面）：.doc-pane-select 皮肤从
-            // per-face 迁 utilities——与 detail/docpane 的 PANE_SELECT 同配方
-            // （防两消费面漂移的既有律），仅左距不同：wrap 内 6px（老基规则
-            // ml 6px；docpane 的 range-wrap 嵌套覆写才是 ml-0）。
-            <Button
-              variant="ghost"
-              size="default"
-              className="doc-pane-select ml-1.5 flex h-auto cursor-pointer items-center justify-start gap-[3px] rounded-none border-none bg-transparent p-0 text-xs leading-4 text-inherit font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-            />
+            // #1006 原型：与 detail/docpane 的 PANE_SELECT 同配方（防两消费
+            // 面漂移的既有律）——ghost xs 档默认形态，仅左距不同：wrap 内
+            // 6px（老基规则 ml 6px；docpane 的 range-wrap 嵌套覆写是 ml-0）。
+            <Button variant="ghost" size="xs" className="doc-pane-select ml-1.5" />
           }
         >
           {t(label)}
@@ -124,16 +101,11 @@ export function PaneTypeSelect({
           side="bottom"
           sideOffset={8}
           aria-label={t('面板视图')}
-          className={DROPDOWN_PANEL}
+          className={DROPDOWN_PANEL_LAYOUT}
         >
           <DropdownMenuRadioGroup value={view} onValueChange={(next) => onView(next as PaneView)}>
             {rows.map((row) => (
-              <DropdownMenuRadioItem
-                key={row.view}
-                value={row.view}
-                closeOnClick
-                className={DROPDOWN_ROW}
-              >
+              <DropdownMenuRadioItem key={row.view} value={row.view} closeOnClick>
                 {t(row.label)}
               </DropdownMenuRadioItem>
             ))}

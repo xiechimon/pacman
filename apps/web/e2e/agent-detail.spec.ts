@@ -635,7 +635,11 @@ async function assertTopCorner(rows: Locator) {
         topBorder: cs.borderTopWidth,
       };
     });
-    expect(topLeft).toEqual(['11px', '11px']);
+    // 13px = Card rounded-xl(--radius-xl=14px) − 1px ring 的逻辑角（#1005 把
+    // profile-card 从 Panel 12px/11px 迁到 Card；本分支先落地该几何，故此依赖
+    // 断言随引入方重钉，L4 统一 profile-card 时复核）。topBorder 仍 0px（ring 是
+    // box-shadow，首行 first:border-t-0）。
+    expect(topLeft).toEqual(['13px', '13px']);
     expect(topBorder).toBe('0px');
   }
 }

@@ -32,6 +32,12 @@ import { useBuildChangeFile } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
 import { Button } from '../components/ui/button.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu.js';
 import type {
   ChangesContent,
   DiffFile,
@@ -98,8 +104,11 @@ interface DocPaneProps {
  *  共用单源（#945：老 .doc-pane-head 规则族的两消费面防漂移律不变）。 */
 export const PANE_HEAD =
   'doc-pane-head flex h-9 flex-none items-center border-b border-(--border) pl-[17px] text-xs leading-4 text-(--text-secondary) [&>svg]:text-(--text-tertiary)';
-const PANE_SELECT =
-  'ml-0 flex h-auto cursor-pointer items-center justify-start gap-[3px] rounded-none border-none bg-transparent p-0 text-xs leading-4 text-inherit font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary)';
+// #1006 原型（#980 前提④）：PANE_SELECT 七通道中和串退役——头带文字钮
+// 走 registry ghost xs 档默认形态（hover:bg-muted 反馈生效），只留 layout
+// 位（ml-0：wrap 内贴左）。plan-dropdown 的同名配方同步退役（两消费面
+// 防漂移律不变）。
+const PANE_SELECT = 'doc-pane-select ml-0';
 const DIFF_LINE = 'flex items-center font-mono text-[11px] leading-[17px] text-(--text-secondary)';
 // gutter 老/新行号格右对齐；宽度差 1px 是 r7 27b 捕获原值（old 列尾 x255、
 // new 列尾 x274）。
@@ -246,13 +255,12 @@ function DiffFileBlock({
                   : t('二进制文件暂不支持预览')}
             </div>
           )}
-          {/* XMON-24 shadcn ghost 底座不变；#945 漆底/几何迁 utilities——
-              27px 满宽条、surface-secondary 漆面（hover 双档钉回漆面，
-              灭 ghost 的 muted）、左 13 内衬（pr-0 老面只钉左值）、方角、
-              svg 免底座 16px 强制（属性 12px）。 */}
+          {/* #1006 原型（#980 前提④）：27px 满宽漆面条（surface-secondary
+              恒压 hover）退役——ghost 档默认形态，满宽/左对齐是 layout 位，
+              hover:bg-muted 反馈生效。 */}
           <Button
             variant="ghost"
-            className="diff-expand flex h-[27px] w-full cursor-pointer items-center justify-start gap-1.5 rounded-none border-none bg-(--secondary) pr-0 pl-[13px] text-xs leading-4 font-normal text-(--foreground) hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) dark:hover:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            className="diff-expand w-full justify-start"
             onClick={() => setShowFull((v) => !v)}
           >
             <UnfoldVertical width={12} height={12} />
@@ -288,55 +296,62 @@ function VersionMenu({
   onBase: () => void;
 }) {
   const { t } = useI18n();
-  // XMON-24 菜单行 shadcn ghost 底座不变；#945 几何/皮肤迁 utilities——
-  // 37px 行距 + 行间发丝缝（末行免缝，老 :last-child 律走 last: 变体）+
-  // space-between 压底座 justify、透明底灭 hover（七通道中和）、svg 免
-  // 16px 强制（Restore 属性 13px）。svg 子句与底座字符串逐字节同形
-  // （单引号）——twMerge 按字面识别冲突组。菜单盘：212 宽右对齐 chip
-  // （r8 §2.7），--radius-popover + edge 投影（0 8 24 @14%）。
-  const ROW_BASE =
-    "version-menu-row flex h-[37px] w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-(--border) bg-transparent text-left text-xs leading-4 font-normal last:border-b-0 hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto [&_svg]:text-(--text-tertiary)";
-  const rowClass = `${ROW_BASE} px-[7px] text-(--foreground) hover:text-(--foreground) dark:hover:text-(--foreground)`;
-  // 子菜单行（与其他版本对比 ▸ 上一版本）：8px 侧衬 + secondary 墨。
-  const subRowClass = `${ROW_BASE} px-2 text-(--text-secondary) hover:text-(--text-secondary) dark:hover:text-(--text-secondary)`;
-  const MENU_PANEL =
-    'version-menu absolute top-[30px] -right-0.5 z-(--z-popover) w-53 rounded-(--radius-popover) bg-(--popover) py-1 shadow-[0_8px_24px_rgb(0_0_0/0.14)]';
+  // #1006 原型（#980 前提②④；#983「菜单族 → DropdownMenu」同族判例，
+  // plan-dropdown/more-menu 先例）：手搓 absolute 菜单盘（37px 行距 +
+  // 发丝缝 + 七通道中和 + --radius-popover/edge 投影皮肤）退役，组合
+  // registry DropdownMenu 件——行形态/hover-focus 反馈/圆角/投影/进出场
+  // 动效全部 registry 默认。compare 面沿老「整盘换面」契约（menu 联合态
+  // 驱动单张 DropdownMenuContent 的内容切换，非嵌套 Submenu——嵌套会让
+  // 单 menu 态同时驱动两层受控 open、item-press 与 outside-press 互相
+  // 抢态；换面是本面既有交互正本）。受控 open 沿 versionMenu 页面态
+  // （fixture 场景冻结契约不动）。.version-menu* 别名透传（e2e 句柄）。
+  // 盘宽 212 右对齐是 layout 位（r8 §2.7 锚定经 Positioner align=end）。
+  // 与其他版本对比… = closeOnClick=false 的换面项（保持菜单开、切 compare
+  // 面），其余行是 select-and-close（#306 家族律）。
   if (menu === 'compare') {
     return (
-      <div className={`${MENU_PANEL} version-menu--sub w-auto min-w-[69px]`}>
-        <Button variant="ghost" className={subRowClass} onClick={onCompare}>
+      <DropdownMenuContent
+        align="end"
+        side="bottom"
+        sideOffset={8}
+        className="version-menu version-menu--sub w-auto min-w-[69px]"
+      >
+        <DropdownMenuItem className="version-menu-row" onClick={onCompare}>
           {t('上一版本')}
-        </Button>
-      </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
     );
   }
   return (
-    <div className={MENU_PANEL}>
+    <DropdownMenuContent align="end" side="bottom" sideOffset={8} className="version-menu w-53">
       {versions.map((row, i) => (
-        <Button
-          variant="ghost"
+        <DropdownMenuItem
           key={row.v}
-          className={`${rowClass}${i === 0 ? ' version-menu-row--current font-semibold' : ''}`}
+          className={`version-menu-row justify-between${i === 0 ? ' version-menu-row--current font-semibold' : ''}`}
           onClick={() => onMenu(undefined)}
         >
           <span>
             {row.v} · {relativeTime(row.at, now, t)}
           </span>
-          <Restore width={13} height={13} />
-        </Button>
+          <Restore width={13} height={13} className="text-(--text-tertiary)" />
+        </DropdownMenuItem>
       ))}
-      <Button variant="ghost" className={rowClass} onClick={() => onMenu('compare')}>
+      <DropdownMenuItem
+        className="version-menu-row justify-between"
+        closeOnClick={false}
+        onClick={() => onMenu('compare')}
+      >
         <span>{t('与其他版本对比…')}</span>
         {diffOpen && diffFrom != null && (
           <span className="version-menu-label text-(--text-tertiary)">{diffFrom}</span>
         )}
-      </Button>
+      </DropdownMenuItem>
       {diffOpen && (
-        <Button variant="ghost" className={rowClass} onClick={onBase}>
+        <DropdownMenuItem className="version-menu-row" onClick={onBase}>
           <span>{t('回到与 base 对比')}</span>
-        </Button>
+        </DropdownMenuItem>
       )}
-    </div>
+    </DropdownMenuContent>
   );
 }
 
@@ -363,45 +378,45 @@ function VersionControl({
   onCompare?: () => void;
   onBase?: () => void;
 }) {
-  const toggle = () => onVersionMenu?.(versionMenu === 'versions' ? undefined : 'versions');
   return (
     <span className="doc-range-wrap relative ml-[18px] inline-flex">
-      {/* XMON-24 两 chip 钮 shadcn ghost 底座不变；#945 皮肤迁 utilities
-          ——range chip = 24h 描边 pill `v1 → v2 ⌄`（r8 65，A3 圆角归一
-          8px），漆底灭 hover（七通道中和）；select 面与 overlays/
-          plan-dropdown 同 class 同配方（ml-0：wrap 内贴左，老嵌套覆写
-          规则的消费端等价形）。svg 免底座 16px 强制（属性 12px）。 */}
-      {range != null ? (
-        <Button
-          variant="ghost"
-          className="doc-range-chip flex h-6 cursor-pointer items-center gap-1 rounded-[8px] border border-(--input) bg-(--secondary) px-2 text-xs leading-4 font-normal text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) dark:hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-          onClick={toggle}
-        >
-          {range.from} → {range.to}
-          <ChevronDown width={12} height={12} />
-        </Button>
-      ) : (
-        <Button
-          variant="ghost"
-          className={`doc-pane-select ${PANE_SELECT} [&_svg:not([class*='size-'])]:size-auto`}
-          onClick={toggle}
-        >
-          {label}
-          <ChevronDown width={12} height={12} />
-        </Button>
-      )}
-      {versionMenu != null && onVersionMenu != null && planVersions != null && (
-        <VersionMenu
-          versions={planVersions}
-          menu={versionMenu}
-          now={now}
-          diffOpen={range != null}
-          diffFrom={range?.from}
-          onMenu={onVersionMenu}
-          onCompare={() => onCompare?.()}
-          onBase={() => onBase?.()}
-        />
-      )}
+      {/* #1006 原型（#980 前提④）：两 chip 钮收敛 registry Button 档——
+          range chip = outline xs 档（描边 pill 的 registry 对应），select 面
+          = ghost xs 档（plan-dropdown 同配方，防两消费面漂移律不变）；
+          七通道中和串退役，hover/aria-expanded 反馈走底座。触发/开态归
+          DropdownMenu 原语（受控 open 沿 versionMenu 页面态）。 */}
+      <DropdownMenu
+        open={versionMenu != null}
+        onOpenChange={(next: boolean) => onVersionMenu?.(next ? 'versions' : undefined)}
+      >
+        {range != null ? (
+          <DropdownMenuTrigger
+            render={<Button variant="outline" size="xs" className="doc-range-chip" />}
+          >
+            {range.from} → {range.to}
+            <ChevronDown width={12} height={12} />
+          </DropdownMenuTrigger>
+        ) : (
+          <DropdownMenuTrigger
+            render={<Button variant="ghost" size="xs" className={PANE_SELECT} />}
+          >
+            {label}
+            <ChevronDown width={12} height={12} />
+          </DropdownMenuTrigger>
+        )}
+        {onVersionMenu != null && planVersions != null && (
+          <VersionMenu
+            versions={planVersions}
+            menu={versionMenu ?? 'versions'}
+            now={now}
+            diffOpen={range != null}
+            diffFrom={range?.from}
+            onMenu={onVersionMenu}
+            onCompare={() => onCompare?.()}
+            onBase={() => onBase?.()}
+          />
+        )}
+      </DropdownMenu>
     </span>
   );
 }
@@ -493,12 +508,12 @@ export function DocPane({
                   <span className="doc-changes-del text-(--destructive)"> −{removed}</span>
                 )}
               </span>
-              {/* XMON-24 shadcn ghost 底座不变；#945 皮肤迁 utilities
-                  （无高度声明——h-auto 还原裸钮内容高；透明底 + tertiary
-                  墨 + 七通道中和；ml-auto 右对齐 + 17px 右衬）。 */}
+              {/* #1006 原型（#980 前提④）：ghost xs 档默认形态（hover 反馈
+                  生效），中和串退役；ml-auto 右对齐 + 17px 右衬是 layout 位。 */}
               <Button
                 variant="ghost"
-                className="doc-expand-all ml-auto mr-[17px] h-auto cursor-pointer rounded-none border-none bg-transparent p-0 text-xs leading-4 font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0"
+                size="xs"
+                className="doc-expand-all ml-auto mr-[17px] text-(--text-tertiary)"
                 onClick={onToggleExpand}
               >
                 {expanded ? t('全部收起') : t('全部展开')}

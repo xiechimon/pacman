@@ -49,9 +49,14 @@ export function SourceIssueLine({
         data-testid="source-orchestration"
       >
         <span className="source-issue-label flex-none text-(--text-tertiary)">{t('来源')}</span>
+        {/* #1006 原型（#980 前提②④）：ghost 中和成文字链的老面 → registry
+            Button link 档（text-primary + hover:underline 原生形态）；
+            --card-button 品牌墨与 disabled 中性化退役（禁用态走 registry
+            opacity 降档）。品牌色若要在链接位回来，走 token 层（前提④），
+            实审裁。 */}
         <Button
-          variant="ghost"
-          className="source-orchestration-link border-none p-0 text-[13px] font-normal text-(--card-button) cursor-pointer hover:bg-transparent dark:hover:bg-transparent hover:text-(--card-button) disabled:pointer-events-none disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0"
+          variant="link"
+          className="source-orchestration-link h-auto p-0"
           data-testid="source-orchestration-link"
           onClick={
             parsed !== null && onOpenThread ? () => onOpenThread(parsed.threadId) : undefined
@@ -72,12 +77,11 @@ export function SourceIssueLine({
         <span className="source-issue-label flex-none text-(--text-tertiary)">
           {t('GitHub issue 未建成')}
         </span>
-        {/* XMON-24：原 ui/button text 变体（透明底 + 品牌紫墨 + 零内边距，
-            h32）逐值搬 utilities；老 text 钮无 hover/无 disabled 降档——
-            中性化齐（hover 底双档：dark 是默认主题，不清会透 muted/50）。 */}
+        {/* #1006 原型：registry Button link 档（同上）——老 text 变体的
+            品牌墨/无降档中和退役。 */}
         <Button
-          variant="ghost"
-          className="source-issue-retry border-none p-0 text-[13px] font-normal text-(--card-button) cursor-pointer hover:bg-transparent dark:hover:bg-transparent hover:text-(--card-button) disabled:opacity-100 disabled:pointer-events-auto active:not-aria-[haspopup]:translate-y-0"
+          variant="link"
+          className="source-issue-retry h-auto p-0"
           data-testid="source-issue-retry"
           onClick={onRetry}
           disabled={retryPending}
