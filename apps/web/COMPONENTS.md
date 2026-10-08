@@ -19,7 +19,7 @@
 
 （上面这段是机器门读的终态名单：旧轨已删空，名单恒空；`src/ui/` 目录重新出现即报错。）
 
-## 二、新轨原语（35）
+## 二、新轨原语（34）
 
 <!-- inventory:new-track -->
 ```text
@@ -37,11 +37,10 @@ dialog.tsx
 dropdown-menu.tsx        # 仓内语义映射：z 走 --z-dialog 单梯（#733）、Content 透出 anchor（#454）；动效 = 上游默认（#991 Q9）
 empty.tsx
 field.tsx                # 表单行组合（FieldGroup/Field/FieldLabel/FieldContent/FieldError…）：表单布局一律用它，别拿 div + space-y 手排
-floating-shell.tsx       # 锚定浮层共用底座（plan-dropdown / chip-popover / more-menu / 用户菜单 / 排序 / chief-model-select / mention-picker）
+floating-shell.tsx       # 锚定浮层旧共用底座——#1008（#983 判决）族拆退役完成，唯一存量消费 = select.tsx（#1010 波 2 收尾后删除）；新面一律 dropdown-menu.tsx / popover.tsx / dialog.tsx
 input.tsx
 input-group.tsx          # 输入组合件（InputGroupInput/InputGroupAddon/InputGroupButton…）：输入框里要挂按钮/图标/前后缀时用它，别把裸 Input 塞进自制盒子
-kbd-hint.tsx             # 快捷键悬浮提示 chip（控件 hover/focus-visible 浮出、静息 visibility:hidden）；#468 快捷键提示一律用它
-kbd.tsx                  # 按键角标原语（文档正文里的 ⌘K 角标）；悬浮提示 chip 是 kbd-hint.tsx
+kbd.tsx                  # 按键角标原语（文档正文里的 ⌘K 角标）；悬浮快捷键提示 = TooltipContent 内放 Kbd（官网组合，#1008）
 label.tsx                # 表单标签原语（配合 field.tsx 的 FieldLabel 使用；独立 label 场景直用）
 marker.tsx               # shadcn Marker 族（Marker/Icon/Content，separator/border 档）：聊天流内标注行（系统提示/失败行/分隔等居中 annotation）
 message-scroller.tsx     # shadcn MessageScroller 族（Provider/Root/Viewport/Content/Item/Button + useMessageScroller hooks）：聊天流滚动容器唯一实现（autoScroll 贴底跟随 + jump-to-latest + messageId 贯通）；别再手写 overflow-y-auto 对话列
@@ -57,7 +56,7 @@ tabs.tsx                 # default/line 两档走上游原生 data-[variant] 机
 tag-chip.tsx             # 用户数据色标签 chip（tag.color 走 inline style 白字）；落在 badge.tsx 上，别新建皮肤件
 textarea.tsx             # 多行输入（registry 同源）；**别摆裸 `<textarea>`**——老 .dlg-form-textarea 族已退役（spec/22 §5.3）
 toaster.tsx              # toast 原语（sonner，shadcn 官方配方；#631）：App 根挂一次 <Toaster />，任意处 imperative `toast.*`；**失败反馈别再造静默 catch**——异常/toast 一律走它
-tooltip.tsx              # hover/focus 信息气泡（官网形态；z 走 --z-dialog 单梯）；快捷键提示 chip 现仍是 kbd-hint.tsx（其退役换 Tooltip+Kbd 组合 = #983 判决，波 1 承载）
+tooltip.tsx              # hover/focus 信息气泡（官网形态；z 走 --z-dialog 单梯）；快捷键提示 chip = Tooltip+Kbd 组合（#983 判决，#1008 已落地，kbd-hint.tsx 退役）；App 根已挂全站 TooltipProvider（delay=0）
 ```
 <!-- /inventory:new-track -->
 
@@ -77,7 +76,7 @@ tooltip.tsx              # hover/focus 信息气泡（官网形态；z 走 --z-d
 | 空态 | `components/ui/empty.tsx` | 别每处自写空态文案块 |
 | 确认对话框 | `components/ui/alert-dialog-shell.tsx` | 别手搓 `OverlayMount` + `useEscClose` |
 | 普通对话框 | `components/ui/dialog-shell.tsx` | 消费点只改 import 路径即可（API 逐字相同） |
-| 锚定浮层（下拉 / 菜单 / popover） | `floating-shell.tsx`，或它上面的 `dropdown-menu.tsx` / `popover.tsx` | 别自造定位壳 |
+| 锚定浮层（下拉 / 菜单 / popover） | `dropdown-menu.tsx`（菜单族）/ `popover.tsx`（面板族，跨组件锚走 Content 的 `anchor`）/ `dialog.tsx`（居中模态族） | 别自造定位壳；`floating-shell.tsx` 只剩 select.tsx 存量（#1010），别上新面 |
 | **单选下拉**（选一个值出来） | `components/ui/select.tsx` | 别用原生 `<select>`（弹系统菜单，与自制弹层并排两套）、别各面自写触发钮+弹层 |
 | 复选 | `components/ui/checkbox.tsx` | 别摆裸 `<input type="checkbox">`——浏览器自带方框与仓内复选行不同族 |
 | **静息方框**（页面里不动的卡 / 面板 / 设置块） | `components/ui/panel.tsx`（`Panel` + `PanelHead` / `PanelRow` / `PanelLabel` / `PanelValue`） | 别新起 `.xxx-card` 手写类——皮肤（描边 / 底色 / 圆角）只住 Panel 一处 |
@@ -85,9 +84,9 @@ tooltip.tsx              # hover/focus 信息气泡（官网形态；z 走 --z-d
 | **头像** | `components/ui/seeded-avatar.tsx`（dicebear 种子 + 兜底换图，img 常驻 DOM；尺寸走 SeededAvatar 的 `className="size-N"`，Root 定尺盒） | 别直接用 `avatar.tsx` 三件套——种子/兜底语义会抄散 |
 | 表单行组合 | `components/ui/field.tsx`（FieldGroup + Field + FieldLabel） | 别拿 `div` + `space-y-*` / `grid gap-*` 手排表单 |
 | 输入框带按钮/图标 | `components/ui/input-group.tsx` | 别把裸 `Input` 塞进自制组合盒 |
-| hover 信息气泡 | `components/ui/tooltip.tsx` | 快捷键提示 chip 现仍走 `kbd-hint.tsx`（替换 = 波 1 承载） |
+| hover 信息气泡 | `components/ui/tooltip.tsx` | — |
 | 分隔线 | `components/ui/separator.tsx` | 别用 `<hr>` / `border-t` div |
-| 快捷键提示 chip | `components/ui/kbd-hint.tsx`（落在 `kbd.tsx` 上） | 别自写绝对定位 + 显隐；文档正文里的按键角标用 `kbd.tsx` |
+| 快捷键提示 chip | `tooltip.tsx` + `kbd.tsx` 消费点现场组合（TooltipContent 内放 Kbd，#1008/#983 判决） | 别自写绝对定位 + 显隐；文档正文里的按键角标直用 `kbd.tsx` |
 | 标签 chip（用户数据色） | `components/ui/tag-chip.tsx` | 状态色族仍走 `badge.tsx`；别混两种色来源 |
 | **toast / 轻量失败反馈** | `toast.*`（imperative；`components/ui/toaster.tsx` 已在 App 根挂载） | 别静默吞 mutation 错误；**面内已有 scoped 红字行 canon 的（XMON-80/P2）继续走面内，不叠 toast** |
 

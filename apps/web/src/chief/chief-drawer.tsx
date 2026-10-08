@@ -35,7 +35,7 @@
 // local-first 对象面，按 M7 处置二分律移除不渲染；头部三钮双视图同律。
 // #645：头部 +（新主题）挂裸键 N（抽屉作用域——overlays/hotkeys 的
 // useChiefNewThreadHotkey，enabled 门 = 开态；输入态守卫 = _plain_ 可编辑
-// 律，composer 聚焦时 n 归打字员）；钮载 KbdHint 的 N 悬浮提示（below 落位）
+// 律，composer 聚焦时 n 归打字员）；钮载 Tooltip+Kbd 的 N 悬浮提示（below 落位）
 // + aria-keyshortcuts；键与钮同 handler（触发 + 收切换器 popover）。
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
@@ -62,7 +62,7 @@ import { LiveRow, LiveSignal } from '../components/chat/live-row.js';
 import { Bubble, BubbleContent } from '../components/ui/bubble.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
-import { KbdHint } from '../components/ui/kbd-hint.js';
+import { Kbd } from '../components/ui/kbd.js';
 import { Marker, MarkerContent } from '../components/ui/marker.js';
 import { Message, MessageContent } from '../components/ui/message.js';
 import {
@@ -76,6 +76,7 @@ import {
 } from '../components/ui/message-scroller.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Textarea } from '../components/ui/textarea.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.js';
 import { ChatMarkdown } from '../detail/chat-markdown.js';
 import type { ChiefContent, ChiefSegment, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -671,20 +672,29 @@ function ChiefDrawerInner({
           <div className="ml-auto flex items-center gap-3.5">
             {/* 头部三钮：ghost/icon 收编 + HEAD_ICON_BTN_CLS（旧
                   .chief-head-actions button 元素选择器等值，七通道归零）。 */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`relative ${HEAD_ICON_BTN_CLS}`}
-              aria-label={t('新主题')}
-              aria-keyshortcuts="N"
-              onClick={onNewThread != null ? newThread : undefined}
-            >
-              <Plus width={18} height={18} />
-              {/* #645: N 悬浮提示（KbdHint 族第四消费点；below = 头部贴视口
-                    顶，above 会落屏外）。relative 由钮自身承载——chip 绝对定位
-                    的包含块。 */}
-              <KbdHint label="N" placement="below" />
-            </Button>
+            {/* #645/#1008: N 悬浮提示（kbd-hint 族第四消费点）——kbd-hint
+                  退役（#983 判决）→ 官网 Tooltip+Kbd 组合（A0 已在 chief-root
+                  的 ⌘J 面移植同款，本钮随形）；side=bottom sideOffset=8 =
+                  旧 below 落位（头部贴视口顶，above 会落屏外）。 */}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`relative ${HEAD_ICON_BTN_CLS}`}
+                    aria-label={t('新主题')}
+                    aria-keyshortcuts="N"
+                    onClick={onNewThread != null ? newThread : undefined}
+                  />
+                }
+              >
+                <Plus width={18} height={18} />
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={8}>
+                <Kbd>N</Kbd>
+              </TooltipContent>
+            </Tooltip>
             {onSettings != null && (
               <Button
                 variant="ghost"

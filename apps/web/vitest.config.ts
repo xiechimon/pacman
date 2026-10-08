@@ -10,10 +10,11 @@ import { defineConfig } from 'vitest/config';
 // 缺它则任何拉到 registry 件的单测在 import 解析期炸（#1006：dialog-shell
 // 组合 dialog.tsx 后三测试文件实测命中）。
 export default defineConfig({
-  // @/* 别名镜像 vite.config.ts（#425）：registry 件 field.tsx 用它引
-  // label/separator，任何 render 到该件的单测（如经 agent-detail 链拉进
-  // create-provider-dialog 的 chief-identity）都要靠这里解析，缺则报
-  // Cannot find package '@/components/ui/label.js'。
+  // @/* 别名镜像 vite.config.ts（#425）：registry 件用它互引（field.tsx 引
+  // label/separator、alert-dialog.tsx 引 button），任何 render 到这些件的
+  // 单测（如经 agent-detail 链拉进 create-provider-dialog 的
+  // chief-identity）都要靠这里解析，缺则报 Cannot find package
+  // '@/components/ui/…'（#1008 独立复现于 alert-dialog 首消费者上线）。
   resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },
   test: {
     include: ['test/**/*.test.ts'],
