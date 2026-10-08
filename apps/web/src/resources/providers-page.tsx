@@ -223,13 +223,17 @@ export function ProvidersPage() {
         <div key={`${source.hostname}:${si}`}>
           <RuntimeHead source={source} />
           {source.models.length > 0 ? (
-            <GroupCard>
+            /* 卡间垂直间距 = 16px（--card-spacing，上游 Card 内节奏同值）——
+               用户复核 #1057：头卡与模型卡贴零间距；只补几何不动结构。 */
+            <GroupCard className="mt-4">
               {source.models.map((model, i) => (
                 <div
                   // pi 段跨 provider 平铺，模型 id 偶发撞名——索引兜底保唯一。
                   key={`${model.id}:${i}`}
                   className={cn(
-                    'flex min-h-[52px] items-center px-4 py-2',
+                    // 行节奏：py-3（12px）让 52px _floor 行有呼吸（内容 36px
+                    // + 上下 24px = 60px），分隔线两侧不再贴字。
+                    'flex min-h-[52px] items-center px-4 py-3',
                     i > 0 && 'border-t border-(--border)',
                   )}
                   data-runtime={source.runtime}
