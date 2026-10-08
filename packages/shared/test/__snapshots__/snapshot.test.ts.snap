@@ -872,6 +872,59 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
     "claudeCode": {
       "additionalProperties": false,
       "properties": {
+        "auth": {
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "type": "string",
+            },
+            "provider": {
+              "type": "string",
+            },
+            "reason": {
+              "type": "string",
+            },
+            "state": {
+              "enum": [
+                "logged-in",
+                "not-logged-in",
+                "unknown",
+              ],
+              "type": "string",
+            },
+          },
+          "required": [
+            "state",
+          ],
+          "type": "object",
+        },
+        "bin": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "minLength": 1,
+                  "type": "string",
+                },
+                "version": {
+                  "type": [
+                    "string",
+                    "null",
+                  ],
+                },
+              },
+              "required": [
+                "path",
+                "version",
+              ],
+              "type": "object",
+            },
+            {
+              "type": "null",
+            },
+          ],
+        },
         "hostname": {
           "type": "string",
         },
@@ -964,6 +1017,59 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
     "claudeCode": {
       "additionalProperties": false,
       "properties": {
+        "auth": {
+          "additionalProperties": false,
+          "properties": {
+            "method": {
+              "type": "string",
+            },
+            "provider": {
+              "type": "string",
+            },
+            "reason": {
+              "type": "string",
+            },
+            "state": {
+              "enum": [
+                "logged-in",
+                "not-logged-in",
+                "unknown",
+              ],
+              "type": "string",
+            },
+          },
+          "required": [
+            "state",
+          ],
+          "type": "object",
+        },
+        "bin": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "minLength": 1,
+                  "type": "string",
+                },
+                "version": {
+                  "type": [
+                    "string",
+                    "null",
+                  ],
+                },
+              },
+              "required": [
+                "path",
+                "version",
+              ],
+              "type": "object",
+            },
+            {
+              "type": "null",
+            },
+          ],
+        },
         "hostname": {
           "type": "string",
         },

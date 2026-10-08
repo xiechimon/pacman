@@ -11,7 +11,9 @@
 // 段;#770 起 providers 段已除,spec 11 §A10)落账口径见 chief-model-select.tsx
 // 文件头。#895 主力机槽(spec 21 A6) = Agent tab 新「机器」行
 // ChiefMachineSelect:live 选定 → PATCH chief machineId 槽(null = 清回
-// 自动),行形态沿 new-task 机器 chip 的 listbox 族。
+// 自动),行形态沿 new-task 机器 chip 的 listbox 族。#903(ADR 0014):
+// 派发不设槽——先规划/直接修由 chief 逐次派发自行判定(run_builds withPlan
+// + dispatchReason 回执),settings 无「派发方式」行。
 
 import {
   BRAND,

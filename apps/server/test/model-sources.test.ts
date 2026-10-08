@@ -136,6 +136,36 @@ describe('getModelSources（服务层，按机器聚合）', () => {
     s.dispose();
   });
 
+  test('F7（#1050）：bin/auth 原样透传——server 不合成、不猜', async () => {
+    const s = bootServer();
+    const token = await enroll(s, 'exec-bin');
+    await presence(token, s, {
+      installed: true,
+      hostname: 'bin-host',
+      models: [{ id: 'm1', name: 'm1', slot: 'default' }],
+      bin: { path: '/home/u/.local/bin/claude', version: '2.1.289' },
+      auth: { state: 'not-logged-in', provider: 'firstParty' },
+    });
+    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id);
+    expect(modelSourcesEnvelopeSchema.safeParse(env).success).toBe(true);
+    const cc = env.sources.find((src) => src.runtime === 'claude-code');
+    expect(cc?.bin).toEqual({ path: '/home/u/.local/bin/claude', version: '2.1.289' });
+    expect(cc?.auth).toEqual({ state: 'not-logged-in', provider: 'firstParty' });
+    s.dispose();
+  });
+
+  test('F8（#1050）：旧形状（无 bin/auth）→ 两键缺席，不写「未知」', async () => {
+    const s = bootServer();
+    const token = await enroll(s, 'exec-old');
+    await presence(token, s, report('old-host', [{ id: 'm1', name: 'm1' }]));
+    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id);
+    const cc = env.sources.find((src) => src.runtime === 'claude-code');
+    expect(cc?.bin).toBeUndefined();
+    expect(cc?.auth).toBeUndefined();
+    expect(modelSourcesEnvelopeSchema.safeParse(env).success).toBe(true);
+    s.dispose();
+  });
+
   test('presence 更新即反映：改上报后内容立即变（30s 节拍实时语义）', async () => {
     const s = bootServer();
     const token = await enroll(s, 'exec-1');
