@@ -220,6 +220,13 @@ test('开关：default 态开出驱动 requestPermission，granted 落定后开�
 test('开关 fixture 面：scenario 可冻 denied——关态起步、点开出拦截解释；13 基线仍开（S6）', async ({
   page,
 }) => {
+  // Notification 必须打桩（notify-banner.spec 同律，即使是 fixture 面）：初始
+  // 权限来自 scenario 冻结位（fixture 模式不读真 API），但非 granted 态点
+  // 「开」仍会驱动 request()——CI headless 的 requestPermission() 落
+  // 'default'（本机 'denied'），不打桩则权限面随环境漂移、拦截解释被撤下
+  // （本 spec 首版在 e2e(1) 的实挂点）。桩只钉 resolution；「起步关态来自
+  // scenario 旗标」不受桩影响——旧面硬编 granted 时首断言必红。
+  await stubNotification(page, 'denied', 'denied');
   await page.goto('/app/account?scenario=13-notify-denied');
   const sw = page.getByRole('switch', { name: '推送通知' });
   await expect(sw).toHaveAttribute('aria-checked', 'false');
@@ -227,7 +234,9 @@ test('开关 fixture 面：scenario 可冻 denied——关态起步、点开出�
   await expect(sw).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('.account-card .profile-hint')).toContainText('重新允许');
 
-  // r7 13 基线行不漂：无偏好存储时 granted 冻结面仍是开态
+  // r7 13 基线行不漂：无偏好存储时 granted 冻结面仍是开态。先清掉上一步落下
+  // 的偏好档，否则基线腿读的是 pref 而不是「无偏好跟随权限」档。
+  await page.evaluate(() => localStorage.clear());
   await page.goto('/app/account?scenario=13');
   await expect(page.getByRole('switch', { name: '推送通知' })).toHaveAttribute(
     'aria-checked',
