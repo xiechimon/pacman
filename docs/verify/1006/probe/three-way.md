@@ -27,6 +27,7 @@ values rgb/hex per the #411 notation contract).
 | seg2 round 1 | segment-2 constructed @ merge e1cf000a tree | 35 dialog-family + detail-b + chip-fallout specs | 265 rows: KEPT 259* / DRIFT 1 / NOT-RUN 2 / VIOLATION 0 (*segment-1 rows included in the list) | `seg2-round1-comparison.md` |
 | seg2 round 2 | + checkbox-unified accept re-pin (13px→14px, ruling 4 lineage) | same | **198 rows: KEPT 198 / DRIFT 0 / NOT-RUN 0 / VIOLATION 0** | `seg2-round2-final-comparison.md` (+dump) |
 | seg2 round 3 | merged tree 0c17239a (main dadf09d6 incl. #1061/#1062/#1063/#1064 + segment 2) | 38 specs (segment-2 list + segment-1 surfaces) | **253 rows: KEPT 253 / DRIFT 0 / NOT-RUN 0 / VIOLATION 0** — proves the #1061 shell-flip overlap and L4 pages work introduce zero drift against this lane's pins | `seg2-round3-merged-comparison.md` (+dump) |
+| seg2 round 4 | merged tree 92786f84 (main 763c21f2 incl. #1060 floating-shell split-retirement + segment 2) | same list (41 files, 285 tests passed) | **253 rows: KEPT 253 / DRIFT 0 / NOT-RUN 0 / VIOLATION 0** — #1060's dhead/overlay-family rework (kbd-hint retirement, Tooltip+Kbd, registry popover/dropdown migrations) introduces zero drift against this lane's pins | `seg2-round4-postmerge-comparison.md` (+dump) |
 
 seg2 round-1 DRIFT classification: `checkbox-unified.spec.ts:112` accept label
 font-size 13px → 14px — expected drift, ACCEPT_LABEL retired, registry
