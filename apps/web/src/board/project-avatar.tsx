@@ -6,6 +6,8 @@
 // sidebar RAIL_ROW 的 [&>.project-avatar]:relative 抬层选择器仍消费它。
 // overlay 的 new-task 项目 picker 走自己的 .new-task-project-avatar
 // （overlay.css，#948 面），不吃本件。
+// 实审裁决 5（2026-10-08，#1004）：本件登记为**复合体**——非 registry 件、是
+// 项目首字母色块，rounded-[4px] 为其自有形态，不向 registry 圆角对齐。
 
 import { cn } from 'cn';
 

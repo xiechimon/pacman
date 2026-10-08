@@ -689,9 +689,9 @@ export function BoardPage() {
           ChiefWakeFab：font-normal（badge 10px 字）、active 位移、svg
           size-auto（ChiefFab 30.8 属性尺寸）。board 内联钮与各族 wake FAB
           （*-fab 类，几何住各域）保持同配方。 */}
-      {/* #468/#1008: ⌘J 悬浮提示（board 内联钮与 ChiefWakeFab 同批；点击
-          维持 open-only）——kbd-hint 退役（#983 判决）→ 官网 Tooltip+Kbd
-          组合，side=top sideOffset=8 = 旧 above 落位。 */}
+      {/* #468: ⌘J 悬浮提示（board 内联钮与 ChiefWakeFab 同批；点击维持
+          open-only）。#983/#1004：kbd-hint 退役回 registry Tooltip + Kbd
+          （原 placement 缺省 above → side=top）。 */}
       <Tooltip>
         <TooltipTrigger
           render={
@@ -701,17 +701,17 @@ export function BoardPage() {
               className="absolute right-4 bottom-4 size-12 cursor-pointer rounded-full border-none bg-(--card) font-normal shadow-(--fab-shadow) hover:bg-(--card) dark:hover:bg-(--card) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
               aria-label={t('总管')}
               onClick={() => setChiefView('drawer')}
-            />
+            >
+              <ChiefFabIcon chief={chiefData} />
+              {chiefUnread > 0 && (
+                <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
+                  {chiefUnread}
+                </span>
+              )}
+            </Button>
           }
-        >
-          <ChiefFabIcon chief={chiefData} />
-          {chiefUnread > 0 && (
-            <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
-              {chiefUnread}
-            </span>
-          )}
-        </TooltipTrigger>
-        <TooltipContent sideOffset={8}>
+        />
+        <TooltipContent side="top" sideOffset={8}>
           <Kbd>⌘J</Kbd>
         </TooltipContent>
       </Tooltip>

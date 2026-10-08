@@ -28,6 +28,7 @@ import { useApiMutations, useChief, useMachines, useTeams } from '../api/hooks.j
 import { mapMachines } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { ClaudeMark, PiMark } from '../components/brand-marks.js';
+import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Switch } from '../components/ui/switch.js';
 import { TEAM_NAME } from '../fixtures/fixtures.js';
@@ -156,7 +157,7 @@ export function MachinesPage() {
               data-kind={machine.kind ?? 'remote'}
             >
               <Tile Icon={Monitor} size="lg" tone="orange" />
-              <RowText className="ml-4">
+              <RowText>
                 <RowLine>
                   <RowTitle>{t(machine.name)}</RowTitle>
                   {/* online 读 machine.online（与 new-task-machine-dot /
@@ -209,12 +210,9 @@ export function MachinesPage() {
               {(chief.host || chief.running || chief.waiting) && (
                 <span className="ml-auto flex flex-none items-center gap-2">
                   {chief.host && (
-                    <span
-                      className="inline-flex h-5 items-center rounded-[4px] border border-(--border) bg-(--secondary) px-1.5 text-[11px] leading-5 whitespace-nowrap text-(--foreground)"
-                      data-orchestration="host"
-                    >
+                    <Badge variant="outline" data-orchestration="host">
                       {t('总管主机')}
-                    </span>
+                    </Badge>
                   )}
                   {chief.running && (
                     <span
@@ -260,15 +258,15 @@ export function MachinesPage() {
           );
         })}
       </GroupCard>
-      {/* dashed 全宽 添加机器 钮（r7 06）：Button ghost 底座（#851 裸控件
-          收编）+ dashed 大钮形态 utility；46px 高是阶梯外一次性尺寸（§3.1a），
-          件默认的 hover 底色就地并掉（原形无 hover 态）。 */}
+      {/* dashed 全宽 添加机器 钮（r7 06 语义 = 空位添加行）：#1005 registry
+          对齐——Button outline 默认档（h-8 / rounded-lg / hover bg-muted），
+          dashed 边式是唯一语义补充（registry 无 dashed 档）。 */}
       <Button
-        variant="ghost"
-        className="mt-4 h-[46px] w-full gap-2 border-dashed border-(--input) text-[13px] leading-4 font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5"
+        variant="outline"
+        className="mt-4 w-full border-dashed"
         onClick={() => setAddOpen(true)}
       >
-        <ServerThin width={14} height={14} />
+        <ServerThin />
         {t('添加机器')}
       </Button>
       <CreateMachineDialog

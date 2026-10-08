@@ -23,19 +23,13 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu.js';
-import { Input } from '../components/ui/input.js';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '../components/ui/input-group.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, ChevronDown, Puzzle, Search } from '../icons/index.js';
 import {
   EmptyState,
-  RES_SEARCH_BOX_CLS,
-  RES_SEARCH_INPUT_CLS,
   RES_SEARCH_ROW_CLS,
-  RES_SORT_MENU_CLS,
-  RES_SORT_ROW_CLS,
-  RES_SORT_TRIGGER_CLS,
-  RES_SORT_WRAP_CLS,
   RowCard,
   RowChevron,
   RowDesc,
@@ -92,60 +86,45 @@ export function SkillsPage() {
       ) : (
         <>
           <div className={RES_SEARCH_ROW_CLS}>
-            {/* #423 真 Input 收编（#422 裁决：原「搜索框」是 div + 占位 span，
-                连 CSS 都没有 → 换真 Input 零样式债）：盒形由共享配方
-                RES_SEARCH_BOX_CLS 承载，input 本体零装饰，focus 环走 #388
-                家族律。过滤行为无行为票，本面 = 真输入框（原为纯装饰），
-                占位文案同键单源。 */}
-            <div className={RES_SEARCH_BOX_CLS}>
-              <Search width={13} height={13} />
-              <Input
-                className={RES_SEARCH_INPUT_CLS}
+            {/* #1005 registry 对齐：搜索盒走 InputGroup 官方组合（前置图标
+                addon + 零装饰 input，件自带 focus 环与 rounded-lg 盒形）——
+                手搓盒形配方（RES_SEARCH_BOX/INPUT_CLS）在本面退役。过滤行为
+                无行为票，本面 = 真输入框，占位文案同键单源。 */}
+            <InputGroup className="flex-1">
+              <InputGroupAddon>
+                <Search />
+              </InputGroupAddon>
+              <InputGroupInput
                 type="text"
                 placeholder={t('搜索技能...')}
                 aria-label={t('搜索技能...')}
               />
-            </div>
+            </InputGroup>
             {/* #854 收编 dropdown-menu（Base UI Menu RadioGroup，#714
                 playbook）：单选即关走显式 closeOnClick；勾形改由
                 RadioItemIndicator 原生槽承载；定位正本迁 Positioner 参数
-                （side=bottom align=end sideOffset=8）。触发钮 = Button
-                ghost 底座（#851 裸控件收编），88px 定宽是本面档（记忆 tab
-                内容宽，见 RES_SORT_TRIGGER_CLS 注）。 */}
-            <span className={RES_SORT_WRAP_CLS}>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button variant="ghost" className={`w-[88px] ${RES_SORT_TRIGGER_CLS}`} />}
+                （side=bottom align=end sideOffset=8）。#1005 registry 对齐：
+                触发钮 = Button outline 默认档，盘/行皮肤走件默认（V2 弹层壳
+                配方在本面退役；盘宽随锚 = 件默认 w-(--anchor-width)）。 */}
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="outline" />}>
+                <ArrowUpDown />
+                <span>{t('排序')}</span>
+                <ChevronDown />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="bottom" sideOffset={8} aria-label={t('排序')}>
+                <DropdownMenuRadioGroup
+                  value={sort}
+                  onValueChange={(next) => setSort(next as SortKind)}
                 >
-                  <ArrowUpDown width={13} height={13} />
-                  <span>{t('排序')}</span>
-                  <ChevronDown width={12} height={12} />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  side="bottom"
-                  sideOffset={8}
-                  aria-label={t('排序')}
-                  className={RES_SORT_MENU_CLS}
-                >
-                  <DropdownMenuRadioGroup
-                    value={sort}
-                    onValueChange={(next) => setSort(next as SortKind)}
-                  >
-                    {SORT_OPTIONS.map((option) => (
-                      <DropdownMenuRadioItem
-                        key={option}
-                        value={option}
-                        closeOnClick
-                        className={RES_SORT_ROW_CLS}
-                      >
-                        <span>{t(option)}</span>
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </span>
+                  {SORT_OPTIONS.map((option) => (
+                    <DropdownMenuRadioItem key={option} value={option} closeOnClick>
+                      <span>{t(option)}</span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           {skills.map((skill) => (
             <RowCard

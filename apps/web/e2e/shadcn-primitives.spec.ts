@@ -81,32 +81,33 @@ test('avatar 落点定尺盒（#983/#1003）：Root 生成真盒承上游发丝�
 test('kbd 落点：悬浮提示 = registry Tooltip+Kbd 组合，静息不挂载 / 悬浮浮出', async ({ page }) => {
   await page.goto('/app?scenario=01');
   // #950 载体：.chief-fab → aria-label 总管钮（board inline FAB）。
+  // #983/#1004：kbd-hint 退役为 registry Tooltip+Kbd——静息不挂载
+  // （count 0，取代旧 visibility 隐藏律），悬浮浮出 registry Kbd。
   const fab = page.getByRole('button', { name: '总管', exact: true });
-  // #1008 重钉：kbd-hint 适配件退役（#983 判决）→ 官网 Tooltip+Kbd 组合：
-  // Kbd 保住 data-slot=kbd 载体、移进 tooltip content（registry kbd 槽自带
-  // 反色变体）；静息态从「常驻 DOM + visibility:hidden」变「不挂载」。
-  const hint = page.locator('[data-slot="tooltip-content"]');
+  const hint = page.locator('[data-slot="tooltip-content"] [data-slot="kbd"]');
   await expect(hint).toHaveCount(0);
   await fab.hover();
   await expect(hint).toBeVisible();
-  const kbd = hint.locator('[data-slot="kbd"]');
-  await expect(kbd).toBeVisible();
-  await expect(kbd).toHaveText('⌘J');
+  await expect(hint).toHaveAttribute('data-slot', 'kbd');
+  await expect(hint).toHaveText('⌘J');
 });
 
-test('tag-chip 落点：落在 registry Badge 上，别名类与 per-face 几何双保（卡面 16 / 面板面 20）', async ({
+// #1006 R5 实审裁决（用户 2026-10-08，与 L1 裁决①一致）：row-flush 16px
+// 消费点覆写收编 registry Badge 默认 20px——两尺寸不并存，卡面/面板面
+// 单档 20（旧「卡面 16 / 面板面 20」双保契约由裁决作废，本 spec 重钉）。
+test('tag-chip 落点：落在 registry Badge 上，别名类保留、几何单档 20px 正本', async ({
   page,
 }) => {
   await page.goto('/app?scenario=board-tags');
   const chip = page.locator('.todo-card-tag').first();
   await expect(chip).toHaveAttribute('data-slot', 'badge');
   await expect(chip).toHaveClass(/tag-chip/);
-  // 卡面 = row-flush 档 16px（todo-card.tsx per-face 覆写，与 16px row1 齐平）
+  // 卡面 = registry Badge h-5 默认档 20px（#980 前提④几何 registry 默认赢）
   const h = await chip.evaluate((el) => el.getBoundingClientRect().height);
-  expect(h).toBe(16);
+  expect(h).toBe(20);
 
-  // 类型筛选弹层的选中行是第二个消费面（board/tag-filter.tsx）——容器更高，
-  // 走 20px 正本（components/ui/tag-chip.tsx 的 Badge h-5 档）
+  // 类型筛选弹层的选中行是第二个消费面（board/tag-filter.tsx）——同走
+  // 20px 正本（components/ui/tag-chip.tsx 的 Badge h-5 档），单档无例外
   await page.locator('.board-type-filter').click();
   const option = page.locator('.type-filter-option[data-tag="bug"]');
   await option.click();

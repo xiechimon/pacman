@@ -193,7 +193,7 @@ const ROW_SELECTED = `before:bg-sidebar-active ${SEARCH_OPEN_DIM}`;
  *  变体链一致才吃得掉件基类）。focus 环件基类与行族同值（#388 canon），
  *  不重复写。 */
 const ROW_BTN =
-  'justify-start gap-0 rounded-none border-none pr-0 font-normal hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'justify-start gap-0 border-none pr-0 font-normal hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 function GroupHeader({
   label,
@@ -241,7 +241,7 @@ function RailGroupChevron({
   return (
     <Button
       variant="ghost"
-      className={`rail-row rail-group group relative h-8 w-10 flex-none cursor-pointer rounded-none border-none bg-transparent text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-muted-foreground active:not-aria-[haspopup]:translate-y-0 ${
+      className={`rail-row rail-group group relative h-8 w-10 flex-none cursor-pointer border-none bg-transparent text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-muted-foreground active:not-aria-[haspopup]:translate-y-0 ${
         collapsed ? 'rail-group--collapsed' : ''
       }`}
       aria-label={groupAria(t, label, collapsed)}
@@ -262,7 +262,7 @@ const RAIL_SELECTED = `rail-row--selected text-foreground before:bg-sidebar-acti
 /** Rail 行钮中和件（#943）：与 ROW_BTN 同理——rail 钮的视觉盒同样是
  *  before: pill，件配方的涂底/圆角/边框/press 位移归零。 */
 const RAIL_BTN =
-  'cursor-pointer rounded-none border-none bg-transparent hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'cursor-pointer border-none bg-transparent hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 /** 用户菜单 popover（#127：两侧栏 avatar chip 共用一开合态，分支各 render
  *  自己的 Popover Root——同一时刻只挂载一支。#854 收编
@@ -353,19 +353,17 @@ export function BoardSidebar({
             该是图标本身（XMON-69，律在 motion.css 的 sidebar toggles 段）。 */}
         <Button
           variant="ghost"
-          className="rail-toggle h-11 w-10 flex-none cursor-pointer rounded-none border-0 border-b border-[var(--border)] bg-transparent text-muted-foreground hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover dark:hover:text-muted-foreground active:not-aria-[haspopup]:translate-y-0"
+          className="rail-toggle h-11 w-10 flex-none cursor-pointer border-0 border-b border-[var(--border)] bg-transparent text-muted-foreground hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover dark:hover:text-muted-foreground active:not-aria-[haspopup]:translate-y-0"
           aria-label={t('展开侧边栏')}
           onClick={onToggle}
         >
           <PanelLeftOpen />
         </Button>
         <nav className="rail-nav flex flex-none flex-col pt-1">
-          {/* #468/#1008: rail 态没有常亮 badge 位，悬浮浮出 ⌘K 提示（展开态
-              行的 sidebar-kbd 角标不动）。kbd-hint 退役（#983 判决）→ 官网
-              Tooltip+Kbd 组合：side=right sideOffset=8 = 旧「图标右侧弹、
-              垂直居中、8px 间距」落位；hover/focus 浮出归 Tooltip 原语
-              （focus-visible 判定与旧 CSS 版同源），静息不挂载（旧
-              visibility:hidden 常驻 DOM 语义变，hotkeys.spec 重钉面）。 */}
+          {/* #468: rail 态没有常亮 badge 位，悬浮浮出 ⌘K 提示（展开态行的
+              sidebar-kbd 角标见下）。#983 判决（#1004 施工段执行）：kbd-hint
+              退役回消费点组合 = registry Tooltip + Kbd（side=right 对应原
+              placement=right；Kbd 的 in-tooltip 反色变体由 registry 自带）。 */}
           <Tooltip>
             <TooltipTrigger
               render={
@@ -374,11 +372,11 @@ export function BoardSidebar({
                   className={`${RAIL_ROW} ${RAIL_BTN}`}
                   aria-label={t('搜索')}
                   onClick={onSearch}
-                />
+                >
+                  <Search />
+                </Button>
               }
-            >
-              <Search />
-            </TooltipTrigger>
+            />
             <TooltipContent side="right" sideOffset={8}>
               <Kbd>⌘K</Kbd>
             </TooltipContent>
@@ -445,7 +443,7 @@ export function BoardSidebar({
           trigger={
             <Button
               variant="ghost"
-              className="rail-user mb-[11px] h-[38px] w-10 flex-none cursor-pointer rounded-none border-none bg-transparent outline-none hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+              className="rail-user mb-[11px] h-[38px] w-10 flex-none cursor-pointer border-none bg-transparent outline-none hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
               aria-label={user.displayName}
             >
               <SeededAvatar
@@ -517,7 +515,7 @@ export function BoardSidebar({
         <Button
           variant="ghost"
           size="icon-sm"
-          className={`sidebar-team-collapse ml-auto size-7 cursor-pointer rounded-none border-none bg-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 ${
+          className={`sidebar-team-collapse ml-auto size-7 cursor-pointer border-none bg-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 ${
             selected === 'team' ? 'mr-[6px]' : 'mr-[14px]'
           }`}
           aria-label={t('收起侧边栏')}
@@ -537,9 +535,9 @@ export function BoardSidebar({
             <Search />
           </span>
           <span className="sidebar-row-label ml-3 truncate">{t('搜索')}</span>
-          <span className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2 rounded-[3px] border border-border px-[3px] py-px text-[11px] leading-4 text-muted-foreground">
-            ⌘K
-          </span>
+          {/* #983/#1004：手写 kbd 角标退役回 registry Kbd（保留 sidebar-kbd
+              别名类作 e2e 载体与 ROW_BASE 抬层选择器钩）。 */}
+          <Kbd className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2">⌘K</Kbd>
         </Button>
         {/* #389: 新任务行动作行——点击与全局 C 热键同一 opener；行序钉在
             搜索 之后（sidebar-visual 的 .sidebar-kbd 单数探针吃首枚 ⌘K）。
@@ -555,9 +553,7 @@ export function BoardSidebar({
             <Plus />
           </span>
           <span className="sidebar-row-label ml-3 truncate">{t('新任务')}</span>
-          <span className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2 rounded-[3px] border border-border px-[3px] py-px text-[11px] leading-4 text-muted-foreground">
-            C
-          </span>
+          <Kbd className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2">C</Kbd>
         </Button>
         <Link
           className={`sidebar-row ${ROW_BASE} h-9 pl-[18px] ${selected === 'board' ? `sidebar-row--selected ${ROW_SELECTED}` : ROW_HOVER}`}
@@ -657,7 +653,7 @@ export function BoardSidebar({
         trigger={
           <Button
             variant="ghost"
-            className="sidebar-user h-11 flex-none cursor-pointer justify-start gap-0 rounded-none border-0 border-t border-[var(--border)] bg-transparent px-2 font-normal hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent aria-expanded:text-muted-foreground outline-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+            className="sidebar-user h-11 flex-none cursor-pointer justify-start gap-0 border-0 border-t border-[var(--border)] bg-transparent px-2 font-normal hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent aria-expanded:text-muted-foreground outline-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
             aria-label={user.displayName}
           >
             <SeededAvatar

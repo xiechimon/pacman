@@ -22,12 +22,14 @@
 // row keeps its on-state knob (headless chromium reports the real API 'denied').
 // The 名称 row (#1031) is inline-editable via the shared ProfileNameRow (agent
 // detail 同款); it used to be inert text + a decorative pencil (假可供性).
-// #947 per-face 清零：secondary.css 退役。三处控件的 per-face 皮肤改挂
-// token utility（语言触发器 = Button ghost 底座 + 七通道中和，#908
-// comment-6001887439 裁决 3）；推送通知开关落 components/ui/Switch 正典
-// 默认档（spec/22 §2.5 冻结几何：32×18.4 / thumb 16，track 吃 --input /
-// --primary，thumb 吃 --background——旧 29×16 手搓面与 --toggle-knob 消费
-// 随之退役；两槽的删槽动作不归本票，§4-2 既有裁定走散件票）。
+// #947 per-face 清零：secondary.css 退役；推送通知开关落 components/ui/Switch
+// 正典默认档（spec/22 §2.5 冻结几何：32×18.4 / thumb 16，track 吃 --input /
+// --primary，thumb 吃 --background）。
+// #1005 registry 对齐（#983 floating-shell 族拆判决，锚定 absolute 族 →
+// Popover）：语言 dropdown 从 FloatingShell+ClickCatcher 卡内锚定迁
+// registry Popover（Portal + Positioner，触发钮 outline 默认档、盘皮肤走件
+// 默认、选项行 ghost 默认档）；外点关闭随 Base UI 原生 outside-press 语义
+// （2026-10-08 全局裁决：不恢复 ClickCatcher、不开 modal 档）。
 // `account-card` / `account-avatar` 别名保留 = profile-card 共享模板家族的
 // e2e 锚（profile-card.tsx 头注契约；#952 起模板几何住件上 PROFILE_* utility
 // 常量，profile-card.css 已退役）；其余类名别名按 #910 裁定 1 退役，载体 =
@@ -64,26 +66,6 @@ import { LOCALE_NAMES, LOCALES } from '../i18n/locale.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
-
-/** 语言触发器（Button ghost 底座）：30px 带框盒形（r7 13 实测 box
- *  x1120..1207，高是阶梯外一次性值 §3.1(a)）、12px 字、方角、surface 底 +
- *  border-default 描边；chevron tertiary 墨 12px（走属性，件基类
- *  [&_svg]:size-4 会盖过属性，故就地顶回同链 size-3）。件配方按七通道律
- *  归零到带框皮肤：hover/aria-expanded 回 surface 底 + primary 墨（原形
- *  无 hover、开态无换装），含 dark: 变体。 */
-const LANG_TRIGGER_CLS =
-  "h-[30px] cursor-pointer gap-1.5 border border-(--border) bg-(--card) px-2.5 text-xs font-normal leading-[inherit] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
-
-/** 语言盘 layout 槽（#1008：V2 弹层壳皮肤 / 描边 Arrow / 冻结锚距退役，
- *  皮肤归 PopoverContent 默认，定位归 Positioner 参数 side=bottom align=end
- *  sideOffset=8）：最小宽 220 是内容 layout；行距归零（旧面行带紧贴）。 */
-const LANG_MENU_CLS = 'w-auto min-w-[220px] gap-0';
-
-/** 语言盘选项行（Button ghost 底座）：32px 行 / 8px 圆角 / 12px 字
- *  （壳垫 12px 后行内横缩 4，字墨 inset 落 16）。原形无 hover 态，件配方
- *  按七通道律归零到透明。 */
-const LANG_ROW_CLS =
-  "h-8 w-full cursor-pointer justify-start gap-0 rounded-[8px] border-0 px-1 text-left text-xs leading-4 font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5";
 
 /* —— #1031 名称行内编辑面配方（account 面几何，与 agent 详情同构、只差档）——
    ProfileNameRow 是共享模板件，本面只注入自己的几何/皮肤 utility。值钮吃
@@ -179,39 +161,30 @@ export function AccountPage() {
           inputClassName={ACCOUNT_NAME_INPUT_CLS}
         />
         <ProfileRow className={PROFILE_ROW_TALL_CLS} label={t('语言')}>
-          <span className="relative flex">
-            {/* #1008（#983 判决：floating-shell 族拆退役，锚定 absolute 族 →
-                registry Popover）：触发钮 = PopoverTrigger（toggle /
-                aria-expanded 归原语）；#666 键盘契约保留——initialFocus=
-                false 焦点留触发位，同一个键再按一次关面。定位从 wrap
-                container + absolute CSS 迁 Positioner 参数（side=bottom
-                align=end sideOffset=8 = 原「右缘对齐、顶部锚距 8」）。外点
-                关走 Base UI 原生 outside-press（ClickCatcher 退役，穿透
-                与否 = #983 遗留待原型实审裁决项）。listbox 语义照旧手挂
-                （选项行是 Button role=option，非 Base UI Menu 件）。 */}
-            <Popover open={langOpen} onOpenChange={setLangOpen}>
-              <PopoverTrigger
-                render={
-                  <Button variant="ghost" className={LANG_TRIGGER_CLS} aria-haspopup="listbox" />
-                }
-              >
-                {LOCALE_NAMES[locale]}
-                <ChevronDown width={12} height={12} />
-              </PopoverTrigger>
-              <PopoverContent
-                side="bottom"
-                align="end"
-                sideOffset={8}
-                initialFocus={false}
-                role="listbox"
-                aria-label={t('语言')}
-                className={LANG_MENU_CLS}
-              >
+          {/* #1005：语言 dropdown = registry Popover（#983 判决：锚定
+              absolute 族 → Popover Positioner 锚定）。触发钮 outline 默认档，
+              aria-expanded 由 Base UI 承载；#666 toggle 面律（焦点留触发位）
+              走 Popup initialFocus=false。盘宽 min 220 是 layout（内容宽
+              自适应）；选项行 ghost 默认档 + role=option 行为契约保留，
+              当前语言勾色走 --card-button 品牌槽（#991 Q10 激活态强调面）。
+              listbox 语义载体 = 盘内 div（role/aria-label 原样）。 */}
+          <Popover open={langOpen} onOpenChange={setLangOpen}>
+            <PopoverTrigger render={<Button variant="outline" aria-haspopup="listbox" />}>
+              {LOCALE_NAMES[locale]}
+              <ChevronDown />
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={8}
+              initialFocus={false}
+              className="w-fit min-w-[220px] gap-1 p-1.5"
+            >
+              <div role="listbox" aria-label={t('语言')} className="flex flex-col gap-1">
                 {LOCALES.map((code) => (
                   <Button
                     key={code}
                     variant="ghost"
-                    className={LANG_ROW_CLS}
+                    className="w-full justify-start text-left"
                     role="option"
                     aria-selected={code === locale}
                     onClick={() => {
@@ -227,9 +200,9 @@ export function AccountPage() {
                     )}
                   </Button>
                 ))}
-              </PopoverContent>
-            </Popover>
-          </span>
+              </div>
+            </PopoverContent>
+          </Popover>
         </ProfileRow>
         <ProfileRow
           label={t('推送通知')}

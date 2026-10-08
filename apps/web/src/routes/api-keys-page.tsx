@@ -6,19 +6,21 @@
 // plus the one-time plaintext block carrying the 02 §8 canon
 // 「请立即复制密钥，它仅显示一次。」. Row and one-time block shapes are
 // [推断] (no capture: r2 §9-12, r3 §6 图失); mask and copy are observed.
-// #947 per-face 清零：secondary.css 退役，空态/明文块/列表行几何改挂 token
-// utility（tile 44 = size-11、行高 62 与顶部节奏 41/21/11/22 是阶梯外
-// 一次性实测值，§3.1(a)；圆角走 --radius-popover 槽）。按钮全走
-// components/ui/Button default——空态新建 = sm 档（30→28px 吸附控件高阶梯，
-// §2.6-1 同款 D2 授权；20px 横垫与 13px 字保留实测），一次性明文块的复制
-// = default/sm。类名别名按 #910 裁定 1 退役，空态容器换 data-testid 二级
-// 载体（resource-empty 同款，无 role 纯结构钩）。
+// #947 per-face 清零：secondary.css 退役。
+// #1005 registry 对齐：空态走 Empty 官方 compound（EmptyHeader/Media icon 档
+// + EmptyContent，居中列即件默认形；标题/描述保留 h2/p 语义标签——heading 是
+// a11y 资产，与 resources EmptyState 同律）；一次性明文块与列表行走 Card 件
+// 默认皮肤（rounded-xl / ring-1 / bg-card，--radius-popover 手写壳槽的消费在
+// 本面退役），行高 62 等 layout 留消费点；按钮走 Button 默认档（border-0/px/
+// 字重覆写退役）。data-testid="keys-empty" 二级载体保留。
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useApiKeys, useApiMutations, useTodos } from '../api/hooks.js';
 import { mapApiKeys, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
+import { Card } from '../components/ui/card.js';
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia } from '../components/ui/empty.js';
 import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -55,46 +57,40 @@ export function ApiKeysPage() {
       title={t('API 密钥')}
     >
       {keys.length === 0 ? (
-        <div data-testid="keys-empty">
-          <div className="mt-[41px] flex size-11 items-center justify-center rounded-(--radius-popover) bg-(--secondary) text-(--text-secondary) [&_svg]:size-5">
-            <Key />
-          </div>
-          <h2 className="mt-[21px] text-[15px] font-semibold text-(--foreground)">
-            {t('尚无 API 密钥。')}
-          </h2>
-          <p className="mt-[11px] text-[13px] text-(--text-tertiary)">
-            {t('API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的工作台。')}
-          </p>
-          <div className="mt-[22px] flex items-center gap-4">
-            {/* 差额并项——散写形字重 400、无按下位移；border-0 压掉底座 1px
-                透明边（bg-clip-padding 会把实底下裁 padding box，钮面四周
-                透出 1px 缝）。 */}
-            <Button
-              size="sm"
-              className="cursor-pointer border-0 px-5 text-[13px] leading-4 font-normal active:not-aria-[haspopup]:translate-y-0"
-              onClick={live ? () => setCreateOpen(true) : undefined}
-            >
+        <Empty data-testid="keys-empty" className="mt-10">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Key />
+            </EmptyMedia>
+            {/* h2/p 语义标签保留（heading 是 a11y 资产，与 resources EmptyState
+                同律），只挂 registry 件的文字档取齐观感。 */}
+            <h2 className="text-sm font-medium tracking-tight text-balance text-foreground">
+              {t('尚无 API 密钥。')}
+            </h2>
+            <p className="text-sm/relaxed text-muted-foreground text-balance">
+              {t('API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的工作台。')}
+            </p>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button size="sm" onClick={live ? () => setCreateOpen(true) : undefined}>
               {t('新建密钥')}
             </Button>
             {/* 「查看文档」钮全除（#307 wontfix）：local-first 自托管无文档站
                 可链（#149 schedules 同律）——隐去，spec 08 档 4 出账。 */}
-          </div>
-        </div>
+          </EmptyContent>
+        </Empty>
       ) : (
         <>
           {keys
             .filter((key) => key.plaintext != null)
             .map((key) => (
-              <div
+              <Card
                 key={`once-${key.id}`}
-                className="mt-6 flex flex-wrap items-center gap-3 rounded-(--radius-popover) border border-(--border) bg-(--secondary) p-4"
+                className="mt-6 flex-row flex-wrap items-center gap-3 p-4"
               >
                 <code className="font-mono text-[13px] text-(--foreground)">{key.plaintext}</code>
-                {/* 差额并项（28 高 / 0 12 内垫 / 12px 字 / 字重 400 是 [推断]
-                    面的既有钉回值）：border-0 同上。 */}
                 <Button
                   size="sm"
-                  className="cursor-pointer border-0 px-3 text-xs leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0"
                   onClick={
                     live
                       ? () => void navigator.clipboard?.writeText(key.plaintext ?? '')
@@ -106,14 +102,11 @@ export function ApiKeysPage() {
                 <p className="basis-full text-xs text-(--text-tertiary)">
                   {t('请立即复制密钥，它仅显示一次。')}
                 </p>
-              </div>
+              </Card>
             ))}
           <div className="mt-3 flex flex-col gap-2">
             {keys.map((key) => (
-              <div
-                key={key.id}
-                className="flex h-[62px] items-center gap-3 rounded-(--radius-popover) bg-(--secondary) px-4"
-              >
+              <Card key={key.id} className="h-[62px] flex-row items-center gap-3 px-4 py-0">
                 <span className="flex text-(--text-tertiary)">
                   <Key width={16} height={16} />
                 </span>
@@ -129,7 +122,7 @@ export function ApiKeysPage() {
                 <span className="text-(--text-tertiary)">
                   <ChevronRight width={16} height={16} />
                 </span>
-              </div>
+              </Card>
             ))}
           </div>
         </>
