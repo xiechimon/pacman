@@ -183,14 +183,14 @@ export function TeamChart({
             .map((a) => (
               <ChartNode key={a.id} agent={a} />
             ))}
-          {/* 虚线创建卡：与成员卡同族盒模型（NODE_CLS），border-style 换
-              dashed、文本左对齐。ghost 件配方按七通道律归零到 surface 皮肤
-              （hover 抬 --surface-secondary 一档是旧 @media hover 规则的
-              等值迁移——TW v4 hover: 变体自带 hover:hover 门），字重 500
-              即件默认 font-medium，不归零。 */}
+          {/* 虚线创建卡：与成员卡同族盒模型（NODE_CLS layout），border-style
+              换 dashed、文本左对齐。#1005 registry 对齐：outline 默认档
+              （hover bg-muted / 按下位移由件承载，七通道中和退役），节点卡
+              族盒模型经 NODE_CLS 保留（组织图 = 参考产品实测的 bespoke
+              可视化面，非 registry 件射程）。 */}
           <Button
-            variant="ghost"
-            className={`${NODE_CLS} cursor-pointer justify-start border-dashed text-left text-xs font-medium text-(--text-tertiary) leading-[inherit] hover:bg-(--secondary) hover:text-(--text-tertiary) dark:hover:bg-(--secondary) aria-expanded:bg-(--card) aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0`}
+            variant="outline"
+            className={`${NODE_CLS} justify-start border-dashed text-left text-xs font-medium text-(--text-tertiary)`}
             onClick={onCreate}
           >
             {/* size-3 挂字形本体顶回 12px：件基类 [&_svg:not([class*='size-'])]:size-4

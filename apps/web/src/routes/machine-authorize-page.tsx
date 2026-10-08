@@ -3,15 +3,13 @@
 // authorized = 完成态；expired = 失效文案）→ confirm 建机（无 apiKey，capability
 // 单次）。无参到达 = 本页自起 start（拿 enrollId 即转入轮询，授权链接可复制
 // 给执行机侧流程）。CLI 主路径（--api-key 两步弹窗，#181/#179）不动。
-// B2 收编（#426）：面板 = 仓内 shadcn Card（bg-card + ring-1 ring-foreground/10 +
-// 12px 边圆角 + shadow-lg，与 token-gate 门页同配方），字样 = 语义标签 + TW 工具
+// B2 收编（#426）：面板 = 仓内 shadcn Card，字样 = 语义标签 + TW 工具
 // 类直引 token 正本；per-face 样式（routes/machine-authorize.css）随片退役。
 // 类名别名（authorize-*）原样保留在元素上（别名保留律 #411 政策 1）；新增
-// e2e 钉扎面按同政策走语义 locator，不再新铸类名钉。提交钮走仓内 shadcn 件
-// ui/Button default 档，per-face 值以工具类钉回轨 A3 实测档——32px 高 / 8px
-// 圆角 / 13px 中黑字重 / --card-button 实底：铺开是纯结构换件，per-face 数值
-// 仍是几何正本（#411 政策 4），故不取 shadcn 默认档（默认档圆角 10px、字号
-// 14px 均与本仓 canon 不符）。
+// e2e 钉扎面按同政策走语义 locator，不再新铸类名钉。
+// #1005 registry 对齐：Card 的 12px 圆角/shadow-lg 覆写退役（rounded-xl /
+// ring-1 官方默认几何赢，#980 裁决④），提交钮走 Button default 档原样
+// （轨 A3 per-face 钉回值退役）；360px 卡宽与 p-6 内垫是 layout，留消费点。
 
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -111,16 +109,13 @@ export function MachineAuthorizePage() {
       <Card
         role="region"
         aria-label={t('授权机器')}
-        className="authorize-card w-[360px] max-w-[calc(100vw-48px)] gap-3 rounded-[12px] p-6 shadow-lg"
+        className="authorize-card w-[360px] max-w-[calc(100vw-48px)] gap-3 p-6"
       >
         <h1 className="authorize-title text-base font-semibold text-foreground">{t('授权机器')}</h1>
         {phase === 'idle' && (
           <>
             <p className={DESC_CLASS}>{t('生成授权链接，在执行机上完成注册发起。')}</p>
-            <Button
-              className="authorize-submit w-full border-0 rounded-md px-3 text-[13px] font-medium"
-              onClick={() => void startEnrollment()}
-            >
+            <Button className="authorize-submit w-full" onClick={() => void startEnrollment()}>
               {t('生成授权链接')}
             </Button>
           </>
@@ -130,10 +125,7 @@ export function MachineAuthorizePage() {
             <p className={DESC_CLASS}>
               {t('一台执行机请求加入你的团队。确认后它将以自己的凭据连接。')}
             </p>
-            <Button
-              className="authorize-submit w-full border-0 rounded-md px-3 text-[13px] font-medium"
-              onClick={() => void confirm()}
-            >
+            <Button className="authorize-submit w-full" onClick={() => void confirm()}>
               {t('确认授权')}
             </Button>
           </>

@@ -9,29 +9,22 @@
 // 保持无操作）。
 // #947 per-face 清零：secondary.css 退役，表单族几何改挂 token utility
 // （min-w 320 / 工具盘 max-h 264 是 [推断] 面的既有实测值，§3.1(a)）。
-// 名称输入落 components/ui/Input 正典默认档（spec/22 §5.3：h-8 32px /
-// rounded-none / border-input / 件自带 focus 环——旧 36px 盒与 2px outline
-// 环覆写按 §2.6-1 退役，36px 不以别名/utility/size 档任何形式存续）。
-// 底部双钮走 Button default/ghost 件档（旧 py-8 散写高吸附 h-8 控件高正本），
-// ghost 取消钮与两枚快捷钮按七通道律归零（#908 comment-6001887439 裁决 3）。
+// #1005 registry 对齐：名称行走 Field 官方组合；底部双钮与两枚快捷钮走
+// Button default/ghost 默认档（七通道中和与 border-0/px 覆写退役，hover/
+// 按下态由件承载）；工具盘盒圆角随 registry 基（rounded-lg）。
 
 import { CHIEF_REMOTE_TOOLS } from '@pacman/shared';
 import { useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { Checkbox } from '../components/ui/checkbox.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Field, FieldGroup, FieldLabel } from '../components/ui/field.js';
 import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
 
 /** 权限位可选集 = remote tools 51 词表（grants 白名单消费面 =
  * services/mcp-face.ts）。 */
 const TOOL_NAMES = CHIEF_REMOTE_TOOLS.map((tool) => tool.name);
-
-/** 快捷钮（授予全部/清空）：text 档实测形（无框 / 0 内垫 / tertiary 墨 /
- *  12px 字 / 字重 400 / 无 hover 变化）——ghost 件配方按七通道律逐位归零，
- *  border-0 压掉底座 1px 透明边（有边即宽 2px，右对齐排会位移）。 */
-const QUICK_BTN_CLS =
-  'border-0 cursor-pointer px-0 text-xs leading-[inherit] font-normal bg-transparent text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0';
 
 export interface ApiKeyCreateBody {
   name: string | null;
@@ -90,36 +83,26 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
       onClose={onClose}
       footer={
         <div className="flex gap-2 px-4 py-3">
-          <Button
-            className="border-0 px-4 text-[13px] leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
-            onClick={submit}
-          >
-            {t('创建')}
-          </Button>
-          <Button
-            variant="ghost"
-            className="border-0 px-4 text-[13px] leading-[inherit] font-normal text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0"
-            onClick={onClose}
-          >
+          <Button onClick={submit}>{t('创建')}</Button>
+          <Button variant="ghost" onClick={onClose}>
             {t('取消')}
           </Button>
         </div>
       }
     >
-      <div className="flex min-w-[320px] flex-col gap-2.5">
-        <label className="text-xs text-(--text-tertiary)" htmlFor="apikey-name-input">
-          {t('名称（可选）')}
-        </label>
-        {/* #947：Input 正典默认档（§5.3）——h-8 / rounded-none / border-input，
-            focus 环走件自带 border-ring + ring 档；旧 36px 盒、card-border
-            描边与 2px outline 环覆写全部退役。id/htmlFor 配对是语义资产
-            （getByLabel 一级载体），保留不动。 */}
-        <Input
-          id="apikey-name-input"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={t('如：笔记本、CI 机器')}
-        />
+      <FieldGroup className="min-w-[320px] gap-2.5">
+        <Field>
+          <FieldLabel htmlFor="apikey-name-input">{t('名称（可选）')}</FieldLabel>
+          {/* id/htmlFor 配对是语义资产（getByLabel 一级载体），保留不动；
+              Input 走件默认档（#1003 起 rounded-lg / border-input / 官方
+              focus 环）。 */}
+          <Input
+            id="apikey-name-input"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={t('如：笔记本、CI 机器')}
+          />
+        </Field>
         {/* XMON-75：这两行与下面的读写位此前是裸 checkbox 原生控件，画出来
             是浏览器自带的方框，跟仓内 .dlg-accept-check 那一族的复选 tile
             不同形。改用 components/ui/checkbox.tsx 统一形态（#1003 起件为
@@ -147,15 +130,15 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
         <div className="flex items-baseline justify-between">
           <span className="text-xs text-(--text-tertiary)">{t('工具权限位')}</span>
           <span className="flex gap-2">
-            <Button variant="ghost" className={QUICK_BTN_CLS} onClick={grantAll}>
+            <Button variant="ghost" size="xs" onClick={grantAll}>
               {t('授予全部')}
             </Button>
-            <Button variant="ghost" className={QUICK_BTN_CLS} onClick={clearAll}>
+            <Button variant="ghost" size="xs" onClick={clearAll}>
               {t('清空')}
             </Button>
           </span>
         </div>
-        <div className="max-h-[264px] overflow-y-auto rounded-none border border-(--border) px-2 py-1">
+        <div className="max-h-[264px] overflow-y-auto rounded-lg border border-(--border) px-2 py-1">
           <div className="flex items-center gap-2 py-[3px] text-xs text-(--text-tertiary)">
             <span className="flex-1" />
             <span className="w-8 text-center">{t('读')}</span>
@@ -181,7 +164,7 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
             </div>
           ))}
         </div>
-      </div>
+      </FieldGroup>
     </DialogShell>
   );
 }

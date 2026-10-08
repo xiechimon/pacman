@@ -43,12 +43,6 @@ import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js';
-import {
-  SEG_GROUP_CLS,
-  SEG_TAB_ACTIVE_CLS,
-  SEG_TAB_CLS,
-  SEG_TAB_IDLE_CLS,
-} from '../pages/parts.js';
 import { SecondaryShell } from '../secondary/shell.js';
 import { AGENTS_HREF } from './agent-detail-page.js';
 import { CreateAgentDialog } from './create-agent-dialog.js';
@@ -60,30 +54,19 @@ export const TEAM_LAYOUT_STORAGE_KEY = 'pacman.teamMembersLayout';
 
 type TeamLayout = 'grid' | 'chart';
 
-/** 差额并项：散写形字重 400（底座 font-medium）、无按下位移、无内垫。
- *  `not-aria-[haspopup]` 与底座同链，故 tailwind-merge 能直接顶掉它。 */
-const BASE_DELTA = 'active:not-aria-[haspopup]:translate-y-0 font-normal px-0 leading-[inherit]';
+/** 创建 Agent 槽（grid 布局）：76px 全宽虚线钮（r7 12 实测 layout 档）。
+ *  #1005 registry 对齐：Button outline 默认档（rounded-lg / hover bg-muted /
+ *  按下位移由件承载），dashed 边式是唯一语义补充（空位添加行，registry 无
+ *  dashed 档），与 chart 布局的虚线创建卡同族。 */
+const CREATE_SLOT_CLS = 'h-[76px] border-dashed text-(--text-tertiary)';
 
-/** 创建 Agent 槽（grid 布局）：76px 全宽虚线钮，几何是 r7 12 实测的一次性
- *  值（§3.1(a)）；ghost 件配方按七通道律就地归零（原形无 hover、方角族
- *  8px 圆角随虚线卡语言保留，与 chart 布局的虚线创建卡同族）。 */
-const CREATE_SLOT_CLS =
-  'h-[76px] cursor-pointer gap-2 rounded-[8px] border border-dashed border-(--input) bg-transparent text-[13px] text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary)';
-
-/** Agent 卡（#485：进详情面的链接）：76px 卡盒 + radius-popover 圆角 +
- *  surface-secondary 底（#886 卡底抬档配方），hover 边框亮一档——旧规则引
- *  未定义槽 --card-border-hover 的 fallback（= --text-tertiary），等值迁移
- *  取实算值。过渡沿旧形 150ms（= --dur-fast）border-color。 */
+/** Agent 卡（#485：进详情面的链接）：#1005 registry 对齐——皮肤取 Card 件
+ *  默认配方（rounded-xl / bg-card / ring-1 ring-foreground/10，#983 panel
+ *  判决的同一套官方几何），76px 卡盒是 layout；hover 环加深一档做链接反馈
+ *  （ring 是 box-shadow，过渡走 color 属性族外的 box-shadow 无动画——瞬时
+ *  换档即反馈）。 */
 const AGENT_CARD_CLS =
-  'flex h-[76px] items-center gap-3 rounded-(--radius-popover) border border-(--border) bg-(--secondary) px-4 text-inherit no-underline transition-[border-color] duration-(--dur-fast) ease-[ease] hover:border-(--text-tertiary)';
-
-/** 布局切换片的两个 chip（XMON-103）：底座 = components/ui/tabs 的分段档；
- *  #946：皮肤正本 = pages/parts 的 SEG_* 配方（原 pages.css
- *  `.page-tabs-group`/`.page-tab` 规则的 utility 等值——pages.css 清零后
- *  分段档皮肤由消费点配方承载，收敛进件归 #952）。#947：别名类退役，
- *  e2e 载体 = role=tab + aria-label（grid/chart）。 */
-const tabClass = (active: boolean) =>
-  `${SEG_TAB_CLS} ${active ? SEG_TAB_ACTIVE_CLS : SEG_TAB_IDLE_CLS}`;
+  'flex h-[76px] items-center gap-3 rounded-xl bg-card px-4 text-inherit no-underline ring-1 ring-foreground/10 hover:ring-foreground/25';
 
 function readStoredLayout(storage: Storage): TeamLayout {
   return storage.getItem(TEAM_LAYOUT_STORAGE_KEY) === 'chart' ? 'chart' : 'grid';
@@ -156,24 +139,23 @@ export function TeamPage() {
             </span>
           </div>
         )}
-        {/* XMON-103：分段控制器正本 = components/ui/tabs 的 segmented 档；
-            #946 起皮肤 = pages/parts 的 SEG_* 配方（原 pages.css
-            `.page-tabs-group`/`.page-tab` 规则的 utility 等值，值零改动）。
-            受控 value/onValueChange 落回 switchLayout（照旧写
-            localStorage），role=tablist/tab 与 aria-selected 由 Base UI
-            承载。#947：别名类退役，e2e 载体 = role=tab + aria-label
-            （grid/chart）；chart 布局下 stats bar 退场，ml-auto 把 tablist
-            顶回 r7 12 的右缘（旧 --chart 后代选择器的等值迁移）。 */}
+        {/* XMON-103 布局切换片；#1005 registry 对齐：SEG_* 分段皮肤退役，
+            Tabs 走 registry default 档原生形态（bg-muted 组盒 +
+            data-active bg-background 选中片，#982 tabs 判决终态）。受控
+            value/onValueChange 落回 switchLayout（照旧写 localStorage），
+            role=tablist/tab 与 aria-selected 由 Base UI 承载；e2e 载体 =
+            role=tab + aria-label（grid/chart）。chart 布局下 stats bar
+            退场，ml-auto 把 tablist 顶回 r7 12 的右缘。 */}
         <Tabs
           value={layout}
           onValueChange={(value) => switchLayout(value as TeamLayout)}
           className={layout === 'chart' ? 'ml-auto' : undefined}
         >
-          <TabsList className={SEG_GROUP_CLS}>
-            <TabsTrigger value="grid" className={tabClass(layout === 'grid')} aria-label="grid">
+          <TabsList>
+            <TabsTrigger value="grid" aria-label="grid">
               <Grid2x2 />
             </TabsTrigger>
-            <TabsTrigger value="chart" className={tabClass(layout === 'chart')} aria-label="chart">
+            <TabsTrigger value="chart" aria-label="chart">
               <ChartNetwork />
             </TabsTrigger>
           </TabsList>
@@ -228,11 +210,7 @@ export function TeamPage() {
             ))}
           {/* #170: the dialog family form (r2 §8.1 capture 20) lives in
               create-agent-dialog.tsx — DialogShell law, POST agents on live. */}
-          <Button
-            variant="ghost"
-            className={`${CREATE_SLOT_CLS} ${BASE_DELTA}`}
-            onClick={() => setCreateOpen(true)}
-          >
+          <Button variant="outline" className={CREATE_SLOT_CLS} onClick={() => setCreateOpen(true)}>
             <span className="flex size-5 items-center justify-center rounded-full border border-current">
               {/* size-3 挂字形本体（件基类 [&_svg:not([class*='size-'])]:size-4
                   的 :not 守卫让位给自带 size-* 类的 svg；wrapper 档特异性不够，

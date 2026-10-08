@@ -25,17 +25,13 @@ import { useLiveData } from '../api/provider.js';
 import { ClaudeMark, PiMark } from '../components/brand-marks.js';
 import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
+import { Card } from '../components/ui/card.js';
+import { Empty, EmptyContent, EmptyDescription } from '../components/ui/empty.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
-import {
-  SEG_GROUP_CLS,
-  SEG_TAB_ACTIVE_CLS,
-  SEG_TAB_CLS,
-  SEG_TAB_IDLE_CLS,
-} from '../pages/parts.js';
 import { CreateProviderDialog } from './create-provider-dialog.js';
 import { GroupCard, RowDesc, RowLine, RowText, RowTitle } from './parts.js';
 import { ResourceShell } from './shell.js';
@@ -70,15 +66,17 @@ function parseRuntime(searchParams: URLSearchParams): ModelSourceRuntime {
 
 /** A2 header 卡：runtime 名 + 一行说明 + 安装态。安装态两分支（A4）：
  *  installed → 「已安装在 <hostname>」；否则 → 「未安装」+ 安装指引。
+ *  #1005 registry 对齐：皮肤 = Card 件默认（rounded-xl / ring-1 / bg-card），
+ *  横垫是 layout；行间节奏走件默认 gap。
  *  data-testid="runtime-head" = #910 二级结构载体（卡片无 role，几何与
  *  安装态断言的锚；data-runtime 继续做 runtime 维度筛选）。 */
 function RuntimeHead({ source }: { source: ModelSource }) {
   const { t } = useI18n();
   return (
-    <div
+    <Card
       data-testid="runtime-head"
       data-runtime={source.runtime}
-      className="mt-4 rounded-(--radius-popover) border border-(--border) bg-(--secondary) px-4 py-3.5"
+      className="mt-4 gap-1 px-4 py-3.5"
     >
       <div className="flex items-center gap-2">
         <span className="text-sm leading-5 font-semibold text-(--foreground)">
@@ -92,15 +90,15 @@ function RuntimeHead({ source }: { source: ModelSource }) {
           <span className="text-xs leading-4 text-(--tile-orange-fg)">{t('未安装')}</span>
         )}
       </div>
-      <p className="mt-1 mb-0 text-xs leading-4 text-(--text-tertiary)">
+      <p className="m-0 text-xs leading-4 text-(--text-tertiary)">
         {t(RUNTIME_DESCRIPTIONS[source.runtime])}
       </p>
       {!source.installed && (
-        <p className="mt-1.5 mb-0 text-xs leading-4 text-(--text-tertiary)">
+        <p className="m-0 text-xs leading-4 text-(--text-tertiary)">
           {t('安装 Claude Code 并完成一次登录后，此处自动展示其模型槽。')}
         </p>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -162,30 +160,21 @@ export function ProvidersPage() {
       {/* #423 Tabs 收编（#422 裁决：runtime tab 由 ?runtime= 驱动）：受控
           value/onValueChange 落回原 selectRuntime（写 ?runtime=、历史入栈、
           回退键可用），role=tablist/tab 与 aria-selected 由 Base UI 承载，
-          data-runtime 句柄原样透出（.res-tabs/.res-tab 类名句柄随 #944
-          per-face 清零退役——spec 载体 = role/文案/data-runtime）。
-          XMON-73：形态 = 分段控制器；#946 起皮肤正本 = pages/parts 的
-          SEG_* 配方（原 pages.css .page-tabs-group/.page-tab 规则的
-          utility 等值，与 topbar「任务|文件」同一份），本域不持有它。
-          两 tab 前置各自品牌 mark
-          （components/brand-marks.tsx，机器行 #503 同源消费；尺寸走
-          tabs.tsx 基类的 size-4，此处只补 8px 的 mark/名间距）。mark
-          aria-hidden，文案照常渲染——可访问名 = RUNTIME_LABELS，读屏与
-          e2e 的 toHaveText('pi'/'Claude Code') 都不受影响。 */}
+          data-runtime 句柄原样透出——spec 载体 = role/文案/data-runtime。
+          #1005 registry 对齐：分段皮肤（SEG_* 配方）退役，Tabs 走 registry
+          default 档原生形态（bg-muted 圆角组盒 + data-active bg-background
+          选中片，#982 tabs 判决的终态）。两 tab 前置各自品牌 mark
+          （components/brand-marks.tsx，机器行 #503 同源消费；间距走件默认
+          gap-1.5）。mark aria-hidden，文案照常渲染——可访问名 =
+          RUNTIME_LABELS，读屏与 e2e 的 toHaveText('pi'/'Claude Code') 都不
+          受影响。 */}
       <Tabs value={runtime} onValueChange={(value) => selectRuntime(value as ModelSourceRuntime)}>
-        <TabsList aria-label={t('模型服务')} className={SEG_GROUP_CLS}>
+        <TabsList aria-label={t('模型服务')}>
           {MODEL_SOURCE_RUNTIMES.map((rt) => {
             const Mark = RUNTIME_MARKS[rt];
             return (
-              <TabsTrigger
-                key={rt}
-                value={rt}
-                data-runtime={rt}
-                className={`${SEG_TAB_CLS} ${
-                  rt === runtime ? SEG_TAB_ACTIVE_CLS : SEG_TAB_IDLE_CLS
-                }`}
-              >
-                <Mark className="mr-2 block flex-none" />
+              <TabsTrigger key={rt} value={rt} data-runtime={rt}>
+                <Mark className="block flex-none" />
                 {RUNTIME_LABELS[rt]}
               </TabsTrigger>
             );
@@ -209,17 +198,14 @@ export function ProvidersPage() {
                   data-runtime={source.runtime}
                   data-model-id={model.id}
                 >
-                  <RowText className="ml-0">
+                  <RowText>
                     <RowLine>
                       <RowTitle>{model.name}</RowTitle>
-                      {/* #423 Badge 收编（#422 裁决）：橙色 slot tag = 无底
-                          无框无垫的纯文字 tag，Badge outline 档的 border/pad/
-                          几何就地并掉（原 .res-tag per-face 形等值迁移）。 */}
+                      {/* #423 Badge 收编（#422 裁决）；#1005 registry 对齐：
+                          outline 档默认形（描边 pill / h-5 / text-xs），橙墨
+                          保留 --tile-orange-fg 槽（token 层）。 */}
                       {model.slot != null && (
-                        <Badge
-                          variant="outline"
-                          className="h-auto rounded-none border-none bg-transparent p-0 text-xs leading-4 font-normal text-(--tile-orange-fg)"
-                        >
+                        <Badge variant="outline" className="text-(--tile-orange-fg)">
                           {model.slot}
                         </Badge>
                       )}
@@ -232,50 +218,32 @@ export function ProvidersPage() {
           ) : source.runtime === 'pi' ? (
             // A3 空态：引导开添加服务商 picker（picker 面见
             // verify features/provider-picker.md）。data-testid =
-            // #910 二级结构载体（原 .res-runtime-empty）。
-            <div
-              data-testid="runtime-empty"
-              className="mt-4 rounded-lg border border-dashed border-(--input) px-4 py-6"
-            >
-              <p className="m-0 text-[13px] leading-5 text-(--text-tertiary)">
+            // #910 二级结构载体（原 .res-runtime-empty）。#1005 registry
+            // 对齐：Empty 件默认档（居中列），主钮 sm 默认形。
+            <Empty data-testid="runtime-empty" className="mt-4">
+              <EmptyDescription>
                 {t('尚未添加服务商。添加后，服务商的模型会出现在这里。')}
-              </p>
-              {/* #423 原语消费点切换（#422 清单）：轨 A3 ui/Button primary/
-                  compact → components/ui Button default/sm（A3 等价档，
-                  button.tsx 偏离注 3）；12px 垫/13px 常规字重是 A3 compact
-                  同值的消费面差异（原 .res-runtime-empty-action 等值）。 */}
-              <Button
-                size="sm"
-                className="mt-3 px-3 text-[13px] font-normal"
-                onClick={() => setCreateOpen(true)}
-              >
-                {t('添加模型服务')}
-              </Button>
-            </div>
+              </EmptyDescription>
+              <EmptyContent>
+                <Button size="sm" onClick={() => setCreateOpen(true)}>
+                  {t('添加模型服务')}
+                </Button>
+              </EmptyContent>
+            </Empty>
           ) : (
             source.installed && (
-              <div
-                data-testid="runtime-empty"
-                className="mt-4 rounded-lg border border-dashed border-(--input) px-4 py-6"
-              >
-                <p className="m-0 text-[13px] leading-5 text-(--text-tertiary)">
-                  {t('settings.json 未配置模型槽。')}
-                </p>
-              </div>
+              <Empty data-testid="runtime-empty" className="mt-4">
+                <EmptyDescription>{t('settings.json 未配置模型槽。')}</EmptyDescription>
+              </Empty>
             )
           )}
         </div>
       ))}
       {matching.length === 0 && (
         // #707：尚无执行机上报过（旧 daemon / 未注册）——缺席不断言未安装。
-        <div
-          data-testid="runtime-empty"
-          className="mt-4 rounded-lg border border-dashed border-(--input) px-4 py-6"
-        >
-          <p className="m-0 text-[13px] leading-5 text-(--text-tertiary)">
-            {t('尚无执行机上报模型信息。')}
-          </p>
-        </div>
+        <Empty data-testid="runtime-empty" className="mt-4">
+          <EmptyDescription>{t('尚无执行机上报模型信息。')}</EmptyDescription>
+        </Empty>
       )}
       <CreateProviderDialog
         open={createOpen}
