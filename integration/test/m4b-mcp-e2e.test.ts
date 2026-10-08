@@ -13,17 +13,13 @@
 //    身份落库。
 
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { MCP_TOOL_REGISTRY } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { z } from 'zod';
 import { loadDaemonConfig } from '../../apps/daemon/src/config.js';
 import { createDaemonLogger } from '../../apps/daemon/src/log.js';
 import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-loop.js';
@@ -37,57 +33,10 @@ import {
   daemonLogLines,
   type RealServer,
   seedWorld,
+  startExternalMcp,
   waitFor,
 } from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
-
-/** 外部 MCP server（测试内起，client 面对拍端）：echo 工具 + 调用记录。 */
-async function startExternalMcp(): Promise<{
-  url: string;
-  calls: { name: string; args: Record<string, unknown> }[];
-  close(): Promise<void>;
-}> {
-  const calls: { name: string; args: Record<string, unknown> }[] = [];
-  const http: Server = createServer((req, res) => {
-    void (async () => {
-      const server = new McpServer({ name: 'external-fixture', version: '0.0.1' });
-      server.registerTool(
-        'echo',
-        { description: 'Echo text back.', inputSchema: { text: z.string() } },
-        async (args) => {
-          calls.push({ name: 'echo', args: args as Record<string, unknown> });
-          return { content: [{ type: 'text', text: `external-echo:${args.text}` }] };
-        },
-      );
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-        enableJsonResponse: true,
-      });
-      await server.connect(transport);
-      const chunks: Buffer[] = [];
-      for await (const chunk of req) chunks.push(chunk as Buffer);
-      const body =
-        chunks.length > 0 ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : undefined;
-      res.on('close', () => {
-        void transport.close();
-        void server.close();
-      });
-      await transport.handleRequest(req, res, body);
-    })();
-  });
-  await new Promise<void>((r) => http.listen(0, '127.0.0.1', r));
-  const addr = http.address();
-  if (!addr || typeof addr === 'string') throw new Error('no address');
-  return {
-    url: `http://127.0.0.1:${addr.port}/mcp`,
-    calls,
-    close: () =>
-      new Promise<void>((resolve) => {
-        http.closeAllConnections();
-        http.close(() => resolve());
-      }),
-  };
-}
 
 let stub: StubLlm;
 let server: RealServer;
@@ -116,18 +65,26 @@ beforeAll(async () => {
       mcpServers: {
         demo: { url: external.url, headers: { Authorization: 'Bearer demo-secret' } },
         dead: { url: 'http://127.0.0.1:1/mcp' },
+        // #930 授权面排除方向：config 有、agent 未勾选 → 不得出现（勾选表
+        // 唯一决定谁能出现）。
+        unselected: { url: 'http://127.0.0.1:1/mcp' },
       },
     }),
     'utf8',
   );
   stub = await startStubLlm([
-    // worker 执行步轮 1：调桥接工具 mcp__demo__echo（外部 MCP server 真调用）。
+    // worker 执行步轮 1：读外部资源（#930 resources 能力立证——pi 原生
+    // read_mcp_resource 工具，仅 server 声明 resources 能力时注册）。
+    {
+      toolCall: { name: 'read_mcp_resource', arguments: { server: 'demo', uri: 'demo://note' } },
+    },
+    // 轮 2：调桥接工具 mcp__demo__echo（外部 MCP server 真调用）。
     { toolCall: { name: 'mcp__demo__echo', arguments: { text: 'm4b-bridge' } } },
-    // 轮 2：真做一处改动（#703 闸 2——执行步无改动过不了 review 闸）。
+    // 轮 3：真做一处改动（#703 闸 2——执行步无改动过不了 review 闸）。
     {
       toolCall: { name: 'bash', arguments: { command: 'printf "mcp probe line\\n" >> README.md' } },
     },
-    // 轮 3：收尾。
+    // 轮 4：收尾。
     { content: '已通过外部 MCP 工具 echo 验证连通。' },
   ]);
   server = await bootRealServer({
@@ -186,7 +143,9 @@ describe('MCP client 面 E2E：本机 config 登记 + per-Agent slug 授权 + da
       hasCredential: boolean;
       credentialKeys: string[];
     }[];
-    expect(rows.map((r) => r.slug).sort()).toEqual(['dead', 'demo']);
+    // 展示面 = 整个 config 的投影（含未勾选的 unselected——登记面人人可
+    // 见）；「勾选表决定谁能出现」钉在下方装载行与 transcript 断言。
+    expect(rows.map((r) => r.slug).sort()).toEqual(['dead', 'demo', 'unselected']);
     expect(rows.find((r) => r.slug === 'demo')).toMatchObject({
       transport: 'http',
       hasCredential: true,
@@ -224,7 +183,7 @@ describe('MCP client 面 E2E：本机 config 登记 + per-Agent slug 授权 + da
     await waitFor(() => server.todoPhase(world.todoId) === 'review', 150_000);
 
     // 外部 MCP server 真收到调用（薄桥端到端实证：daemon 本机 config 解析 →
-    // pi customTool → sdk client → 外部 server），工具名映射 mcp__demo__echo。
+    // pi 原生 MCP → 外部 server），工具名映射 mcp__demo__echo。
     expect(external.calls).toEqual([{ name: 'echo', args: { text: 'm4b-bridge' } }]);
 
     // transcript 工具行落库（bridge 工具名 = mcp__<slug>__<tool>，r3 §5.1）。
@@ -234,6 +193,18 @@ describe('MCP client 面 E2E：本机 config 登记 + per-Agent slug 授权 + da
       .where(eq(messageTable.conversationId, buildId))
       .all();
     expect(JSON.stringify(msgs)).toContain('mcp__demo__echo');
+
+    // #930 新增能力立证（resources 工具可用）：首轮请求的 tools 声明含
+    // read_mcp_resource（server 有 resources 时 pi 注册直报），调用结果进
+    // transcript（资源内容真实可读——「挑一条断言，别只声明」）。
+    const firstRequest = stub.requests[0] as
+      | { tools?: { function?: { name?: string } }[] }
+      | undefined;
+    const firstRequestTools = firstRequest?.tools ?? [];
+    const declared = firstRequestTools.map((t) => t.function?.name ?? '').filter((n) => n !== '');
+    expect(declared).toContain('mcp__demo__echo');
+    expect(declared).toContain('read_mcp_resource');
+    expect(JSON.stringify(msgs)).toContain('demo-note-content');
 
     // 降级面三行（回合照常完成，r3 §1.5 canon 行形 + spec 13 扩展行）：
     // 死端点 = connect failed；config 未命中 = not in local config；
@@ -249,7 +220,12 @@ describe('MCP client 面 E2E：本机 config 登记 + per-Agent slug 授权 + da
         l.includes('[mcp] ghost: not in local config — its tools are unavailable this turn'),
       ),
     ).toBe(true);
-    expect(lines.some((l) => l.includes(`[mcp] loaded from ${mcpConfig}: demo, dead`))).toBe(true);
+    // 装载行整行精确匹配 = 授权面排除方向同时钉住：config 里勾选表
+    // （PATCH mcpServers=[demo, dead, ghost]）没勾的 `unselected` 不得出现
+    // （substring 匹配会漏「demo, dead, unselected」形，故用整行相等）。
+    const loadedLine = lines.find((l) => l.startsWith(`[mcp] loaded from ${mcpConfig}`));
+    expect(loadedLine).toBe(`[mcp] loaded from ${mcpConfig}: demo, dead`);
+    expect(JSON.stringify(msgs)).not.toContain('mcp__unselected');
   }, 150_000);
 });
 
