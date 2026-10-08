@@ -92,19 +92,22 @@ test('kbd 落点：悬浮提示是 registry Kbd，静息隐藏 / 悬浮浮出不
   await expect(hint).toHaveText('⌘J');
 });
 
-test('tag-chip 落点：落在 registry Badge 上，别名类与 per-face 几何双保（卡面 16 / 面板面 20）', async ({
+// #1006 R5 实审裁决（用户 2026-10-08，与 L1 裁决①一致）：row-flush 16px
+// 消费点覆写收编 registry Badge 默认 20px——两尺寸不并存，卡面/面板面
+// 单档 20（旧「卡面 16 / 面板面 20」双保契约由裁决作废，本 spec 重钉）。
+test('tag-chip 落点：落在 registry Badge 上，别名类保留、几何单档 20px 正本', async ({
   page,
 }) => {
   await page.goto('/app?scenario=board-tags');
   const chip = page.locator('.todo-card-tag').first();
   await expect(chip).toHaveAttribute('data-slot', 'badge');
   await expect(chip).toHaveClass(/tag-chip/);
-  // 卡面 = row-flush 档 16px（todo-card.tsx per-face 覆写，与 16px row1 齐平）
+  // 卡面 = registry Badge h-5 默认档 20px（#980 前提④几何 registry 默认赢）
   const h = await chip.evaluate((el) => el.getBoundingClientRect().height);
-  expect(h).toBe(16);
+  expect(h).toBe(20);
 
-  // 类型筛选弹层的选中行是第二个消费面（board/tag-filter.tsx）——容器更高，
-  // 走 20px 正本（components/ui/tag-chip.tsx 的 Badge h-5 档）
+  // 类型筛选弹层的选中行是第二个消费面（board/tag-filter.tsx）——同走
+  // 20px 正本（components/ui/tag-chip.tsx 的 Badge h-5 档），单档无例外
   await page.locator('.board-type-filter').click();
   const option = page.locator('.type-filter-option[data-tag="bug"]');
   await option.click();

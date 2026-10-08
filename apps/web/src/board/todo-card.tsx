@@ -90,20 +90,18 @@ export function TodoCard({
       data-todo-id={todo.id}
       className="todo-card relative w-full gap-0 px-[13.5px] pt-[9.5px] pb-[11.5px] select-none"
     >
-      <div className="todo-card-row1 flex h-4 items-center">
+      <div className="todo-card-row1 flex min-h-4 items-center">
         <ProjectAvatar char={chipInitial} />
         <span className="todo-project-name ml-1 truncate text-[11px] leading-4 text-muted-foreground">
           {chipName}
         </span>
-        {/* #445 卡片标签 chip：首行项目名之后（身份行语义位）。卡面走
-            row-flush 档 16px（h-4/leading-4/px-1.5 逐组覆写 TagChip 的
-            20px 正本——身份行三件 mark 16 / 名字 11-16 / chip 16 齐平，
-            pill 不再溢出行盒做卡上最重的墨；正本 20px 保留给详情 meta、
-            项目 issues、筛选面板三个容器更高的面）。row1 定高 flex，chip
-            flex-none 只吃项目名的 truncate 余量。todo-card-tag = e2e 别名。 */}
-        {tag != null && (
-          <TagChip tag={tag} className="todo-card-tag ml-1 flex-none h-4 px-1.5 leading-4" />
-        )}
+        {/* #445 卡片标签 chip：首行项目名之后（身份行语义位）。#1006 R5
+            实审裁决（用户 2026-10-08，与 L1 裁决①一致）：row-flush 16px
+            消费点覆写收编 registry Badge 默认 20px——两尺寸不并存（#980
+            前提④几何 registry 默认赢）。行盒 h-4 → min-h-4：无 chip 卡
+            保持 16px 节奏，有 chip 卡随行内容长到 20（回流由本域探针
+            重钉）。todo-card-tag = e2e 别名。 */}
+        {tag != null && <TagChip tag={tag} className="todo-card-tag ml-1 flex-none" />}
         <span className="todo-card-seq mr-[13px] ml-auto flex-none text-[11px] leading-4 text-muted-foreground/70">
           #{todo.seqNum}
         </span>
