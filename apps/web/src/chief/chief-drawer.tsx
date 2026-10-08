@@ -709,12 +709,10 @@ export function ChiefDrawer({
               {!chief.bound && (
                 <div className="mx-[17px] flex h-[54px] items-center rounded-none bg-(--secondary) pr-3 pl-5 text-[13px] text-(--text-secondary)">
                   <span>{t('请先为总管选择一个 Agent。')}</span>
-                  {/* XMON-23 收编：brand 档 = A3 primary 等价位（--card-button
-                  实底 + on-accent 墨）。中和件对齐 A6 实测形（50×26、12px 字、
+                  {/* XMON-23 收编：default 档 = A3 primary 等价位。中和件对齐 A6 实测形（50×26、12px 字、
                   8px 内边距、8 圆角、400 字重）：h-[26px]/px-2/rounded-md/
                   border-0/font-normal + 既有 inline style；active 位移中和。 */}
                   <Button
-                    variant="brand"
                     className="h-[26px] cursor-pointer rounded-md border-0 px-2 font-normal active:not-aria-[haspopup]:translate-y-0"
                     style={{ width: 50, fontSize: 12 }}
                     onClick={onSettings}
@@ -816,6 +814,7 @@ export function ChiefDrawer({
                           ChiefUserSolid 通用人形字形是全站最后一个漏网点。 */}
                           <span className={AVATAR_IMG_CLS}>
                             <SeededAvatar
+                              className="size-6"
                               name={user.displayName}
                               src={user.avatarUrl}
                               fallback="/avatar-user.png"
@@ -895,6 +894,7 @@ export function ChiefDrawer({
                           {chief.bound && chief.agent ? (
                             <span className={AVATAR_IMG_CLS}>
                               <SeededAvatar
+                                className="size-6"
                                 name={chief.agent.displayName}
                                 src={chief.agent.avatarUrl}
                                 fallback="/avatar-robot-1.svg"
@@ -939,6 +939,7 @@ export function ChiefDrawer({
                           {chief.bound && chief.agent ? (
                             <span className={AVATAR_IMG_CLS}>
                               <SeededAvatar
+                                className="size-6"
                                 name={chief.agent.displayName}
                                 src={chief.agent.avatarUrl}
                                 fallback="/avatar-robot-1.svg"
@@ -1342,7 +1343,7 @@ export function ChiefDrawer({
             </div>
             {/* #615 返工：恢复钮确认层（破坏性：截断锚后消息并以锚重发）。壳与
             按钮档复用 chief-agent-dialog 同族配方（#950 后 = §5.4 容器
-            utility + outline/brand 件正典 + px-3/text-[13px] 内联档）。
+            utility + outline/default 件正典 + px-3/text-[13px] 内联档）。
             fixture 面 id 缺省 = accept 律关窗零请求。 */}
             <DialogShell
               title={t('恢复到此处')}
@@ -1359,7 +1360,6 @@ export function ChiefDrawer({
                       {t('取消')}
                     </Button>
                     <Button
-                      variant="brand"
                       className="px-3 text-[13px]"
                       onClick={() => {
                         const anchor = rewindConfirm;

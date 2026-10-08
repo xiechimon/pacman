@@ -9,7 +9,7 @@
 // fixture = scenario projectNames / canon default), selection backfills the
 // chip and rides the submit's projectId（rememberProject 面另落一份
 // localStorage 记忆，见下 XMON-87 段）。
-// A3-overlays 收编：footer 双钮 = components/ui/Button（ghost / brand，弹窗
+// A3-overlays 收编：footer 双钮 = components/ui/Button（ghost / default，弹窗
 // 语义 default 档 32px，r7 实测 30 归一到原语三档）。
 //
 // M7 #310 附件 wire（r9 §3.1）：
@@ -941,7 +941,6 @@ export function NewTaskDialog({
                 {t('保存')}
               </Button>
               <Button
-                variant="brand"
                 size="default"
                 className="new-task-start"
                 disabled={spec.trim() === ''}
@@ -951,13 +950,12 @@ export function NewTaskDialog({
                 {/* XMON-95 界面标识：常亮按键角标（kbd-hint 的 hover chip 是
                     另一面，这里要「看得到」，故静息可见）。落在 kbd.tsx 原语
                     上（COMPONENTS.md「文档正文里的按键角标用 kbd.tsx」），只把
-                    registry 的尺寸/配色档逐项改写到本面：本钮是 brand 档——实底
-                    品牌紫 + 主题字（--card-button/--text-on-accent），故边界/墨取
-                    白色系而非 border-border/muted-foreground。
+                    registry 的尺寸/配色档逐项改写到本面：本钮是 default 档（实底 + 主题字），故边界/墨走
+currentColor 系而非 border-border/muted-foreground。
                     aria-hidden：角标是视觉提示，按钮的可及名仍是文字本身。 */}
                 <Kbd
                   aria-hidden="true"
-                  className="ml-1.5 h-auto min-w-0 rounded-[3px] border border-white/35 bg-transparent px-[3px] py-px text-[11px] leading-4 font-normal text-white/90"
+                  className="ml-1.5 h-auto min-w-0 rounded-[3px] border border-current/35 bg-transparent px-[3px] py-px text-[11px] leading-4 font-normal text-current/90"
                 >
                   {START_SHORTCUT_LABEL}
                 </Kbd>

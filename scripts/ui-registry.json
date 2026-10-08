@@ -1,7 +1,7 @@
 {
   "frozenFrom": {
-    "sha": "636cdb468dcf1470ee71d65b8411f407adffd4fb",
-    "date": "2026-10-07"
+    "sha": "7a4434e39260b20a3f4d92a4d7778527c7f06099",
+    "date": "2026-10-08"
   },
   "scope": "apps/web/src/components/ui (#989, map #980). kind registry = shadcn base-nova registry item (upstreamItem names it; status pristine = hash must equal the vendored snapshot in scripts/ui-upstream-snapshots.json, deviated = registered divergence with reason). kind adapter = local composition over registry items or a repo-specific primitive (reason required). hash = sha256 over the comment-stripped, line-normalized file content (scripts/ui-normalize.mjs); comment-only edits do not move it, code edits always do. Scope is exactly this directory — domain-directory skins are ui-debt-gate/ui-drift-gate territory.",
   "files": {
@@ -19,9 +19,8 @@
     "avatar.tsx": {
       "kind": "registry",
       "upstreamItem": "avatar",
-      "status": "deviated",
-      "reason": "XMON-14: Root ::after ring removed (it intercepts elementFromPoint on display:contents hosts — avatar-dicebear/user-menu-trigger specs measured full-page click blocking); AvatarImage skin classes removed (size/radius owned by the per-face geometry canon).",
-      "hash": "3d594d88c974cf1498911d4dcd37447aeafba20ff7f5302b3b8983bb3fa11bbe"
+      "status": "pristine",
+      "hash": "4cdafa5a8e9417bae6ce08841f96fb7fa6b1a70ba6a4c83f0fd5a20dda0b3479"
     },
     "badge.tsx": {
       "kind": "registry",
@@ -33,8 +32,8 @@
       "kind": "registry",
       "upstreamItem": "button",
       "status": "deviated",
-      "reason": "#414/#425/#423: focus ring follows repo canon #388 (2px solid --focus-ring) instead of the upstream grey ring; transition list narrowed (transition-all swallows outline-color into the transition start value, probe #15); brand variant added (--card-button/--text-on-accent, hover brightness-[1.07] per #791, disabled --spot-disabled); type=button default + data-variant/data-size kept as the observable contract (#411).",
-      "hash": "0772d6b74646e73c1f72029b440b1466ff50ccc61b12f43fd64c4a5f65d11180"
+      "reason": "#411/#425 semantic mapping, zero skin: type=button default (implicit-submit guard, repo-wide ui/button law) + data-variant/data-size pass-through (the observable contract e2e material pins assert). Focus-ring, transition-list and brand-variant deviations retired per #982/#991: official ring form restored, brand semantics live in the token layer.",
+      "hash": "1df2d8037bd82fe26d910b9d83c1f477fed6926f8138938614c5b5ba8204ef4a"
     },
     "card.tsx": {
       "kind": "registry",
@@ -46,8 +45,8 @@
       "kind": "registry",
       "upstreamItem": "checkbox",
       "status": "deviated",
-      "reason": "XMON-75/XMON-72/#690/#789/#952: V2 skeleton with hand-built motion and tri-state support; indicator reworked — 16px square tile on the Root (radius 0, --card-button checked fill, contrast-driven check color), checkbox.css retired into on-component utilities.",
-      "hash": "2df4753c5d7e88cc3e17dce6e499d9a8c6fab61aa5536609ceb324843f97df73"
+      "reason": "#952 tri-state semantic mapping, zero skin: Indicator renders MinusIcon when indeterminate — the upstream mixed state reuses the check glyph, losing the partial-vs-full selection distinction the board filter select-all row relies on (#982: real functional gaps stay, skin goes). Hand-built V2 skin and motion retired per #982/#991; geometry/color = upstream verbatim.",
+      "hash": "61fd728ca5f894124652f299e7d3545bd3c902835383985cde025b1a87b7d14d"
     },
     "dialog-shell.tsx": {
       "kind": "adapter",
@@ -58,14 +57,14 @@
       "kind": "registry",
       "upstreamItem": "dialog",
       "status": "pristine",
-      "hash": "3e95fea28aebeea5550a05798e3814aefcb73925e13a73037d63b72dca3eea04"
+      "hash": "286d2087b0194b82446d417b94d7038648084447dd6ac68e85238ffecdf51fe4"
     },
     "dropdown-menu.tsx": {
       "kind": "registry",
       "upstreamItem": "dropdown-menu",
       "status": "deviated",
-      "reason": "#454 B1 shell adoption; #733 single z ladder (z-50 → z-(--z-dialog)); #805 V2 overlay motion (scale-fade zoom-98 + ease-out replaces slide-in); anchor prop exposed for repo call-site positioning; IconPlaceholders mapped to the repo icons system.",
-      "hash": "7c8f283cb1519119864e3f863437d4783f1465c41dd2c81b140b6e9da9c44c39"
+      "reason": "#733 single z ladder (z-50 → z-(--z-dialog), a repo overlay-architecture slot, not skin); #454 anchor prop exposed for call-site positioning (project-new-page, 1 consumer). Icon seam retired to lucide per the components.json iconLibrary contract (#982); #805 scale-fade motion retired to the upstream default (#991 Q9: motion is part of the base-nova form).",
+      "hash": "2f68fd9c04017df9d454605033627e1197b0f9d33235a1cf347c45153811ab72"
     },
     "empty.tsx": {
       "kind": "registry",
@@ -73,17 +72,28 @@
       "status": "pristine",
       "hash": "e20abe2b6196d066a2248618708ce867c42d2595eeb5352f055e4f4237787393"
     },
+    "field.tsx": {
+      "kind": "registry",
+      "upstreamItem": "field",
+      "status": "pristine",
+      "hash": "1d0df9a94372f632929cd3d46e846d15a4d8963c378a6085970a029db6641adc"
+    },
     "floating-shell.tsx": {
       "kind": "adapter",
       "reason": "#425 B1: shared base for the anchored floating family (plan-dropdown, chip-popover, more-menu, user menu, skills sort, chief model select, mention-picker) over non-modal Dialog mechanics; Esc via the Base UI layer stack.",
       "hash": "be2d086c4863c502e22323b2d5844e0499750eedd0848ebd3388d236a3feeafd"
     },
+    "input-group.tsx": {
+      "kind": "registry",
+      "upstreamItem": "input-group",
+      "status": "pristine",
+      "hash": "b1b9a9930e82825c1408f94e2c74b81d093d0d543203c461f5d0eca8b42cd0cb"
+    },
     "input.tsx": {
       "kind": "registry",
       "upstreamItem": "input",
-      "status": "deviated",
-      "reason": "#852: rounded-lg → rounded-none (Base UI official square language; canon table §2.6-6).",
-      "hash": "c9d7ea1fb1dbcb40ac636fcb31baa9c736470e1fa0afcb196e004a784506f944"
+      "status": "pristine",
+      "hash": "616200252ff6fd0667c427176016d55928d56f73b5e5830706820cf9828418bf"
     },
     "kbd-hint.tsx": {
       "kind": "adapter",
@@ -96,6 +106,12 @@
       "status": "pristine",
       "hash": "859f588805884b92d3a81ae250443fc87702c6a0b018c4dd3f1a4d4fd16e09d7"
     },
+    "label.tsx": {
+      "kind": "registry",
+      "upstreamItem": "label",
+      "status": "pristine",
+      "hash": "9329c8768cc5a156f39bc2dddb54cc67f32d88fdacd53cefa6c3601c8fa1c99c"
+    },
     "panel.tsx": {
       "kind": "adapter",
       "reason": "Resting content container with its own skin tier; Card stays a pure layout shell so the upstream re-pull conflict surface (#414/#423/#425 deviations) does not double.",
@@ -105,20 +121,26 @@
       "kind": "registry",
       "upstreamItem": "popover",
       "status": "deviated",
-      "reason": "#733 single z ladder (z-50 → z-(--z-dialog)); #805 V2 overlay motion (zoom-98 + ease-out, slide-in classes dropped).",
-      "hash": "4018b273d63587a1eadea44abfb75528e3c862b2be2ac93f5b25bd09a2011212"
+      "reason": "#733 single z ladder (z-50 → z-(--z-dialog), a repo overlay-architecture slot, not skin); #805 scale-fade motion retired to the upstream default (#991 Q9: motion is part of the base-nova form).",
+      "hash": "67acbc37d16288c560eb8187d433c2cbbb767062e99d08705e606ff1689a77e1"
     },
     "seeded-avatar.tsx": {
       "kind": "adapter",
-      "reason": "XMON-14/#387: dicebear Lorelei seeding + fallback-image semantics composed on the registry avatar item; Root set to display:contents so per-face geometry chains stay intact.",
-      "hash": "0b0a9fe774a61f3d46cb2faaba8a8e4c1cf496f529fbb897626a10c0ca31d1d9"
+      "reason": "XMON-14/#387: dicebear Lorelei seeding + fallback-image semantics composed on the registry avatar item; Root is a fixed-size box per the #983 verdict (#1003) — the upstream after: hairline ring needs a real containing block, geometry rides the Root via consumer className.",
+      "hash": "b71176f67b5f70ff0e27e58976c7daa12ee2ccbec3daa604a5169ab6ea5c01e8"
     },
     "select.tsx": {
       "kind": "registry",
       "upstreamItem": "select",
       "status": "deviated",
-      "reason": "XMON-75: anchored-overlay family rework — FloatingShell + ClickCatcher injected in place of the upstream Positioner, options projected through label/meta, icons from the repo icons system.",
+      "reason": "XMON-75: anchored-overlay family rework — FloatingShell + ClickCatcher injected in place of the upstream Positioner, options projected through label/meta, icons from the repo icons system. Retirement to the upstream compound family is #1010 (wave 2, blocked by the #1008 floating-shell retirement).",
       "hash": "5be4e419aaf898ed4eb627012d0a0dd87708e76ae9467013c4e836bfa2a33411"
+    },
+    "separator.tsx": {
+      "kind": "registry",
+      "upstreamItem": "separator",
+      "status": "pristine",
+      "hash": "b53eaa272d315cc6ec4cc26eaaea96282c177b0466e923e5d703a0edcc6161b0"
     },
     "status-chip.tsx": {
       "kind": "adapter",
@@ -128,16 +150,15 @@
     "switch.tsx": {
       "kind": "registry",
       "upstreamItem": "switch",
-      "status": "deviated",
-      "reason": "#423: thumbClassName added (symmetric with the Root className) so consumer per-face CSS can cancel the Thumb's checked-translate utilities.",
-      "hash": "68e0f76947d960ba8f81ae25cd1735aaddc4d75520f5b38e484e0dac92d8c7d5"
+      "status": "pristine",
+      "hash": "0ce7ad8559ee303391e9c1eb5c7d03d6903878e136ff3da2f45d1d6dec43178e"
     },
     "tabs.tsx": {
       "kind": "registry",
       "upstreamItem": "tabs",
       "status": "deviated",
-      "reason": "#568/XMON-23/#648: segmented + bare variants added, variant plumbed TabsList→TabsTrigger via context (page-tabs-group / chief per-face canon); list classes re-cut per variant.",
-      "hash": "361bc7b389f3fb99f2184d10aa4db574fd253bc3cf41fbe0709996f5ab108fce"
+      "reason": "#644 TabsIndicator zero-chrome pass-through (Base UI writes active-tab geometry into inline custom properties; pill shape carried by consumer CSS) — retention deferred to #1009 chief-face construction (#982 verdict). Segmented/bare handwritten skin variants retired per #991; default/line = the upstream native data-[variant] mechanism.",
+      "hash": "779b8d6eb7967e69f92aab3771ac37073849e3ca328b91a1a80beaffeecd09e5"
     },
     "tag-chip.tsx": {
       "kind": "adapter",
@@ -147,14 +168,20 @@
     "textarea.tsx": {
       "kind": "registry",
       "upstreamItem": "textarea",
-      "status": "deviated",
-      "reason": "#942 canon table §5.3: rounded-lg → rounded-none (Input square-language family; old .dlg-form-textarea radius 0).",
-      "hash": "08de84a7b82452b1a32c14140310f780a28c47f37888cd237ce71f696872540a"
+      "status": "pristine",
+      "hash": "d73dfa9b4ac27a69ac2cc4bd11715da868275ca134e6841879486174c37cd81e"
     },
     "toaster.tsx": {
       "kind": "adapter",
       "reason": "#631: sonner official recipe adapted to the repo theme inversion (MutationObserver on the root class; dark is the :root default) + popover-family token skin, zero new color values.",
       "hash": "dccaf9b6560b47f599ffe01049729d8059e9625234cabefee63eb6863085b25b"
+    },
+    "tooltip.tsx": {
+      "kind": "registry",
+      "upstreamItem": "tooltip",
+      "status": "deviated",
+      "reason": "#733 single z ladder (z-50 → z-(--z-dialog)): the portaled tooltip rides the repo overlay-ladder slot like dropdown-menu/popover — values are identical today, the token keeps the ladder the single z truth.",
+      "hash": "3e8c1afd2c5d630af385dc67bd519000d1ae9c5495016c1112b245a429e07cf9"
     }
   }
 }

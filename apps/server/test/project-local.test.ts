@@ -4,7 +4,7 @@
 // wire 面；kind 优先）。既有 hosted / github 创建面不回归（AC「旧 hosted 不破」）。
 // 失败方式先于实现枚举（仓测试纪律）：本文件即 local 校验的失败场景清单。
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { type LocalErrorReason, PROJECT_LOCAL_ERROR_REASONS } from '@pacman/shared';
@@ -144,6 +144,146 @@ describe('expandHomePath（`~` 展开单源；homeDir 测试注入）', () => {
     expect(expandHomePath('/abs/x', '/home/u')).toBe('/abs/x');
     expect(expandHomePath('rel/x', '/home/u')).toBe('rel/x');
     expect(expandHomePath('~other/x', '/home/u')).toBe('~other/x');
+  });
+});
+
+// —— local 读面（#1030：推翻 spec 12「Files tab 对 local 项目隐藏/禁用」的
+// out-of-scope——目录解析分支 + 闸放行，git 读原语不动）—————————————
+// 失败方式先列（仓测试纪律，本 describe 即失败场景清单）：
+//   F1 可达 local 工作树仓 → tree/file/branches/commits/files 五读面全回
+//      真值；且 HEAD 落在非 main 分支（trunk）照样读——web 端不得硬编码
+//      ref=main（local 仓默认分支任意，这是「无 ref 读 HEAD」设计的根因）
+//   F2 目录消失（多机部署 server 看不见 / 用户已删）→ 404 + reason
+//      not_found——分类降级供 web 分译，不是 500、不是空树
+//   F3 目录被非 git 内容替换 → 404 + reason not_git（同族分类）
+//   F4 repoKind=local 而 localPath 列空（行完整性破）→ 404 显式红，
+//      无 reason（缺物必红，不静默空）
+//   F5 闸不泛化：github 形态仍 404（git-hosting.test.ts 既有钉，不复制）
+describe('local 项目读面——Files tab 开闸（#1030）', () => {
+  // 与 git-hosting.test.ts 同款隔离：防用户 git 配置（gpgsign / credential）
+  // 干扰提交与判定；提交身份固定 env。
+  const READ_GIT_ENV = {
+    GIT_CONFIG_GLOBAL: '/dev/null',
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_AUTHOR_NAME: 'local-read-probe',
+    GIT_AUTHOR_EMAIL: 'probe@localhost',
+    GIT_COMMITTER_NAME: 'local-read-probe',
+    GIT_COMMITTER_EMAIL: 'probe@localhost',
+  };
+
+  /** 带 README 提交的 local 工作树仓；默认分支钉 trunk（非 main——机器
+   * init.defaultBranch 不可依赖，且非 main HEAD 正是 F1 要钉的失败面）。 */
+  async function makeLocalRepo(): Promise<string> {
+    const dir = tempDir('pacman-local-read-');
+    expect((await runGit(['init', '-b', 'trunk', dir], { env: READ_GIT_ENV })).code).toBe(0);
+    writeFileSync(join(dir, 'README.md'), '# local-read-probe\n');
+    for (const args of [
+      ['add', '.'],
+      ['commit', '-m', 'init local probe'],
+    ] as string[][]) {
+      expect((await runGit(args, { cwd: dir, env: READ_GIT_ENV })).code, args.join(' ')).toBe(0);
+    }
+    return dir;
+  }
+
+  async function createLocalProject(repo: string): Promise<string> {
+    const r = await postCreate({ name: 'p-read-probe', kind: 'local', localPath: repo });
+    expect(r.status).toBe(201);
+    return String(r.body.id);
+  }
+
+  test('F1 可达仓：五读面全回真值；HEAD 在非 main 分支照样读', async () => {
+    const repo = await makeLocalRepo();
+    const id = await createLocalProject(repo);
+
+    // tree（无 ref → HEAD）：读回工作树 HEAD 的树
+    const tree = (await (await req(s.app, 'GET', `/api/projects/${id}/tree`)).json()) as {
+      ref: string;
+      commit: string;
+      entries: { name: string; path: string; type: string; size: number }[];
+    };
+    expect(tree.ref).toBe('HEAD');
+    expect(tree.commit).toMatch(/^[0-9a-f]{40}$/);
+    expect(tree.entries).toContainEqual({
+      name: 'README.md',
+      path: 'README.md',
+      type: 'blob',
+      size: Buffer.byteLength('# local-read-probe\n'),
+    });
+
+    // file（无 ref → HEAD）：内容字节读回
+    const file = (await (
+      await req(s.app, 'GET', `/api/projects/${id}/file?path=README.md`)
+    ).json()) as {
+      encoding: string;
+      content: string;
+      size: number;
+    };
+    expect(file.encoding).toBe('utf-8');
+    expect(file.content).toBe('# local-read-probe\n');
+    expect(file.size).toBe(Buffer.byteLength('# local-read-probe\n'));
+
+    // branches：工作树 HEAD 所在分支（symbolic-ref 面）
+    const branches = (await (await req(s.app, 'GET', `/api/projects/${id}/branches`)).json()) as {
+      defaultBranch: string | null;
+      branches: { name: string; isDefault: boolean }[];
+    };
+    expect(branches.defaultBranch).toBe('trunk');
+    expect(branches.branches).toEqual([{ name: 'trunk', isDefault: true }]);
+
+    // commits：默认分支历史（新→旧）
+    const commits = (await (await req(s.app, 'GET', `/api/projects/${id}/commits`)).json()) as {
+      ref: string;
+      commits: { message: string; authorName: string }[];
+    };
+    expect(commits.ref).toBe('trunk');
+    expect(commits.commits).toHaveLength(1);
+    expect(commits.commits[0]?.message).toBe('init local probe');
+    expect(commits.commits[0]?.authorName).toBe('local-read-probe');
+
+    // files（@ 候选全递归面）
+    const files = (await (await req(s.app, 'GET', `/api/projects/${id}/files`)).json()) as {
+      files: { path: string }[];
+    };
+    expect(files.files.map((f) => f.path)).toContain('README.md');
+  });
+
+  test('F2 目录消失 → 404 + reason=not_found（分类降级；commits 同闸同形）', async () => {
+    const repo = await makeLocalRepo();
+    const id = await createLocalProject(repo);
+    rmSync(repo, { recursive: true, force: true });
+    const res = await req(s.app, 'GET', `/api/projects/${id}/tree`);
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error?: string; reason?: LocalErrorReason };
+    expect(body.reason).toBe<LocalErrorReason>('not_found');
+    const commits = await req(s.app, 'GET', `/api/projects/${id}/commits`);
+    expect(commits.status).toBe(404);
+    expect(((await commits.json()) as { reason?: LocalErrorReason }).reason).toBe<LocalErrorReason>(
+      'not_found',
+    );
+  });
+
+  test('F3 目录被非 git 内容替换 → 404 + reason=not_git', async () => {
+    const repo = await makeLocalRepo();
+    const id = await createLocalProject(repo);
+    rmSync(repo, { recursive: true, force: true });
+    mkdirSync(repo, { recursive: true });
+    const res = await req(s.app, 'GET', `/api/projects/${id}/tree`);
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as { reason?: LocalErrorReason }).reason).toBe<LocalErrorReason>(
+      'not_git',
+    );
+  });
+
+  test('F4 repoKind=local 而 localPath 列空 → 404 显式红（无 reason）', async () => {
+    const repo = await makeLocalRepo();
+    const id = await createLocalProject(repo);
+    s.db.update(project).set({ localPath: null }).where(eq(project.id, id)).run();
+    const res = await req(s.app, 'GET', `/api/projects/${id}/tree`);
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error?: string; reason?: string };
+    expect(String(body.error)).toContain('local repo');
+    expect(body.reason).toBeUndefined();
   });
 });
 

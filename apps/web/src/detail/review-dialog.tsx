@@ -135,11 +135,10 @@ export function ReviewDialog({
             >
               {t('取消')}
             </Button>
-            {/* 开始审核 = brand（老 primary/compact h28 px12 @13px 漆面逐值
+            {/* 开始审核 = default（老 primary/compact h28 px12 @13px 几何逐值
                 utilities，XMON-24 原样）；review-start 别名随 #951 退役
                 （其规则在 overlays.css 本就是空壳，几何全在这串 utility）。 */}
             <Button
-              variant="brand"
               className="h-7 border-none px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
               onClick={submit}
               disabled={selected === ''}

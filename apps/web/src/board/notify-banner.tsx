@@ -110,7 +110,7 @@ export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
           {t(NOTIFICATION_BANNER_COPY.body)}
         </div>
       </div>
-      {/* spec16 #414 试点片收口（#561）：切 components/ui Button——brand 档
+      {/* spec16 #414 试点片收口（#561）：切 components/ui Button——default 档
           = 轨 A3 primary 等价迁移位（同 --card-button 实底），sm = compact
           28px 档。像素纪律（零视觉重钉）：r2 实测 per-face 值（12px 内距 /
           13px 字号 / 400 字重）按 todo-card 口径以工具类钉回。件本体 B 配方
@@ -119,7 +119,6 @@ export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
           是 e2e(notify-banner.spec) 钉死的选择器别名；ml-auto/flex-none 的
           布局差值原住 board.css，#943 随文件清零迁到件上。 */}
       <Button
-        variant="brand"
         size="sm"
         className="board-notify-banner-action ml-auto flex-none px-3 text-[13px] font-normal"
         onClick={onEnable}

@@ -1,6 +1,6 @@
 // 审核关口打回弹层（#701 B-C12）：更多菜单「请求修改」的显式打回入口——
 // 审核闸的「人看」半边必须能说不。形态随 dialog 家族律（DialogShell 448 +
-// footer ghost 取消 / brand 确认，AcceptDialog 同款先例）；反馈必填——它是
+// footer ghost 取消 / default 确认，AcceptDialog 同款先例）；反馈必填——它是
 // 重规划轮的工作指令，空稿不放行（restart「空消息不成发送」同律）。提交走
 // 服务端动作面 POST /builds/{id}/steps {action:"revision"}（review→planning
 // 边与 #330 自动回流共用）；被拒（409 竞态）弹层不关、原因显在输入行下方
@@ -54,7 +54,6 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
               {t('取消')}
             </Button>
             <Button
-              variant="brand"
               className="h-7 border-none px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
               disabled={trimmed === ''}
               onClick={() => onConfirm?.(trimmed)}

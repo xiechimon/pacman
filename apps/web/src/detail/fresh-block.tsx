@@ -93,10 +93,9 @@ export function FreshBlock({ todo, tags, action, onAction, hasSpec }: FreshBlock
       {action != null && onAction != null && (
         <div className="fresh-actions mt-8 flex items-center gap-3">
           {/* XMON-24：老 primary/standard（h32 px12 r8 @13px，.fresh-start
-              无本面规则）逐值搬 brand utilities；border-0 去掉底座 1px
+              无本面规则）逐值搬 default 档 utilities；border-0 去掉底座 1px
               透明描边（配 bg-clip-padding 会在漆边留一圈未paint环）。 */}
           <Button
-            variant="brand"
             className="fresh-start border-0 px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
             onClick={onAction}
           >

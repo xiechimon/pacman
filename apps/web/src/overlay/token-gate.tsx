@@ -9,7 +9,7 @@
 // 类名别名（token-gate*）原样保留 = e2e 定位锚（token-gate.spec.ts，#411
 // 政策 1）。面板虽由 Card 承载，表单语义（form + type=submit，回车即提交）
 // 仍由内层 form 原样承接。
-// 输入与提交走仓内 shadcn 件（ui/Input / ui/Button brand 档）。两件的 per-face
+// 输入与提交走仓内 shadcn 件（ui/Input / ui/Button default 档）。两件的 per-face
 // 值以工具类钉回轨 A3 实测档——输入 36px 盒 / 8px 圆角 / --card-border 描边 /
 // --surface 底，提交 32px 高 / 8px 圆角 / 13px 常规字重 / --card-button 实底：
 // 铺开是纯结构换件，per-face 数值仍是几何正本（#411 政策 4），故不取 shadcn
@@ -100,7 +100,6 @@ export function TokenGate() {
           )}
           <Button
             type="submit"
-            variant="brand"
             className="token-gate-submit border-0 rounded-md px-3 text-[13px] font-normal"
             disabled={probing || value.trim() === ''}
           >
