@@ -3,8 +3,9 @@
 // 1. 仓库菜单两行「GitHub 仓库」「本地文件夹」,hosted 行创建入口消失
 // 2. 名称回填:local = basename(路径),github = repo 段;手改后不覆盖,清空
 //    后恢复;两形态选态换输入面 + swap 重开菜单
-// 3. focus-visible 收编:项目名输入框 focus = outline none + spot 系边框 +
-//    1px ring(共享 input 原语配方,吃 --focus-ring),非 UA 默认蓝 —— 截图证据
+// 3. focus-visible 收编(#1007 重钉):项目名输入框 focus = outline none +
+//    registry Input 件默认环(focus-visible:border-ring + ring-3 ring-ring/50,
+//    #982 判决回官方形;旧 spot 系边框 + 1px ring 配方随 L4 原型退役) —— 截图证据
 // 4. 本地路径校验错误行:不存在 → 「路径不存在」/ 非 git → 「不是 git 仓库」
 //    (--danger 红),阻止导航;编辑路径即撤陈旧错误
 // 5. 提交闸:local 空路径 = 创建钮 disabled
@@ -42,10 +43,10 @@ const WEB = `http://127.0.0.1:${stack.webPort}`;
 const DB_PATH = join(stack.homeDir, 'server', 'server.db');
 const NEW_PAGE = `${WEB}/app/project/new`;
 
-/** shadcn.css 值正本:探针跑暗色, --focus-ring 暗 #cba6f7(spot 系) /
+/** shadcn.css 值正本:探针跑暗色, --ring 暗 #938e8a(registry 环槽) /
  *  --danger 并流 --destructive 暗 #e05a5a(#839 起吃 destructive,旧 #ca3a32 作废)。 */
-const FOCUS_RING = 'rgb(203, 166, 247)';
-const DANGER = 'rgb(224, 90, 90)';
+const FOCUS_RING = 'rgb(147, 142, 138)';
+const DANGER = 'rgb(255, 171, 183)'; // --destructive dark(#1002 色板翻值后)
 
 const now = new Date();
 const pad = (n) => String(n).padStart(2, '0');
@@ -120,18 +121,20 @@ const gotoNew = async () => {
   await page.goto(NEW_PAGE);
   await page.waitForSelector('#prj-new-name', { timeout: 20_000 });
 };
+const menu = () => page.getByRole('menu', { name: '仓库' });
 const openMenu = async () => {
-  // 菜单已开 = 直接选行(触发钮被 ClickCatcher 罩住,再点是 30s 超时死路)
-  if (await page.locator('.prj-new-repo-menu').isVisible()) return;
-  const swap = page.locator('.prj-new-repo-swap');
+  // #1007 载体迁:.prj-new-repo-menu* 别名 #946 已退役,探针改语义载体
+  // (role=menu / menuitemradio);开合归 Base UI 原语,无 ClickCatcher 罩面。
+  if (await menu().isVisible()) return;
+  const swap = page.locator('button[aria-label="选择仓库"]');
   if (await swap.isVisible()) await swap.click();
   else await page.locator('#prj-new-repo').click();
-  await page.waitForSelector('.prj-new-repo-menu', { timeout: 5000 });
+  await menu().waitFor({ timeout: 5000 });
 };
 const selectRow = async (label) => {
   await openMenu();
-  await page.locator('.prj-new-repo-menu-row', { hasText: label }).click();
-  await page.waitForSelector('.prj-new-repo-menu', { state: 'hidden', timeout: 5000 });
+  await menu().getByRole('menuitemradio', { name: label }).click();
+  await menu().waitFor({ state: 'hidden', timeout: 5000 });
 };
 const waitProjectUrl = () =>
   page.waitForURL(
@@ -139,13 +142,13 @@ const waitProjectUrl = () =>
     { timeout: 15_000 },
   );
 const nameValue = () => page.locator('#prj-new-name').inputValue();
-const errorRow = page.locator('.prj-new-error');
+const errorRow = page.getByRole('alert');
 
 try {
   // 1. 菜单两行,hosted 创建入口消失
   await gotoNew();
   await openMenu();
-  const rows = page.locator('.prj-new-repo-menu-row');
+  const rows = menu().getByRole('menuitemradio');
   const rowCount = await rows.count();
   const rowTexts = await rows.allTextContents();
   payloads.menuRows = rowTexts;
@@ -187,7 +190,7 @@ try {
     (await page.locator('input[aria-label="本地文件夹"]').count()) === 0,
     '切到 GitHub 形态:本地路径输入面退场(无陈旧态骑提交)',
   );
-  await page.locator('.prj-new-gh-link', { hasText: '手动输入' }).click();
+  await page.getByRole('button', { name: '手动输入 owner/repo' }).click();
   const ghInput = page.locator('input[aria-label="GitHub 仓库"]');
   await ghInput.fill('xiechimon/pacman');
   check(
@@ -195,8 +198,10 @@ try {
     `github 回填:项目名 = repo 段(实际「${await nameValue()}」)`,
   );
 
-  // 5. focus-visible 收编:spot 系边框 + 1px ring,非 UA 蓝(AC 截图)
+  // 5. focus-visible 收编:registry 环(border-ring + ring-3),非 UA 蓝(AC 截图)。
+  //    border-color 走 transition-colors(150ms)——读值前等过渡落定,shadow 不过渡。
   await page.locator('#prj-new-name').click();
+  await page.waitForTimeout(300);
   const focus = await page.locator('#prj-new-name').evaluate((el) => {
     const s = getComputedStyle(el);
     return { outline: s.outlineStyle, border: s.borderTopColor, shadow: s.boxShadow };
@@ -205,25 +210,25 @@ try {
   check(
     focus.outline === 'none' &&
       focus.border === FOCUS_RING &&
-      focus.shadow.includes(FOCUS_RING) &&
-      focus.shadow.includes('1px'),
-    `名称输入框 focus:outline none + spot 系边框 + 1px ring(实际 ${JSON.stringify(focus)})`,
+      focus.shadow.includes('3px') &&
+      !focus.shadow.includes('rgb(0, 95, 204)'),
+    `名称输入框 focus:outline none + registry 环(border-ring + ring-3,实际 ${JSON.stringify(focus)})`,
   );
-  await shot('03-focus-ring-spot.png');
+  await shot('03-focus-ring-registry.png');
 
   // 6. 提交闸:local 空路径 = disabled
   await gotoNew();
   await page.locator('#prj-new-name').fill('Gated');
   await selectRow('本地文件夹');
   check(
-    await page.locator('.prj-new-submit').isDisabled(),
+    await page.getByRole('button', { name: '创建项目' }).isDisabled(),
     '提交闸:local 形态空路径 = 创建钮 disabled',
   );
 
   // 7. 错误行:不存在 → 路径不存在(红),阻止导航;编辑即撤
   await page.locator('input[aria-label="本地文件夹"]').fill(missingPath);
-  await page.locator('.prj-new-submit').click();
-  await page.waitForSelector('.prj-new-error', { timeout: 8000 });
+  await page.getByRole('button', { name: '创建项目' }).click();
+  await errorRow.waitFor({ state: 'visible', timeout: 8000 });
   const errText1 = await errorRow.textContent();
   const errColor = await errorRow.evaluate((el) => getComputedStyle(el).color);
   payloads.errorNotFound = { errText1, errColor, url: page.url() };
@@ -237,8 +242,8 @@ try {
   check((await errorRow.count()) === 0, '编辑路径后陈旧错误行即撤');
 
   // 8. 错误行:非 git → 不是 git 仓库
-  await page.locator('.prj-new-submit').click();
-  await page.waitForSelector('.prj-new-error', { timeout: 8000 });
+  await page.getByRole('button', { name: '创建项目' }).click();
+  await errorRow.waitFor({ state: 'visible', timeout: 8000 });
   const errText2 = await errorRow.textContent();
   payloads.errorNotGit = { errText2, url: page.url() };
   check(errText2 === '不是 git 仓库', `400 非 git 目录 → 错误行「不是 git 仓库」(实际「${errText2}」)`);
@@ -252,7 +257,7 @@ try {
     (await nameValue()) === repoBase,
     `成功链前置:名称自动回填「${repoBase}」`,
   );
-  await page.locator('.prj-new-submit').click();
+  await page.getByRole('button', { name: '创建项目' }).click();
   await waitProjectUrl();
   await shot('06-created-local-project.png');
   const localUrl = page.url();
@@ -277,9 +282,9 @@ try {
   // 10. github 成功链(同 4:未认证面 input 在手动兜底链接后,#361 门控)
   await gotoNew();
   await selectRow('GitHub 仓库');
-  await page.locator('.prj-new-gh-link', { hasText: '手动输入' }).click();
+  await page.getByRole('button', { name: '手动输入 owner/repo' }).click();
   await page.locator('input[aria-label="GitHub 仓库"]').fill('xiechimon/pacman');
-  await page.locator('.prj-new-submit').click();
+  await page.getByRole('button', { name: '创建项目' }).click();
   await waitProjectUrl();
   const listB = await getJson(`${API}/api/projects`);
   const ghRow = listB.find((p) => p.name === 'pacman');
@@ -293,7 +298,7 @@ try {
   await gotoNew();
   const untouchedName = `verify-untouched-${Date.now() % 100000}`;
   await page.locator('#prj-new-name').fill(untouchedName);
-  await page.locator('.prj-new-submit').click();
+  await page.getByRole('button', { name: '创建项目' }).click();
   await waitProjectUrl();
   const listC = await getJson(`${API}/api/projects`);
   const bareRow = listC.find((p) => p.name === untouchedName);

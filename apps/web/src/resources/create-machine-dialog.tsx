@@ -55,7 +55,10 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
   const apiKeyCmd = `${BRAND.cliCommandName} start --api-key <key> --team ${teamId ?? '<teamId>'}`;
   return (
     <DialogShell title={t('添加机器')} open={open} onClose={onClose}>
-      <div className="flex flex-col gap-3 p-4">
+      {/* #1006（dialog-shell 零皮化的消费点清理，resources 域代跑一处）：
+          body 外垫随壳 DialogContent 的 registry p-4 退役（双层垫会把最高
+          内容态撑出 #193 封顶滚动区，dialog-viewport machine 面钉）。 */}
+      <div className="flex flex-col gap-3">
         <p className="m-0 text-[13px] leading-5 text-(--text-secondary)">
           {t('有条件时优先使用云主机：笔记本会休眠或断网，云主机常在线，构建更稳定。')}
         </p>

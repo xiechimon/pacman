@@ -109,6 +109,7 @@ node .../scripts/drive-project-new-form.mjs    # 新建项目表单(spec 12/#360
 node .../scripts/probe-github-oauth.mjs        # GitHub 认证 + repo picker(spec 12/#361,github-oauth-picker.md)
 node .../scripts/probe-local-repos.mjs         # local 项目 API 三态(spec 12/#359,local-repo-api.md)
 node .../scripts/drive-1030-local-files.mjs    # local 项目 Files tab 开闸读面+不可达降级(#1030,project-files-local.md;三相位:local 可读/hosted 对照/删仓降级)
+node .../scripts/drive-1007-pages.mjs           # pages 域 live 面(#1007):schedules registry Dialog 真用户路径+设置页 Card 结构面
 node .../scripts/drive-attachments.mjs / drive-branch-sync.mjs / drive-failed-send.mjs / drive-mentions.mjs / drive-tags.mjs  # M7 六功能族(各自 feature 文件)
 ```
 

@@ -31,7 +31,7 @@ test('local 项目：files tab 开闸，FilesPane 渲染（分支 chip/文件行
   await expect(filesTab).toBeEnabled();
   // 分支 chip = fixture branch（trunk），非硬编码 main
   await expect(page.getByText('trunk', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '历史', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '历史', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'README.md', exact: true })).toBeVisible();
   await expect(page.getByText('请选择一个文件查看')).toBeVisible();
   // 旧 disable 占位文案退役（含 tab 钮 disabled 态）
@@ -44,7 +44,7 @@ test('local 项目：文件点击 → 查看器内容；历史 seg → 提交行
   await row.click();
   await expect(row).toHaveAttribute('aria-current', 'true');
   await expect(page.getByText(LOCAL_README_LINE)).toBeVisible();
-  await page.getByRole('button', { name: '历史', exact: true }).click();
+  await page.getByRole('tab', { name: '历史', exact: true }).click();
   await expect(page.getByText('init local-repo')).toBeVisible();
   await expect(page.getByText('local-user')).toBeVisible();
 });
@@ -62,6 +62,6 @@ test('对照面：hosted 项目 files tab 照常（r2-24）', async ({ page }) =
   await page.goto(HOSTED);
   const filesTab = page.getByRole('banner').getByRole('tab', { name: '文件' });
   await expect(filesTab).toBeEnabled();
-  await expect(page.getByRole('button', { name: '历史', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '历史', exact: true })).toBeVisible();
   await expect(page.getByText(OLD_DISABLE_LINE)).toHaveCount(0);
 });
