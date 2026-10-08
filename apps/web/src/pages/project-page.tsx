@@ -8,9 +8,14 @@
 // teamMembersLayout twin), 筛选/排序 open anchored popovers (family law
 // #67/#127) driving client-side filter/sort, and the search box filters
 // by title.
-import type { ProjectFileResponse } from '@pacman/shared';
+import {
+  LOCAL_ERROR_REASON_COPY,
+  type LocalErrorReason,
+  type ProjectFileResponse,
+} from '@pacman/shared';
 import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { ApiError } from '../api/client.js';
 import {
   useGithubConnection,
   useProjectCommits,
@@ -482,11 +487,10 @@ function TasksPane({
           <div className="mt-1 text-xs leading-4 text-(--text-tertiary)">
             {t('创建第一个任务以开始使用。')}
           </div>
-          {/* XMON-25 收编：老 ui/Button primary/compact → brand 变体（等价
+          {/* XMON-25 收编：老 ui/Button primary/compact → default 变体（等价
               迁移位）；compact 几何（28 高/12 内边距/13 字号）与 cursor 下沉
               per-face .prj-tasks-empty-new；size-auto 保 PlusSmall 12px。 */}
           <Button
-            variant="brand"
             aria-label={t('新建任务')}
             className="mt-4 h-7 cursor-pointer gap-1 rounded-none border-none px-3 text-[13px] font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             onClick={onNewTask}
@@ -526,6 +530,7 @@ function TasksPane({
               </span>
               <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--card) after:bg-(--badge-idle) after:content-['']">
                 <SeededAvatar
+                  className="size-5"
                   name={user.displayName}
                   src={user.avatarUrl}
                   fallback="/avatar-user.png"
@@ -551,6 +556,7 @@ function TasksPane({
                 />
                 <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--card) after:bg-(--badge-idle) after:content-['']">
                   <SeededAvatar
+                    className="size-5"
                     name={user.displayName}
                     src={user.avatarUrl}
                     fallback="/avatar-user.png"
@@ -599,26 +605,31 @@ export function ProjectPage() {
   // fixture 面本地新行（board #66 同律）：保存落在客户端集合，页面/侧栏
   // 徽标都吃它；live 面走 mutation + invalidate，不用本地集。
   const [fixtureAdded, setFixtureAdded] = useState<TodoRecord[]>([]);
-  // wireProject 先行（形态门数据源）；tree 仅 hosted 形态发（#704 / B-C1：
-  // github 形态 tree/file/commits 端点族 hosted-only——404 静默 + console 刷屏
-  // 不可接受，不发无谓请求，文件面走诚实降级 + GitHub 外链）。
+  // wireProject 先行（形态门数据源）；tree 对 hosted 与 local 形态发（#1030
+  // 起 local 读面放行，server 侧目录解析分支；github 形态不发——404 静默 +
+  // console 刷屏不可接受，不发无谓请求，文件面走诚实降级 + GitHub 外链）。
+  // local 的 ref 不传（server 落 HEAD）：local 仓默认分支任意，hosted 的
+  // ref='main' 是种子提交恒 main 的既约，不能外推到 local。
   const wireProject = live ? (projectsQ.data ?? []).find((p) => p.id === id) : undefined;
   const hostedRepo = live && wireProject?.repoKind === 'hosted';
+  const localRepo = live && wireProject?.repoKind === 'local';
   const treeQ = useProjectTree(
-    live && hostedRepo ? id : undefined,
-    live && hostedRepo ? 'main' : undefined,
+    live && (hostedRepo || localRepo) ? id : undefined,
+    hostedRepo ? 'main' : undefined,
   );
-  // 历史读面惰性：仅 live + 文件 tab + 历史 seg + 托管形态才发（GitHub
-  // 接入无本地存储面 = tree/file 同族 404，不发无谓请求）。
+  // 历史读面惰性：仅 live + 文件 tab + 历史 seg + 可读形态（hosted/local）才发
+  // （GitHub 接入无本地存储面 = tree/file 同族 404，不发无谓请求）。
   const commitsQ = useProjectCommits(
     live ? id : undefined,
-    live && tab === 'files' && seg === 'history' && wireProject?.repoKind === 'hosted',
+    live && tab === 'files' && seg === 'history' && (hostedRepo || localRepo),
   );
   const project: ProjectContent | undefined = live
     ? wireProject
       ? {
           name: wireProject.name,
-          branch: 'main',
+          // 分支 chip = 实读 ref 回显（hosted='main'、local='HEAD'——tree 载荷
+          // 自带回显，不猜）；tree 未回时退 'main'（hosted 语义不变）。
+          branch: treeQ.data?.ref ?? 'main',
           files: (treeQ.data?.entries ?? []).map((e) => e.name),
           repoName: wireProject.repoName ?? wireProject.githubRepo ?? '',
           hosted: wireProject.repoKind === 'hosted',
@@ -628,9 +639,9 @@ export function ProjectPage() {
         }
       : undefined
     : fixture.project;
-  // local 项目 Files tab 禁用（spec 12 / #362 G2-T2 v1）：文件浏览面读 server
-  // 端裸库（tree/file/commits 端点族 hosted-only），local 形态无该存储面——
-  // 占位 + 一行 disable 文案，详细响应式归后票（spec 12 Out of Scope）。
+  // local 项目 Files tab 开闸（#1030，推翻 spec 12「v1 出局：Files tab 对 local
+  // 禁用」的 out-of-scope）：server 端目录解析已分叉（requireRepoReadDir），
+  // web 按形态发请求。不可达降级见下方 treeQ.isError 分支。
   const isLocalRepo = project?.repoKind === 'local';
   // 文件查看器选中态(#202):存 (projectId, path) 对——路由切换项目时
   // 组件不重挂载,旧项目选中不串场。live 读面点击触发 = 天然惰性;非托管
@@ -641,7 +652,8 @@ export function ProjectPage() {
   const fileQ = useProjectFile(
     live ? id : undefined,
     selectedFile ?? undefined,
-    live ? 'main' : undefined,
+    // ref 同 treeQ 口径：hosted 固定 'main'；local 落 HEAD（默认分支任意）。
+    hostedRepo ? 'main' : undefined,
   );
   const fixtureFileContent =
     !live && selectedFile !== null ? (fixture.project?.fileContents?.[selectedFile] ?? null) : null;
@@ -711,14 +723,25 @@ export function ProjectPage() {
       onNewTask={openNewTask}
       tabs={[
         { id: 'tasks', label: '任务' },
-        { id: 'files', label: '文件', disabled: isLocalRepo },
+        { id: 'files', label: '文件' },
       ]}
       tab={tab}
       onTab={(next) => setTab(next === 'tasks' ? 'tasks' : 'files')}
     >
-      {tab === 'files' && isLocalRepo ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center gap-3 text-[13px] text-(--text-tertiary)">
-          {t('本地仓库项目暂不支持在线浏览文件')}
+      {tab === 'files' && isLocalRepo && treeQ.isError ? (
+        // local 仓不可达降级（#1030）：tree 读失败 = server 看不到 localPath
+        // （多机部署不同机 / 目录已删 / 已非 git 仓）。不渲染 FilesPane——
+        // 空树会被误读成「仓库是空的」，历史面同闸也不再发。分类 reason 走
+        // #386 单源分译；未分类失败（网络/5xx）只出主行。
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 text-[13px] text-(--text-tertiary)">
+          <span>{t('本地仓库当前无法读取。')}</span>
+          {treeQ.error instanceof ApiError &&
+          treeQ.error.reason !== undefined &&
+          treeQ.error.reason in LOCAL_ERROR_REASON_COPY ? (
+            <span className="text-xs">
+              {t(LOCAL_ERROR_REASON_COPY[treeQ.error.reason as LocalErrorReason])}
+            </span>
+          ) : null}
         </div>
       ) : tab === 'files' && isGithubRepoEntry ? (
         <div className="flex min-h-0 flex-1 items-center justify-center gap-3 text-[13px] text-(--text-tertiary)">

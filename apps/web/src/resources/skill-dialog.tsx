@@ -8,7 +8,7 @@
 // 按 status 分译，server 原文作 detail 行，消息子串不作契约）。
 // fixture 面 = accept 律（#148：提交即关），不发请求不读文件。
 // #944 正典表执行（spec/22 §5.3/§5.4）：.dlg-form* 族类 → utility 等值
-// 迁移、裸 button/textarea → Button brand / Textarea 件、Input 摘
+// 迁移、裸 button/textarea → Button default / Textarea 件、Input 摘
 // .dlg-form-input 老类（I3——件已是 components/ui，几何即正典 h-8）。
 // SKILL.md 正文编辑框的 font-mono + min-h-[160px] 是消费面显式 override
 // （textarea.tsx 头注口径）：markdown/YAML 源码编辑要等宽，正文要多行空间
@@ -198,7 +198,7 @@ export function SkillDialog({
       width={560}
       footer={
         <div className="flex flex-col px-4 pb-4">
-          <Button variant="brand" className="w-full" disabled={!submittable} onClick={submit}>
+          <Button className="w-full" disabled={!submittable} onClick={submit}>
             {editing ? t('保存') : t('新建技能')}
           </Button>
         </div>

@@ -77,7 +77,6 @@ export function AcceptDialog({
             {t('取消')}
           </Button>
           <Button
-            variant="brand"
             className={`${ACCEPT_DONE_SIZE} h-7 border-none text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0`}
             disabled={blocked}
             onClick={() => {
@@ -91,14 +90,20 @@ export function AcceptDialog({
       }
     >
       <div className={ACCEPT_ROW}>
-        {/* XMON-72：复选行收口 components/ui/checkbox 原语。改之前 .dlg-accept-check
-            从无隐藏 input 的规则，18px tile 里骑着 Mac 原生复选框、白勾被挤成 0 宽。 */}
-        <Checkbox checked={merge} onCheckedChange={setMerge} label={t('将改动合并到默认分支')}>
+        {/* XMON-72：复选行收口 components/ui/checkbox 原语（#1003 起 = registry
+            同源件，行盒由消费点 label 承载——整行可点走 label 激活转发）。 */}
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
+        <label className="inline-flex cursor-pointer items-center gap-2">
+          <Checkbox
+            checked={merge}
+            onCheckedChange={setMerge}
+            aria-label={t('将改动合并到默认分支')}
+          />
           <span className={ACCEPT_LABEL}>{t('将改动合并到默认分支')}</span>
-        </Checkbox>
+        </label>
       </div>
       {blocked && (
-        // XMON-89 缺项行：禁用态由 brand disabled 档承载，本行只说「缺什么」。
+        // XMON-89 缺项行：禁用态由 default disabled 档承载，本行只说「缺什么」。
         <p className={`${ACCEPT_NOTE_LINE} text-(--text-tertiary)`}>
           {t('缺少「{tools}」授权，无法合并。请在该 Agent 的权限里开启。', {
             tools: (missingTools ?? []).join('、'),

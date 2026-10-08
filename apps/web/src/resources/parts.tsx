@@ -6,7 +6,7 @@
 // 查看文档 link is gone — #307 wontfix, local-first 无文档站).
 // #423 第一片真域收编（#422 裁决 a）：卡片系落 components/ui Card 底座 +
 // 本文件的域内列表行卡组合件（RowCard / GroupCard）；StatusPill 骑 Badge；
-// EmptyState 落 Empty 底座 + components/ui Button（brand 档）。
+// EmptyState 落 Empty 底座 + components/ui Button（default 档）。
 // #944 per-face 清零：resources.css 退役，皮肤全部改挂 token utility
 // （spec/22 §3.1——角色有 token 必走 token；阶梯外一次性几何走 arbitrary，
 // §3.1(a)）。几何取原 per-face 规则等值迁移；控件几何随件正典，差额由 D2
@@ -345,7 +345,6 @@ export function EmptyState({
         <div className="mt-3.5 flex items-center gap-4">
           {actionHref == null ? (
             <Button
-              variant="brand"
               size="sm"
               className="px-[11px] text-[13px] leading-4 font-normal"
               onClick={onAction}

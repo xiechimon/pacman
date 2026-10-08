@@ -210,6 +210,10 @@ export const EN: Record<string, string> = {
   名称: 'Name',
   语言: 'Language',
   推送通知: 'Push notifications',
+  // #1031: the switch is a preference; when it's on but the browser permission
+  // is denied, the row explains why nothing will actually fire.
+  '浏览器已拒绝通知权限，需到站点设置重新允许':
+    'Notifications are blocked by the browser — re-allow them in site settings',
 
   // —— team route (r7 12) ——
   设置: 'Settings',
@@ -702,9 +706,8 @@ export const EN: Record<string, string> = {
   '没有与"{query}"匹配的结果': 'No results matching “{query}”',
   '插入 ({count})': 'Insert ({count})',
 
-  // —— local 项目 Files tab 禁用面 (spec 12 / #362 G2-T2 v1) ——
-  本地仓库项目暂不支持在线浏览文件:
-    'Online file browsing is not available for local repository projects',
+  // —— local 项目 Files tab 读面（#1030 开闸；不可达降级文案）——
+  '本地仓库当前无法读取。': 'The local repository cannot be read right now.',
 
   // —— github 项目 Files tab 诚实降级面（#704 / B-C1：文件在 GitHub，外链承接）——
   'GitHub 仓库项目的文件在 GitHub 上查看': 'Files for GitHub repository projects live on GitHub',

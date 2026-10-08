@@ -33,8 +33,8 @@ const AGENT_PICK_ROW_CLS =
   "h-10 w-full cursor-pointer justify-start gap-2.5 whitespace-normal rounded-none border-none bg-transparent px-2 text-left text-sm font-normal text-(--foreground) hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
 /** 头像位（旧 .chief-pick-avatar--img 等值，XMON-105 律：图即 24 圆盘，
- *  去 chip 底边——img 几何由 wrapper 的 [&_img] 承（SeededAvatar contents
- *  律，img 的 containing block 在消费面）。 */
+ *  去 chip 底边——img 几何由 wrapper 的 [&_img] 与 SeededAvatar Root 定尺盒
+ *  className 同值承载（#1003，contents 律随上游发丝环回源退役）。 */
 const PICK_AVATAR_CLS = 'flex-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full';
 
 /** 选择器行最小投影(live = members 读面投影;fixture = canon 默认行)。
@@ -161,7 +161,7 @@ export function ChiefAgentDialog({
       footer={
         confirming != null ? (
           // #950 per-face 清零：.dlg-form-foot/.dlg-form-actions 容器 utility
-          // 等值迁移（spec/22 §5.4）；钮 = outline/brand 件正典 + chief 内联档
+          // 等值迁移（spec/22 §5.4）；钮 = outline/default 件正典 + chief 内联档
           // 保留 px-3/text-[13px]。e2e 载体 = getByRole('button')。
           <div className="flex flex-col px-4 pb-4">
             <div className="flex justify-end gap-2">
@@ -172,11 +172,7 @@ export function ChiefAgentDialog({
               >
                 {t('取消')}
               </Button>
-              <Button
-                variant="brand"
-                className="px-3 text-[13px]"
-                onClick={() => onBind?.(confirming.id)}
-              >
+              <Button className="px-3 text-[13px]" onClick={() => onBind?.(confirming.id)}>
                 {t('更换')}
               </Button>
             </div>
@@ -228,6 +224,7 @@ export function ChiefAgentDialog({
                       the initial chip was a divergent third style. */}
                   <span className={PICK_AVATAR_CLS}>
                     <SeededAvatar
+                      className="size-6"
                       name={row.name}
                       src={row.avatarUrl}
                       fallback="/avatar-robot-1.svg"

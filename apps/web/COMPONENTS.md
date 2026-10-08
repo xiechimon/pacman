@@ -19,39 +19,44 @@
 
 （上面这段是机器门读的终态名单：旧轨已删空，名单恒空；`src/ui/` 目录重新出现即报错。）
 
-## 二、新轨原语（25）
+## 二、新轨原语（30）
 
 <!-- inventory:new-track -->
 ```text
 alert-dialog-shell.tsx   # 确认面共用底座（删除确认 / 丢草稿确认），走 Base UI AlertDialog
 alert-dialog.tsx
-avatar.tsx               # shadcn Avatar 三件套（Root/Image/Fallback，底座 Base UI）；头像消费别直接用三件套，走 seeded-avatar.tsx
+avatar.tsx               # shadcn Avatar 族（Root/Image/Fallback/Badge/Group，底座 Base UI，上游发丝环在位）；头像消费别直接用三件套，走 seeded-avatar.tsx
 badge.tsx                # 计数 / 标签 pill；任务状态语义色族见 DESIGN.md
-button.tsx               # 三态 Primary/Ghost/Icon；仓内偏离：focus 环走仓级 #388 canon
+button.tsx               # registry 同源 + 仓内语义映射（type=button 默认、data-variant/data-size 观测点，#411）；主 CTA = default 档（brand 档已退役，#982/#991）
 card.tsx
-checkbox.tsx             # 复选（Base UI 官方件 + 件上 utility 皮肤；三态 `indeterminate` 一等 prop，#952）；**别直接摆裸 `<input type="checkbox">`**——浏览器自带方框与仓内复选行不同族
+checkbox.tsx             # 复选（registry 同源 + 一件零皮肤语义映射：indeterminate 渲染横杠，#952/#982）；行盒 = 消费点 label 包裹；**别直接摆裸 `<input type="checkbox">`**——浏览器自带方框与仓内复选行不同族
 dialog-shell.tsx         # 对话框共用底座（e2e 载体 = role=dialog 可及名 + dialog-head/-body/-foot testid，spec/22 §5.5）
 dialog.tsx
-dropdown-menu.tsx
+dropdown-menu.tsx        # 仓内语义映射：z 走 --z-dialog 单梯（#733）、Content 透出 anchor（#454）；动效 = 上游默认（#991 Q9）
 empty.tsx
+field.tsx                # 表单行组合（FieldGroup/Field/FieldLabel/FieldContent/FieldError…）：表单布局一律用它，别拿 div + space-y 手排
 floating-shell.tsx       # 锚定浮层共用底座（plan-dropdown / chip-popover / more-menu / 用户菜单 / 排序 / chief-model-select / mention-picker）
 input.tsx
+input-group.tsx          # 输入组合件（InputGroupInput/InputGroupAddon/InputGroupButton…）：输入框里要挂按钮/图标/前后缀时用它，别把裸 Input 塞进自制盒子
 kbd-hint.tsx             # 快捷键悬浮提示 chip（控件 hover/focus-visible 浮出、静息 visibility:hidden）；#468 快捷键提示一律用它
 kbd.tsx                  # 按键角标原语（文档正文里的 ⌘K 角标）；悬浮提示 chip 是 kbd-hint.tsx
+label.tsx                # 表单标签原语（配合 field.tsx 的 FieldLabel 使用；独立 label 场景直用）
 panel.tsx                # 静息内容容器消解（Panel/PanelHead/PanelRow/PanelLabel/PanelValue）：贴在页面里的方框一律用它；皮肤档 quiet/outlined，per-face 数值留属地 css
-popover.tsx
-seeded-avatar.tsx        # dicebear 种子头像适配层（src 覆盖 > name 种子 > 兜底换图，img 常驻 DOM）；头像一律用它
-select.tsx               # 单选下拉（触发钮 + FloatingShell 弹层 + role=listbox；面几何走 triggerClassName/menuClassName 两位，#952）；**别再用原生 `<select>`**——它弹的是系统菜单，跟自制弹层并排就是两套弹窗
+popover.tsx              # 仓内语义映射：z 走 --z-dialog 单梯（#733）；动效 = 上游默认（#991 Q9）
+seeded-avatar.tsx        # dicebear 种子头像适配层（src 覆盖 > name 种子 > 兜底换图，img 常驻 DOM；Root 定尺盒，几何走消费点 className size-N，#983/#1003）；头像一律用它
+select.tsx               # 单选下拉（现为 XMON-75 手写形：触发钮 + FloatingShell 弹层；退役回上游 compound 族 = #1010，波 2）；**别再用原生 `<select>`**——它弹的是系统菜单，跟自制弹层并排就是两套弹窗
+separator.tsx            # 语义分隔线（field.tsx 的 registryDependency）：替代 <hr> 与 border-t div
 status-chip.tsx          # 任务状态五态 chip（idle/plan/confirm/done/failed，皮肤 = --chip-* token 对）；落在 badge.tsx 上，状态载体 data-tone；替旧轨 ui/chip.tsx（正典表 spec/22 §5.2，#942）
-switch.tsx               # 仓内偏离：thumbClassName 适配口
+switch.tsx
+tabs.tsx                 # default/line 两档走上游原生 data-[variant] 机制 + TabsIndicator 零 chrome 透传（#644，去留归 #1009）；segmented/bare 手写档已退役（#991），分段控制器皮肤 = pages/parts.ts 的 SEG_* 配方
 tag-chip.tsx             # 用户数据色标签 chip（tag.color 走 inline style 白字）；落在 badge.tsx 上，别新建皮肤件
-tabs.tsx
-textarea.tsx             # 多行输入（registry base-nova；仓内偏离：rounded-none 方角与 input.tsx 同语言）；**别摆裸 `<textarea>`**——老 .dlg-form-textarea 族已退役（spec/22 §5.3）
+textarea.tsx             # 多行输入（registry 同源）；**别摆裸 `<textarea>`**——老 .dlg-form-textarea 族已退役（spec/22 §5.3）
 toaster.tsx              # toast 原语（sonner，shadcn 官方配方；#631）：App 根挂一次 <Toaster />，任意处 imperative `toast.*`；**失败反馈别再造静默 catch**——异常/toast 一律走它
+tooltip.tsx              # hover/focus 信息气泡（官网形态；z 走 --z-dialog 单梯）；快捷键提示 chip 现仍是 kbd-hint.tsx（其退役换 Tooltip+Kbd 组合 = #983 判决，波 1 承载）
 ```
 <!-- /inventory:new-track -->
 
-**上游重拉纪律**：`button.tsx`（#414/#423/#425 三处偏离）、`switch.tsx`（#423 一处）与 `textarea.tsx`（#942 一处：rounded-none）记了仓内偏离，重拉 shadcn 上游时**勿丢**——丢一处就顶掉 focus 环或 per-face 几何契约，视觉 e2e 会红。
+**上游同源纪律（#989 正典）**：`components/ui/` 只许 registry 同源件 + 零皮肤适配层。每件的同源状态（pristine / deviated + 理由）以 `scripts/ui-registry.json` hash 账本为**唯一事实源**，CI 闸机械核对；重拉上游走 `node scripts/ui-registry-refresh.mjs`（CLI pin + R1–R5 重写 + biome 归一），**禁止**手改件内容绕过账本——改一处没重冻账本，check job 即红。
 
 ## 三、什么时候用哪个
 
@@ -72,7 +77,11 @@ toaster.tsx              # toast 原语（sonner，shadcn 官方配方；#631）
 | 复选 | `components/ui/checkbox.tsx` | 别摆裸 `<input type="checkbox">`——浏览器自带方框与仓内复选行不同族 |
 | **静息方框**（页面里不动的卡 / 面板 / 设置块） | `components/ui/panel.tsx`（`Panel` + `PanelHead` / `PanelRow` / `PanelLabel` / `PanelValue`） | 别新起 `.xxx-card` 手写类——皮肤（描边 / 底色 / 圆角）只住 Panel 一处 |
 | 布局块（要自带皮肤的容器） | `components/ui/card.tsx`（shadcn 布局壳；消费点自覆盖 `ring-0` / `py-0` / 圆角） | 别拿它当视觉原件——它的 `ring-1` + `rounded-xl` + `bg-card` 与仓内需求错配，真卡是 per-face 类族 |
-| **头像** | `components/ui/seeded-avatar.tsx`（dicebear 种子 + 兜底换图，img 常驻 DOM） | 别直接用 `avatar.tsx` 三件套——尺寸正本在各面 per-face 几何，Root 需走 `contents` |
+| **头像** | `components/ui/seeded-avatar.tsx`（dicebear 种子 + 兜底换图，img 常驻 DOM；尺寸走 SeededAvatar 的 `className="size-N"`，Root 定尺盒） | 别直接用 `avatar.tsx` 三件套——种子/兜底语义会抄散 |
+| 表单行组合 | `components/ui/field.tsx`（FieldGroup + Field + FieldLabel） | 别拿 `div` + `space-y-*` / `grid gap-*` 手排表单 |
+| 输入框带按钮/图标 | `components/ui/input-group.tsx` | 别把裸 `Input` 塞进自制组合盒 |
+| hover 信息气泡 | `components/ui/tooltip.tsx` | 快捷键提示 chip 现仍走 `kbd-hint.tsx`（替换 = 波 1 承载） |
+| 分隔线 | `components/ui/separator.tsx` | 别用 `<hr>` / `border-t` div |
 | 快捷键提示 chip | `components/ui/kbd-hint.tsx`（落在 `kbd.tsx` 上） | 别自写绝对定位 + 显隐；文档正文里的按键角标用 `kbd.tsx` |
 | 标签 chip（用户数据色） | `components/ui/tag-chip.tsx` | 状态色族仍走 `badge.tsx`；别混两种色来源 |
 | **toast / 轻量失败反馈** | `toast.*`（imperative；`components/ui/toaster.tsx` 已在 App 根挂载） | 别静默吞 mutation 错误；**面内已有 scoped 红字行 canon 的（XMON-80/P2）继续走面内，不叠 toast** |

@@ -159,6 +159,12 @@ export interface OverlayUi {
    *  the Notification.permission === 'default' state for the fixture — the
    *  r7 board baselines carry no banner, so no existing scenario may grow one. */
   notificationBanner?: boolean;
+  /** Account 推送通知 switch 的权限档冻结位 (#1031). The switch is a
+   *  preference layered over permission, so the fixture face must be able to
+   *  express all three permission states (not the old hardcoded 'granted'):
+   *  denied/default 档让「点开 → 拦截解释」与「default 起步」两面可钉。
+   *  Absent = account 面缺省 'granted'（r7 13 基线行的开态）。 */
+  notificationPermission?: NotificationPermission;
 }
 
 /** Scheduled rule (02 §9.2 / r3 §8.3 wire shape, copied verbatim:
@@ -210,8 +216,8 @@ export interface ProjectContent {
   /** True = the `Pacman 托管` chip rides beside the repo name (r2 24c). */
   hosted: boolean;
   /** repo 形态（spec 12 三形态，词表单源 = shared ProjectRepoKind；live 面
-   *  = wireProject.repoKind 透传）。local = Files tab 禁用（占位 + 一行
-   *  disable 文案，G2-T2 v1）。 */
+   *  = wireProject.repoKind 透传）。local = Files tab 开闸读本地仓（#1030，
+   * 不可达走降级文案）。 */
   repoKind?: ProjectRepoKind;
   defaultBranch: string;
   description: string | null;

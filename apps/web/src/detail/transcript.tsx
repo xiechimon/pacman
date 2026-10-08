@@ -272,6 +272,7 @@ function AgentRowAvatar({
       data-testid="msg-avatar"
     >
       <SeededAvatar
+        className="size-5"
         name={agent?.displayName}
         src={agent?.avatarUrl}
         fallback="/avatar-robot-1.svg"
@@ -370,6 +371,7 @@ function Row({
               data-testid="msg-avatar"
             >
               <SeededAvatar
+                className="size-5"
                 name={user.displayName}
                 src={user.avatarUrl}
                 fallback="/avatar-user.png"
