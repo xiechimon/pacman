@@ -18,8 +18,9 @@ import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useApiMutations, useProjects } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
-import { Panel, PanelHead, PanelLabel, PanelRow, PanelValue } from '../components/ui/panel.js';
+import { Card, CardContent, CardHeader } from '../components/ui/card.js';
 import { toastError } from '../components/ui/toaster.js';
 import { markDeleted } from '../fixtures/deletions.js';
 import { PROJECT_INITIAL } from '../fixtures/fixtures.js';
@@ -36,18 +37,19 @@ const TABS = [
   { id: 'tags', label: '标签' },
 ];
 
-/** 行右值槽（原 .prj-set-value）：8px 间距 + 13/20 字；行内 svg（编辑
- *  铅笔/chevron）tertiary 墨 + pointer（#177 静态化后仅光标语义）。 */
-const VALUE_CLS =
-  'gap-2 text-[13px] leading-5 [&_svg]:cursor-pointer [&_svg]:text-(--text-tertiary)';
+/** 行布局（#983 panel→Card 判决的消费点位）：两端对齐 + 顶部分隔线 +
+ *  行内几何；皮肤全归 Card registry 默认（bg-card + ring + rounded-xl）。 */
+const ROW_CLS = 'flex min-h-12 items-center justify-between border-t border-border px-4 py-1.5';
 
-/** 删除钮（原 .prj-set-delete，XMON-25 收编形迁 utility）：destructive
- *  变体（语义位）+ --danger 实底皮肤——件配方的软底档（bg-destructive/10 +
- *  dark:/20）与 hover 提亮按七通道律压回实底恒定值（旧面 per-face 无 hover
- *  规则，实底不随 hover 变）；compact 几何 28/12/13 等值；ring-0 掐掉
- *  destructive 的 focus 附加环（本面 focus = #388 全局环/件基类单源）。 */
-const DELETE_BTN_CLS =
-  'mt-3 h-7 cursor-pointer rounded-none border-none bg-(--destructive) px-3 text-[13px] font-normal leading-[inherit] text-(--text-on-accent) hover:bg-(--destructive) dark:bg-(--destructive) dark:hover:bg-(--destructive) active:not-aria-[haspopup]:translate-y-0 focus-visible:ring-0';
+/** 行右值槽（原 .prj-set-value 的布局位）：8px 间距；行内 svg（编辑
+ *  铅笔/chevron）muted 墨 + pointer（#177 静态化后仅光标语义）。字号随
+ *  Card 根的 text-sm（registry 几何赢，13px 手写档退役）。 */
+const VALUE_CLS =
+  'flex items-center gap-2 text-foreground [&_svg]:cursor-pointer [&_svg]:text-muted-foreground';
+
+/** 行左 label（原 PanelLabel 的消费点位）：registry 词汇 muted-foreground，
+ *  字号随 Card 根 text-sm。 */
+const LABEL_CLS = 'text-muted-foreground';
 
 export function ProjectSettingsPage() {
   const { t } = useI18n();
@@ -82,75 +84,76 @@ export function ProjectSettingsPage() {
         <div className="flex">
           <TabGroup tabs={TABS} tab={tab} onTab={setTab} />
         </div>
-        {/* #946: 皮肤 = Panel quiet 档；per-face 只剩几何 utility（原
-            .prj-set-card/-head/-row/-label/-value 等值迁移）。 */}
-        <Panel variant="quiet" className="mt-4 overflow-hidden">
-          <PanelHead className="py-4">
-            <span className="prj-set-avatar flex size-16 items-center justify-center rounded-full bg-(--surface-tertiary) text-xl text-(--text-secondary)">
+        {/* #983 判决执行：Panel quiet 档退役 → registry Card 默认皮肤
+            （bg-card + ring + rounded-xl；色差由 #988 色板重选在 token 层
+            吸收），消费点只留布局位（gap-0/py-0 中和 Card 的内距节奏，行
+            几何自持）。.prj-set-avatar/.prj-set-branch 别名留存（dead-buttons
+            跨域句柄，#411 别名优先）。 */}
+        <Card className="mt-4 gap-0 py-0">
+          <CardHeader className="justify-items-center py-4">
+            <span className="prj-set-avatar flex size-16 items-center justify-center rounded-full bg-muted text-xl text-muted-foreground">
               {PROJECT_INITIAL}
             </span>
             {/* 「更换」钮全除（#307 wontfix）：头像是静态 PROJECT_INITIAL 资产,
                 栈内无上传面——档 4 二分律下本项 #177 占位 chrome 裁决改判
                 移除（account-swap 同款归档 3，本票不动）。 */}
-          </PanelHead>
-          <PanelRow className="min-h-12 px-4 py-1.5">
-            <PanelLabel className="leading-5">{t('名称')}</PanelLabel>
-            <PanelValue className={VALUE_CLS}>
+          </CardHeader>
+          <CardContent className={ROW_CLS}>
+            <span className={LABEL_CLS}>{t('名称')}</span>
+            <span className={VALUE_CLS}>
               {project?.name ?? ''}
               <SquarePen width={14} height={14} />
-            </PanelValue>
-          </PanelRow>
-          <PanelRow className="min-h-12 px-4 py-1.5">
-            <PanelLabel className="leading-5">{t('仓库')}</PanelLabel>
-            <PanelValue className={VALUE_CLS}>
+            </span>
+          </CardContent>
+          <CardContent className={ROW_CLS}>
+            <span className={LABEL_CLS}>{t('仓库')}</span>
+            <span className={VALUE_CLS}>
               {project?.repoName ?? ''}
-              {project?.hosted === true && (
-                <span className="rounded-[4px] bg-(--surface-tertiary) px-1.5 py-0.5 text-[11px] leading-[14px] text-(--text-tertiary)">
-                  {t('Pacman 托管')}
-                </span>
-              )}
-            </PanelValue>
-          </PanelRow>
-          <PanelRow className="min-h-12 px-4 py-1.5">
-            <PanelLabel className="leading-5">{t('目标分支')}</PanelLabel>
-            <PanelValue className={VALUE_CLS}>
+              {project?.hosted === true && <Badge variant="secondary">{t('Pacman 托管')}</Badge>}
+            </span>
+          </CardContent>
+          <CardContent className={ROW_CLS}>
+            <span className={LABEL_CLS}>{t('目标分支')}</span>
+            <span className={VALUE_CLS}>
               {/* 分支 chip = 静态展示(#177 裁决,#149 分支 chip 同律): schema
                   无 defaultBranch 列、无 PATCH 端点,读面固定 main;chevron 保
-                  r2 24c 捕获形状。非交互元素——不再是死钮。 */}
-              <span className="prj-set-branch flex h-7 items-center gap-1.5 rounded-none border border-(--border) bg-(--card) px-2.5 font-mono text-xs text-(--foreground) [&_svg]:text-(--text-tertiary)">
+                  r2 24c 捕获形状。非交互元素——不再是死钮。registry 词汇：
+                  Badge outline + font-mono（手写 28 高方角盒退役）。 */}
+              <Badge
+                variant="outline"
+                className="prj-set-branch gap-1.5 font-mono [&_svg]:text-muted-foreground"
+              >
                 {project?.defaultBranch ?? 'main'}
                 <ChevronDown width={12} height={12} />
-              </span>
-            </PanelValue>
-          </PanelRow>
-          <PanelRow className="min-h-12 px-4 py-1.5">
-            <PanelLabel className="leading-5">{t('描述')}</PanelLabel>
-            <PanelValue className={`${VALUE_CLS} text-(--text-tertiary)`}>
+              </Badge>
+            </span>
+          </CardContent>
+          <CardContent className={ROW_CLS}>
+            <span className={LABEL_CLS}>{t('描述')}</span>
+            <span className={`${VALUE_CLS} text-muted-foreground`}>
               {project?.description ?? t('尚无描述')}
               <SquarePen width={14} height={14} />
-            </PanelValue>
-          </PanelRow>
-        </Panel>
+            </span>
+          </CardContent>
+        </Card>
         {/* 危险操作区(#207 复活): #189 DELETE /api/projects/:id 已落地,
-            卡面 = #177 整除前形状原样归位(r2 24c),钮接真确认流。 */}
-        <div className="mt-4 mb-2 text-xs leading-4 text-(--text-secondary)">{t('危险操作')}</div>
-        <Panel variant="quiet" className="mt-4 overflow-hidden p-4">
-          <div className="text-sm font-semibold leading-5 text-(--foreground)">{t('删除项目')}</div>
-          <div className="mt-1 text-[13px] leading-5 text-(--text-tertiary)">
+            钮接真确认流。#983 判决执行：Panel quiet 退役 → registry Card；
+            destructive 钮回件默认软底档（#946 实底皮肤配方退役——皮肤超出
+            官网形态，registry 默认赢）。 */}
+        <div className="mt-4 mb-2 text-xs leading-4 text-muted-foreground">{t('危险操作')}</div>
+        <Card className="mt-4 gap-1.5 p-4">
+          <div className="text-sm font-medium">{t('删除项目')}</div>
+          <div className="text-sm text-muted-foreground">
             {t('将永久删除所有任务与执行记录，此操作不可恢复。')}
           </div>
-          {/* XMON-25 收编：老 ui/Button danger/compact → destructive 变体
-              （语义位）；实底皮肤（--danger 底 + on-accent 字 + compact 几何
-              28/12/13）= DELETE_BTN_CLS utility 配方（#946 per-face 清零，
-              件软底档按七通道律压回实底）。 */}
           <Button
             variant="destructive"
-            className={DELETE_BTN_CLS}
+            className="mt-1.5 w-fit"
             onClick={() => setDeleteOpen(true)}
           >
             {t('删除')}
           </Button>
-        </Panel>
+        </Card>
       </div>
       {/* 确认弹层(r2 24d, DeleteConfirm 家族): 键入项目名精确匹配才解禁;
           确认后跳项目列表面 —— live 走 DELETE + invalidateAll 重取,fixture

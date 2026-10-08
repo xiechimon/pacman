@@ -1,25 +1,20 @@
-// TagChip（XMON-14）：标签 chip——20px 高 pill、tag.color 底 inline、白字。
-// 渲染面 = fresh 详情 meta 区、看板卡身份行、项目 issues 标签、看板类型筛选。
+// TagChip 零皮肤适配层（XMON-14；#983 判决：改写为零皮肤适配层，地图 #980
+// 前提②）：标签 chip = registry Badge 默认形态 + 运行期数据色。保留的全是
+// 语义映射：TagRecord.color→inline backgroundColor（运行期记录字段、非设计
+// 皮肤，board-filter.spec 明文钉此契约）、name→内容、max-w-40+truncate
+// （layout）、--text-on-accent 前景（数据色底上的可读墨，token 层承载）。
 //
-// 落点取舍（本票的裁决，依据写在本票评论）：**落在已有 components/ui/badge.tsx
-// 上，不自建 registry 件**。registry 没有 `tag-chip` 同名件，而 Badge 的皮肤档
-// 与本 chip 的几何正本几乎重合（h-5=20px / rounded-4xl=9999px / px-2=8px /
-// font-medium / overflow-hidden+whitespace-nowrap），#423 第一片真域已有
-// `res-pill` / `res-tag` → Badge 的先例。差异只剩四档（字号 12→11、行高、
-// 上下内边距、宽度上限+省略号），本层用 cn 逐组改写，不新增皮肤件。
+// 11px 字体改写档已按 #983 判决删除（text-[11px]/leading-5/py-0 超出官网
+// 形态）——字号/行高/内边距收敛 registry Badge 默认 text-xs(12px)/h-5/
+// py-0.5（前提④：几何冲突 registry 默认赢；11→12px 由本域探针重钉）。
 //
-// 与 Chip 原语的边界（`ui/chip.tsx`，任务状态五态 + neutral）不变：
-// Chip = 状态色族（token 对）；TagChip = 用户数据色（tag record color 位）。
+// 与 StatusChip 的边界不变：StatusChip = 状态色族（五对 token 槽）；
+// TagChip = 用户数据色（tag record color 位）。数据色走 inline style 而非
+// Tailwind 类：tag.color 是运行期记录字段，进不了类名编译面。
 //
-// 尺寸正本 20px 有一个 per-face 例外：看板卡身份行（todo-card.tsx 的
-// row-flush 覆写 h-4/leading-4/px-1.5）——16px 行盒里的 20px pill 是卡上
-// 唯一溢出自己行盒的件（上下各 2px，且实底墨重压过标题），卡面收到与
-// mark 齐平的 16px；本层其余消费面（详情 meta / 项目 issues / 筛选面板
-// 选中行）容器都更高，仍走 20px 正本。几何钉：board-filter.spec 的任务卡
-// 用例 + shadcn-primitives.spec 的 tag-chip 用例（两面各钉各的档）。
-//
-// 数据色走 inline style 而非 Tailwind 类：tag.color 是运行期记录字段，不是
-// 设计 token，进不了类名编译面（既有行为原样保留）。
+// 看板卡身份行的 row-flush 消费点覆写（todo-card.tsx className）是 #983
+// 判决明示的「用户自行决定」面（前提④下属），去留归原型实审裁——本件不
+// 代判、不吸收。
 
 import type { TagRecord } from '@pacman/shared';
 import { cn } from 'cn';
@@ -39,8 +34,8 @@ export function TagChip({ tag, className }: TagChipProps) {
   return (
     <Badge
       className={cn(
-        // registry Badge 档 → 仓内 chip 档（tailwind-merge 逐组覆盖）
-        'tag-chip max-w-40 justify-start gap-0 py-0 text-[11px] leading-5 text-(--text-on-accent) text-ellipsis transition-none',
+        // 语义映射与 layout 位；几何/字号 = registry Badge 默认（#983）。
+        'tag-chip max-w-40 justify-start gap-0 text-(--text-on-accent) text-ellipsis transition-none',
         className,
       )}
       style={{ backgroundColor: tag.color }}

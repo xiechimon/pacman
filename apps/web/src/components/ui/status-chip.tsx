@@ -1,22 +1,18 @@
-// StatusChip 适配层（#942 正典表 §5.2）：老 ui/chip.tsx 的任务五态 chip 落
-// 到 components/ui/badge.tsx（registry 件）上——与 TagChip（Badge 骨架 +
-// token utility 皮肤）/ SeededAvatar（registry 件适配）先例同形：本地适配
-// 件、零 CSS、不自建 registry 件。
+// StatusChip 零皮肤适配层（#983 判决：保留，票面例「任务五态→Badge 的状态
+// 属性」即本件现状；地图 #980 前提②）：registry Badge 骨架 + data-tone 状态
+// 载体 + 五对 --chip-* token utility——只做语义映射，不带自有几何。
 //
-// 为什么不走 Badge 的 registry 语义皮肤（destructive/secondary 等）：五对
-// --chip-*-bg/fg 是 spec/22 §1.7/1.8 的 1:1 翻值槽（0 退，对比度实测封版），
-// 且 plan/confirm 两态在 registry 档里没有语义对应——皮肤槽只借 Badge 的
-// 几何骨架，色由 token utility 承载（tailwind-merge 覆盖基皮肤两槽，
-// TagChip 同手法）。
+// sm 几何档已按 #983 判决删除（base-nova Badge 无 size 档，h-4/10px 超出
+// 官网形态）——全部消费面收敛 registry h-5 默认几何（前提④：几何冲突
+// registry 默认赢；密集行回流由各自域重钉）。
 //
-// 几何（spec/22 §2.5 冻结件 + 正典表 §5.2）：default = Badge registry 默认
-// h-5（替旧 md 18px）；sm = h-4 / px-1.5 / text-[10px]（替旧 mini 14px，
-// 先例 = tag-chip 的 row-flush 16px 档）。增长是 D2 几何自由重设计的有意
-// 结果，非回归。
+// 为什么不走 Badge 的 registry 语义皮肤（destructive/secondary 等）：
+// plan/confirm 两态在 registry variant 无语义对应，且五对 --chip-*-bg/fg
+// 是 spec/22 §1.7/1.8 的 1:1 翻值槽（暗/亮双模对比度实测 PASS 封版）——
+// 色由 token 层承载，恰合前提④「用户自行决定只经 token 层生效」。
 //
 // 状态载体：data-tone（#910 裁定 3——状态类断言归行为，载体改 data-*）；
-// .chip/.chip--<tone> 类名 locator 随本件退役。tone 语义源 = phase.ts 的
-// PHASE_UI.tone，prop 名与之对齐。
+// tone 语义源 = phase.ts 的 PHASE_UI.tone，prop 名与之对齐。
 
 import { cn } from 'cn';
 import type { ReactNode } from 'react';
@@ -35,19 +31,14 @@ export type StatusTone = keyof typeof TONE_SKIN;
 export interface StatusChipProps {
   /** 任务五态（对齐 PHASE_UI.tone）。 */
   tone: StatusTone;
-  /** sm = 密集行档（h-4）；default = Badge registry h-5。 */
-  size?: 'default' | 'sm';
   /** per-face 别名/定位类透传——存活至执行域退役（正典表 §5.0 残留律）。 */
   className?: string;
   children: ReactNode;
 }
 
-export function StatusChip({ tone, size = 'default', className, children }: StatusChipProps) {
+export function StatusChip({ tone, className, children }: StatusChipProps) {
   return (
-    <Badge
-      data-tone={tone}
-      className={cn(TONE_SKIN[tone], size === 'sm' && 'h-4 px-1.5 text-[10px]', className)}
-    >
+    <Badge data-tone={tone} className={cn(TONE_SKIN[tone], className)}>
       {children}
     </Badge>
   );

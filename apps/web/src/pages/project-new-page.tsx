@@ -9,8 +9,8 @@
 // MCP 仍接受 hosted，存量项目不动）。名称回填：local = basename(localPath)，
 // github = repo 段；仅当名称为空或仍等于上次回填值时覆盖（用户手改过则
 // 不动）。repo 种类菜单走 components/ui/dropdown-menu（t-0070，Base UI
-// Menu RadioGroup）；picker 弹层走家族法 #67/#127 的 #656 壳：FloatingShell
-// + ClickCatcher（Esc 归 Base UI layer 栈，mention-picker 先例）。提交 body 单源 = shared
+// Menu RadioGroup）；picker 弹层走 registry Popover（#983 floating-shell 族拆
+// 判决，Esc/外点/焦点归还归 Base UI 原语）。提交 body 单源 = shared
 // createProjectBodySchema（kind 契约名；github 提交闸与 server 400 门同吃
 // isGithubRepoRef）。
 // #361 (spec 12 G2-T4)：GitHub 仓库 选态成为认证门控的 picker 面，三面：
@@ -37,7 +37,7 @@ import {
   LOCAL_ERROR_REASON_COPY,
   type LocalErrorReason,
 } from '@pacman/shared';
-import { type KeyboardEvent, type Ref, useCallback, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type Ref, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client.js';
 import { useApiMutations, useGithubConnection, useGithubRepos } from '../api/hooks.js';
@@ -50,80 +50,42 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu.js';
-import {
-  EXIT_BRIDGE_CLS,
-  FLOATING_POP_ANIM,
-  FloatingShell,
-} from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
+import { Label } from '../components/ui/label.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronRight, ImageFrame } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import { DirBrowser } from './dir-browser.js';
 import { PAGE_COL_CLS } from './parts.js';
 import { PageShell } from './shell.js';
 
-/* #946 per-face 清零：原 pages.css 的 prj-new-* 规则组等值迁 utility 配方。
-   类名全部退役（本域 spec 已重钉语义载体，无跨域别名面）；id 载体
+/* #980 registry 对齐：手写配方（40 高带框族 / V2 弹层板 / 七通道中和）退役，
+   件默认形态赢——Input/outline 钮/PopoverContent/DropdownMenuContent 的皮肤
+   几何全归件；消费点只留布局位（flex-1/ml-2/w-auto min-w 等）。id 载体
    （#prj-new-name / #prj-new-repo）与 label 配对是语义资产，原样保留。 */
 
-/** 名称/路径输入盒（原 .prj-new-input）：40 高带框、14 字、focus 配方 =
- *  outline none + 品牌环边框 + 1px ring（#360，共享 input 原语同款）；
- *  transition-none = focus 边框瞬翻（e2e 同步取 computed 钉品牌色）；
- *  -webkit-autofill 覆盖（#360）：UA 自动填充底色不吃 background 覆盖——
- *  inset 阴影垫页面底色（--surface）+ 文本走 primary 墨，focus 叠加时 ring
- *  与基配方同值。 */
-const NAME_INPUT_CLS =
-  'h-10 rounded-none border border-(--border) bg-transparent px-3 py-0 text-sm leading-[inherit] text-(--foreground) transition-none placeholder:text-(--text-tertiary) focus-visible:border-(--focus-ring) focus-visible:ring-1 focus-visible:ring-(--focus-ring) dark:bg-transparent md:leading-[inherit] [&:-webkit-autofill]:[-webkit-text-fill-color:var(--foreground)] [&:-webkit-autofill]:shadow-[0_0_0_1000px_var(--card)_inset] [&:-webkit-autofill]:focus-visible:shadow-[0_0_0_1000px_var(--card)_inset,0_0_0_1px_var(--focus-ring)]';
+/** 仓库触发行：outline 件默认 + 两端对齐布局位（flex-1 占满 field 行）。 */
+const REPO_TRIGGER_CLS = 'flex-1 justify-between font-normal';
 
-/** 仓库触发行（原 .prj-new-repo）：40 高带框盒形，两端对齐。ghost 七通道
- *  只中和涂底通道——本面旧规则无 color 声明，ghost 的 hover/aria-expanded
- *  提亮墨本就生效，等值保留。 */
-const REPO_TRIGGER_CLS =
-  "h-10 flex-1 cursor-pointer justify-between rounded-none border border-(--border) bg-transparent px-3 font-normal leading-[inherit] hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+/** picker 弹层板（#983 floating-shell 族拆判决：锚定 absolute 族 →
+ *  registry Popover）：皮肤/动效/z 全归 PopoverContent 件默认，描边 Arrow
+ *  三角随手写壳退役；消费点只留布局位——宽随锚（--anchor-width，
+ *  Positioner 自定义属性）+ 原面最小宽 220。data-testid = 面板焦点判定
+ *  与 e2e 的二级载体（面板语义由内层 role=listbox 承载）。 */
+const PICKER_PLATE_CLS = 'w-(--anchor-width) min-w-[220px]';
 
-/** swap 钮（原 .prj-new-repo-swap）：40×40 带框图标钮，tertiary 弱化墨
- *  （#946 better-colors 换槽，全域 --text-dim 消费面同律）；
- *  aria-expanded 通道钉回静息值（Menu Trigger 面）。 */
-const SWAP_BTN_CLS =
-  "ml-2 size-10 cursor-pointer rounded-none border border-(--border) bg-transparent text-(--text-tertiary) font-normal leading-[inherit] hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
-
-/** 浏览钮（原 .prj-new-browse，#440）：swap 钮同族 40 高带框文案钮；
- *  在飞 disabled 沿 0.55 淡化律。 */
-const BROWSE_BTN_CLS =
-  'ml-2 flex h-10 cursor-pointer items-center rounded-none border border-(--border) bg-transparent px-3 text-[13px] font-normal leading-[inherit] whitespace-nowrap text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent disabled:opacity-[0.55] active:not-aria-[haspopup]:translate-y-0';
-
-/** 兜底链接钮（原 .prj-new-gh-link）：12/16 tertiary 下划线（#946 换槽），零内距；
- *  体级 mt-2 / picker 内 mt-0+px-1 的位差由消费点补。 */
-const GH_LINK_CLS =
-  'h-auto cursor-pointer self-start rounded-none border-none bg-transparent p-0 text-xs font-normal leading-4 text-(--text-tertiary) underline hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
-
-/** picker 弹层板（原 .prj-new-gh-picker，#361 / V2 弹层壳 #790 P3）：
- *  12px 内边距 / 1px 墨线框 / 直角 / 顶部锚距 8px / 最小宽 220 + 上指锚边
- *  左上的描边 Arrow（12×6 外三角压 10×5 内三角）。data-testid = 面板焦点
- *  判定与 e2e 的二级载体（无 role 结构容器——面板语义由内层 role=listbox
- *  承载）。 */
-const PICKER_PLATE_CLS =
-  "absolute top-[calc(100%+8px)] inset-x-0 z-(--z-popover) flex min-w-[220px] flex-col gap-2 rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
-
-/** picker 仓库行（原 .prj-new-gh-row，#851 裸控件收编 Button ghost）：
- *  32 高透明行、13/18 字、左对齐；行面无 hover 涂底（旧面裸 button 无
- *  hover 规则），七通道中和；focus 环 = 件基类 #388 同配方（旧面走全局环，
- *  等值）。whitespace-normal 复原裸 button 的换行面（base nowrap 会禁掉）。 */
+/** picker 仓库行：ghost 件默认形态（hover 涂底 = registry 可供性），只留
+ *  布局位；whitespace-normal 复原长 owner/repo 的换行面（base nowrap 会
+ *  禁掉）。键盘契约（roving/typeahead/Enter 即选即关）在下方手搓面不变。 */
 const GH_ROW_CLS =
-  'h-8 w-full cursor-pointer justify-start rounded-[6px] border-none bg-transparent py-0 pr-2 pl-3 text-left text-[13px] font-normal leading-[18px] whitespace-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'h-auto w-full cursor-pointer justify-start px-2 py-1.5 text-left font-normal whitespace-normal';
 
-/** repo 种类菜单盘/行（原 .prj-new-repo-menu(-row)，plan-dropdown family
- *  plate）：shrink-to-fit ≥200、popover 底、radius 12、fab 影；行 28 高 /
- *  12 字 / 透明底 / 6 圆角，focus:bg 中和回透明 + #388 环补钉；勾色品牌紫
- *  走 indicator 槽选择器。 */
-const REPO_MENU_CLS =
-  'w-auto min-w-[200px] rounded-(--radius-popover) bg-(--popover) p-1 shadow-(--fab-shadow) ring-0 [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button)';
-const REPO_MENU_ROW_CLS =
-  "h-7 w-full cursor-pointer rounded-[6px] py-0 pr-2 pl-3 text-left text-xs leading-4 text-(--foreground) focus:bg-transparent focus:text-(--foreground) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) [&_svg:not([class*='size-'])]:size-auto";
+/** 兜底链接钮：registry link 变体（手写 tertiary 下划线配方退役）；
+ *  体级 mt-2 / picker 内 mt-0+px-1 的位差由消费点补。 */
+const GH_LINK_CLS = 'h-auto self-start p-0 text-xs';
 
 /** repo 选择态：none = 未动（触发行持「选择仓库」占位；提交实效 = 无 repo
  *  普通项目，spec 12）；github / local = 用户已选的形态。 */
@@ -141,8 +103,7 @@ function pathBasename(raw: string): string {
 /** 重开仓库种类菜单的 swap 钮（github 三面 + local 面共用，#305 原形；
  *  t-0070 收编成 Menu Trigger——toggle 开合/aria-haspopup/aria-expanded
  *  归原语，onClick 直通形态退役。#305 的 local 面内联副本随之并入本件）。
- *  XMON-25 收编：ghost + size icon；40×40 几何/边框/墨色正本在 per-face；
- *  size-auto 保 ChevronRight 的 14px 属性尺寸（base 会强制 16）。 */
+ *  registry 形态：outline 件 icon 档（手写 40×40 带框配方退役）。 */
 function RepoSwapButton({
   label,
   buttonRef,
@@ -157,9 +118,9 @@ function RepoSwapButton({
       render={
         <Button
           ref={buttonRef}
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className={SWAP_BTN_CLS}
+          className="ml-2 shrink-0 text-muted-foreground"
           aria-label={label}
         />
       }
@@ -203,19 +164,13 @@ export function ProjectNewPage() {
   const autoName = useRef('');
   // t-0070：repo 种类菜单的定位锚 = 整个 field wrap（多触发面——none 态主钮
   // 与各选态 swap 钮开的是同一张 plate，plate 恒贴 wrap 左缘，不跟触发钮走）。
+  // gh picker 的 Popover 同锚（Positioner 锚定取代旧 Portal-container 几何）。
   const repoFieldRef = useRef<HTMLDivElement>(null);
   // t-0070：菜单激活 = 分支切换 = 原 trigger 卸载，Base UI 的焦点归还失去
   // 落点（掉 body）——选中时立旗，落定后把焦点交给常驻的 swap 钮（鼠标路径
   // 无感：程序焦点跟随鼠标交互不触发 :focus-visible，无环）。
   const swapBtnRef = useRef<HTMLButtonElement>(null);
   const pendingSwapFocus = useRef(false);
-  const closePicker = useCallback(() => setPickerOpen(false), []);
-  const closeBrowse = useCallback(() => setBrowseOpen(false), []);
-  // #656：picker 的 Esc 归 FloatingShell（Base UI layer 栈），旧 useEscapeClose
-  // 退役。gh picker 以 .prj-new-repo-field（position:relative）作 Portal
-  // container，保面板的绝对定位几何（repo 菜单已归 DropdownMenu，锚走
-  // repoFieldRef）。
-  const [repoFieldWrap, setRepoFieldWrap] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!pendingSwapFocus.current) return;
     pendingSwapFocus.current = false;
@@ -520,46 +475,34 @@ export function ProjectNewPage() {
   return (
     <PageShell fixture={fixture} selected="none" title="新建项目">
       <div className={`${PAGE_COL_CLS} flex flex-col pt-4`}>
-        <div className="mx-auto flex size-[72px] items-center justify-center rounded-none bg-(--secondary) text-(--text-tertiary)">
+        <div className="mx-auto flex size-[72px] items-center justify-center rounded-xl bg-muted text-muted-foreground">
           <ImageFrame />
         </div>
-        <div className="mt-3 text-center text-xs leading-4 text-(--text-tertiary)">
+        <div className="mt-3 text-center text-xs leading-4 text-muted-foreground">
           {t('可选。未设置时以首字母代替。')}
         </div>
-        <label
-          className="mt-6 mb-2 text-[13px] leading-5 text-(--text-secondary)"
-          htmlFor="prj-new-name"
-        >
+        <Label className="mt-6 mb-2" htmlFor="prj-new-name">
           {t('项目名称')}
-        </label>
-        {/* XMON-25 收编：Input 原语；#946：h40/内边距/边框/focus 配方
-            （outline none + 品牌边 + 1px 影）与 placeholder/autofill 面迁
-            NAME_INPUT_CLS utility 配方。 */}
+        </Label>
+        {/* Input 件默认形态（40 高手写盒 + 品牌 focus 配方退役——registry
+            几何赢：h-8 rounded-lg + focus ring-3）。 */}
         <Input
           id="prj-new-name"
-          className={NAME_INPUT_CLS}
           type="text"
           placeholder="My App"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <label
-          className="mt-6 mb-2 text-[13px] leading-5 text-(--text-secondary)"
-          htmlFor="prj-new-repo"
-        >
+        <Label className="mt-6 mb-2" htmlFor="prj-new-repo">
           {t('仓库')}
-        </label>
+        </Label>
         {/* t-0070 收编：repo 种类菜单 → components/ui/dropdown-menu（Base UI
             Menu RadioGroup）。开合受控（repoOpen 与 picker 互斥位联动：开菜单
-            即收 picker，原 swap onClick 的双写归一到 onOpenChange）；Esc /
-            外点关（modal 默认档 = 外点不穿透，ClickCatcher 家族律同语义）/
-            roving focus / typeahead / 焦点归还全归原语。皮肤/几何正本在
-            per-face .prj-new-repo-menu*；定位正本迁 Positioner 参数
-            （side=bottom align=start sideOffset=6 = 原 top:calc(100%+6px)
-            left:0），anchor 显式钉 field wrap（多触发面共锚）。同一 wrap 兼作
-            gh picker FloatingShell 的 Portal container（#656，绝对定位几何
-            保真），故 ref 双写：repoFieldRef（Menu anchor）+ repoFieldWrap
-            （Dialog portal 容器态）。 */}
+            即收 picker）；Esc / 外点关 / roving focus / typeahead / 焦点归还
+            全归原语。皮肤 = 件默认（#980 裁决④），定位走 Positioner 参数
+            （side=bottom align=start sideOffset=6），anchor 显式钉 field wrap
+            （多触发面共锚）。gh picker = registry Popover（#983 floating-shell
+            族拆判决），同一 wrap 作 Positioner 锚。 */}
         <DropdownMenu
           open={repoOpen}
           onOpenChange={(next) => {
@@ -567,206 +510,190 @@ export function ProjectNewPage() {
             if (next) setPickerOpen(false);
           }}
         >
-          <div
-            className="relative flex"
-            ref={(el) => {
-              repoFieldRef.current = el;
-              setRepoFieldWrap(el);
+          <Popover
+            open={pickerVisible}
+            onOpenChange={(next: boolean) => {
+              if (next) {
+                setRepoOpen(false);
+                setPickerOpen(true);
+              } else {
+                setPickerOpen(false);
+              }
             }}
           >
-            {repoSel === 'github' ? (
-              manualRepo ? (
+            <div className="relative flex" ref={repoFieldRef}>
+              {repoSel === 'github' ? (
+                manualRepo ? (
+                  <>
+                    <Input
+                      id="prj-new-repo"
+                      className="flex-1"
+                      type="text"
+                      placeholder="owner/repo"
+                      aria-label={t('GitHub 仓库')}
+                      value={githubRepo}
+                      onChange={(e) => onGithubRepoChange(e.target.value)}
+                    />
+                    <RepoSwapButton label={t('选择仓库')} buttonRef={swapBtnRef} />
+                  </>
+                ) : connectionPending ? (
+                  <>
+                    {/* live 首取在途：禁用占位（连接态未决，不闪认证钮）。
+                    禁用降档 = 件默认（opacity-50 + pointer-events-none）。 */}
+                    <Button
+                      variant="outline"
+                      id="prj-new-repo"
+                      className={REPO_TRIGGER_CLS}
+                      disabled
+                    >
+                      <span className="text-sm text-muted-foreground">{t('选择仓库')}</span>
+                    </Button>
+                    <RepoSwapButton label={t('选择仓库')} buttonRef={swapBtnRef} />
+                  </>
+                ) : connected ? (
+                  <>
+                    {/* picker 触发 = PopoverTrigger（Base UI 原生 toggle：
+                    aria-haspopup/aria-expanded 归原语，#666 的双写竞态面
+                    随受控 onClick 直通形态退役）。 */}
+                    <PopoverTrigger
+                      render={
+                        <Button variant="outline" id="prj-new-repo" className={REPO_TRIGGER_CLS} />
+                      }
+                    >
+                      {githubRepo === '' ? (
+                        <span className="text-muted-foreground">{t('选择 GitHub 仓库')}</span>
+                      ) : (
+                        <span>{githubRepo}</span>
+                      )}
+                      <ChevronRight width={14} height={14} />
+                    </PopoverTrigger>
+                    <RepoSwapButton label={t('选择仓库')} buttonRef={swapBtnRef} />
+                  </>
+                ) : (
+                  <>
+                    <Button id="prj-new-repo" className="flex-1" onClick={startAuth}>
+                      {t('认证 GitHub')}
+                    </Button>
+                    <RepoSwapButton label={t('选择仓库')} buttonRef={swapBtnRef} />
+                  </>
+                )
+              ) : repoSel === 'local' ? (
                 <>
-                  {/* XMON-25 收编：Input；#946：皮肤/几何/focus 配方 =
-                    NAME_INPUT_CLS（同名称输入面），flex-1 占满 field 行。 */}
                   <Input
                     id="prj-new-repo"
-                    className={`${NAME_INPUT_CLS} flex-1`}
+                    className="flex-1"
                     type="text"
-                    placeholder="owner/repo"
-                    aria-label={t('GitHub 仓库')}
-                    value={githubRepo}
-                    onChange={(e) => onGithubRepoChange(e.target.value)}
+                    placeholder="/path/to/repo"
+                    aria-label={t('本地文件夹')}
+                    value={localPath}
+                    onChange={(e) => onLocalPathChange(e.target.value)}
                   />
-                  <RepoSwapButton label={t('选择仓库')} buttonRef={swapBtnRef} />
-                </>
-              ) : connectionPending ? (
-                <>
-                  {/* live 首取在途：禁用占位（连接态未决，不闪认证钮）。
-                    XMON-25 收编：ghost；禁用态原面无降档 → opacity-100 +
-                    pointer-events-auto 保「禁用仍画 pointer 光标」的现行为。 */}
-                  <Button
-                    variant="ghost"
-                    id="prj-new-repo"
-                    className={`${REPO_TRIGGER_CLS} disabled:pointer-events-auto disabled:opacity-100`}
-                    disabled
-                  >
-                    <span className="text-sm text-(--text-tertiary)">{t('选择仓库')}</span>
-                  </Button>
-                  <RepoSwapButton label={t('选择仓库')} buttonRef={swapBtnRef} />
-                </>
-              ) : connected ? (
-                <>
-                  {/* XMON-25 收编：ghost；haspopup 使 base active 位移自动跳过；
-                    aria-expanded 底色档按七通道律钉回透明 = 现行为。 */}
-                  <Button
-                    variant="ghost"
-                    id="prj-new-repo"
-                    className={REPO_TRIGGER_CLS}
-                    aria-haspopup="listbox"
-                    aria-expanded={pickerOpen}
-                    onClick={() => {
-                      setRepoOpen(false);
-                      setPickerOpen((value) => !value);
+                  {/* 浏览钮 = DirBrowser Popover 的 Trigger（#441 兜底面）：
+                    trigger 按压不直开面板——onOpenChange 截获开面请求改走
+                    browseFolder（server 代弹原生对话框），仅 422 unavailable
+                    程序开面（ADR 0003 D6）；面板开着时再按 = 原生 toggle
+                    关面（旧 ClickCatcher「外点只关」同语义）。 */}
+                  <Popover
+                    open={browseOpen}
+                    onOpenChange={(next: boolean) => {
+                      if (next) browseFolder();
+                      else setBrowseOpen(false);
                     }}
                   >
-                    {githubRepo === '' ? (
-                      <span className="text-sm text-(--text-tertiary)">
-                        {t('选择 GitHub 仓库')}
-                      </span>
-                    ) : (
-                      <span>{githubRepo}</span>
-                    )}
-                    <ChevronRight width={14} height={14} />
-                  </Button>
+                    <PopoverTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          className="ml-2 shrink-0"
+                          aria-label={t('浏览')}
+                          disabled={pickBusy}
+                        />
+                      }
+                    >
+                      {t('浏览')}
+                    </PopoverTrigger>
+                    <DirBrowser
+                      onPick={(path) => {
+                        setBrowseOpen(false);
+                        onLocalPathChange(path);
+                      }}
+                    />
+                  </Popover>
+                  {/* local 面的种类 swap（#305 内联副本，t-0070 并入 RepoSwapButton
+                  ——Trigger 化后两形完全同件）。 */}
                   <RepoSwapButton label={t('选择仓库')} buttonRef={swapBtnRef} />
                 </>
               ) : (
-                <>
-                  {/* XMON-25 收编：default（等价迁移位）；
-                    #946：h40/flex:1 几何迁 utility。 */}
-                  <Button
-                    id="prj-new-repo"
-                    className="h-10 flex-1 cursor-pointer rounded-none border-none text-sm font-normal active:not-aria-[haspopup]:translate-y-0"
-                    onClick={startAuth}
-                  >
-                    {t('认证 GitHub')}
-                  </Button>
-                  <RepoSwapButton label={t('选择仓库')} buttonRef={swapBtnRef} />
-                </>
-              )
-            ) : repoSel === 'local' ? (
-              <>
-                {/* XMON-25 收编：Input；#946：皮肤/几何/focus 配方 =
-                NAME_INPUT_CLS，flex-1 占满 field 行。 */}
-                <Input
-                  id="prj-new-repo"
-                  className={`${NAME_INPUT_CLS} flex-1`}
-                  type="text"
-                  placeholder="/path/to/repo"
-                  aria-label={t('本地文件夹')}
-                  value={localPath}
-                  onChange={(e) => onLocalPathChange(e.target.value)}
-                />
-                {/* XMON-25 收编：ghost；#946：40 高带框盒形 + disabled .55
-                  淡化律迁 BROWSE_BTN_CLS 配方。 */}
-                <Button
-                  variant="ghost"
-                  className={BROWSE_BTN_CLS}
-                  aria-label={t('浏览')}
-                  disabled={pickBusy}
-                  onClick={browseFolder}
+                // t-0070 收编成 Menu Trigger（aria-haspopup/expanded/toggle 归
+                // 原语）；outline 件默认形态（同已连接 picker 触发面口径）。
+                <DropdownMenuTrigger
+                  render={
+                    <Button variant="outline" id="prj-new-repo" className={REPO_TRIGGER_CLS} />
+                  }
                 >
-                  {t('浏览')}
-                </Button>
-                {/* local 面的种类 swap（#305 内联副本，t-0070 并入 RepoSwapButton
-                  ——Trigger 化后两形完全同件）。 */}
-                <RepoSwapButton label={t('选择仓库')} buttonRef={swapBtnRef} />
-              </>
-            ) : (
-              // XMON-25 收编：ghost（同已连接 picker 触发面口径）；t-0070 收编
-              // 成 Menu Trigger（aria-haspopup 从手挂 listbox 归原语 menu，
-              // expanded/toggle 同归）。
-              <DropdownMenuTrigger
-                render={<Button variant="ghost" id="prj-new-repo" className={REPO_TRIGGER_CLS} />}
-              >
-                <span className="text-sm text-(--text-tertiary)">{t('选择仓库')}</span>
-                <ChevronRight width={14} height={14} />
-              </DropdownMenuTrigger>
-            )}
-            {/* 行选中态镜像用户动作（aria-checked ≡ indicator 勾渲染，原
+                  <span className="text-muted-foreground">{t('选择仓库')}</span>
+                  <ChevronRight width={14} height={14} />
+                </DropdownMenuTrigger>
+              )}
+              {/* 行选中态镜像用户动作（aria-checked ≡ indicator 勾渲染，原
                 aria-selected ≡ check 律的 RadioItem 原生等价）：未动 =
                 RadioGroup value null = 无行选中（触发行仍持占位文案；「未动表
                 提交 = 无 repo 项目」是 body 层行为，不进选择面状态）。
                 单选即关走显式 closeOnClick——RadioItem 缺省 false（原生菜单
                 radio 保开语义），本面家族律是 select-and-close（#306/#360）。 */}
-            <DropdownMenuContent
-              anchor={repoFieldRef}
-              sideOffset={6}
-              aria-label={t('仓库')}
-              className={REPO_MENU_CLS}
-            >
-              <DropdownMenuRadioGroup
-                value={repoSel === 'none' ? null : repoSel}
-                onValueChange={(next) => {
-                  const sel = next as 'github' | 'local';
-                  pendingSwapFocus.current = true;
-                  setRepoSel(sel);
-                  if (sel === 'github') setPickerOpen(false);
-                }}
+              <DropdownMenuContent
+                anchor={repoFieldRef}
+                sideOffset={6}
+                aria-label={t('仓库')}
+                className="w-auto min-w-[200px]"
               >
-                <DropdownMenuRadioItem value="github" closeOnClick className={REPO_MENU_ROW_CLS}>
-                  {t('GitHub 仓库')}
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="local" closeOnClick className={REPO_MENU_ROW_CLS}>
-                  {t('本地文件夹')}
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-            {/* picker 弹层（#361）：已认证面专属——头部（已连接 login + 断开钮）/
+                <DropdownMenuRadioGroup
+                  value={repoSel === 'none' ? null : repoSel}
+                  onValueChange={(next) => {
+                    const sel = next as 'github' | 'local';
+                    pendingSwapFocus.current = true;
+                    setRepoSel(sel);
+                    if (sel === 'github') setPickerOpen(false);
+                  }}
+                >
+                  <DropdownMenuRadioItem value="github" closeOnClick>
+                    {t('GitHub 仓库')}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="local" closeOnClick>
+                    {t('本地文件夹')}
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+              {/* picker 弹层（#361）：已认证面专属——头部（已连接 login + 断开钮）/
                 搜索 / 仓库行（单选即回填收面板，aria-selected ≡ check 律）/
-                手动兜底链接。plate = prj-new-repo-menu 同 family recipe。
-                行表键盘契约手搓（t-0070 裁决③：混合板无 drop-in，维持手搓 +
-                契约对齐收编面）：开面焦点进列表、Arrow/Home/End roving、
-                typeahead、Enter 即选即关、关面焦点归还——实现在上方
-                ghListRef/onGhListKeyDown 一族。
-                #656：壳 = FloatingShell（Base UI layer 栈，Esc 归 escapeKey
-                isTopmost，旧 OverlayMount + useEscapeClose 退役）；Portal 挂回
-                .prj-new-repo-field（repoFieldWrap），absolute 面板几何保真。
-                触发钮是 toggle 面（#prj-new-repo aria-expanded）——#666 律：
-                initialFocus=false 焦点留触发位（开面焦点进列表仍由上方
-                ghFocusDelivered 一族自己送达）+ 外点归 ClickCatcher（原生
-                outsidePress 只接得住键盘合成 click，与 toggle onClick 双写
-                会把面「关不掉」）。 */}
-            <FloatingShell
-              open={pickerVisible}
-              onClose={closePicker}
-              container={repoFieldWrap}
-              className={EXIT_BRIDGE_CLS}
-              initialFocus={false}
-              disablePointerDismissal
-            >
-              <ClickCatcher onClose={closePicker} />
-              <div
-                className={`${PICKER_PLATE_CLS} ${FLOATING_POP_ANIM}`}
+                手动兜底链接。壳 = registry Popover（#983 floating-shell 族拆
+                判决：锚定 absolute 族 → Popover，Positioner 锚定 field wrap）：
+                Esc / 外点关 / 焦点归还 / 进出场动效全归 Base UI 原语——外点
+                语义随 ClickCatcher 退役换原生 outside-press（#425 遗留待定项，
+                #991 归原型实审裁决）；#666 toggle 双写竞态由 PopoverTrigger
+                原生开合消除。行表键盘契约手搓面不变（t-0070 裁决③：混合板
+                无 drop-in）：开面焦点进列表（initialFocus=false + 下方
+                ghFocusDelivered 一族送达）、Arrow/Home/End roving、typeahead、
+                Enter 即选即关。 */}
+              <PopoverContent
+                side="bottom"
+                align="start"
+                sideOffset={8}
+                initialFocus={false}
+                className={PICKER_PLATE_CLS}
                 data-testid="github-picker"
               >
-                <div className="flex items-center justify-between px-1 text-xs leading-4 text-(--text-secondary)">
+                <div className="flex items-center justify-between px-1 text-xs leading-4 text-muted-foreground">
                   <span>
                     {login === undefined || login === ''
                       ? t('已连接')
                       : `${t('已连接')} · ${login}`}
                   </span>
-                  {/* XMON-25 收编：ghost；旧面不钉高度/行高 → h-auto +
-                    leading-[inherit]：应用内 preflight 对 button 置
-                    line-height: inherit，老面继承 picker-head 的 16px；
-                    normal/text-sm 都会抬高（像素对拍实测 h 16→17）。 */}
-                  <Button
-                    variant="ghost"
-                    className="h-auto cursor-pointer rounded-none border-none bg-transparent p-0 text-xs font-normal leading-[inherit] text-(--text-tertiary) underline hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
-                    onClick={disconnect}
-                  >
+                  <Button variant="link" className="h-auto p-0 text-xs" onClick={disconnect}>
                     {t('断开连接')}
                   </Button>
                 </div>
-                {/* XMON-25 收编：Input；本面无自有 focus 配方 → 现行为 =
-                  #388 全局环，原语 outline-none（utilities 层）会压掉 base 层
-                  全局环，故补 #388 同配方 outline + ring-0（branch-dialog
-                  XMON-24 先例）。#946：32 高/10 内边距 = 件基类同值，13 字/
-                  边框槽/placeholder 墨迁 utility；leading-[inherit] 复刻
-                  preflight 对裸 input 的继承行高（19.5px）。 */}
                 <Input
-                  className="border-(--border) text-[13px] leading-[inherit] text-(--foreground) placeholder:text-(--text-tertiary) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-transparent md:leading-[inherit]"
                   type="text"
                   placeholder={t('搜索仓库')}
                   aria-label={t('搜索仓库')}
@@ -776,7 +703,7 @@ export function ProjectNewPage() {
                 {hits.length === 0 ? (
                   // live 取回在途不闪空面文案（pending ≠ 无命中）。
                   live && reposQ.isPending ? null : (
-                    <div className="px-3 py-2 text-xs leading-4 text-(--text-tertiary)">
+                    <div className="px-3 py-2 text-xs leading-4 text-muted-foreground">
                       {t('没有匹配的仓库')}
                     </div>
                   )
@@ -789,8 +716,7 @@ export function ProjectNewPage() {
                     onKeyDown={onGhListKeyDown}
                   >
                     {hits.map((repo, index) => (
-                      // #851 裸控件收编（#946）：行钮 = Button ghost 底座 +
-                      // GH_ROW_CLS 零 CSS 皮肤；role=option / aria-selected /
+                      // 行钮 = ghost 件默认形态；role=option / aria-selected /
                       // roving tabIndex 键盘契约原样（t-0070 裁决③手搓面）。
                       <Button
                         key={repo.id}
@@ -803,7 +729,7 @@ export function ProjectNewPage() {
                       >
                         {repo.full_name}
                         {githubRepo === repo.full_name && (
-                          <span className="ml-auto flex text-(--card-button)">
+                          <span className="ml-auto flex text-primary">
                             <Check width={14} height={14} />
                           </span>
                         )}
@@ -812,14 +738,14 @@ export function ProjectNewPage() {
                   </div>
                 )}
                 {live && reposQ.isError ? (
-                  <div className="px-1 text-xs leading-4 text-(--destructive)" role="alert">
+                  <div className="px-1 text-xs leading-4 text-destructive" role="alert">
                     {(reposQ.error as Error).message}
                   </div>
                 ) : null}
                 {/* picker 内的兜底链接贴 plate 内边距（原 picker 上下文覆写：
-                  mt-0 + px-1）。 */}
+                mt-0 + px-1）。 */}
                 <Button
-                  variant="ghost"
+                  variant="link"
                   className={`${GH_LINK_CLS} mt-0 px-1`}
                   onClick={() => {
                     setPickerOpen(false);
@@ -828,33 +754,20 @@ export function ProjectNewPage() {
                 >
                   {t('手动输入 owner/repo')}
                 </Button>
-              </div>
-            </FloatingShell>
-            {/* #441 应用内目录浏览器（ADR 0003 D6 remote/headless 兜底）：仅在
-              local 选态挂载；onPick 走既有 onLocalPathChange（回填 + 名称联动
-              + 编辑即撤提示律，W5）。 */}
-            {repoSel === 'local' && (
-              <DirBrowser
-                open={browseOpen}
-                onClose={closeBrowse}
-                onPick={(path) => {
-                  setBrowseOpen(false);
-                  onLocalPathChange(path);
-                }}
-              />
-            )}
-          </div>
+              </PopoverContent>
+            </div>
+          </Popover>
         </DropdownMenu>
         {/* github 非手动面的内联错误行（着陆 reason 三译 / authorize 400
             原文）与未认证面手动兜底链接（连接态未决时不出，随占位面收敛）。 */}
         {showGithubField && oauthError !== null && (
-          <div className="mt-2 text-xs leading-4 text-(--destructive)" role="alert">
+          <div className="mt-2 text-xs leading-4 text-destructive" role="alert">
             {oauthError}
           </div>
         )}
         {showGithubField && !connected && !connectionPending && (
           <Button
-            variant="ghost"
+            variant="link"
             className={`${GH_LINK_CLS} mt-2`}
             onClick={() => setManualRepo(true)}
           >
@@ -862,7 +775,7 @@ export function ProjectNewPage() {
           </Button>
         )}
         {localErrorText !== null && (
-          <div className="mt-2 text-xs leading-4 text-(--destructive)" role="alert">
+          <div className="mt-2 text-xs leading-4 text-destructive" role="alert">
             {localErrorText}
           </div>
         )}
@@ -870,13 +783,14 @@ export function ProjectNewPage() {
             载体 role=status（#910 裁定 3 aria 载体）；仅 local 选态呈现，
             编辑路径即撤。 */}
         {repoSel === 'local' && pickHint !== null && (
-          <div className="mt-2 text-xs leading-4 text-(--text-secondary)" role="status">
+          <div className="mt-2 text-xs leading-4 text-muted-foreground" role="status">
             {pickHint}
           </div>
         )}
-        {/* XMON-25 收编：default；#946：40 高零内距几何与禁用态（.55 淡化）迁 utility。 */}
+        {/* 提交钮：default 件默认形态（40 高手写几何与 .55 禁用淡化退役，
+            禁用降档 = 件默认 opacity-50）。 */}
         <Button
-          className="mt-5 h-10 cursor-pointer rounded-none border-none p-0 text-sm font-normal leading-[inherit] disabled:opacity-[0.55] active:not-aria-[haspopup]:translate-y-0"
+          className="mt-5"
           disabled={live ? name.trim() === '' || !formOk : true}
           onClick={live ? submit : undefined}
         >
