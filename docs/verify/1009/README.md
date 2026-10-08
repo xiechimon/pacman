@@ -139,6 +139,14 @@ FAB ⌘J 提示载体随 #1004 的 kbd-hint 退役面迁移——该消费点原
 191/191 绿（含 #1004 的 shadcn-primitives / sidebar-visual）、web 单测 468/468、
 typecheck / lint 全绿。
 
+**全量批（CI 分片 2/3 暴露，域集外 5 例，修复 `b12251ec`）**：真回归 1 例 =
+#634 detail Esc 分层守卫 query 任意在挂载 `[role=dialog]`，被 A0 常驻窗永远命中
+→ 守卫排除 `.chief-drawer`（D3 窗从不拥有 Esc 键；detail-esc E1–E3 绿）。载体重钉
+4 例 = dead-buttons 第三头钮 关闭→最小化（D3）、notify-click T4b count-0→
+hidden+count1（D6）、page-scroll 等卸载→等在场（设置面窗内交换）、
+agent-identity-chip 24px 几何撞 D7 进场缩放 → settle 谓词（3x repeat 绿）。
+**本地全量收口 848/848**（§0 旧口径「826 绿」为合并前数，作废）。
+
 ## 8. 施工段：better-colors 增量实测（验收模板 v3 第 3 项）
 
 `measure-a0-colors.mjs` + `colors-a0.json`：A0 新合成面 = 窗 chrome + FAB 族
