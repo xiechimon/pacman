@@ -124,11 +124,20 @@ live-07 设置深链 / live-09 抑制路由。
 
 ## 7. 施工段：探针重钉清零（验收模板 v3 第 2 项）
 
-`probe-repinned/`：重钉后 chief 域 8 spec 全绿 91 用例，visual rows **KEPT 109 /
+`probe-repinned/`：重钉后 chief 域 8 spec 全绿 93 用例，visual rows **KEPT 114 /
 DRIFT 0 / NOT-RUN 0 / VIOLATION 0**（对照表清零）。三方 diff 链：
 `probe-pre-a0/`（开工侦察，旧壳 104 KEPT）→ `probe-after-a0/`（原型态 52 KEPT /
 5 DRIFT / 33 NOT-RUN = 重钉工作面）→ `probe-repinned/`（清零）。人审 diff =
 本册 §3 分类表 + §6 处置表（DRIFT 5 条全部落在「已裁决退役面」，无一条疑似回归）。
+
+**合并 origin/main 后刷新**（merge `520140f3`，带入 #1004/#1034/#903/#1050）：
+FAB ⌘J 提示载体随 #1004 的 kbd-hint 退役面迁移——该消费点原在 board-page 内联钮
+（#1004 已翻成 registry Tooltip+Kbd），A0 把 FAB 迁到根 host `chief-root.tsx`，
+形态随迁（Tooltip side=top + Kbd，静息不挂载）；hotkeys 的 wake-family 提示 pin
+同载体重钉（单实例 FAB 后「共享消费点」语义 = 同一路由无关载体）。本 dump 为
+迁移后重跑产物（91→93 用例 = main 在域内 spec 新增 2 条）。域 e2e 合并后
+191/191 绿（含 #1004 的 shadcn-primitives / sidebar-visual）、web 单测 468/468、
+typecheck / lint 全绿。
 
 ## 8. 施工段：better-colors 增量实测（验收模板 v3 第 3 项）
 
@@ -144,7 +153,10 @@ UI 字形 3）。全局色板不重测（#988 双模 109 对 0 fail 封账）。
 - **panel→Card / dialog-shell 零皮化 / status-chip / tag-chip / seeded-avatar /
   kbd-hint→Tooltip+Kbd / floating-shell 族拆**：均**不属 A0 段**（属 #1008 L5 与
   波 2 / 施工批次）——A0 对它们零触碰，现状消费点原样（chief 域内 seeded-avatar /
-  kbd-hint / dialog-shell 消费点保持既有形态）。
+  kbd-hint / dialog-shell 消费点保持既有形态）。**合并后例外一条**：board FAB 的
+  ⌘J 提示消费点已被 main 的 #1004 翻成 registry Tooltip+Kbd，A0 把该 FAB 迁进
+  `chief-root.tsx` 时**承接 #1004 形态**（不是本票新做退役；完整版仍归 #1060/L5，
+  本票未触碰其余 kbd-hint 消费点）。
 - **F8 registry 弹层件写死 z-50 的接法单点裁决**：随 A0 出（tokens.css --z-floating
   注记）——渲染中件经已登记 deviation 骑 --z-dialog，未渲染件保持上游 z-50 原文。
 - **dialog-shell 翻面交叉（L3/#1006 实审通报）**：rewind 确认层是 dialog-shell 常规

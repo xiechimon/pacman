@@ -19,7 +19,8 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { Button } from '../components/ui/button.js';
-import { KbdHint } from '../components/ui/kbd-hint.js';
+import { Kbd } from '../components/ui/kbd.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChiefDrawer } from './chief-drawer.js';
@@ -118,22 +119,32 @@ export function ChiefRoot() {
             // （ChiefFabIcon 单源）。chief-fab / fab-badge 类名 = 零规则载体
             // 钩子（spec 定位面，重钉账见 #1009 A0 ⑨）。z 走 --z-floating
             // 新 rung（与窗互斥共存，同档无竞争）。
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('总管')}
-              onClick={() => surface.setChiefView('drawer')}
-              className="chief-fab fixed right-2 bottom-2 z-(--z-floating) size-10 cursor-pointer rounded-full border-none bg-(--card) font-normal shadow-[var(--edge-ring),var(--floating-shadow)] hover:bg-(--card) dark:hover:bg-(--card) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-6"
-            >
-              <ChiefFabIcon chief={surface.chiefData} />
-              {/* #468: ⌘J 悬浮提示（点击维持 open-only）。 */}
-              <KbdHint label="⌘J" />
-              {surface.chiefUnread > 0 && (
-                <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
-                  {surface.chiefUnread}
-                </span>
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('总管')}
+                    onClick={() => surface.setChiefView('drawer')}
+                    className="chief-fab fixed right-2 bottom-2 z-(--z-floating) size-10 cursor-pointer rounded-full border-none bg-(--card) font-normal shadow-[var(--edge-ring),var(--floating-shadow)] hover:bg-(--card) dark:hover:bg-(--card) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-6"
+                  >
+                    <ChiefFabIcon chief={surface.chiefData} />
+                    {surface.chiefUnread > 0 && (
+                      <span className="fab-badge absolute -top-1 right-0 h-4 min-w-4 rounded-[8px] bg-(--card-button) px-[3px] text-center text-[10px] leading-4 text-(--text-on-accent)">
+                        {surface.chiefUnread}
+                      </span>
+                    )}
+                  </Button>
+                }
+              />
+              {/* #468: ⌘J 悬浮提示（点击维持 open-only）。#983/#1004：
+                  kbd-hint 退役回 registry Tooltip + Kbd——该消费点原在
+                  board-page 内联钮，#1009 A0 把 FAB 迁到根 host，形态随迁。 */}
+              <TooltipContent side="top" sideOffset={8}>
+                <Kbd>⌘J</Kbd>
+              </TooltipContent>
+            </Tooltip>
           )}
           <ChiefDrawer
             open={windowOpen}

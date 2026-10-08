@@ -436,13 +436,15 @@ test('the robot FAB surfaces the ⌘J hint on hover; at rest it stays hidden', a
   await expect(hint).toHaveText('⌘J');
 });
 
-test('a wake-family FAB carries the same ⌘J hint (shared consumption point)', async ({
+test('a wake-family route carries the same ⌘J hint (single root FAB)', async ({
   page,
 }) => {
+  // ADR 0013 D4/D6: the per-shell wake FABs retired into one root-host FAB —
+  // the hint rides the same Tooltip+Kbd carrier on every route (#983/#1004).
   await page.goto('/app/team?scenario=12');
   const fab = page.locator('button[aria-label="总管"]');
-  const hint = fab.locator('.kbd-hint');
-  await expect(hint).toBeHidden();
+  const hint = page.locator('[data-slot="tooltip-content"] [data-slot="kbd"]');
+  await expect(hint).toHaveCount(0);
   await fab.hover();
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('⌘J');

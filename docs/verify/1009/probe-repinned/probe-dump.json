@@ -2,8 +2,8 @@
   "meta": {
     "tool": "probe-dump",
     "ticket": 921,
-    "date": "2026-10-08T11:49:20.773Z",
-    "commit": "3822b405",
+    "date": "2026-10-08T12:55:40.838Z",
+    "commit": "520140f3",
     "port": 8397,
     "specs": [
       "chief-panel",
@@ -18,24 +18,24 @@
     "specCount": 8,
     "playwrightVersion": "1.63.0",
     "workers": "4",
-    "testsPassed": 91,
+    "testsPassed": 93,
     "testsFailed": 0
   },
   "coverage": {
-    "styleOccurrences": 20,
+    "styleOccurrences": 21,
     "boxSites": 23,
     "cssSites": 2,
-    "evaluateProbeSites": 18,
-    "assertionSites": 106,
-    "collectedStyle": 24,
+    "evaluateProbeSites": 19,
+    "assertionSites": 111,
+    "collectedStyle": 28,
     "collectedBox": 33,
     "collectedWait": 0,
     "collectedCss": 2,
-    "collectedStyleSites": 19,
+    "collectedStyleSites": 20,
     "collectedBoxSites": 23,
     "collectedCssSites": 2,
-    "assertionRecords": 154,
-    "joinedAssertionSites": 128
+    "assertionRecords": 163,
+    "joinedAssertionSites": 133
   },
   "probeSites": [
     {
@@ -334,87 +334,99 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 327,
+      "line": 334,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 327,
+      "line": 334,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 590,
+      "line": 597,
       "kind": "box",
       "api": "boundingBox"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 593,
+      "line": 600,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 735,
+      "line": 742,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 737,
+      "line": 744,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 746,
+      "line": 753,
       "kind": "style-evaluate",
       "api": "evaluate"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 747,
+      "line": 754,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 748,
-      "kind": "style",
-      "api": "getComputedStyle"
-    },
-    {
-      "file": "chief-stream-markdown.spec.ts",
-      "line": 821,
-      "kind": "style-evaluate",
-      "api": "evaluate"
-    },
-    {
-      "file": "chief-stream-markdown.spec.ts",
-      "line": 826,
+      "line": 755,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
       "line": 828,
+      "kind": "style-evaluate",
+      "api": "evaluate"
+    },
+    {
+      "file": "chief-stream-markdown.spec.ts",
+      "line": 833,
       "kind": "style",
       "api": "getComputedStyle"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 857,
+      "line": 835,
+      "kind": "style",
+      "api": "getComputedStyle"
+    },
+    {
+      "file": "chief-stream-markdown.spec.ts",
+      "line": 864,
       "kind": "css",
       "api": "toHaveCSS"
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 858,
+      "line": 865,
       "kind": "css",
       "api": "toHaveCSS"
+    },
+    {
+      "file": "chief-stream-markdown.spec.ts",
+      "line": 1056,
+      "kind": "style-evaluate",
+      "api": "evaluate"
+    },
+    {
+      "file": "chief-stream-markdown.spec.ts",
+      "line": 1058,
+      "kind": "style",
+      "api": "getComputedStyle"
     }
   ],
   "probeValues": [
@@ -467,16 +479,6 @@
       "k": "p",
       "p": "style",
       "cls": "Locator",
-      "f": "chief-drawer-model.spec.ts",
-      "l": 85,
-      "loc": "internal:role=option[selected=true] >> internal:testid=[data-testid=\"model-pick-name\"s]",
-      "v": 6.632010330240887,
-      "tt": "the selected model row is readable in both themes (#751 A)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
       "f": "chief-fab.spec.ts",
       "l": 43,
       "loc": ".chief-fab",
@@ -488,36 +490,6 @@
         "position": "fixed"
       },
       "tt": "the FAB keeps the A0 corner geometry (40x40 @ 8px inset, fixed)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-drawer-model.spec.ts",
-      "l": 111,
-      "loc": "internal:role=option[selected=true]",
-      "v": "color(srgb 0.26102 0.195922 0.223137)",
-      "tt": "the selected model row is readable in both themes (#751 A)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-drawer-model.spec.ts",
-      "l": 85,
-      "loc": "internal:role=option[selected=true] >> internal:testid=[data-testid=\"model-pick-name\"s]",
-      "v": 7.727365781659001,
-      "tt": "the selected model row is readable in both themes (#751 A)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-drawer-model.spec.ts",
-      "l": 111,
-      "loc": "internal:role=option[selected=true]",
-      "v": "color(srgb 0.892314 0.811216 0.844863)",
-      "tt": "the selected model row is readable in both themes (#751 A)"
     },
     {
       "k": "p",
@@ -554,19 +526,20 @@
       "p": "style",
       "cls": "Locator",
       "f": "chief-drawer-model.spec.ts",
-      "l": 140,
-      "loc": "internal:role=dialog[name=\"模型\"i] >> internal:role=option[selected=true]",
-      "v": {
-        "fillLeft": 1,
-        "fillRight": 1,
-        "panelBorder": 1,
-        "bg": "color(srgb 0.892314 0.811216 0.844863)",
-        "padLeft": 20,
-        "padRight": 20,
-        "nameInset": 20,
-        "checkInset": 20
-      },
-      "tt": "the selected row fill bleeds to the popover edges (#872)"
+      "l": 85,
+      "loc": "internal:role=option[selected=true] >> internal:testid=[data-testid=\"model-pick-name\"s]",
+      "v": 6.632010330240887,
+      "tt": "the selected model row is readable in both themes (#751 A)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-drawer-model.spec.ts",
+      "l": 111,
+      "loc": "internal:role=option[selected=true]",
+      "v": "color(srgb 0.26102 0.195922 0.223137)",
+      "tt": "the selected model row is readable in both themes (#751 A)"
     },
     {
       "k": "p",
@@ -600,18 +573,57 @@
     },
     {
       "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-drawer-model.spec.ts",
+      "l": 85,
+      "loc": "internal:role=option[selected=true] >> internal:testid=[data-testid=\"model-pick-name\"s]",
+      "v": 7.727365781659001,
+      "tt": "the selected model row is readable in both themes (#751 A)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-drawer-model.spec.ts",
+      "l": 111,
+      "loc": "internal:role=option[selected=true]",
+      "v": "color(srgb 0.892314 0.811216 0.844863)",
+      "tt": "the selected model row is readable in both themes (#751 A)"
+    },
+    {
+      "k": "p",
       "p": "box",
       "cls": "Locator",
       "f": "chief-drawer-slash.spec.ts",
       "l": 209,
       "loc": ".slash-help",
       "v": {
-        "x": 520,
-        "y": 228,
-        "width": 400,
-        "height": 219
+        "x": 520.0615234375,
+        "y": 228.03369140625,
+        "width": 399.876953125,
+        "height": 218.9326171875
       },
       "tt": "/help opens the command panel with the drawer builtins"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-drawer-model.spec.ts",
+      "l": 140,
+      "loc": "internal:role=dialog[name=\"模型\"i] >> internal:role=option[selected=true]",
+      "v": {
+        "fillLeft": 1,
+        "fillRight": 1,
+        "panelBorder": 1,
+        "bg": "color(srgb 0.892314 0.811216 0.844863)",
+        "padLeft": 20,
+        "padRight": 20,
+        "nameInset": 20,
+        "checkInset": 20
+      },
+      "tt": "the selected row fill bleeds to the popover edges (#872)"
     },
     {
       "k": "p",
@@ -694,6 +706,16 @@
         "height": 732
       },
       "tt": "minimizing leaves the board grid at the same geometry (nothing to restore)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-settings.spec.ts",
+      "l": 73,
+      "loc": "internal:role=dialog[name=\"选择总管 Agent\"i] >> internal:attr=[placeholder=\"搜索 Agent…\"i]",
+      "v": 16,
+      "tt": "agent dialog search keeps its own 16px inset (#872 blast radius)"
     },
     {
       "k": "p",
@@ -790,16 +812,6 @@
     },
     {
       "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-settings.spec.ts",
-      "l": 73,
-      "loc": "internal:role=dialog[name=\"选择总管 Agent\"i] >> internal:attr=[placeholder=\"搜索 Agent…\"i]",
-      "v": 16,
-      "tt": "agent dialog search keeps its own 16px inset (#872 blast radius)"
-    },
-    {
-      "k": "p",
       "p": "box",
       "cls": "Locator",
       "f": "chief-panel.spec.ts",
@@ -875,16 +887,6 @@
     },
     {
       "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-stream-markdown.spec.ts",
-      "l": 327,
-      "loc": "internal:testid=[data-testid=\"chief-body\"s]",
-      "v": "auto",
-      "tt": "F-R6/R8: 用户行头像 = 真人身份 img（XMON-105 单源），抽屉体可滚动"
-    },
-    {
-      "k": "p",
       "p": "box",
       "cls": "Locator",
       "f": "chief-panel.spec.ts",
@@ -912,6 +914,16 @@
         "height": 732
       },
       "tt": "secondary: the main column never narrows while the window is open"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 334,
+      "loc": "internal:testid=[data-testid=\"chief-body\"s]",
+      "v": "auto",
+      "tt": "F-R6/R8: 用户行头像 = 真人身份 img（XMON-105 单源），抽屉体可滚动"
     },
     {
       "k": "p",
@@ -1060,6 +1072,31 @@
     },
     {
       "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 597,
+      "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-msg\"s] >> nth=-1 >> internal:role=button[name=/实时步骤/]",
+      "v": {
+        "x": 1103,
+        "y": 332.65625,
+        "width": 312,
+        "height": 24
+      },
+      "tt": "F-R18: 在飞存在行可展开（#822）——点箭头看实时步骤，typing 接管不泄漏"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 600,
+      "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-msg\"s] >> nth=-1 >> internal:text=\"处理中...\"i",
+      "v": 1.5,
+      "tt": "F-R18: 在飞存在行可展开（#822）——点箭头看实时步骤，typing 接管不泄漏"
+    },
+    {
+      "k": "p",
       "p": "style",
       "cls": "Locator",
       "f": "chief-settings.spec.ts",
@@ -1089,28 +1126,29 @@
     },
     {
       "k": "p",
-      "p": "box",
+      "p": "style",
       "cls": "Locator",
       "f": "chief-stream-markdown.spec.ts",
-      "l": 590,
-      "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-msg\"s] >> nth=-1 >> internal:role=button[name=/实时步骤/]",
+      "l": 742,
+      "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-bubble\"s] >> internal:has-text=\"收到，谢谢\"i",
       "v": {
-        "x": 1103,
-        "y": 332.65625,
-        "width": 312,
-        "height": 24
+        "h": 44,
+        "font": "14px"
       },
-      "tt": "F-R18: 在飞存在行可展开（#822）——点箭头看实时步骤，typing 接管不泄漏"
+      "tt": "F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效"
     },
     {
       "k": "p",
       "p": "style",
       "cls": "Locator",
       "f": "chief-stream-markdown.spec.ts",
-      "l": 593,
-      "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-msg\"s] >> nth=-1 >> internal:text=\"处理中...\"i",
-      "v": 1.5,
-      "tt": "F-R18: 在飞存在行可展开（#822）——点箭头看实时步骤，typing 接管不泄漏"
+      "l": 753,
+      "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-bubble\"s] >> internal:has-text=\"echo before-and-after\"i >> pre.chat-md-code",
+      "v": {
+        "top": "0px",
+        "bottom": "0px"
+      },
+      "tt": "F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效"
     },
     {
       "k": "p",
@@ -1121,6 +1159,60 @@
       "loc": "internal:role=dialog[name=\"压缩模型\"i] >> internal:attr=[placeholder=\"搜索模型…\"i]",
       "v": 12,
       "tt": "压缩模型 selected row fill bleeds to the menu edges (#872)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 828,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
+      "v": {
+        "display": "flex",
+        "grow": "1",
+        "minW": "0px",
+        "imgW": 23.0654296875,
+        "imgH": 23.0654296875,
+        "colRightOfImg": true,
+        "colBesideImg": true
+      },
+      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 828,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
+      "v": {
+        "display": "flex",
+        "grow": "1",
+        "minW": "0px",
+        "imgW": 23.909912109375,
+        "imgH": 23.909942626953125,
+        "colRightOfImg": true,
+        "colBesideImg": true
+      },
+      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 828,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
+      "v": {
+        "display": "flex",
+        "grow": "1",
+        "minW": "0px",
+        "imgW": 24,
+        "imgH": 24,
+        "colRightOfImg": true,
+        "colBesideImg": true
+      },
+      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
     },
     {
       "k": "p",
@@ -1156,6 +1248,40 @@
       "k": "p",
       "p": "style",
       "cls": "Locator",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 1056,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"用户只是打了个招呼「你好」，没有\"i >> internal:role=button[name=\"展开思考\"i]",
+      "v": {
+        "textOverflow": "ellipsis",
+        "overflowX": "hidden",
+        "labelClient": 294,
+        "labelScroll": 774,
+        "btnW": 300,
+        "colW": 300
+      },
+      "tt": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-stream-markdown.spec.ts",
+      "l": 1056,
+      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"> The user just \"i >> internal:role=button[name=\"展开思考\"i]",
+      "v": {
+        "textOverflow": "ellipsis",
+        "overflowX": "hidden",
+        "labelClient": 294,
+        "labelScroll": 699,
+        "btnW": 303,
+        "colW": 303
+      },
+      "tt": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
       "f": "chief-settings.spec.ts",
       "l": 356,
       "loc": "internal:text=/No Agent selected yet/",
@@ -1169,32 +1295,6 @@
       "k": "p",
       "p": "style",
       "cls": "Locator",
-      "f": "chief-stream-markdown.spec.ts",
-      "l": 735,
-      "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-bubble\"s] >> internal:has-text=\"收到，谢谢\"i",
-      "v": {
-        "h": 44,
-        "font": "14px"
-      },
-      "tt": "F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-stream-markdown.spec.ts",
-      "l": 746,
-      "loc": ".chief-drawer >> internal:testid=[data-testid=\"chief-bubble\"s] >> internal:has-text=\"echo before-and-after\"i >> pre.chat-md-code",
-      "v": {
-        "top": "0px",
-        "bottom": "0px"
-      },
-      "tt": "F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
       "f": "chief-settings.spec.ts",
       "l": 356,
       "loc": "internal:text=/Nothing being watched yet/",
@@ -1203,24 +1303,6 @@
         "contained": true
       },
       "tt": "空态卡 centered and growth-proof: memo matches watches (#772)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-stream-markdown.spec.ts",
-      "l": 821,
-      "loc": ".chief-drawer >> .chief-msg >> internal:has-text=\"先把凭证面捋一遍\"i",
-      "v": {
-        "display": "flex",
-        "grow": "1",
-        "minW": "0px",
-        "imgW": 24,
-        "imgH": 24,
-        "colRightOfImg": true,
-        "colBesideImg": true
-      },
-      "tt": "F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数"
     }
   ],
   "assertions": [
@@ -1741,14 +1823,14 @@
       "source": "expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);",
       "testTitle": "/help opens the command panel with the drawer builtins",
       "old": "≥ 0",
-      "new": "228",
+      "new": "228.03369140625",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         0
       ],
-      "rawNew": 228
+      "rawNew": 228.03369140625
     },
     {
       "file": "chief-fab.spec.ts",
@@ -3214,7 +3296,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 214,
+      "line": 221,
       "matcher": "toBe",
       "negated": false,
       "source": ".toBe(true);",
@@ -3233,7 +3315,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 214,
+      "line": 221,
       "matcher": "toBe",
       "negated": false,
       "source": ".toBe(true);",
@@ -3252,7 +3334,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 214,
+      "line": 221,
       "matcher": "toBe",
       "negated": false,
       "source": ".toBe(true);",
@@ -3271,7 +3353,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 214,
+      "line": 221,
       "matcher": "toBe",
       "negated": false,
       "source": ".toBe(true);",
@@ -3290,7 +3372,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 289,
+      "line": 296,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(await stream.locator('.mention-chip').count()).toBe(",
@@ -3307,7 +3389,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 328,
+      "line": 335,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(overflow).toBe('auto');",
@@ -3324,7 +3406,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 591,
+      "line": 598,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(hit?.height).toBe(24);",
@@ -3341,7 +3423,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 597,
+      "line": 604,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(inkInset).toBe(1.5);",
@@ -3358,7 +3440,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 726,
+      "line": 733,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(clip).toBe(MD_USER);",
@@ -3375,7 +3457,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 739,
+      "line": 746,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(geo.h).toBe(44); // 10px padding ×2 + 24px 行盒（现状逐像素同值）",
@@ -3392,7 +3474,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 740,
+      "line": 747,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(geo.font).toBe('14px');",
@@ -3409,7 +3491,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 750,
+      "line": 757,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(margins.top).toBe('0px');",
@@ -3426,7 +3508,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 751,
+      "line": 758,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(margins.bottom).toBe('0px');",
@@ -3443,7 +3525,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 840,
+      "line": 847,
       "matcher": "toEqual",
       "negated": false,
       "source": ".toEqual({",
@@ -3470,7 +3552,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 857,
+      "line": 864,
       "matcher": "toHaveCSS",
       "negated": false,
       "source": "await expect(toolRow).toHaveCSS('display', 'flex');",
@@ -3488,7 +3570,7 @@
     },
     {
       "file": "chief-stream-markdown.spec.ts",
-      "line": 858,
+      "line": 865,
       "matcher": "toHaveCSS",
       "negated": false,
       "source": "await expect(toolRow.locator('> div')).toHaveCSS('flex-grow', '1');",
@@ -3503,6 +3585,91 @@
         "1"
       ],
       "rawNew": "1"
+    },
+    {
+      "file": "chief-stream-markdown.spec.ts",
+      "line": 1073,
+      "matcher": "toBe",
+      "negated": false,
+      "source": "expect(m.textOverflow, tag).toBe('ellipsis');",
+      "testTitle": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）",
+      "old": "ellipsis",
+      "new": "ellipsis",
+      "status": "KEPT",
+      "violation": null,
+      "note": null,
+      "rawOld": [
+        "ellipsis"
+      ],
+      "rawNew": "ellipsis"
+    },
+    {
+      "file": "chief-stream-markdown.spec.ts",
+      "line": 1074,
+      "matcher": "toBe",
+      "negated": false,
+      "source": "expect(m.overflowX, tag).toBe('hidden');",
+      "testTitle": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）",
+      "old": "hidden",
+      "new": "hidden",
+      "status": "KEPT",
+      "violation": null,
+      "note": null,
+      "rawOld": [
+        "hidden"
+      ],
+      "rawNew": "hidden"
+    },
+    {
+      "file": "chief-stream-markdown.spec.ts",
+      "line": 1075,
+      "matcher": "toBeGreaterThan",
+      "negated": false,
+      "source": "expect(m.labelScroll, tag).toBeGreaterThan(m.labelClient);",
+      "testTitle": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）",
+      "old": "> 294",
+      "new": "774",
+      "status": "KEPT",
+      "violation": null,
+      "note": null,
+      "rawOld": [
+        294
+      ],
+      "rawNew": 774
+    },
+    {
+      "file": "chief-stream-markdown.spec.ts",
+      "line": 1077,
+      "matcher": "toBeLessThanOrEqual",
+      "negated": false,
+      "source": "expect(m.btnW, tag).toBeLessThanOrEqual(m.colW);",
+      "testTitle": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）",
+      "old": "≤ 300",
+      "new": "300",
+      "status": "KEPT",
+      "violation": null,
+      "note": null,
+      "rawOld": [
+        300
+      ],
+      "rawNew": 300
+    },
+    {
+      "file": "chief-stream-markdown.spec.ts",
+      "line": 1083,
+      "matcher": "toBeLessThanOrEqual",
+      "negated": false,
+      "source": "expect(pageOverflow).toBeLessThanOrEqual(0);",
+      "testTitle": "F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）",
+      "old": "≤ 0",
+      "new": "0",
+      "status": "KEPT",
+      "violation": null,
+      "note": null,
+      "rawOld": [
+        0
+      ],
+      "rawNew": 0
     }
   ],
   "webFirstCss": [
