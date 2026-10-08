@@ -7,13 +7,13 @@
 // 各写一遍行结构。
 //
 // 分层（XMON-117 × XMON-104）：卡盒的**皮肤**不在这里实现——ProfileCard 的根
-// 元素就是 components/ui/panel.tsx 的 `Panel variant="outlined"`（1px
-// --border-default 描边 + --surface 底 + 12px 圆角）。本件只管**排版**：头像头 /
-// 行 / label / 值槽的几何。皮肤只住 Panel 一处，改描边或底色不改这里。
+// 元素就是 components/ui/card.tsx 的 registry `Card`（#983 判决：panel→Card，
+// #1005 执行——rounded-xl / ring-1 / bg-card 官方默认皮肤）。本件只管**排版**：
+// 头像头 / 行 / label / 值槽的几何。皮肤只住 Card 一处。
 //
 // #952（profile-card.css 退役，spec/22 §3.1）：模板几何全部改件上 token
 // utility，单源在本文件的 PROFILE_* 常量。行高逐值沿用 r7 13 的探测
-// （41 = 40 内高 + 1px 分隔线；名称行 49、语言行 57），帐号面零漂移；带副
+// （41 = 40 内高 + 1px 分隔线；名称行 49、语言行 57）；带副
 // 文案的行走 auto 档（高度由内容撑开，上下各 8px 内垫，label 列封顶 60%）。
 // 模板类名（profile-card/head/avatar/row/label/label-text/hint/value）原样
 // 输出——components 自有件类是 e2e 直取载体（#944 provider 面判例，
@@ -29,14 +29,18 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { SquarePen } from '../icons/index.js';
 import { Button } from './ui/button.js';
+// #1031 改名编辑器（Button/Input/SquarePen）与 #1005 Card 化（panel→Card）
+// 合并：皮肤只住 registry Card 一处，改名交互逻辑零分叉。
+import { Card } from './ui/card.js';
 import { Input } from './ui/input.js';
-import { Panel } from './ui/panel.js';
 
-/** 卡盒（原 .profile-card 三律）：overflow visible（语言 dropdown 与模型菜单
- *  要翻出卡外；圆角裁切换挂首末子件的逻辑角属性——内半径 = 卡 12 − 1px 描边。
- *  用逻辑角而非 rounded-t/b 简写：单行卡的首末是同一个元素，简写会互相覆盖）。 */
+/** 卡盒：overflow visible 保留——agent 资料页的模型菜单仍走 FloatingShell
+ *  卡内锚定（select.tsx 退役 = #1010，波 2；Popover 化后随件摘除，语言
+ *  dropdown 已 Portal 化不受裁切影响）。首末子件逻辑角 = 卡圆角 − 1px 环
+ *  （rounded-xl = --radius-xl；ring 是 box-shadow 不占位。逻辑角而非
+ *  rounded-t/b 简写：单行卡的首末是同一个元素，简写会互相覆盖）。 */
 const PROFILE_CARD_CLS =
-  'profile-card overflow-visible [&>:first-child]:rounded-ss-[11px] [&>:first-child]:rounded-se-[11px] [&>:last-child]:rounded-es-[11px] [&>:last-child]:rounded-ee-[11px]';
+  'profile-card overflow-visible [&>:first-child]:rounded-ss-[calc(var(--radius-xl)-1px)] [&>:first-child]:rounded-se-[calc(var(--radius-xl)-1px)] [&>:last-child]:rounded-es-[calc(var(--radius-xl)-1px)] [&>:last-child]:rounded-ee-[calc(var(--radius-xl)-1px)]';
 
 /** 行盒基底（原 .profile-row）：41 = 40 内高 + 1px 分隔线（r7 13 行界）。
  *  行自带的 border-top 是行间分隔线；做首件时上方没有行可分，那条线只会与卡
@@ -68,24 +72,21 @@ export const PROFILE_VALUE_GROW_CLS = 'min-w-0 flex-[1_1_auto]';
  *  下），纵向撑满。 */
 export const PROFILE_VALUE_EDITOR_CLS = 'min-w-0 flex-[1_1_auto] flex-col items-stretch gap-2';
 
-/** 卡盒：皮肤 = Panel outlined 档（描边 / 底色 / 12px 圆角只住 Panel 一处），
- *  本件只挂 overflow 与首末子件圆角。上边距归消费点（帐号面 r7 13 的 16px 是
+/** 卡盒：皮肤 = registry Card 默认档（rounded-xl / ring-1 / bg-card，#983
+ *  panel→Card 判决），本件只挂 overflow 与首末子件圆角；件默认纵向垫/gap
+ *  归零（行满幅贴边，layout）。上边距归消费点（帐号面 r7 13 的 16px 是
  *  「头 44 + 16」的页面节奏，资源面的节奏由域配方给），本组件不带外边距。 */
 export function ProfileCard({ className, children }: { className?: string; children: ReactNode }) {
-  return (
-    <Panel variant="outlined" className={cn(PROFILE_CARD_CLS, className)}>
-      {children}
-    </Panel>
-  );
+  return <Card className={cn(PROFILE_CARD_CLS, 'gap-0 py-0', className)}>{children}</Card>;
 }
 
 /** 头像头（原 .profile-head）：120px 居中带，头像贴顶 16px（头像圆
- *  y77..141）；自带顶圆角（内半径 11 = 卡 12 − 1px 描边）。 */
+ *  y77..141）；底色与 Card 同槽（bg-card），顶圆角随卡盒逻辑角配方。 */
 export function ProfileHead({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div
       className={cn(
-        'profile-head flex h-[120px] flex-col items-center rounded-t-[11px] bg-(--card) pt-4',
+        'profile-head flex h-[120px] flex-col items-center rounded-t-[calc(var(--radius-xl)-1px)] pt-4',
         className,
       )}
     >
