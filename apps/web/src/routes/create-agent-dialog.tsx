@@ -101,18 +101,18 @@ export function CreateAgentDialog({
       title={t('创建 agent')}
       open={open}
       onClose={onClose}
-      // 底座 = components/ui/Button default 档；w-full = 钉底独占
-      // （§5.4）。差额并项——散写形字重 400、无按下位移。
+      // 底座 = components/ui/Button default 档；w-full = 钉底独占（§5.4）。
+      // #1006 段 2（dialog-shell 零皮化的消费点清理）：剥 footer 包装 div
+      // （registry DialogFooter band 自带 p-4 + flex；旧包装会把 w-full 钮
+      // 塌成内容宽，drive-952-finale B3 实测 30px），裸钮直进 band。
       footer={
-        <div className="flex flex-col px-4 pb-4">
-          <Button
-            className="w-full px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
-            disabled={name.trim() === ''}
-            onClick={submit}
-          >
-            {t('创建')}
-          </Button>
-        </div>
+        <Button
+          className="w-full px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+          disabled={name.trim() === ''}
+          onClick={submit}
+        >
+          {t('创建')}
+        </Button>
       }
     >
       <div className="flex flex-col gap-3 px-4 pt-4 pb-3">

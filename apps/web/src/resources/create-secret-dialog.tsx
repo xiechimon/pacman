@@ -50,12 +50,13 @@ export function CreateSecretDialog({ open, onClose, onCreate }: CreateSecretDial
       title={t('添加密钥')}
       open={open}
       onClose={onClose}
+      // #1006 段 2（dialog-shell 零皮化的消费点清理）：footer 进 registry
+      // DialogFooter band（自带 p-4 + flex），旧 px-4 pb-4 包装 div 会把
+      // w-full 钮塌成内容宽——剥包装、裸钮直进（w-full 单子填满 band）。
       footer={
-        <div className="flex flex-col px-4 pb-4">
-          <Button className="w-full" disabled={name.trim() === '' || value === ''} onClick={submit}>
-            {t('添加密钥')}
-          </Button>
-        </div>
+        <Button className="w-full" disabled={name.trim() === '' || value === ''} onClick={submit}>
+          {t('添加密钥')}
+        </Button>
       }
     >
       <FieldGroup className="px-4 pt-4 pb-3">

@@ -15,17 +15,12 @@ import { cn } from 'cn';
 import type { ReactNode } from 'react';
 import { useBuild } from '../api/hooks.js';
 import { Badge } from '../components/ui/badge.js';
+import { Label } from '../components/ui/label.js';
 import type { BuildOverlayContent, PaneView, RunHistoryRow } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { BarChart3, Check, Download, History, X } from '../icons/index.js';
 import { type DocTypeLabel, PaneTypeSelect } from '../overlays/plan-dropdown.js';
-import {
-  BranchSyncFields,
-  DIR_BOX,
-  FIELD_LABEL,
-  SyncButton,
-  useBranchSyncState,
-} from './branch-dialog.js';
+import { BranchSyncFields, READONLY_BOX, SyncButton, useBranchSyncState } from './branch-dialog.js';
 import { PANE_HEAD } from './docpane.js';
 
 /** Type-select props every section head shares (the ✓ row + row set are
@@ -150,7 +145,7 @@ function HistorySection({
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] text-(--foreground)">{t(run.label)}</span>
                   {(run.status === 'current' || run.status === 'failed-current') && (
-                    // #1006（#980 前提④）：手搓 18px/4px 圆角小 chip →
+                    // #1006 原型（#980 前提④）：手搓 18px/4px 圆角小 chip →
                     // registry Badge secondary 档（h-5 rounded-4xl 默认几何；
                     // 「当前」是计数标注非任务五态，secondary 语义对应）。
                     <Badge variant="secondary" className="font-normal text-(--text-tertiary)">
@@ -208,21 +203,25 @@ function BranchSection({
             buildId={buildId}
           />
           {/* The dialog's Git tab ([推断] minimal PR surface) folds into the
-              section tail — one static column, no sub-tabs. */}
-          <div className={cn('pane-branch-pr', FIELD_LABEL, 'mt-4')}>Pull Request</div>
-          {pr !== null && prNumber != null ? (
-            // #704 PR 槽回填态：同 box 形，链接色 + 下划线（原 .dlg-pr-link）。
-            <a
-              className={cn(DIR_BOX, 'block text-(--accent) underline')}
-              href={pr}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              #{prNumber}
-            </a>
-          ) : (
-            <div className={DIR_BOX}>{t('未创建')}</div>
-          )}
+              section tail — one static column, no sub-tabs. #1006 原型：
+              标签走 registry Label 件，只读槽走 READONLY_BOX（branch-dialog
+              单源）。 */}
+          <div className="pane-branch-pr mt-4 flex flex-col gap-2">
+            <Label>Pull Request</Label>
+            {pr !== null && prNumber != null ? (
+              // #704 PR 槽回填态：同 box 形，链接色 + 下划线（原 .dlg-pr-link）。
+              <a
+                className={cn(READONLY_BOX, 'text-(--accent) underline')}
+                href={pr}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                #{prNumber}
+              </a>
+            ) : (
+              <div className={READONLY_BOX}>{t('未创建')}</div>
+            )}
+          </div>
           <div className="pane-branch-foot mt-4">
             <SyncButton
               buildId={buildId}
