@@ -43,10 +43,14 @@ try {
       // Walk the guidance: the value lives in the env file the server was
       // started from; read it there (what the copy tells the deployer to do),
       // enter it, and the gate must open. The value itself is never printed.
+      const KEY_PREFIX = 'PACMAN_TOKEN=';
       const envLine = readFileSync(tokenEnvFile, 'utf8')
         .split('\n')
-        .find((l) => l.startsWith('PACMAN_TOKEN='));
-      const token = envLine.slice('PACMAN_TOKEN='.length).trim();
+        .find((l) => l.startsWith(KEY_PREFIX));
+      if (envLine === undefined) {
+        throw new Error(`no ${KEY_PREFIX} line in ${tokenEnvFile}`);
+      }
+      const token = envLine.slice(KEY_PREFIX.length).trim();
       console.log('[walkthrough] read PACMAN_TOKEN from', tokenEnvFile);
       await page.locator('.token-gate-input').fill(token);
       await page.locator('.token-gate-submit').click();

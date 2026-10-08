@@ -47,6 +47,18 @@ api /api/teams status (expect 200, auth off): 200
 token-gate count (expect 0): 0
 ```
 
+systemd 落点的真部署佐证（只读，不打印值）：macOS 无 systemd，本地
+walkthrough 覆盖「env 文件 → 进程环境 → 门页值」机制本身；文案里 systemd 专指的
+那一跳，在票面观察到的那份真部署上核对——单元的 `EnvironmentFile=` 确实指向
+一个含且仅含一行 `PACMAN_TOKEN=` 的文件：
+
+```console
+$ ssh mea 'systemctl --user cat pacman-dev-server.service | grep EnvironmentFile'
+EnvironmentFile=/home/measure/.pacman-519/token.env
+$ ssh mea 'grep -c "^PACMAN_TOKEN=" /home/measure/.pacman-519/token.env'
+1
+```
+
 ## 2. 复跑配方
 
 ```sh
