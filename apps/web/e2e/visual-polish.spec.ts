@@ -78,10 +78,12 @@ for (const theme of ['light', 'dark'] as const) {
     const card = await edgeContract(page, '.todo-card');
     // #425 基切换后的配方（政策见 #411「配方类」）：base 形态的 Card 用
     // 1px ring 外环（`ring-1 ring-foreground/10`）替代 #414 的 1px 实描边 +
-    // shadow-sm；V2 骨架（#792 P6）半径归零。**保留的原意图**：不得回到 #139 的
-    // inset 环（分数缩放下发丝不匀）——那条断言是本测试的真回归守卫。
+    // shadow-sm。**保留的原意图**：不得回到 #139 的 inset 环（分数缩放下发丝
+    // 不匀）——那条断言是本测试的真回归守卫。半径：#1004 实审裁决 1
+    // （2026-10-08，ADR 0012 D1 registry 默认几何为正典）回 registry card
+    // rounded-xl（=14px），V2 骨架的半径归零退役。
     expect(card.border).toBe('0px');
-    expect(card.radius).toBe('0px');
+    expect(card.radius).toBe('14px');
     expect(card.shadow).toContain('0px 0px 0px 1px');
     expect(card.shadow).not.toContain('inset');
   });
@@ -109,10 +111,12 @@ for (const theme of ['light', 'dark'] as const) {
 
     const banner = await edgeContract(page, '.board-notify-banner');
     // #161 通知条↔看板列边框对齐: the banner sits at the same elevation
-    // tier as the column container — same ring, same radius (V2 骨架方角),
-    // same shadow — so the two surfaces read as one language
+    // tier as the column container — same ring, same shadow — so the two
+    // surfaces read as one language. 半径：#1004 实审裁决 3（2026-10-08）回
+    // 默认圆角，取最接近的 registry 表面件 card 的 rounded-xl（=14px）；不再
+    // 与列容器（仍方角）同半径，理由见对账声明。
     expect(banner.border).toBe('0px');
-    expect(banner.radius).toBe('0px');
+    expect(banner.radius).toBe('14px');
     expect(banner.shadow.startsWith(banner.ring)).toBe(true);
     expect(banner.ring.startsWith(`${banner.borderColor} `)).toBe(true);
     expect(banner.shadow).toContain(banner.cardShadow);

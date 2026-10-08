@@ -769,6 +769,8 @@ export interface ClaudeSdkOptionParts {
   /** systemPrompt preset append（#958 后仅无简报通道的调用面非空）。 */
   append?: string;
   skillDenyRules?: string[];
+  /** #1050：可执行文件绝对路径（探测结果单源）。缺席 = 不发键，SDK 自解析。 */
+  executablePath?: string;
   abortController: AbortController;
 }
 
@@ -795,6 +797,9 @@ export function buildClaudeSdkOptions(parts: ClaudeSdkOptionParts): Options {
     ...(parts.skillDenyRules !== undefined && parts.skillDenyRules.length > 0
       ? { settings: { permissions: { deny: [...parts.skillDenyRules] } } }
       : {}),
+    ...(parts.executablePath !== undefined
+      ? { pathToClaudeCodeExecutable: parts.executablePath }
+      : {}),
     abortController: parts.abortController,
   };
 }
@@ -809,6 +814,10 @@ export interface ClaudeCodeBackendOpts {
   onSkillsLog?: (msg: string) => void;
   /** 本机机器名（#867 T6：缺凭据失败文案的「哪台机器」位；缺省 = os.hostname()）。 */
   machineName?: string;
+  /** claude 可执行文件绝对路径（#1050：machine-loop 探测结果单源，透传到
+   *  SDK 的 pathToClaudeCodeExecutable）。缺席 = 探测没找到（启动即报）或
+   *  注入面测试——两种情况都回到 SDK 自己的 PATH 解析。 */
+  executablePath?: string;
 }
 
 export class ClaudeCodeBackend implements AgentBackend {
@@ -901,6 +910,9 @@ export class ClaudeCodeBackend implements AgentBackend {
       ...(effort !== undefined ? { effort } : {}),
       ...(append !== undefined ? { append } : {}),
       skillDenyRules,
+      ...(this.opts.executablePath !== undefined
+        ? { executablePath: this.opts.executablePath }
+        : {}),
       abortController: abort,
     });
     const state = createClaudeMapState({

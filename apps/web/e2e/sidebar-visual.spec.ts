@@ -47,7 +47,7 @@ for (const theme of ['light', 'dark'] as const) {
     const m = await page.evaluate((rowsSel) => {
       const rows = [...document.querySelectorAll(rowsSel)];
       const row = rows.find((el) => el.textContent?.includes('搜索'));
-      const spans = row ? [...row.querySelectorAll('span')] : [];
+      const spans = row ? [...row.querySelectorAll('span, kbd')] : [];
       const kbd = spans.find((s) => s.textContent?.trim() === '⌘K');
       const label = spans.find((s) => s.textContent?.trim() === '搜索');
       const sidebar = document.querySelector('aside');
@@ -69,8 +69,9 @@ for (const theme of ['light', 'dark'] as const) {
     // absolute anchor — the lift rule for row content must not demote it
     // into the label's flow (the #128 overlap bug)
     expect(m.pos).toBe('absolute');
-    // the official ring (r7 01/02 probe), not bare text
-    expect(m.borderWidth).toBe('1px');
+    // #983/#1004: the chip is the registry Kbd (border-less bg-muted box),
+    // not the old hand-rolled bordered pill — border pin retires to 0.
+    expect(m.borderWidth).toBe('0px');
     // clear of the 搜索 label, right-anchored at the official offset
     expect(m.kbdLeft).toBeGreaterThanOrEqual(m.labelRight);
     expect(m.sidebarRight - m.kbdRight).toBeGreaterThanOrEqual(12);

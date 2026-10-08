@@ -10,7 +10,9 @@ import { ChevronDown, ChevronRight } from '../../icons/index.js';
 import { Button } from '../ui/button.js';
 import { useLiveSeconds } from './live-row.js';
 
-/** 折叠态的预览长度（一行、按字符截断，与 Multica 的 ThinkingRow 同档）。 */
+/** 折叠态的预览长度（一行、按字符截断，与 Multica 的 ThinkingRow 同档）。
+ *  切片只管「预览多长」；宽度截断由 CSS 承担（#1034）——字符数在 12px 下
+ *  不等于像素宽，150 字符的 CJK 预览仍是 ~1800px。 */
 const PREVIEW_CHARS = 150;
 
 /** 思考行：折叠态一行斜体预览，展开看全文。默认折叠——思考是过程不是结论，
@@ -27,15 +29,20 @@ export function ThinkingRow({ text }: { text: string }) {
     firstLine.length > PREVIEW_CHARS ? `${firstLine.slice(0, PREVIEW_CHARS)}…` : firstLine;
   return (
     <div className="flex flex-col gap-1">
+      {/* #1034：Button 基类写死 whitespace-nowrap + shrink-0，w-fit 在 nowrap 下
+          min-content == max-content，fit-content 解成整段文本宽（实测 626px 钮
+          冲出 384px 列）——min-w-0 max-w-full 把钮收回列宽（chief-drawer 模型行钮
+          同款），预览 span 挂 #772 截断律 min-w-0 flex-auto truncate 出省略号；
+          chevron 由基类 [&_svg]:shrink-0 保住 10px 不被挤。 */}
       <Button
         variant="ghost"
-        className="h-auto w-fit shrink justify-start gap-1.5 rounded-none px-0 font-normal text-[12px] leading-5 text-[var(--text-dim)] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+        className="h-auto w-fit min-w-0 max-w-full shrink justify-start gap-1.5 rounded-none px-0 font-normal text-[12px] leading-5 text-[var(--text-dim)] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
         aria-label={t(open ? '收起思考' : '展开思考')}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
         {open ? <ChevronDown width={10} height={10} /> : <ChevronRight width={10} height={10} />}
-        <span className="italic">{open ? t('思考') : preview}</span>
+        <span className="min-w-0 flex-auto truncate italic">{open ? t('思考') : preview}</span>
       </Button>
       {open && (
         <pre className="m-0 whitespace-pre-wrap break-words font-[inherit] text-[12px] leading-5 text-[var(--text-secondary)]">
