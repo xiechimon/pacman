@@ -51,12 +51,28 @@
      deliberate: one tier cannot order search vs dialog vs gate vs picker.
 
      Rungs, bottom to top:
-       --z-docked      persistent docked chrome: the chief drawer column and
-                       the board sidebar rail — above scrolling content,
-                       below EVERY active layer. The #688 bug was the drawer
-                       sitting at 30, tying the popover tier and beating the
-                       low dialog tier (20/21): same-tier elements paint in
-                       DOM order, so the drawer covered the new-task dialog.
+       --z-docked      persistent docked chrome: the board sidebar rail —
+                       above scrolling content, below EVERY active layer.
+                       The #688 bug was the chief drawer (then a docked
+                       column) sitting at 30, tying the popover tier and
+                       beating the low dialog tier (20/21): same-tier
+                       elements paint in DOM order, so the drawer covered
+                       the new-task dialog.
+       --z-floating    the persistent floating companion: the chief window
+                       and its FAB (ADR 0013 — the panel left the docked
+                       rung when it became an overlay). One notch above
+                       docked chrome, still below EVERY active layer: the
+                       #688 law (active surfaces always paint above
+                       persistent chrome) carries over verbatim, so menus,
+                       catchers, hints, scrims, dialogs, the gate and the
+                       picker all still cover the window. Registry popup
+                       items that hard-code z-50 upstream keep their
+                       verbatim value ONLY while unrendered (ui/dialog,
+                       ui/alert-dialog — the adapters replaced them); every
+                       rendered popup family rides --z-dialog through its
+                       registered deviation (popover/dropdown-menu/tooltip),
+                       which is the single-point verdict ADR 0013 F8 asked
+                       A0 to record.
        --z-backdrop-low  the low-tier underlay: more-menu's transparent
                        catcher and the new-task dialog's dim backdrop.
        --z-panel-low   the low-tier panel: more-menu and the new-task
@@ -94,6 +110,7 @@
        --z-picker      the mention picker — the topmost interactive surface,
                        nesting above an open dialog. */
   --z-docked: 10;
+  --z-floating: 15;
   --z-backdrop-low: 20;
   --z-panel-low: 21;
   --z-catcher: 29;
@@ -166,23 +183,34 @@
   --plate-shadow: none;
   /* overlay batch A (#66): dialog 模态投影，定版最深档（spec/22 §2.4） */
   --dialog-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
-  /* chief 面（r5 100–104, #72）drawer 投影，r5 100 edge gradient 采样 */
+  /* chief 面（r5 100–104, #72）drawer 投影，r5 100 edge gradient 采样。
+     ADR 0013 后本槽只剩抽屉头主题切换器 popover 一个消费点；悬浮窗本体
+     走 --floating-shadow（下方），本槽随 #983 手写壳退役面一并处置。 */
   --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
-  /* 看板列宽下限（#692 → #1035 两态劈开，唯一宽度 token 族）：
-     - 停靠态 --board-col-min-docked = 参考站 todos.dev 2026-10-03 live
-       实测的 280px 固定节距——⌘J 让位后列从不随视口压缩，放不下就走
-       带原生滚动条的横向滚动（#692 语义，board-docked-reflow.spec 钉）。
-     - 常态 --board-col-min = 200px：四列全见优先。1440 物理宽、缩放
-       ≤125%（CSS 视口 ≥1152，每列流值 ≈209）零横滚；更窄才由地板接管
-       回到诚实横滚（board-zoom-fit.spec 钉）。单一 280 地板会让任何
-       >100.3%（1440/1436）的缩放在常态溢出、第 4 列出屏 = #1035 病灶。
-     切换点 = .board-shell 的既有 data-chief-open 标记（board-page.tsx 的
-     data-chief-open:[--board-col-min:…] 工具类，与 detail-shell D7 的
-     --detail-pane-right 两态同式）；轨道规则单源，仍只消费
-     --board-col-min（board.tsx scroller 的 grid-cols 工具类）。静止 1440
-     流值 281px 两态都高于地板，1fr 段主导，静止几何与 token 无关。 */
+  /* 窗级 overlay 投影（ADR 0013 D2：整套采 Multica `--floating-shadow`
+     原值，multica packages/ui/styles/tokens.css:261 暗侧 / :159 亮侧，
+     2026-10-08 raw 复核）：总管悬浮窗与 FAB 共用（Multica 同律——窗与
+     launcher 一个投影档），dialog/sheet 族仍走各自的 --dialog-shadow。 */
+  --floating-shadow: 0 20px 48px rgb(0 0 0 / 0.46), 0 4px 12px rgb(0 0 0 / 0.28);
+  /* 右下角预约制度（ADR 0013 D10，Multica clearance 同律 tokens.css:165-172
+     + base.css:10-33）：launcher（FAB/悬浮窗）常驻内容区右下角，该角对页面
+     内容不可用。几何住在 token 层而非按钮本体，clearance 由 launcher 自身
+     尺寸派生——吸底元素消费 pe-/pb-/above-chief-launcher 工具类（app.css），
+     launcher 移位或改尺寸时全部让位点自动保持正确（#347「发送钮被 FAB
+     遮挡」前科的制度化防线）。 */
+  --chief-launcher-size: 40px;
+  --chief-launcher-inset: 8px;
+  --chief-launcher-clearance: calc(var(--chief-launcher-size) + var(--chief-launcher-inset) * 2);
+  /* 看板列宽下限（#692 → #1035 两态劈开 → ADR 0013 让位退役收单态）：
+     --board-col-min = 200px：四列全见优先。1440 物理宽、缩放
+     ≤125%（CSS 视口 ≥1152，每列流值 ≈209）零横滚；更窄才由地板接管
+     回到诚实横滚（board-zoom-fit.spec 钉）。单一 280 地板会让任何
+     >100.3%（1440/1436）的缩放在常态溢出、第 4 列出屏 = #1035 病灶。
+     停靠态 --board-col-min-docked（280px 固定节距）随 ADR 0013 D1 退役
+     ——悬浮窗是覆盖层，内容列不再让位（0004 D2/D8 废），.board-shell 的
+     data-chief-open 两态切换点同批删除；轨道规则单源，只消费
+     --board-col-min（board.tsx scroller 的 grid-cols 工具类）。 */
   --board-col-min: 200px;
-  --board-col-min-docked: 280px;
   /* 密度与标签几何（spec/22 §2.2/§2.3/§4.4 定版新增，#915 落点 = 本文件；
      主题恒定，消费随各域批次接线）：卡片/面板内边距、页面级留白、列表行高
      （40px = 32px 控件 + 4px×2 竖向 padding，与 shadcn 控件默认高自洽）；
@@ -230,4 +258,7 @@
   /* chief surfaces (r5 100–104, #72): shadow from the r5 100 edge
      gradient */
   --chief-shadow: 0 4px 24px rgb(28 25 23 / 0.16);
+  /* 窗级 overlay 投影 light 侧（Multica tokens.css:159 原值，slate 墨
+     14%/8% 双层——ADR 0013 D2 双主题整套采原值） */
+  --floating-shadow: 0 16px 40px rgb(15 23 42 / 0.14), 0 3px 10px rgb(15 23 42 / 0.08);
 }

@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import { ApiProvider, LiveDataBridge } from './api/provider.js';
+import { ChiefRoot } from './chief/chief-root.js';
 import { Toaster } from './components/ui/toaster.js';
 import { I18nProvider } from './i18n/provider.js';
 import { TokenGate } from './overlay/token-gate.js';
@@ -33,6 +34,10 @@ import { TodoDetailPage } from './routes/todo-detail-page.js';
 // #83 (M5): the LiveDataBridge pathless layout sits above PwaBridge — it
 // resolves fixture-vs-live mode, the seed team/user and the global team
 // stream; fully inert in fixture (fixture/dev-scenario) mode.
+// ADR 0013 D6 (#1009 A0): the ChiefRoot pathless layout below PwaBridge is
+// the chief surface's single persistent home — the floating window + FAB
+// mount once for every route, route switches no longer remount the surface,
+// and the five docked-era mount points are retired.
 export const router = createBrowserRouter([
   {
     element: <LiveDataBridge />,
@@ -40,26 +45,31 @@ export const router = createBrowserRouter([
       {
         element: <PwaBridge />,
         children: [
-          { path: '/app', element: <BoardPage /> },
-          { path: '/app/todo/:id', element: <TodoDetailPage /> },
-          { path: '/app/schedules', element: <SchedulesPage /> },
-          { path: '/app/project/new', element: <ProjectNewPage /> },
-          { path: '/app/project/:id', element: <ProjectPage /> },
-          { path: '/app/project/:id/settings', element: <ProjectSettingsPage /> },
-          { path: '/app/team', element: <TeamPage /> },
-          // #485：Agent 详情编辑面（r3 §4 实测路由 `/app/resources/agents/<id>`）。
-          // 非侧栏行——只从团队页的 Agent 卡进入（r2 §8.4 命令面板「前往」清单
-          // 里没有 Agents 行）。
-          { path: `${AGENTS_HREF}/:id`, element: <AgentDetailPage /> },
-          { path: '/app/account', element: <AccountPage /> },
-          { path: '/app/api-keys', element: <ApiKeysPage /> },
-          { path: SKILLS_HREF, element: <SkillsPage /> },
-          { path: MCP_HREF, element: <McpServersPage /> },
-          { path: SECRETS_HREF, element: <SecretsPage /> },
-          { path: MACHINES_HREF, element: <MachinesPage /> },
-          { path: '/app/machines/authorize', element: <MachineAuthorizePage /> },
-          { path: PROVIDERS_HREF, element: <ProvidersPage /> },
-          { path: '*', element: <Navigate to="/app" replace /> },
+          {
+            element: <ChiefRoot />,
+            children: [
+              { path: '/app', element: <BoardPage /> },
+              { path: '/app/todo/:id', element: <TodoDetailPage /> },
+              { path: '/app/schedules', element: <SchedulesPage /> },
+              { path: '/app/project/new', element: <ProjectNewPage /> },
+              { path: '/app/project/:id', element: <ProjectPage /> },
+              { path: '/app/project/:id/settings', element: <ProjectSettingsPage /> },
+              { path: '/app/team', element: <TeamPage /> },
+              // #485：Agent 详情编辑面（r3 §4 实测路由 `/app/resources/agents/<id>`）。
+              // 非侧栏行——只从团队页的 Agent 卡进入（r2 §8.4 命令面板「前往」清单
+              // 里没有 Agents 行）。
+              { path: `${AGENTS_HREF}/:id`, element: <AgentDetailPage /> },
+              { path: '/app/account', element: <AccountPage /> },
+              { path: '/app/api-keys', element: <ApiKeysPage /> },
+              { path: SKILLS_HREF, element: <SkillsPage /> },
+              { path: MCP_HREF, element: <McpServersPage /> },
+              { path: SECRETS_HREF, element: <SecretsPage /> },
+              { path: MACHINES_HREF, element: <MachinesPage /> },
+              { path: '/app/machines/authorize', element: <MachineAuthorizePage /> },
+              { path: PROVIDERS_HREF, element: <ProvidersPage /> },
+              { path: '*', element: <Navigate to="/app" replace /> },
+            ],
+          },
         ],
       },
     ],

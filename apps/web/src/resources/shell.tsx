@@ -1,9 +1,10 @@
 // Resource route shell (issue #69): the二级页 topbar of r2 §1.2 — back
 // chevron at content-left+12, centered page title (16px), right `+ 新建`
 // brand link — over a 768px centered content column (probed from r7 06–10),
-// with the sidebar's matching 资源 subrow selected and the 总管 FAB pinned
-// like on the detail route — waking the shared chief drawer (#129) over the
-// shared AppSidebar (identical geometry on every route).
+// with the sidebar's matching 资源 subrow selected. The 总管 launcher no
+// longer rides this shell (ADR 0013 D6: the root ChiefRoot layout hosts the
+// single floating window + FAB over the shared AppSidebar, identical
+// geometry on every route).
 // #944 per-face 清零：resources.css 退役，壳几何改挂 token utility（原值
 // 等值迁移；topbar 44px = h-11、back 钮 28px = size-7 均在 §2 阶梯上）。
 // 标题带 pointer-events-none 是 #133 的 pure-label hit-test 律：band 不许
@@ -11,7 +12,6 @@
 import type { ReactNode } from 'react';
 import { AppSidebar } from '../board/app-sidebar.js';
 import type { SidebarSelected } from '../board/sidebar.js';
-import { ChiefWake } from '../chief/chief-wake.js';
 import { Button } from '../components/ui/button.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -27,13 +27,6 @@ const RES_NEW_CLS =
  *  #851 裸控件账内；focus 环走 #388 全局 :where(a) 律）。 */
 const RES_NEW_ANCHOR_CLS =
   'ml-auto mr-[21px] flex items-center gap-2 text-[13px] leading-4 font-normal text-(--card-button) no-underline';
-
-/** 总管 FAB（ChiefWake fabClassName 入参）：48px 圆、surface 底、
- *  border-default 描边、fab-shadow——各族 *-fab 同几何（chief-wake 头注），
- *  resources 族的 per-face 正本随 resources.css 退役，配方在此。ghost 件
- *  默认的 hover/aria-expanded 底色就地并掉（原形无 hover 态）。 */
-const RES_FAB_CLS =
-  'absolute right-4 bottom-4 flex size-12 cursor-pointer items-center justify-center rounded-full border border-(--border) bg-(--card) shadow-(--fab-shadow) hover:bg-(--card) aria-expanded:bg-(--card)';
 
 interface ResourceShellProps {
   /** Centered topbar title (`技能` / `MCP 服务器` / …). */
@@ -87,15 +80,12 @@ export function ResourceShell({
   return (
     <div className="flex h-full" data-route={href}>
       <AppSidebar fixture={fixture} selected={selected} />
-      {/* #447 (ADR 0004 D2/D6): 主列是 docking row — topbar + 内容列住在
-          flex:1 的纵向列里，chief 面板作为最后一个 flex item 骑在同排；
-          本容器保持 relative 锚（FAB 与绝对定位子级的 containing block）。
-          `res-main`/`res-main-col` 类名 = 跨域句柄残留（spec/22 §5.0 残留
-          律）：chief-drawer 的 DOCK_ROWS 走 classList.contains 找 dock 行、
-          chief-panel.spec 钉 .res-main-col 的 docking 几何——消费点住 chief
-          域（#952 终账面），类名以零规则钩子形态存活（#950 已裁：原
-          chief.css 的 Portal 包装层 display:contents 规则收归 chief-drawer
-          自己的 Portal className，不再借宿本行选择器），摘除归终账统一裁。 */}
+      {/* ADR 0013 D1/D6：docking row 退役——chief 面是根 layout 的悬浮窗
+          （chief-root.tsx），本列不再让位、不再承载面板。本容器保持
+          relative 锚（绝对定位子级的 containing block）。`res-main`/
+          `res-main-col` 类名 = 跨域句柄残留（spec/22 §5.0 残留律）：
+          chief-panel.spec 曾钉 .res-main-col 的 docking 几何（重钉账见
+          #1009 A0 ⑨），摘除归终账统一裁。 */}
       <div className="res-main relative flex min-w-0 flex-1">
         <div className="res-main-col flex min-w-0 flex-1 flex-col">
           <header
@@ -124,7 +114,6 @@ export function ResourceShell({
             </div>
           </div>
         </div>
-        <ChiefWake fixture={fixture} fabClassName={RES_FAB_CLS} />
       </div>
     </div>
   );
