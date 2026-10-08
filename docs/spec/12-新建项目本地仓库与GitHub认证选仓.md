@@ -69,7 +69,7 @@ web 新建项目表单收敛为两可选条 + 一兜底：
 - 应用面 `applyMergeLanding` 保持 hosted-only；本地落地面在 daemon 侧。
 - GitHub 执行：server 从 `github_connection` 取 token，per-step 下发 `GitCredentials{username:'x-access-token', password:token}` 复用 `GIT_CONFIG_*` env credential.helper 注入缝（不进 argv、不落盘；步收尾即清）。
 - daemon 对 `kind === 'github'` 开 worktree（https clone，契约零改动）；conv 分支 push 上 GitHub。
-- v1 出局：Files tab 对 local 项目隐藏/禁用（附一行 disable 提示）；chief-tools/MCP create_project 不支持 local。
+- v1 出局：Files tab 对 local 项目隐藏/禁用（附一行 disable 提示）；chief-tools/MCP create_project 不支持 local。【2026-10-08 #1030 推翻前半：Files tab 已开闸（读面 = server 直读 localPath 工作树，不可达走分类降级）】
 
 **i18n**
 - en/zh 同步新增/修改文案；按仓 i18n-coverage 闸走 PR。
@@ -105,9 +105,9 @@ web 新建项目表单收敛为两可选条 + 一兜底：
 ## Out of Scope
 
 - **PR/合并落地**：GitHub 项目构建完的 PR/合并 UI 归后票；本轮 done 语义 = conv 分支已 push 上 GitHub
-- **Files tab 隐藏的完成 UI**：仅 disable + 一行文案，详细列表/编辑器响应式后续
+- **Files tab 隐藏的完成 UI**：仅 disable + 一行文案，详细列表/编辑器响应式后续【#1030 已推翻：Files tab 开闸】
 - **chief-tools / MCP create_project 支持 local**：v1 拒；待 spec 后续票
-- **多机部署的 server 本地路径校验替代**：v1 降级为跳过；替代实现归后票
+- **多机部署的 server 本地路径校验替代**：v1 降级为跳过；替代实现归后票【#1030 起读面侧已正面处理：不可达 = 404 + reason 分类降级（创建校验面仍单机假设）】
 - **GitHub App 本身注册与配置指引**：env 槽 `config.githubOauth` 用户自配（已在 v0 配），本票前提「env 已配 App」
 
 ## Further Notes
