@@ -45,6 +45,7 @@ import { Checkbox } from '../components/ui/checkbox.js';
 import { EmptyDescription } from '../components/ui/empty.js';
 import { Input } from '../components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
+import { Separator } from '../components/ui/separator.js';
 import { TagChip } from '../components/ui/tag-chip.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Funnel, X } from '../icons/index.js';
@@ -174,7 +175,7 @@ function DimensionSection({
     <section className="filter-dimension flex flex-col" data-dimension={dimension.key}>
       {/* 维度间分隔线全出血（壳 p-1 内 -mx-1，DropdownMenuSeparator 同形）；
           my-1 节奏 = 线上线下各 4px，故 divided 时标题不再另加 pt。 */}
-      {divided && <div aria-hidden className="-mx-1 mt-1 mb-1 border-t border-border" />}
+      {divided && <Separator className="-mx-1 mt-1 mb-1" />}
       {/* 标题行只留标题 + 已选读数（参考站形：标题带不挂批次键）；批次操作
           下沉到行表首的全选行。 */}
       <header
@@ -216,7 +217,7 @@ function DimensionSection({
                 registry 同源，皮肤 = 上游默认；整行可点 = 消费点 label 包裹，
                 点文案即 toggle。 */}
             {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime; the static check cannot see through the component. */}
-            <label className="inline-flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
+            <label className="inline-flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-none px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
               <Checkbox
                 checked={allSelected}
                 indeterminate={someSelected && !allSelected}
@@ -256,7 +257,7 @@ function DimensionSection({
                       : { 'data-tag': choice.value })}
                     role="option"
                     aria-selected={active}
-                    className={`${alias} h-7 min-w-0 flex-1 justify-start gap-2 rounded-md border-none px-2 text-xs font-normal text-foreground hover:bg-accent-soft dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0 ${
+                    className={`${alias} h-7 min-w-0 flex-1 justify-start gap-2 rounded-none border-none px-2 text-xs font-normal text-foreground hover:bg-accent-soft dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0 ${
                       active ? 'bg-accent' : ''
                     }`}
                     onClick={() => dimension.onToggle(choice.value)}
@@ -365,7 +366,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         side="bottom"
         sideOffset={6}
         aria-label={t('筛选')}
-        className="type-filter-popover board-filter-panel w-[268px] gap-0 rounded-[var(--radius-popover)] p-1"
+        className="type-filter-popover board-filter-panel w-[268px] gap-0 rounded-none p-1"
       >
         {dimensions.map((dimension, index) => (
           <DimensionSection
@@ -379,7 +380,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         {totalSelected > 0 && (
           <Button
             variant="ghost"
-            className="filter-panel-clear mt-0.5 h-7 w-full rounded-md border-none text-xs font-normal text-muted-foreground hover:bg-accent-soft hover:text-foreground dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0"
+            className="filter-panel-clear mt-0.5 h-7 w-full rounded-none border-none text-xs font-normal text-muted-foreground hover:bg-accent-soft hover:text-foreground dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0"
             onClick={onClearAll}
           >
             {t('清除全部')}
