@@ -996,6 +996,8 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     await expect(settled.nth(3).getByTestId('chief-turn-tools')).toContainText('todo_write');
     await expect(settled.filter({ hasText: '正在调用' })).toHaveCount(0);
 
+  });
+
   test('F-R22: 长预览由 CSS 截断——钮宽 ≤ 列宽、省略号生效、页面零横溢（#1034）', async ({
     page,
   }) => {
