@@ -1,75 +1,84 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// Issue #447 (ADR 0004): 总管面板 = 贴右竖板. Failure modes pinned here
-// (fixture face — the live send path rides the real-backend self-
-// verification, the fixture build has no API):
-//   1. Esc does not close the drawer (the #136 ledger bug) — board AND a
-//      wake surface must obey the overlay-family law (useEscapeClose).
-//   2. Esc layering wrong: with the thread switcher popover open (r5 116),
-//      the innermost overlay must close first, the drawer survives one press.
+// ADR 0013 (#1009 A0, superseding #447 / ADR 0004): 总管面板 = Multica 式
+// 悬浮窗. Failure modes pinned here (fixture face — the live send path rides
+// the real-backend self-verification, the fixture build has no API):
+//   1. Esc never closes the panel (D3 — the #146 second-press law and the
+//      #136 ledger bug's old fix are both superseded: Minimize + ⌘J are the
+//      only dismissals); board AND a wake surface must obey.
+//   2. Esc layering: with the thread switcher popover open (r5 116), the
+//      innermost overlay closes first and the panel survives BOTH presses.
 //   3. composer bar renders the attach + mention tools and 发送 — #732
-//      (ruling change) reopened the tool face the #146 ruling had hidden
-//      (its local-first/no-backend-face premise was retired by the landed
-//      attachment chain and mention wire); 语音输入 stays out (#304 C5).
-//   4. the panel is not a docked column: it must be a 418-wide full-height
-//      flex item flush to the container's right edge — radius 0, no shadow,
-//      a 1px --border-default left seam (D1/D3/D5); the 全屏 toggle and its
-//      is-fullscreen contract are retired (D1), so no form-toggle button
-//      exists anywhere in the DOM.
-//   5. content does not yield / does not restore: board-main narrows by
-//      exactly 418 while open and returns to full width after close; the
-//      board columns keep the D8 min-width guard and the scroller goes
-//      horizontal instead of collapsing the columns; with the panel closed
-//      the resting grid keeps scrollable === false.
-//   6. the wake shells (pages / resources / secondary) do not narrow their
-//      main column while docked, or keep a residual gap after close.
-//   7. detail route: the panel must occupy the right-pane slot (mutually
-//      exclusive with .detail-right, D7) with the center column staying
-//      fluid and abutting the panel seam.
+//      (ruling change) reopened the tool face the #146 ruling had hidden;
+//      语音输入 stays out (#304 C5).
+//   4. the panel is a floating window, not a docked column: 380×600 anchored
+//      8px off the content area's bottom-right corner, position fixed,
+//      radius --radius-window (12px), opaque card ground, edge-ring +
+//      --floating-shadow dual shadow, --z-floating (15) above docked chrome
+//      and below every active layer (D2/D10, #688 law); the 全屏 toggle stays
+//      retired (0004 D1 carried over), so no form-toggle button exists.
+//   5. content never yields and never restores (D1: overlay, no yield) —
+//      board-main keeps full width with the window open, the scroller stays
+//      non-scrollable in both states, columns keep the single 200px floor
+//      track (#1035 two-state retired with the yield).
+//   6. the wake shells (pages / resources / secondary) keep their main column
+//      width with the window open — the window overlays, nothing narrows.
+//   7. detail route: the right pane COEXISTS with the open window (D7 mutual
+//      exclusion reversed); the center column stays fluid and unchanged.
 //   8. hero examples drift or vanish: the four canon prompt cards (r5 111)
 //      render verbatim; on the fixture face the click stays inert (send is
 //      live-only, #129 contract) and the view does not change.
-//   9. the open state survives a reload (D9: 刷新即关).
-//  10. the composer's size follows its content (XMON-102): `rows` used to be
-//      keyed on the draft (empty 1 ↔ drafted 6), so the box jumped 20px →
-//      120px as soon as the first character landed and shrank back on send.
-//      One fixed height on every state now (3 lines), overflow kept inside
-//      the box.
+//   9. the open state persists across a reload (D5, reversing 0004 D9):
+//      localStorage pacman.chief-open on the live face, default closed.
+//  10. the composer's size follows its content (XMON-102): one fixed height
+//      on every state (3 lines), overflow kept inside the box.
 //  11. the composer placeholder does not follow the turn state (#624): the
-//      r5 113 running face must carry the steer canon (shared
-//      CHIEF_INPUT_PLACEHOLDER_STEERING), the idle faces (111 fresh thread,
-//      114 ended turn) the idle canon — both values single-sourced from
-//      @pacman/shared, no literal in the drawer file.
+//      r5 113 running face carries the steer canon, the idle faces the idle
+//      canon — both single-sourced from @pacman/shared.
+// 载体契约（D6）：关 = 在 DOM 但 hidden/inert（keepMounted 常驻）——count-0
+// 断言族退役，关态断言走 toBeHidden + count 1；收起钮 = aria-label 最小化
+// （Minus，无 X）；FAB 单实例载体 = .chief-fab（根 layout 常驻，D4 族 FAB
+// 类名退役）。
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
+const fab = (page: Page) => page.locator('.chief-fab');
+const minimize = (page: Page) => drawer(page).getByRole('button', { name: '最小化' });
 
-// the docked panel slides in (anim-drawer, drawer-in) — measure only after
-// the entrance animation settles so transforms are off the boxes
+// the window enters with fade + scale (ADR 0013 D7) — measure only after the
+// entrance animation settles so transforms are off the boxes
 async function settled(page: Page) {
   await drawer(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
 }
 
-test.describe('chief panel docked form (#447)', () => {
-  test('Esc closes the drawer on the board route', async ({ page }) => {
+/** ADR 0013 D2 窗几何单源：380×600 @ right/bottom 8（1440×732 主口径）。 */
+const WIN_BOX = { x: 1440 - 8 - 380, y: 732 - 8 - 600, width: 380, height: 600 };
+
+test.describe('chief panel floating form (ADR 0013)', () => {
+  test('Esc never closes the panel on the board route (D3)', async ({ page }) => {
     await page.goto('/app?scenario=111');
     await expect(drawer(page)).toBeVisible();
 
     await page.keyboard.press('Escape');
-    await expect(drawer(page)).toBeHidden();
+    await expect(drawer(page)).toBeVisible();
   });
 
-  test('Esc closes the drawer on a wake surface', async ({ page }) => {
+  test('Esc never closes the panel on a wake surface', async ({ page }) => {
     await page.goto('/app/team?scenario=12');
-    await expect(drawer(page)).toHaveCount(0);
+    // D6 载体：关态驻 DOM（hidden），不再是 count 0
+    await expect(drawer(page)).toBeHidden();
+    await expect(drawer(page)).toHaveCount(1);
 
-    await page.locator('button[aria-label="总管"]').click();
+    await fab(page).click();
+    await settled(page);
     await expect(drawer(page)).toBeVisible();
 
     await page.keyboard.press('Escape');
-    await expect(drawer(page)).toBeHidden();
+    await expect(drawer(page)).toBeVisible();
   });
 
-  test('Esc layers: the open thread switcher closes first, the drawer second', async ({ page }) => {
+  test('Esc layers: the open thread switcher closes first, the panel survives both', async ({
+    page,
+  }) => {
     await page.goto('/app?scenario=116');
     await expect(drawer(page)).toBeVisible();
     // #950: 切换器容器载体 = role menu（.chief-switcher 类退役）。
@@ -80,7 +89,7 @@ test.describe('chief panel docked form (#447)', () => {
     await expect(drawer(page)).toBeVisible();
 
     await page.keyboard.press('Escape');
-    await expect(drawer(page)).toBeHidden();
+    await expect(drawer(page)).toBeVisible();
   });
 
   test('composer bar carries the attach + mention tools and the send button', async ({ page }) => {
@@ -97,15 +106,17 @@ test.describe('chief panel docked form (#447)', () => {
     await expect(bar.locator('button[aria-label="发送"]')).toBeVisible();
   });
 
-  test('the panel docks flush right as a full-height 418 column (board)', async ({ page }) => {
+  test('the panel floats as a 380x600 window anchored 8px off the corner (board)', async ({
+    page,
+  }) => {
     await page.goto('/app?scenario=111');
     await settled(page);
     const box = await drawer(page).boundingBox();
     expect(box).not.toBeNull();
-    expect(box!.x).toBeCloseTo(1440 - 418, 0);
-    expect(box!.y).toBeCloseTo(0, 0);
-    expect(box!.width).toBeCloseTo(418, 0);
-    expect(box!.height).toBeCloseTo(732, 0);
+    expect(box!.x).toBeCloseTo(WIN_BOX.x, 0);
+    expect(box!.y).toBeCloseTo(WIN_BOX.y, 0);
+    expect(box!.width).toBeCloseTo(WIN_BOX.width, 0);
+    expect(box!.height).toBeCloseTo(WIN_BOX.height, 0);
 
     const skin = await drawer(page).evaluate((el) => {
       const cs = getComputedStyle(el);
@@ -113,55 +124,64 @@ test.describe('chief panel docked form (#447)', () => {
         position: cs.position,
         radius: cs.borderRadius,
         shadow: cs.boxShadow,
-        borderLeft: cs.borderLeftWidth,
-        borderLeftColor: cs.borderLeftColor,
-        seam: getComputedStyle(document.querySelector('.board-sidebar')!).borderRightColor,
+        z: cs.zIndex,
+        bg: cs.backgroundColor,
+        backdrop: cs.backdropFilter,
+        sidebarRight: document.querySelector('.board-sidebar')!.getBoundingClientRect().right,
+        left: el.getBoundingClientRect().left,
       };
     });
-    // an in-flow flex item, not an overlay (D2)
-    expect(skin.position).toBe('static');
-    expect(skin.radius).toBe('0px');
-    expect(skin.shadow).toBe('none');
-    // 1px --border-default left seam, the same hairline token the sidebar
-    // seam rides (D3, Hairlines Not Shadows)
-    expect(skin.borderLeft).toBe('1px');
-    expect(skin.borderLeftColor).toBe(skin.seam);
+    // an overlay anchored to the corner, not an in-flow column (D10)
+    expect(skin.position).toBe('fixed');
+    // --radius-window token (A0 实审裁决 3), Multica rounded-xl 原值
+    expect(skin.radius).toBe('12px');
+    // edge-ring hairline + --floating-shadow 双层（D2，非 none）
+    expect(skin.shadow).not.toBe('none');
+    expect(skin.shadow).toContain('inset');
+    // --z-floating 新 rung：docked 之上、一切活动层之下（#688 律）
+    expect(skin.z).toBe('15');
+    // 不透明卡底非玻璃（D2）
+    expect(skin.bg).toMatch(/^rgb\(/);
+    expect(skin.backdrop === 'none' || skin.backdrop === '').toBe(true);
+    // 包含块 = 侧栏右侧内容区：窗不压侧栏（D2）
+    expect(skin.left).toBeGreaterThanOrEqual(skin.sidebarRight);
 
     // D1: the form toggle is retired — neither label exists anywhere
     await expect(page.locator('button[aria-label="全屏"]')).toHaveCount(0);
     await expect(page.locator('button[aria-label="退出全屏"]')).toHaveCount(0);
   });
 
-  test('board content yields to the panel and the columns keep the D8 guard', async ({
-    page,
-  }) => {
+  test('board content never yields to the window (D1 overlay, no yield)', async ({ page }) => {
     await page.goto('/app?scenario=111');
     await settled(page);
     const main = await page.locator('.board-main').boundingBox();
     expect(main).not.toBeNull();
-    expect(main!.width).toBeCloseTo(1440 - 240 - 418, 0);
+    // 全宽：侧栏 240 之外的整段，窗是覆盖层不让位
+    expect(main!.width).toBeCloseTo(1440 - 240, 0);
 
     const open = await page.locator('.board-scroller').evaluate((el) => ({
       scrollable: el.scrollWidth > el.clientWidth,
       columns: [...el.querySelectorAll('.board-column')].map((c) => c.getBoundingClientRect().width),
     }));
-    // D8 (floor re-ruled by #692, split by #1035): yielding turns into
-    // horizontal scroll, not collapsed columns — the docked floor is the
-    // --board-col-min-docked token, switched onto --board-col-min by the
-    // data-chief-open marker on .board-shell
-    expect(open.scrollable).toBe(true);
+    // 单态地板（#1035 两态随让位退役）：静止 1440 无横滚、四列等宽 1fr 段主导
+    expect(open.scrollable).toBe(false);
     expect(open.columns).toHaveLength(4);
-    for (const w of open.columns) expect(w).toBeGreaterThanOrEqual(280);
+    const first = open.columns[0] ?? 0;
+    for (const w of open.columns) expect(Math.abs(w - first)).toBeLessThanOrEqual(1);
   });
 
-  test('closing restores the board grid to its resting geometry', async ({ page }) => {
+  test('minimizing leaves the board grid at the same geometry (nothing to restore)', async ({
+    page,
+  }) => {
     await page.goto('/app?scenario=111');
     await settled(page);
-    await page.keyboard.press('Escape');
-    await expect(drawer(page)).toHaveCount(0);
+    const openMain = await page.locator('.board-main').boundingBox();
+
+    await minimize(page).click();
+    await expect(drawer(page)).toBeHidden();
 
     const main = await page.locator('.board-main').boundingBox();
-    expect(main!.width).toBeCloseTo(1440 - 240, 0);
+    expect(main!.width).toBeCloseTo(openMain!.width, 0);
     const rest = await page.locator('.board-scroller').evaluate((el) => ({
       scrollable: el.scrollWidth > el.clientWidth,
       columns: [...el.querySelectorAll('.board-column')].map((c) => c.getBoundingClientRect().width),
@@ -172,72 +192,65 @@ test.describe('chief panel docked form (#447)', () => {
     for (const w of rest.columns) expect(Math.abs(w - first)).toBeLessThanOrEqual(1);
   });
 
-  for (const { name, route, fab, col } of [
-    { name: 'pages', route: '/app/schedules?scenario=11', fab: '.page-fab', col: '.page-main-col' },
-    {
-      name: 'resources',
-      route: '/app/resources/skills?scenario=06',
-      fab: '[aria-label="总管"]', // #944: .res-fab 类名钩退役 → aria-label 一级
-      col: '.res-main-col',
-    },
+  for (const { name, route, col } of [
+    { name: 'pages', route: '/app/schedules?scenario=11', col: '.page-main-col' },
+    { name: 'resources', route: '/app/resources/skills?scenario=06', col: '.res-main-col' },
     {
       name: 'secondary',
       route: '/app/team?scenario=12',
-      fab: 'button[aria-label="总管"]', // #947: .secondary-fab 类名钩退役 → aria-label 一级（button 限定，抽屉面板同 label）
       col: '.secondary-main-col', // 零规则跨域钩（chief 域消费，spec/22 §5.0 残留律）
     },
   ] as const) {
-    test(`${name}: the main column narrows by 418 while docked and restores on close`, async ({
-      page,
-    }) => {
+    test(`${name}: the main column never narrows while the window is open`, async ({ page }) => {
       await page.goto(route);
-      // *-main is the docking row (full width at all times); the content
-      // column inside it is the sibling that yields (flex:1 min-width:0)
+      // *-main 不再是 docking row（ADR 0013 D1）；内容列宽与窗开合无关
       const content = page.locator(col);
       await expect(content).toBeVisible();
       const closed = await content.boundingBox();
       expect(closed!.width).toBeCloseTo(1200, 0);
 
-      await page.locator(fab).click();
+      await fab(page).click();
       await settled(page);
-      const docked = await drawer(page).boundingBox();
-      expect(docked!.x).toBeCloseTo(1440 - 418, 0);
-      expect(docked!.y).toBeCloseTo(0, 0);
-      expect(docked!.width).toBeCloseTo(418, 0);
-      expect(docked!.height).toBeCloseTo(732, 0);
+      const floating = await drawer(page).boundingBox();
+      expect(floating!.x).toBeCloseTo(WIN_BOX.x, 0);
+      expect(floating!.y).toBeCloseTo(WIN_BOX.y, 0);
+      expect(floating!.width).toBeCloseTo(WIN_BOX.width, 0);
+      expect(floating!.height).toBeCloseTo(WIN_BOX.height, 0);
       const open = await content.boundingBox();
-      expect(open!.width).toBeCloseTo(1200 - 418, 0);
+      expect(open!.width).toBeCloseTo(1200, 0);
 
-      await page.locator('.chief-drawer button[aria-label="关闭"]').click();
-      await expect(drawer(page)).toHaveCount(0);
+      await minimize(page).click();
+      await expect(drawer(page)).toBeHidden();
       const restored = await content.boundingBox();
       expect(restored!.width).toBeCloseTo(1200, 0);
       expect(restored!.x).toBeCloseTo(closed!.x, 0);
     });
   }
 
-  test('detail: the panel occupies the right-pane slot, mutually exclusive (D7)', async ({
+  test('detail: the right pane coexists with the floating window (D7 reversed)', async ({
     page,
   }) => {
     await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=detail-unread');
     await expect(page.locator('.detail-right')).toBeVisible();
+    const restingCenter = await page.locator('.detail-center').boundingBox();
 
-    await page.locator('.detail-fab').click();
+    await fab(page).click();
     await settled(page);
-    await expect(page.locator('.detail-right')).toHaveCount(0);
+    // 互斥退役：右栏在位，窗盖在其上（覆盖代价由无模态 + ⌘J 即关消化）
+    await expect(page.locator('.detail-right')).toBeVisible();
     const box = await drawer(page).boundingBox();
-    expect(box!.x).toBeCloseTo(1440 - 418, 0);
-    expect(box!.y).toBeCloseTo(44, 0); // the pane slot starts under the 44px head
-    expect(box!.width).toBeCloseTo(418, 0);
-    expect(box!.height).toBeCloseTo(732 - 44, 0);
+    expect(box!.x).toBeCloseTo(WIN_BOX.x, 0);
+    expect(box!.y).toBeCloseTo(WIN_BOX.y, 0);
+    expect(box!.width).toBeCloseTo(WIN_BOX.width, 0);
+    expect(box!.height).toBeCloseTo(WIN_BOX.height, 0);
 
-    // the center column stays fluid and abuts the panel seam
+    // the center column stays fluid and unchanged by the overlay
     const center = await page.locator('.detail-center').boundingBox();
-    expect(center!.width).toBeCloseTo(1440 - 240 - 418, 0);
-    expect(Math.round(center!.x + center!.width)).toBe(Math.round(box!.x));
+    expect(center!.width).toBeCloseTo(restingCenter!.width, 0);
+    expect(center!.width).toBeCloseTo(1440 - 240 - 488, 0);
 
-    await page.locator('.chief-drawer button[aria-label="关闭"]').click();
-    await expect(drawer(page)).toHaveCount(0);
+    await minimize(page).click();
+    await expect(drawer(page)).toBeHidden();
     await expect(page.locator('.detail-right')).toBeVisible();
     const restored = await page.locator('.detail-center').boundingBox();
     expect(restored!.width).toBe(1440 - 240 - 488);
@@ -317,14 +330,68 @@ test.describe('chief panel docked form (#447)', () => {
     expect(await placeholderAt('114')).toBe('有什么可以帮你的？');
   });
 
-  test('the open state does not persist across a reload (D9)', async ({ page }) => {
-    await page.goto('/app?scenario=01');
-    await expect(drawer(page)).toHaveCount(0);
-    // #950: FAB 载体 = role + aria-label（.chief-fab 类退役；resources 家族
-    // #944 同款一级载体）。
-    await page.getByRole('button', { name: '总管', exact: true }).click();
+  // D5 持久化是 live 面专属（fixture 面零读写 = 采集确定性律）——本条走
+  // live-mock 桩（composer-wire-reject / chief-send-fallback 同款 stubBoot
+  // 纪律：无 ?scenario = 真 API 分支，桩只答 chief 封套读面）。
+  test('the open state persists across a reload (D5, reversing 0004 D9)', async ({ page }) => {
+    const TEAM_ID = 'team-1';
+    await page.route('**/api/**', (route, request) => {
+      if (request.method() !== 'GET') return route.fallback();
+      return route.fulfill({ status: 500, json: { error: 'e2e stub: not the surface under test' } });
+    });
+    await page.route('**/api/teams', (route) =>
+      route.fulfill({
+        json: [{ id: TEAM_ID, name: 'Team', createdAt: 0, plan: 'free', avatarStyle: null }],
+      }),
+    );
+    await page.route('**/api/user/me', (route) =>
+      route.fulfill({ json: { id: 'user-1', displayName: '我', avatarUrl: null } }),
+    );
+    await page.route(`**/api/teams/${TEAM_ID}/notifications`, (route) =>
+      route.fulfill({ json: { unreadThreadIds: [] } }),
+    );
+    await page.route(`**/api/teams/${TEAM_ID}/chief/threads`, (route) =>
+      route.fulfill({ json: [] }),
+    );
+    await page.route(`**/api/teams/${TEAM_ID}/chief`, (route) =>
+      route.fulfill({
+        json: {
+          chief: {
+            id: `chief-user-1-${TEAM_ID}`,
+            userId: 'user-1',
+            teamId: TEAM_ID,
+            agent: null,
+            charter: '',
+            compactionModel: null,
+            model: null,
+            lastTurnAt: null,
+            createdAt: 0,
+            tz: null,
+          },
+          agentActor: null,
+          context: null,
+          watches: [],
+          wakes: [],
+        },
+      }),
+    );
+    await page.route(`**/api/teams/${TEAM_ID}/model-sources`, (route) =>
+      route.fulfill({ json: { sources: [] } }),
+    );
+
+    await page.goto('/app');
+    await expect(drawer(page)).toBeHidden();
+    // FAB 单实例载体（根 layout 常驻，D6）：类钩 .chief-fab + aria-label 总管
+    await fab(page).click();
+    await settled(page);
     await expect(drawer(page)).toBeVisible();
     await page.reload();
-    await expect(drawer(page)).toHaveCount(0);
+    await settled(page);
+    await expect(drawer(page)).toBeVisible();
+    // 关态同样持久（最小化写 0）
+    await minimize(page).click();
+    await expect(drawer(page)).toBeHidden();
+    await page.reload();
+    await expect(drawer(page)).toBeHidden();
   });
 });

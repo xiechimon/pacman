@@ -1,44 +1,41 @@
 import { expect, type Page, test } from '@playwright/test';
-// #692 ⌘J 停靠态的 board reflow：停靠地板 --board-col-min-docked
-// (280px, tokens.css；#1035 起按 data-chief-open 劈两态，常态 200px 地板
-// 由 board-zoom-fit.spec 钉) + 溢出走 .board-scroller 横滚 + 滚动条原生
-// 可见。病灶（main 实测 2026-10-03）：旧 240px 开态护栏在 1440
-// 停靠态恰好排满三列（748 = 3×240+2×14），第四列只剩 ~3px 残边且滚动条
-// 被隐藏——溢出无任何可滚线索，用户读成「栏被裁」。参考站 todos.dev 同刻
-// 实测：列 280px 固定节距从不压缩、横向滚动条原生（scrollbar-width:
-// auto）、下一列在滚动缘露出部分宽度。
+// ADR 0013 D1 (#1009 A0, superseding the #692 docked-reflow face): 悬浮窗是
+// 覆盖层——board 列不再随窗开合变轨。本 spec 的原停靠面（--board-col-min-docked
+// 280 地板 + data-chief-open 两态 + 让位横滚）随 0004 D2/D8 整体退役；常态
+// 地板（200px）与缩放档自适应由 board-zoom-fit.spec 钉。本 spec 的新契约 =
+// **窗开合全程零 board 几何变化**（覆盖层律），在原停靠应力面上逐条对拍：
+// 1440 静止、1024 窄窗诚实横滚、RTL 镜像、最坏数据、卡宽、滚动条披露。
+// 病灶记忆（#692，2026-10-03 实测）：旧 240px 开态护栏在 1440 停靠态恰好
+// 排满三列、第四列只剩 ~3px 残边且滚动条被隐藏——「让位」族病灶的通用形态
+// 是内容几何随面板态跳变；覆盖层的对立面即「开合零跳变」，本 spec 钉它。
 // 每条用例钉一个失败方式，全部断言几何（bounding box / scroll 行为），
 // 不断言 CSS 数值（数值断言会被「改了但没用」骗过；scrollbar-width 是
 // 披露机制本体，单独一条钉它）：
-// 1. 停靠列被压扁：任一角列宽跌破 280 下限
-// 2. 首列被裁：scroll 起点处第一列不完整落在 scroller 可视窗内
-// 3. 残边无意义：滚动缘的部分列露出 <16px（better-layout 提示区间）
-// 4. 溢出不可达：横滚不动，或滚到底后末列仍不完整
-// 5. 溢出无披露：scrollbar-width 仍是 none（隐藏的滚动条 = 没有滚动条）
-// 6. 卡片被挤瘪：停靠卡宽比静止卡宽窄超过 2px（1440 静止列 281 vs
-//    停靠列 280，卡宽差应为 1px）
-// 7. 最坏数据塌版：超长标题卡横向溢出列、120 计数撑破列头、空列消失
-// 8. 最窄可用视口塌版：1024 停靠（board-main 仅 366px）列跌破下限或
-//    页面自身横向溢出
-// 9. RTL 镜像塌版：dir=rtl 下首列不在滚动起点缘完整可见
-// 10. 静止面回归：1440 静止态列宽/无横滚与改前逐值一致（≥1440 流值
-//     281 > 280 下限，token 不介入）
-// #943/#910 重钉：scroller = data-testid（二级：无 role 滚动容器）、列 =
+// 1. 开窗把列压扁/撑变：开态列宽与关态逐值不等（或跌破 200 下限）
+// 2. 开窗改变横滚态：关态无横滚的面开窗长出横滚（或反之）
+// 3. 开窗后溢出不可达：横滚不动，或滚到底末列不完整（覆盖层不得挡滚动）
+// 4. 开窗后披露机制失效：scrollbar-width 不再是 auto
+// 5. 开窗把卡挤瘪：开态卡宽与关态差超过 1px
+// 6. 开窗下最坏数据塌版：超长标题卡横向溢出列、120 计数撑破列头、空列消失
+// 7. 窄窗（1024）开窗：地板失守或页面自身横向溢出
+// 8. RTL 镜像开窗塌版：dir=rtl 下首列不在滚动起点缘完整可见
+// 9. 静止面回归：1440 关态列宽/无横滚与改前逐值一致（≥1440 流值 281 >
+//    200 下限，token 不介入）
+// #943/#910 载体：scroller = data-testid（二级：无 role 滚动容器）、列 =
 // 既有 [data-column]、卡 = [data-todo-id]、卡标题 = h3、列头 = header 标签、
-// 空态 = 一级 text（r2 §4.1 正典文案）、停靠态 = [data-route="board"] 的
-// data-chief-open 属性。几何期望值不动——board.css 的轨道规则原值迁
-// scroller 工具类（grid-cols-[repeat(4,minmax(var(--board-col-min),1fr))]）。
+// 空态 = 一级 text（r2 §4.1 正典文案）。窗开态 = .chief-drawer 可见
+// （data-chief-open 标记随让位退役）。
 const STRESS = '/app?scenario=board-stress';
-const FLOOR = 280; // --board-col-min-docked（停靠地板，#1035）的镜像值：钉几何，不读 CSS 变量
+const FLOOR = 200; // --board-col-min（单态地板，#1035 两态退役后）的镜像值
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
 const scroller = (page: Page) => page.getByTestId('board-scroller');
 
-/** ⌘J 开抽屉并等入场动画落定（chief-panel.spec settled 同式：等
- *  anim-drawer 的 animation finished，transform 归位后才可量几何）。 */
-async function dock(page: Page) {
+/** ⌘J 开窗并等入场动画落定（chief-panel.spec settled 同式：fade+scale 的
+ *  animation finished 后才可量几何，ADR 0013 D7）。 */
+async function openWindow(page: Page) {
   await page.keyboard.press('Meta+j');
-  await expect(page.locator('[data-route="board"][data-chief-open]')).toHaveCount(1);
+  await expect(drawer(page)).toBeVisible();
   await drawer(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
 }
 
@@ -64,46 +61,55 @@ function measure(page: Page) {
   });
 }
 
-test.describe('board reflow under the docked chief drawer (#692)', () => {
-  test('docked columns hold the 280px floor and the first column is whole', async ({ page }) => {
+const roundCols = (m: Awaited<ReturnType<typeof measure>>) =>
+  m.columns.map((c) => ({ id: c.id, left: Math.round(c.left), width: Math.round(c.width) }));
+
+test.describe('board never reflows under the floating chief window (ADR 0013 D1)', () => {
+  test('window open leaves the 1440 columns at their closed geometry', async ({ page }) => {
     await page.goto(STRESS);
     await page.waitForSelector('[data-column]');
-    await dock(page);
+    const closed = await measure(page);
+    expect(closed.columns).toHaveLength(4);
+    expect(closed.scrollWidth).toBeLessThanOrEqual(closed.clientWidth);
 
-    const m = await measure(page);
-    expect(m.columns).toHaveLength(4);
-    // 失败方式 1：列被压扁（旧 minmax(0,1fr) 停靠态 ~176px 的死法）
-    for (const c of m.columns) expect(c.width).toBeGreaterThanOrEqual(FLOOR - 1);
-    // 失败方式 2：首列在滚动起点被裁（用户截图的「只剩一条边」）
-    const first = m.columns[0]!;
-    expect(first.left).toBeGreaterThanOrEqual(m.scroller.left - 1);
-    expect(first.right - first.left).toBeGreaterThanOrEqual(FLOOR - 1);
-    // 停靠确实让位出溢出（否则上面两条是空转）
-    expect(m.scrollWidth).toBeGreaterThan(m.clientWidth);
+    await openWindow(page);
+    const open = await measure(page);
+    // 失败方式 1+2：覆盖层开合零列几何/横滚态跳变
+    expect(roundCols(open)).toEqual(roundCols(closed));
+    expect(open.scrollWidth).toBeLessThanOrEqual(open.clientWidth);
+    for (const c of open.columns) expect(c.width).toBeGreaterThanOrEqual(FLOOR - 1);
   });
 
-  test('the clipped next column peeks >=16px at the scroll edge', async ({ page }) => {
+  test('narrowest usable viewport (1024): honest scroll identical open and closed', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 732 });
     await page.goto(STRESS);
     await page.waitForSelector('[data-column]');
-    await dock(page);
+    const closed = await measure(page);
+    // 窄窗常态地板接管：诚实横滚（#692 语义的常态延伸，board-zoom-fit 同钉）
+    expect(closed.scrollWidth).toBeGreaterThan(closed.clientWidth);
+    for (const c of closed.columns) expect(c.width).toBeGreaterThanOrEqual(FLOOR - 1);
 
-    // 失败方式 3：残边无意义（3px 边渣读作破损，不读作可滚）。
-    // 1440 停靠窗 782：17+280+14+280+14 = 605 → 第三列露出 ~177px。
-    const m = await measure(page);
-    const partial = m.columns.find(
-      (c) => c.left < m.scroller.right && c.right > m.scroller.right + 1,
+    await openWindow(page);
+    const open = await measure(page);
+    // 失败方式 7 的对拍面：开窗不改变地板与横滚态
+    expect(roundCols(open)).toEqual(roundCols(closed));
+    expect(open.scrollWidth).toBeGreaterThan(open.clientWidth);
+    const pageSpill = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
-    expect(partial, 'a column must straddle the scroll edge').toBeDefined();
-    expect(m.scroller.right - partial!.left).toBeGreaterThanOrEqual(16);
+    expect(pageSpill).toBeLessThanOrEqual(0);
   });
 
-  test('overflow is reachable: wheel scrolls and the last column lands whole', async ({ page }) => {
+  test('overflow stays reachable while the window is open', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 732 });
     await page.goto(STRESS);
     await page.waitForSelector('[data-column]');
-    await dock(page);
+    await openWindow(page);
 
-    // 失败方式 4：横滚不可达（滚动条隐藏 + 滚不动 = 末列不存在）。
-    // wheel 时序坑照 board-overflow.spec：合成器帧上 poll 到离开 0 再断言。
+    // 失败方式 3：覆盖层不得挡横滚（wheel 时序坑照 board-overflow.spec：
+    // 合成器帧上 poll 到离开 0 再断言）。
     const box = await scroller(page).boundingBox();
     expect(box).not.toBeNull();
     await page.mouse.move(box!.x + box!.width / 2, box!.y + 40);
@@ -121,18 +127,19 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
     expect(last.width).toBeGreaterThanOrEqual(FLOOR - 1);
   });
 
-  test('overflow discloses itself: the scroller no longer hides its scrollbar', async ({
+  test('overflow discloses itself while the window is open: scrollbar stays native', async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 1024, height: 732 });
     await page.goto(STRESS);
     await page.waitForSelector('[data-column]');
-    await dock(page);
-    // 失败方式 5：披露机制本体（参考站 scrollbar-width: auto 同值；
+    await openWindow(page);
+    // 失败方式 4：披露机制本体（参考站 scrollbar-width: auto 同值；
     // auto 只在真溢出时画轨道，静止 1440 无溢出即无滚动条）
     await expect(scroller(page)).toHaveCSS('scrollbar-width', 'auto');
   });
 
-  test('cards keep their resting width while docked', async ({ page }) => {
+  test('cards keep their exact width across window open/close', async ({ page }) => {
     await page.goto(STRESS);
     await page.waitForSelector('[data-todo-id]');
     const resting = await page
@@ -140,25 +147,22 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
       .first()
       .boundingBox();
     expect(resting).not.toBeNull();
-    await dock(page);
-    const docked = await page
+    await openWindow(page);
+    const open = await page
       .locator('[data-column="todo"] [data-todo-id]')
       .first()
       .boundingBox();
-    expect(docked).not.toBeNull();
-    // 失败方式 6：卡被挤瘪（用户报的「卡片挤成一团」）。1440 静止列 281、
-    // 停靠列 280 → 卡宽差 1px；容差 2px 吃掉亚像素。
-    expect(Math.abs(docked!.width - resting!.width)).toBeLessThanOrEqual(2);
+    expect(open).not.toBeNull();
+    // 失败方式 5：覆盖层零挤瘪——开合卡宽逐值同（容差 1px 吃亚像素）
+    expect(Math.abs(open!.width - resting!.width)).toBeLessThanOrEqual(1);
   });
 
-  test('worst-case data holds: long title wraps in-column, 120-count header fits, empty column survives', async ({
-    page,
-  }) => {
+  test('worst-case data holds while the window is open', async ({ page }) => {
     await page.goto(STRESS);
     await page.waitForSelector('[data-todo-id]');
-    await dock(page);
+    await openWindow(page);
 
-    // 失败方式 7a：超长不可断行标题把卡撑出列（横向溢出）
+    // 失败方式 6a：超长不可断行标题把卡撑出列（横向溢出）
     const card = page.locator('[data-column="todo"] [data-todo-id]').first();
     const overflow = await card.evaluate((el) => ({
       spill: el.scrollWidth - el.clientWidth,
@@ -170,13 +174,13 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
     expect(overflow.spill).toBeLessThanOrEqual(1);
     expect(overflow.titleSpill).toBeLessThanOrEqual(1);
 
-    // 失败方式 7b：三位数列头计数撑破列头
+    // 失败方式 6b：三位数列头计数撑破列头
     const header = page.locator('[data-column="building"] header');
     await expect(header).toContainText('120');
     const headSpill = await header.evaluate((el) => el.scrollWidth - el.clientWidth);
     expect(headSpill).toBeLessThanOrEqual(1);
 
-    // 失败方式 7c：空列在下限宽下消失或塌窄
+    // 失败方式 6c：空列在下限宽下消失或塌窄
     const m = await measure(page);
     const pending = m.columns.find((c) => c.id === 'pending');
     expect(pending).toBeDefined();
@@ -186,37 +190,19 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
     ).toBeVisible();
   });
 
-  test('narrowest usable viewport (1024) docked: floor holds and the page itself never scrolls', async ({
+  test('RTL mirror: the first column stays whole at the scroll-start edge while open', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1024, height: 732 });
-    await page.goto(STRESS);
-    await page.waitForSelector('[data-column]');
-    await dock(page);
-
-    // 失败方式 8：窄窗停靠（board-main = 1024−240−418 = 366）列跌破下限，
-    // 或壳把溢出漏给页面（body 出现横滚 = 布局塌了）
-    const m = await measure(page);
-    for (const c of m.columns) expect(c.width).toBeGreaterThanOrEqual(FLOOR - 1);
-    const first = m.columns[0]!;
-    expect(first.left).toBeGreaterThanOrEqual(m.scroller.left - 1);
-    const pageSpill = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(pageSpill).toBeLessThanOrEqual(0);
-  });
-
-  test('RTL mirror: the first column stays whole at the scroll-start edge', async ({ page }) => {
     await page.goto(STRESS);
     await page.waitForSelector('[data-column]');
     // 应用尚未出 RTL 词表；本条钉的是布局原语的方向无关性（grid +
     // overflow 随 dir 镜像），dir 由文档根注入。
     await page.evaluate(() => document.documentElement.setAttribute('dir', 'rtl'));
-    await dock(page);
+    await openWindow(page);
 
     const m = await measure(page);
     const byId = Object.fromEntries(m.columns.map((c) => [c.id, c]));
-    // 失败方式 9：镜像后首列跑到裁切缘。RTL 滚动起点 = 右缘：todo 列
+    // 失败方式 8：镜像后首列跑到裁切缘。RTL 滚动起点 = 右缘：todo 列
     // 必须完整贴右窗缘，列序整体反转。
     expect(byId.todo!.right).toBeLessThanOrEqual(m.scroller.right + 1);
     expect(byId.todo!.right - byId.todo!.left).toBeGreaterThanOrEqual(FLOOR - 1);
@@ -228,7 +214,7 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
   test('resting geometry at 1440 is untouched by the floor token', async ({ page }) => {
     await page.goto('/app?scenario=01');
     await page.waitForSelector('[data-column]');
-    // 失败方式 10：静止面回归——1440 流值 (1166−42)/4 = 281 > 280，
+    // 失败方式 9：静止面回归——1440 流值 (1166−42)/4 = 281 > 200，
     // token 不介入：四列等宽 ~281、无横滚（与改前实测逐值一致）。
     const m = await measure(page);
     expect(m.scrollWidth).toBeLessThanOrEqual(m.clientWidth);

@@ -82,7 +82,32 @@ export interface ChiefDeepLink {
   onConsumed: () => void;
 }
 
-export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): ChiefSurface {
+/** 开态持久化键（ADR 0013 D5，0004 D9「开态刷新即关」的反转）：品牌前缀
+ *  纪律照 `pacman.sidebar-collapsed` 先例（app-sidebar.ts）；默认 = 关
+ *  （Multica "never pops uninvited" 同律）。fixture 面永不读写（采集
+ *  确定性——scenario 的 chief.view 是捕获形唯一开态源）。 */
+export const CHIEF_OPEN_STORAGE_KEY = 'pacman.chief-open';
+
+function readStoredChiefOpen(): boolean {
+  try {
+    return localStorage.getItem(CHIEF_OPEN_STORAGE_KEY) === '1';
+  } catch {
+    return false; // 隐私模式等 Storage 不可用——回落默认关
+  }
+}
+
+export interface ChiefSurfaceOptions {
+  /** ⌘J 唤醒监听门（default true）：chief 面被路由抑制时（chief-root 的
+   *  suppressed 集）解除注册——抑制路由上按 ⌘J 不得有可见零效果之外的
+   *  状态漂移（今天这些路由根本没有监听实例，语义保持）。 */
+  wake?: boolean;
+}
+
+export function useChiefSurface(
+  fixture: FixtureSet,
+  deepLink?: ChiefDeepLink,
+  opts?: ChiefSurfaceOptions,
+): ChiefSurface {
   const { live, teamId } = useLiveData();
   const { t } = useI18n();
   const chiefQ = useChief(teamId, live);
@@ -95,18 +120,33 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   const mutations = useApiMutations(teamId);
 
   const chief = fixture.chief;
-  const [chiefView, setChiefView] = useState<ChiefView>(chief?.view ?? 'none');
+  // 初始视图（ADR 0013 D5）：fixture 捕获形（scenario 的 chief.view）优先
+  // ——dev/capture 面零存储读取；live 面回落持久化开态（默认关）。
+  const [chiefView, setChiefView] = useState<ChiefView>(
+    () => chief?.view ?? (live && readStoredChiefOpen() ? 'drawer' : 'none'),
+  );
   const chiefViewOpen = chiefView === 'drawer';
-  // #389/#442/#468: ⌘J = toggle，再按一次收起（每页恰好一个本 hook 实例，
-  // 监听单点注册；守卫归 hotkeys 模块——drawer 外输入态不误触，drawer 内
-  // 豁免，否则和弦关不上自己打开的面）。开后焦点落草稿框（drawer 的
-  // autofocus 律）。settings 面按 ⌘J 同样换到 drawer（三态单值，drawer
-  // 与 settings 本就互斥）。
+  // 开态持久化写入（live 面专属；幂等，StrictMode 双跑无害）。settings
+  // 视图落 '0'——它是 board 路由的内容交换态，不是窗的开态。
+  useEffect(() => {
+    if (!live) return;
+    try {
+      localStorage.setItem(CHIEF_OPEN_STORAGE_KEY, chiefView === 'drawer' ? '1' : '0');
+    } catch {
+      // Storage 不可用（隐私模式）——持久化静默降级，会话内行为不变
+    }
+  }, [live, chiefView]);
+  // #389/#442/#468: ⌘J = toggle，再按一次收起（根 layout 单实例常驻，
+  //  ADR 0013 D6——监听随实例全局唯一；守卫归 hotkeys 模块——drawer 外
+  //  输入态不误触，drawer 内豁免，否则和弦关不上自己打开的面）。开后焦点
+  //  落草稿框（drawer 的 autofocus 律，首开限 closed→open 迁移——
+  //  MUL-5522 同律，持久化开态的加载不抢焦点）。settings 面按 ⌘J 同样换到
+  //  drawer（三态单值，drawer 与 settings 本就互斥）。
   const toggleDrawer = useCallback(
     () => setChiefView((prev) => (prev === 'drawer' ? 'none' : 'drawer')),
     [],
   );
-  useChiefToggleHotkey(toggleDrawer);
+  useChiefToggleHotkey(toggleDrawer, opts?.wake ?? true);
 
   // —— chief live 面（r5 §2/§3.6）：envelope + threads + 活动线程消息 +
   // 会话流订阅；发送 = POST threads / conversations messages。——

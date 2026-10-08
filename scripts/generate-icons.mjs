@@ -181,6 +181,16 @@ const EXTRA_ICONS = [
     contexts: ['card 分支与 PR button (lucide git-branch shape, #828)'],
     trace: 'lucide git-branch shape (ISC), adopted for #828',
   },
+  {
+    // ADR 0013 D3: the chief floating window's only dismiss is a Minimize
+    // button (Minus glyph, no X) — Multica's chat-window minimize uses the
+    // lucide minus shape (chat-window.tsx header, 2026-10-08 source read).
+    name: 'Minus',
+    size: [16, 16],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path></svg>',
+    contexts: ['chief window Minimize button (ADR 0013 D3)'],
+    trace: 'lucide minus shape (ISC), adopted for ADR 0013 D3 (Multica chat-window minimize)',
+  },
 ];
 
 // D5 replacement batch (#249, 素材替换计划 D5): the five todos.dev custom

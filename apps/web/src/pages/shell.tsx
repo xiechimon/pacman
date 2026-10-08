@@ -4,19 +4,20 @@
 // indigo + 新建 on schedules, r7 11). Geometry from the r7 11 probes
 // (topbar 43 + 1px border, back 28×28 @ x252, title centered on the
 // content area) and r2 24b/24c for the name + tab-group variants.
-// The 总管 FAB rides the shell (r7 11 shows it on every secondary route)
-// and wakes the shared chief drawer (#129); the sidebar is the shared
-// AppSidebar, so its geometry/behavior matches the board's exactly.
+// The 总管 launcher no longer rides this shell (ADR 0013 D6: the root
+// ChiefRoot layout hosts the single floating window + FAB for every
+// route); the sidebar is the shared AppSidebar, so its geometry/behavior
+// matches the board's exactly.
 // #946: pages.css 清零——本壳的全部几何/配色迁为 token utility（值 =
-// 原规则等值迁移）；page-shell/page-main(-col)/page-topbar/page-fab/
-// page-tab(s-group) 类名留存 DOM：chief-drawer 的 DOCK_ROWS 以 page-main
-// 作停靠行钩子（功能位），其余是跨域 spec 的既有定位别名（#910 裁定 1
-// 两级制下 spec 载体已迁语义位，类名摘除归 #952/#953 终账）。
+// 原规则等值迁移）；page-shell/page-main(-col)/page-topbar/
+// page-tab(s-group) 类名留存 DOM：跨域 spec 的既有定位别名（#910 裁定 1
+// 两级制下 spec 载体已迁语义位，类名摘除归 #952/#953 终账）；page-main
+// 曾是 chief-drawer DOCK_ROWS 的停靠行钩子，随 0013 让位退役只剩别名面
+// （page-fab 类随族 FAB 退役删除）。
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AppSidebar } from '../board/app-sidebar.js';
 import type { SidebarSelected } from '../board/sidebar.js';
-import { ChiefWake } from '../chief/chief-wake.js';
 import { Button } from '../components/ui/button.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -37,13 +38,6 @@ export interface PageTab {
    *  内容面由页面给占位文案。 */
   disabled?: boolean;
 }
-
-/** 总管 FAB 配方（原 .page-fab，r7 §3.4: 48×48 @ right 16 / bottom 16；
- *  bg = page surface，投影 --fab-shadow）。ghost 件配方的涂底通道按七通道
- *  律压回 surface（含 dark:）；hover 墨色不中和——旧面 per-face 无 color
- *  声明，ghost 的 hover:text-foreground 本就生效，等值保留。 */
-export const PAGE_FAB_CLS =
-  'absolute bottom-4 right-4 size-12 cursor-pointer rounded-full border-none bg-(--card) shadow-(--fab-shadow) hover:bg-(--card) dark:hover:bg-(--card)';
 
 /** Text-tab pill group (任务|文件 in the topbar, 基本信息|仓库|标签 in the
  *  settings column — r2 24b/24c share one markup). #946: role=tablist/tab +
@@ -125,11 +119,10 @@ export function PageShell({
   return (
     <div className="page-shell flex h-full overflow-hidden">
       <AppSidebar fixture={fixture} selected={selected} onNewTask={onNewTask} />
-      {/* #447 (ADR 0004 D2/D6): the main column is the docking row —
-          [page-main-col (flex:1 min-width:0), chief panel (flex:none 418)].
-          The wake pair stays the row's last child: its FAB rides the
-          page-main absolute anchor while the docked panel takes the flex
-          slot, so the content column yields by exactly the panel width. */}
+      {/* ADR 0013 D1/D6: the docking row is gone — the chief surface is a
+          root-level floating window (chief-root.tsx), nothing yields here
+          anymore. page-main keeps its class as the cross-domain spec
+          alias it already was (#946). */}
       <div className="page-main relative flex min-w-0 flex-1 bg-(--card)">
         <div className="page-main-col flex min-w-0 flex-1 flex-col">
           <header className="page-topbar relative flex h-11 flex-none items-center border-b border-(--border) pl-3">
@@ -167,7 +160,6 @@ export function PageShell({
             {children}
           </div>
         </div>
-        <ChiefWake fixture={fixture} fabClassName={`page-fab ${PAGE_FAB_CLS}`} />
       </div>
     </div>
   );

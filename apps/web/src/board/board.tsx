@@ -4,11 +4,11 @@
 // the #58 scrollLeft persistence retired with the horizontal scroll they
 // served. Header 37 with dot/name/count, empty-state copy centered (r7).
 // #692: 列宽单源下限——轨道规则 = scroller 上的 grid-cols 工具类
-// （minmax(var(--board-col-min), 1fr)），⌘J 停靠 / 窄窗放不下时横滚回归
-// 且滚动条不再隐藏（旧 240px 开态护栏在 1440 停靠态把第四列裁成 ~3px
-// 残边、无可滚线索 = #692 病灶）。#1035: 地板值按 .board-shell 的
-// data-chief-open 劈两态——常态 200px（缩放宽视口四列全见）/ 停靠 280px
-// （参考站 2026-10-03 实测固定节距），两值都在 tokens.css。
+// （minmax(var(--board-col-min), 1fr)），窄窗放不下时横滚回归且滚动条
+// 不再隐藏（旧 240px 开态护栏把第四列裁成 ~3px 残边、无可滚线索 =
+// #692 病灶）。#1035 的两态地板（常态 200 / 停靠 280）随 ADR 0013 D1
+// 让位退役收敛回单态：--board-col-min 200px（tokens.css 单源）——
+// 悬浮窗是覆盖层，board 列不再随面板开合变轨。
 // #943: board.css 清零——本文件吃进来的最后三条规则（scroller 轨道、拖拽
 // 落点两级染色、body.board-dragging 手势锁）分别迁为 scroller/列上的工具类
 // 与 motion.css 的 body 级钩子。
@@ -265,24 +265,20 @@ export function BoardSurface({
       >
         {/* #692 列宽单源规则（原 board.css .board-scroller，取代 #447 /
             ADR 0004 D8 的开态限定护栏）：轨道只消费 --board-col-min，
-            规则本身不按状态分支；#1035 起该 token 的值由 .board-shell 的
-            data-chief-open 标记劈开（常态 200px / 停靠 280px，tokens.css
-            单源，board-page.tsx 挂切换工具类）。别把地板写进本轨道做
-            min() 降级——地板会永不生效、停靠态横滚直接消失
-            （board-docked-reflow.spec 会红，#1035 票面反例）。
+            规则本身不按状态分支。ADR 0013 D1 让位退役后 token 收敛回
+            单态 200px（tokens.css 单源；#1035 的 data-chief-open 两态
+            切换随停靠形一并删除——悬浮窗是覆盖层，board-main 不再让位，
+            「停靠态」不存在了）。别把地板写进本轨道做 min() 降级——
+            地板会永不生效、窄窗横滚直接消失（#1035 票面反例）。
             - 静止 ≥1440 视口：1fr 段主导（实测 281px），几何与旧
               grid-cols-4 逐值一致；
-            - 常态窄窗/缩放：200px 地板让 CSS 视口 ≥1152（1440 物理宽、
+            - 窄窗/缩放：200px 地板让 CSS 视口 ≥1152（1440 物理宽、
               缩放 ≤125%）四列全见零横滚，更窄才接管横滚
-              （board-zoom-fit.spec 钉两边界）；
-            - ⌘J 停靠（board-main 让掉 418px）：280px 参考站节距
-              （todos.dev 2026-10-03 live 实测）接管，放不下的列走
-              overflow-x-auto 横滚——旧护栏在 1440 停靠态恰好排满三列
-              （748 = 3×240+2×14），第四列只剩 ~3px 残边，且滚动条被隐藏、
-              无任何可滚线索（#692 病灶：无提示的裁切）。对齐参考站后列恒
-              280px 节距、滚动缘露出诚实的部分列，滚动条恢复原生
+              （board-zoom-fit.spec 钉两边界），滚动条恢复原生
               （scrollbar-width: auto，参考站同值）——只在真有溢出时出现，
-              静止 1440 无溢出即无滚动条，#351 的静止观感不变。 */}
+              静止 1440 无溢出即无滚动条，#351 的静止观感不变。
+            board-docked-reflow.spec 钉的是已退役的停靠两态（重钉账见
+            #1009 A0 ⑨ / ADR 0013 D11）。 */}
         <div
           data-testid="board-scroller"
           className={`board-scroller absolute inset-x-0 bottom-0 grid grid-cols-[repeat(4,minmax(var(--board-col-min),1fr))] grid-rows-[minmax(0,1fr)] gap-3.5 overflow-x-auto overflow-y-hidden bg-background px-[17px] pt-3 pb-[13px] ${

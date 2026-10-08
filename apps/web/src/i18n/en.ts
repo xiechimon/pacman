@@ -43,6 +43,7 @@ export const EN: Record<string, string> = {
   返回: 'Back',
   更多: 'More',
   关闭: 'Close',
+  最小化: 'Minimize',
   取消: 'Cancel',
   保存: 'Save',
   删除: 'Delete',

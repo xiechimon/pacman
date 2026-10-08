@@ -1,16 +1,21 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// Issue #389 + #442 + #468 + XMON-37 acceptance: the 快捷键组 — C opens the
+// Issue #389 + #442 + #468 + XMON-37 acceptance, re-pinned for ADR 0013
+// (#1009 A0): the 快捷键组 — C opens the
 // new-task dialog from any page (XMON-37 retires #389's N; the sidebar keeps
 // its 新任务 row, now carrying the C kbd badge,
 // upstream todos.dev form), and ⌘J (Ctrl+J off macOS — the ⌘K search
-// registration's cmd/ctrl dual-receipt form) wakes the chief drawer with
-// focus landing in the composer (dialog-family autofocus law —
-// SearchPanel/NewTaskDialog ref-focus precedent; no focus trap anywhere in
-// the family, none here). ⌘J is a toggle (#468): the second press closes
-// the drawer, including from the composer focus the open itself landed —
+// registration's cmd/ctrl dual-receipt form) wakes the chief window with
+// focus landing in the composer (dialog-family autofocus law, narrowed by
+// A0 to closed→open transitions — MUL-5522 same-law: a persisted-open load
+// must not steal focus). ⌘J is a toggle (#468): the second press closes
+// the window, including from the composer focus the open itself landed —
 // the editable guard exempts the drawer's own interior, otherwise the
-// chord could never close what it opened. C stays open-only, matching the
+// chord could never close what it opened. ADR 0013 D3: Esc never closes
+// the panel (Minimize + ⌘J are the only dismissals), and D6 parks the
+// closed window hidden-but-mounted, so the drawer face's negative
+// assertions ride toBeHidden / pressesStayHidden while the dialog family
+// keeps its count-0 carrier. C stays open-only, matching the
 // row-click semantics. Guards keep native semantics: editable targets
 // (input/textarea/select/contenteditable) swallow both keys OUTSIDE the
 // drawer — typing must never wake a surface; ⌘J's guard is editable-only —
@@ -150,6 +155,20 @@ async function pressesStayClosed(
   }
 }
 
+/** ADR 0013 D6 载体版的 pressesStayClosed：chief 窗关态驻 DOM（hidden），
+ *  count-0 律只对其余弹层家族成立；窗面「保持关」= 保持 hidden。 */
+async function pressesStayHidden(
+  page: Page,
+  key: string,
+  surface: ReturnType<Page['locator']>,
+) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(120);
+    await expect(surface).toBeHidden();
+  }
+}
+
 /** Escape-until-closed, same retry law as pressUntil: the close listener
  *  registers in a passive effect too, so an Escape fired right after open
  *  can be lost (renderer input processing lags the assertion read under
@@ -250,12 +269,13 @@ test('Space no longer opens the drawer; ⌘J does, composer focused, default con
   // #442: the Space binding is gone — it is the native scroll key again and
   // must not wake the drawer (the ⌘N test's immediate-count negative form)
   await page.keyboard.press('Space');
-  await expect(drawer(page)).toHaveCount(0);
+  await expect(drawer(page)).toBeHidden();
 
   await pressUntil(page, 'Meta+j', drawer(page));
   await expect(page.getByTestId('chief-composer-input')).toBeFocused();
-  await escapeUntilHidden(page, drawer(page));
-  await expect(drawer(page)).toHaveCount(0);
+  // ADR 0013 D3：Esc 不收窗——收起走 ⌘J toggle（Minimize 钮同律）
+  await toggleUntilHidden(page, drawer(page));
+  await expect(drawer(page)).toBeHidden();
 
   // Default-consumed, the page-testable half: a probe listener installed
   // after the app's (hook proven live above; same target + phase fires in
@@ -277,8 +297,8 @@ test('Space no longer opens the drawer; ⌘J does, composer focused, default con
     () => (window as unknown as { cmdJConsumed?: boolean }).cmdJConsumed,
   );
   expect(consumed).toBe(true);
-  await escapeUntilHidden(page, drawer(page));
-  await expect(drawer(page)).toHaveCount(0);
+  await toggleUntilHidden(page, drawer(page));
+  await expect(drawer(page)).toBeHidden();
 });
 
 test('⌘J wakes the chief drawer on a non-board route', async ({ page }) => {
@@ -287,8 +307,8 @@ test('⌘J wakes the chief drawer on a non-board route', async ({ page }) => {
   await pressUntil(page, 'Meta+j', drawer(page));
   await expect(page.getByTestId('chief-composer-input')).toBeFocused();
   await expect(page).toHaveURL(/\/app\/schedules/);
-  await escapeUntilHidden(page, drawer(page));
-  await expect(drawer(page)).toHaveCount(0);
+  await toggleUntilHidden(page, drawer(page));
+  await expect(drawer(page)).toBeHidden();
 });
 
 test('editable focus swallows C and ⌘J — the c lands IN the input', async ({ page }) => {
@@ -304,7 +324,7 @@ test('editable focus swallows C and ⌘J — the c lands IN the input', async ({
   // #442: the same editable guard swallows ⌘J — typing must never wake a
   // surface, and the chord inserts no text of its own
   await page.keyboard.press('Meta+j');
-  await expect(drawer(page)).toHaveCount(0);
+  await expect(drawer(page)).toBeHidden();
   // no preventDefault hijack — the c typed through into the query
   await expect(field).toHaveValue('c');
 });
@@ -319,8 +339,8 @@ test('textarea focus (chief composer) swallows C', async ({ page }) => {
   await page.keyboard.press('c');
   await expect(dialog(page)).toHaveCount(0);
   await expect(drawer(page)).toBeVisible();
-  await escapeUntilHidden(page, drawer(page));
-  await expect(drawer(page)).toHaveCount(0);
+  await toggleUntilHidden(page, drawer(page));
+  await expect(drawer(page)).toBeHidden();
 });
 
 test('Space on a focused button activates it natively; ⌘J fires past button focus', async ({
@@ -343,7 +363,7 @@ test('Space on a focused button activates it natively; ⌘J fires past button fo
   await searchRow.focus();
   await page.keyboard.press('Space');
   await expect(page.getByRole('dialog', { name: '搜索' })).toBeVisible();
-  await expect(drawer(page)).toHaveCount(0);
+  await expect(drawer(page)).toBeHidden();
 
   // Close the panel (its input holds focus — editable would swallow the
   // chord) and refocus the button row: ⌘J's guard is editable-only, so it
@@ -354,8 +374,8 @@ test('Space on a focused button activates it natively; ⌘J fires past button fo
   await searchRow.focus();
   await pressUntil(page, 'Meta+j', drawer(page));
   await expect(page.getByTestId('chief-composer-input')).toBeFocused();
-  await escapeUntilHidden(page, drawer(page));
-  await expect(drawer(page)).toHaveCount(0);
+  await toggleUntilHidden(page, drawer(page));
+  await expect(drawer(page)).toBeHidden();
 });
 
 test('⌘J toggles: the second press closes the drawer from its own composer focus', async ({
@@ -370,12 +390,12 @@ test('⌘J toggles: the second press closes the drawer from its own composer foc
   // the exemption the editable guard swallows the closing press and this
   // wait times out.
   await toggleUntilHidden(page, drawer(page));
-  await expect(drawer(page)).toHaveCount(0);
+  await expect(drawer(page)).toBeHidden();
   // The full loop rides the one singleton listener: open → close → open →
   // close, no re-registration between presses.
   await pressUntil(page, 'Meta+j', drawer(page));
   await toggleUntilHidden(page, drawer(page));
-  await expect(drawer(page)).toHaveCount(0);
+  await expect(drawer(page)).toBeHidden();
 });
 
 test('⌘J toggle rides the non-board singleton hook too (schedules)', async ({ page }) => {
@@ -383,7 +403,7 @@ test('⌘J toggle rides the non-board singleton hook too (schedules)', async ({ 
   await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'Meta+j', drawer(page));
   await toggleUntilHidden(page, drawer(page));
-  await expect(drawer(page)).toHaveCount(0);
+  await expect(drawer(page)).toBeHidden();
   await expect(page).toHaveURL(/\/app\/schedules/);
 });
 
@@ -393,13 +413,13 @@ test('FAB click stays open-only; ⌘J closes what the click opened', async ({ pa
   await expect(fab).toBeVisible();
   await fab.click();
   await expect(drawer(page)).toBeVisible();
-  // The docked form (#447) covers the FAB with the panel while open — a
-  // re-click cannot even land (Playwright's pointer-interception is the
-  // proof), so the click face has no toggle to leak. The chord stays the
+  // ADR 0013 D4: the floating form unmounts the FAB while the window is
+  // open (mutual exclusion) — a re-click cannot even land (the button is
+  // gone), so the click face has no toggle to leak. The chord stays the
   // only keyboard close: the open autofocused the composer, and the
   // drawer-interior guard exemption lets ⌘J fire from there.
   await toggleUntilHidden(page, drawer(page));
-  await expect(drawer(page)).toHaveCount(0);
+  await expect(drawer(page)).toBeHidden();
 });
 
 test('the robot FAB surfaces the ⌘J hint on hover; at rest it stays hidden', async ({
@@ -418,9 +438,11 @@ test('the robot FAB surfaces the ⌘J hint on hover; at rest it stays hidden', a
   await expect(hint.locator('[data-slot="kbd"]')).toHaveText('⌘J');
 });
 
-test('a wake-family FAB carries the same ⌘J hint (shared consumption point)', async ({
+test('a wake-family route carries the same ⌘J hint (single root FAB)', async ({
   page,
 }) => {
+  // ADR 0013 D4/D6: the per-shell wake FABs retired into one root-host FAB —
+  // the hint rides the same Tooltip+Kbd carrier on every route (#983/#1004).
   await page.goto('/app/team?scenario=12');
   const fab = page.locator('button[aria-label="总管"]');
   // #1008 重钉：Tooltip+Kbd 组合（同上），body 级 portal 走页面级定位器。
@@ -469,7 +491,7 @@ test('with the drawer closed, N stays retired — neither drawer nor dialog open
   // The new binding is drawer-scoped (the enabled gate): with the drawer
   // shut the listener is off the window, so the retired-global law
   // (XMON-37, test 1) holds on the drawer face too.
-  await pressesStayClosed(page, 'n', drawer(page));
+  await pressesStayHidden(page, 'n', drawer(page));
   await expect(dialog(page)).toHaveCount(0);
 });
 
