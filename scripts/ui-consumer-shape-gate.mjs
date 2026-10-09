@@ -204,8 +204,10 @@ for (const entry of boxEntries) {
 }
 
 if (failures.length > 0) {
-  for (const failure of failures) console.error(failure);
-  console.error(
+  // Violations go to stdout like the sibling gates (stderr is reserved for
+  // the fatal/operational path above).
+  for (const failure of failures) console.log(failure);
+  console.log(
     `[ui-consumer-shape-gate] FAIL: ${hits.length} flagged line(s), ${failures.length} violation(s). Caliber + inventory: docs/spec/27-消费点形状与品牌墨台账.md.`,
   );
   process.exit(1);

@@ -33,8 +33,9 @@
 //       shorthand (`bg-(--card-button)`) is not a bracket form at all.
 //   G6  Brand ink is spot emphasis only (#1055, #987): every consumer-point
 //       TEXT-role use of the brand slots (--card-button / --focus-ring as
-//       text-(…), text-[var(…)], fill-/stroke- utilities, or a CSS `color:`
-//       declaration) must carry an entry in scripts/ui-consumer-registry.json
+//       text-(…), text-[var(…)], fill-/stroke- utilities, the arbitrary
+//       property form [color:var(…)], or a CSS `color:` declaration) must
+//       carry an entry in scripts/ui-consumer-registry.json
 //       (brandInkText section: {file, anchor, role, reason, contrast}, role
 //       in selection-mark | indicator | badge-glyph). Body/label/link/button
 //       text ink goes through the text tiers, --primary or the registry link
@@ -201,10 +202,9 @@ for (const file of tsxFiles) {
 const CONSUMER_LEDGER = join(REPO_ROOT, 'scripts/ui-consumer-registry.json');
 const BRAND_SLOTS = 'card-button|focus-ring';
 const G6_TS_RE = new RegExp(
-  `(?:text|fill|stroke)-\\(--(?:${BRAND_SLOTS})\\)|(?:text|fill|stroke)-\\[var\\(--(?:${BRAND_SLOTS})\\)\\]`,
-  'g',
+  `(?:text|fill|stroke)-\\(--(?:${BRAND_SLOTS})\\)|(?:text|fill|stroke)-\\[var\\(--(?:${BRAND_SLOTS})\\)\\]|\\[color:var\\(--(?:${BRAND_SLOTS})\\)\\]`,
 );
-const G6_CSS_RE = new RegExp(`color:\\s*var\\(--(?:${BRAND_SLOTS})\\)`, 'g');
+const G6_CSS_RE = new RegExp(`color:\\s*var\\(--(?:${BRAND_SLOTS})\\)`);
 const G6_ROLES = new Set(['selection-mark', 'indicator', 'badge-glyph']);
 let brandInkHits = 0;
 let brandInkEntries = [];
@@ -222,7 +222,11 @@ try {
       throw new Error(`entry ${entry.file}: unknown role ${entry.role}`);
   }
 } catch (err) {
-  failures.push(`G6 cannot use ${rel(CONSUMER_LEDGER)}: ${err.message}`);
+  // A broken ledger is an operational error, not a drift finding — same
+  // severity split as registry-gate S6 / debt-gate D4 / the shape gate's
+  // fatal(): exit 2, never a silent pass-through.
+  console.error(`[ui-drift-gate] FATAL: G6 cannot use ${rel(CONSUMER_LEDGER)}: ${err.message}`);
+  process.exit(2);
 }
 const g6Files = [...walk(WEB_SRC, '.tsx'), ...walk(WEB_SRC, '.ts')];
 const matchedEntries = new Set();
@@ -234,18 +238,13 @@ for (const file of g6Files) {
   const ledgerPath = `apps/web/src/${relPath}`;
   const clean = stripJsxComments(readFileSync(file, 'utf8')).split('\n');
   clean.forEach((line, i) => {
-    G6_TS_RE.lastIndex = 0;
     if (!G6_TS_RE.test(line)) return;
     brandInkHits++;
-    const covered = brandInkEntries.some(
+    const covering = brandInkEntries.filter(
       (entry) => entry.file === ledgerPath && line.includes(entry.anchor),
     );
-    if (covered) {
-      for (const entry of brandInkEntries) {
-        if (entry.file === ledgerPath && line.includes(entry.anchor)) {
-          matchedEntries.add(`${entry.file}\u0000${entry.anchor}`);
-        }
-      }
+    if (covering.length > 0) {
+      for (const entry of covering) matchedEntries.add(`${entry.file}\u0000${entry.anchor}`);
     } else {
       failures.push(
         `G6 ${relPath}:${i + 1}: brand ink in a text role without a ledger entry — brand slots are spot emphasis only (#987/#1055): move it to the text tiers / --primary / registry link tier, or register the spot role with reason + contrast in scripts/ui-consumer-registry.json (${line.trim().slice(0, 140)})`,
@@ -258,7 +257,6 @@ for (const file of cssFiles) {
   const ledgerPath = `apps/web/src/${relPath}`;
   const text = stripCssComments(readFileSync(file, 'utf8'));
   text.split('\n').forEach((line, i) => {
-    G6_CSS_RE.lastIndex = 0;
     if (!G6_CSS_RE.test(line)) return;
     brandInkHits++;
     const covering = brandInkEntries.filter(

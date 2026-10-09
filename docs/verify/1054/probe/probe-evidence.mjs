@@ -8,7 +8,9 @@
 // --background before measuring.
 //
 // Usage: PROBE_BASE=http://127.0.0.1:<port> PROBE_OUT=<dir> PROBE_SIDE=before|after
-//        node apps/web/e2e/__probe-1054-1055.mjs
+//        node <this file>   (run from a worktree with deps installed; imports
+//        @playwright/test — copy it next to apps/web/e2e/ or run with the
+//        worktree's apps/web as cwd so resolution finds node_modules)
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
