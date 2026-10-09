@@ -465,7 +465,16 @@ export type TranscriptItem =
    *  text in `markdown` (the robot row's #469 pattern) — the renderer
    *  parses it with chat-markdown at render time; the frozen capture
    *  shapes (text-only) render unchanged. */
-  | { kind: 'user'; text: string; seq?: number; title?: string; markdown?: string }
+  | {
+      kind: 'user';
+      text: string;
+      seq?: number;
+      title?: string;
+      markdown?: string;
+      /** #1009 A2 行 id 贯通：live 面源 message id（React key +
+       *  MessageScroller messageId 锚）；fixture 捕获形与合成行缺省。 */
+      id?: string;
+    }
   /** Agent prose: one or more paragraphs of inline segments (r7 36 merge
    *  row, r7 38 legacy rows). `footer` renders the message action row
    *  (copy + optional `| 完成 Ns` + optional `›`, r8 60/65); paragraph
@@ -486,6 +495,8 @@ export type TranscriptItem =
        *  same parse+render path as live (spec-block.tsx precedent). */
       markdown?: string;
       footer?: RobotFooter;
+      /** #1009 A2 行 id 贯通（user 行同注）：live 面源 message id。 */
+      id?: string;
     }
   /** Live planning/execution row: elapsed seconds + step label (r7 16
    *  `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`).
@@ -544,7 +555,12 @@ export type TranscriptItem =
   /** Centered dim line: a bare time stamp (`13:35`, r7 26), the merge
    *  announcement (`Xmon Dai 发起了合并`, r7 36) or the completion banner
    *  (`🎉 任务已完成`, r7 36). */
-  | { kind: 'note'; text: string }
+  | {
+      kind: 'note';
+      text: string;
+      /** #1009 A2 行 id 贯通（user 行同注）：live 面源 message id。 */
+      id?: string;
+    }
   /** Schedule-origin marker: clock glyph + `由定时发起`, left aligned
    *  (r7 38, 02 §9.2 闭环语义). */
   | { kind: 'scheduled' }
@@ -560,9 +576,21 @@ export type TranscriptItem =
    * system message），web mapper 拆出 verdict 形状渲染。#700：extractionError
    * 在位 = daemon verdict 提取失败（findingsError 原因）——审核面渲染
    * 「判定提取失败」行（区别于「审核未返回结论」兜底）。 */
-  | { kind: 'review'; conclusion: string; findings: ReviewFinding[]; extractionError?: string }
+  | {
+      kind: 'review';
+      conclusion: string;
+      findings: ReviewFinding[];
+      extractionError?: string;
+      /** #1009 A2 行 id 贯通（user 行同注）：live 面源 message id。 */
+      id?: string;
+    }
   /** #955 思考段行（详情页与总管抽屉共用同一张脸）：模型内部推理按段单列。 */
-  | { kind: 'thinking'; text: string };
+  | {
+      kind: 'thinking';
+      text: string;
+      /** #1009 A2 行 id 贯通（user 行同注）：live 面源 message id。 */
+      id?: string;
+    };
 
 /** AI 审核 finding 显示形态（M7 #330，r8 §3.1）：严重度 + 标题 + 描述 +
  * 引用位（文件:行）+ 可选建议。dataSource = server verdict message 解出
