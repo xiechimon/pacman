@@ -1526,6 +1526,36 @@ export const chiefThreadsOpen: FixtureSet = {
   },
 };
 
+/** #1094 长列表滚动面（synthetic scenario，chief-md 先例）：r5 116 的
+ *  切换器形态 + 22 行线程（canon 两行在前，active 仍钉首行）。修复前
+ *  容器零 max-height，尾部行被 WINDOW_CLS 的 overflow-hidden 裁掉——
+ *  不可见也不可点；e2e/chief-thread-switcher-scroll.spec 钉封顶 +
+ *  纵向滚动可达 + 尾部行可点，短列表面（116）零变化对照。 */
+const CHIEF_THREADS_LONG: ChiefThreadRef[] = [
+  ...CHIEF_THREADS,
+  ...Array.from({ length: 20 }, (_, i) => ({ title: '长列表主题 ' + (i + 1) })),
+];
+
+export const chiefThreadsLong: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  chief: {
+    view: 'drawer',
+    bound: true,
+    modelSlot: 'claude-sonnet-5 · 默认',
+    threadTitle: '给 r3-lifecycle 做三件小事…',
+    threadsOpen: true,
+    threads: CHIEF_THREADS_LONG,
+    stream: [
+      {
+        kind: 'robot',
+        paragraphs: [[{ text: '三项改动都已核对，符合要求：' }]],
+        seconds: '31s',
+      },
+    ],
+  },
+};
+
 /** #650/#651 named scenario (no capture, mdToolout / chiefStreaming 先例):
  *  总管抽屉的 markdown 面——定稿 robot 行携带 raw block markdown（`markdown`
  *  槽优先于段数组，渲染期走共用 chat-markdown 解析，live mapper 同路），

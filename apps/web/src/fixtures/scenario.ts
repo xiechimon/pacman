@@ -45,6 +45,7 @@ import {
   chiefSettingsStaleModel,
   chiefStreaming,
   chiefThread,
+  chiefThreadsLong,
   chiefThreadsOpen,
   compareMenuV2,
   detailBuilding,
@@ -376,6 +377,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '113': chiefStreaming,
       '114': chiefThread,
       '116': chiefThreadsOpen,
+      // #1094 长列表滚动面命名场景（无 capture，chief-md 先例）：22 行线程
+      // 的切换器——钉封顶 + 滚动可达 + 尾部可点（116 短列表面当零变化对照）。
+      'chief-threads-long': chiefThreadsLong,
       // #650/#651 markdown 面命名场景（无 capture，md-toolout 先例）：定稿
       // robot 行 raw markdown + typing 打字尾行，钉共用解析器进抽屉的渲染形。
       'chief-md': chiefMarkdown,
