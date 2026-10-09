@@ -777,8 +777,14 @@ function ChiefDrawerInner({
           // 位、262 宽、popover 底、drawer-local z 5——#688 阶梯外，
           // 收编于抽屉 stacking context 只压内部内容）。圆角接 registry
           // popover 依据 rounded-lg（#1054 清点，ADR 0012 D1）。
+          // #1094：长列表封顶 + 纵向滚动——无上限的子元素撞上窗体
+          // WINDOW_CLS 的 overflow-hidden 时尾部行不可达（旧
+          // .chief-switcher 同缺口，非换代回归）。上限照 slash-menu 的
+          // 绝对定位列表先例取 max-h-[220px]；registry 侧的
+          // max-h-(--available-height) 不适用——该变量由 Base UI
+          // Positioner 注入，本容器不在 Positioner 里，变量恒未定义。
           <div
-            className="absolute top-8 left-3 z-[5] w-[262px] rounded-lg bg-(--popover) p-1 shadow-(--chief-shadow)"
+            className="absolute top-8 left-3 z-[5] max-h-[220px] w-[262px] overflow-y-auto rounded-lg bg-(--popover) p-1 shadow-(--chief-shadow)"
             role="menu"
           >
             {(chief.threads ?? []).map((thread, index) => (
