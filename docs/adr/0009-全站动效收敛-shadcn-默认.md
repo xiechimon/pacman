@@ -1,5 +1,7 @@
 # ADR 0009 · 全站进出场动效收敛 shadcn 默认——撤销 #73 复刻纪律的动效值面
 
+> **superseded-in-part（2026-10-08，ADR 0012 / #991 Q9 / #1013）**：D3② 面——dropdown/popover 动效的仓内正典（本 ADR 追认的 `duration-100` + slide -8px，后经 #790/#805 长成 V2 scale-fade 覆写：scale .98 + fade、100ms ease-out）——被部分取代：动效时长曲线属 base-nova 形态的一部分，保留自定义 = 皮肤适配超出语义映射（违背 #980 零皮肤裁决②），dropdown/popover 动效的正典性来源换锚为 **registry 上游默认动画**（执行载体 = #1003 批次 0b，PR #1045 @ `da5972ce`：dropdown/popover 重拉回上游动效；dialog-shell / floating-shell 的 scale-fade 保留至 #1008 壳退役批次）。D3② 字面数值与重拉后的上游默认一致（`duration-100` + slide -8px 即上游 `duration-100` + `slide-in-from-*` 类），结论数值不变、变的是正典性来源——动效值面自此不再有仓内一手正本。原文整体保留作历史账、不删；D1 / D2 / D3①③ / D4 / D5 不在本修订射程内。
+
 > 状态：**已裁决并生效**（2026-10-02，用户拍板方向 B：「我选择 B」）。
 > 来源：#644 的原型交付（`docs/research/644-motion-shadcn-prototype.md` §2/§4，交互原型
 > `docs/research/assets/644/motion-prototype.html`）。本 ADR 记「为什么撤、撤到哪为止」；
@@ -47,3 +49,4 @@
 ## 修订
 
 - **2026-10-03 · #672**：D4 保留面移出 `spinner reel（#471）`。用户 2026-10-03 agree：transcript 加载指示器换 **loading-dev**（MIT，React 19+）试点，指示器为 `Atom`（`size=16`、`duration=900` 钉齐旧 reel 周期——atom 库默认 1000ms；用户看过实物预览后选定）——即**在加载态这一处放弃 todos.dev 复刻纪律**（产品级决定；几何/配色像素纪律不受影响，D2 边界照旧）。加载态的正本契约自此 = loading-dev 库：根节点自带 `aria-hidden`、`prefers-reduced-motion` 冻结由库注入样式承载（`animation: none` + 旋转件静态 `rotate(60deg)` 落定姿态），与本 ADR 的全站降级律行为等价。motion.css 的 `spinner-reel` keyframes 随 reel 一并删除；#656 验收里「motion.css 收缩到 D4 保留面」按修订后的 D4 计。铺开与否（全站加载态统一入口）待用户看过试点实物另裁。
+- **2026-10-08 · #991 Q9（#1013 入账）**：D3② 修订——dropdown/popover 动效正典性换锚 registry 上游默认（#790/#805 仓内 scale-fade V2 正典退役），理由与射程见头部 superseded-in-part 注记；执行载体 = #1003（批次 0b，PR #1045 @ `da5972ce`，已合 main）。
