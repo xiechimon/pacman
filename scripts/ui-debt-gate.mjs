@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
-// Construction-period debt brake (#851, parent map #908). While the site-wide
-// UI overhaul runs, two debt ledgers may only shrink, never grow:
+// Permanent debt ratchet (#851; born as the construction-period brake for
+// #908, sealed as a standing regression gate by #1012 when map #980 closed —
+// the ledgers sit at their floor, so the ratchet now purely blocks regrowth).
+// Two debt ledgers may only shrink, never grow:
 //
 //   per-face CSS   every *.css under apps/web/src except the five
 //                  carrier-layer files (WHITELIST below). Counted per file in

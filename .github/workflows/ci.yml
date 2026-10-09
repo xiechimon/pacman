@@ -52,8 +52,13 @@ jobs:
             exit 1
           fi
 
-      # 施工期止血闸（#851，#908 波 0a）：per-face CSS 逐文件行数与裸控件
-      # 总数只许降不许升。比较基准取 PR base sha 上的基线文件（下面先
+      # 止血闸转永久回归闸（#851 出身 #908 波 0a；#1012 封版裁决：保留，
+      # 理由见 docs/verify/1012/README.md）：per-face CSS 逐文件行数与裸控件
+      # 总数只许降不许升。封版终态即地板（0 per-face 文件；3 裸控件 = 全部
+      # deliberate-native 豁免的隐藏 file 触发器），棘轮自此纯防回潮——它是
+      # 「非 registry 新增为零」的机械载体，且 #989 registry 闸的面到
+      # components/ui 为止，消费侧 CSS 文件与裸 button/input/select/textarea
+      # 总量没有第二道闸。比较基准取 PR base sha 上的基线文件（下面先
       # fetch），所以分支内重新冻结基线抬不高自己的天花板（脚本内 D3）。
       # 纯源码扫描、零依赖，故意排在 install 之前：违规车道的红灯一分钟内
       # 就到，不用等整个 check job 跑完。push（main / prototype/**）没有
@@ -140,9 +145,12 @@ jobs:
       - name: Lint (biome ci)
         run: pnpm lint
 
-      # UI 漂移闸（#851）：单一样式只许一种实现——活 `.btn` 选择子、
-      # token 源之外的 hex 字面量、正典 chip 变体的异地重定义即红。
-      # 纯源码扫描，不需构建。
+      # UI 漂移闸（#851；#1012 封版裁决：保留为永久闸）：单一样式只许一种
+      # 实现——活 `.btn` 选择子、token 源之外的 hex 字面量、chip 变体异地
+      # 重定义、无 deliberate-native 标记的裸 `<input>`、components/ui 内
+      # raw color（G5，与 #989 hash 账本互补：账本钉文件 hash，看不见
+      # registered-deviated 文件里的颜色内容）、未登记的品牌墨 text-role
+      # 行（G6）即红。这些内容级面没有第二道闸承载。纯源码扫描，不需构建。
       - name: UI drift gate (#851)
         run: node scripts/ui-drift-gate.mjs
 
