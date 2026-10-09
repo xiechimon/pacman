@@ -24,7 +24,8 @@
 // 承载结构 = components/ui/Button ghost（XMON-28/B3）：本面四处散写钮
 // （进行中行、记忆排序触发器与选项行、名称行内编辑）换底座。排序钮/盘的
 // 几何与配色正本原住 resources.css 的 `.res-sort*`，#944 起迁
-// resources/parts.tsx 的 RES_* utility 常量（与 skills 页单源）；其余钮的
+// resources/parts.tsx 的 RES_* utility 常量（本面迁 registry 形态后全量
+// 退役，常量已删，#1054）；其余钮的
 // 正本原住 agent-detail.css，#952 起迁本文件的 AGENT_* utility 常量（等值
 // 迁移，契约面逐值不动）。底座带进来的差额在消费点就地并掉：
 // `justify-start` / `gap-0`（散写形是 flex-start、无序间距）、`h-auto`（行钮
@@ -529,8 +530,8 @@ export function AgentDetailPage() {
               <>
                 {/* 搜索框 + 排序钮行：registry 形态（搜索 = InputGroup 件，
                     排序 trigger = outline 件、盘面 = DropdownMenu 件默认
-                    皮肤；RES_* 手写配方在本面退役，resources 域消费点归
-                    L2 车道）。agent-memory-* 类名是本域句柄
+                    皮肤；RES_* 手写配方已退役，常量随 #1054 清点删除）。
+                    agent-memory-* 类名是本域句柄
                     （agent-detail.spec 面，零规则），原样保留。 */}
                 <div className="agent-memory-search flex flex-none items-center justify-between gap-2">
                   <InputGroup className="flex-1">

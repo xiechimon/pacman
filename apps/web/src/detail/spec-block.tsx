@@ -32,7 +32,9 @@ export function SpecBlock({ spec, fresh = false }: SpecBlockProps) {
   return (
     <section
       className={cn(
-        'spec-block mt-4 mx-4 rounded-none border border-(--border) bg-(--secondary) px-[15px] py-[13px] text-[15px] leading-[1.6] break-words text-(--foreground) [&>*]:max-w-[68ch]',
+        // #1054 清点：带框内容盒接 registry 圆角词汇 rounded-lg（#1072 同域
+        // 先例：review-dialog notice box / BranchBox / READONLY_BOX 同档）。
+        'spec-block mt-4 mx-4 rounded-lg border border-(--border) bg-(--secondary) px-[15px] py-[13px] text-[15px] leading-[1.6] break-words text-(--foreground) [&>*]:max-w-[68ch]',
         fresh && 'mx-auto max-w-[720px]',
       )}
     >

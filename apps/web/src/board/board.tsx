@@ -323,8 +323,12 @@ export function BoardSurface({
                      #753：合法集 = 被拖卡的 per-source 矩阵。data-* 属性
                      原位保留（e2e 与 a11y 载体）；cn 合并保证 hover 档压过
                      base 档（同组工具类后者胜，等价旧 CSS 的规则序）。 */
+                  /* #1054 清点（RECONCILIATION 1004 遗留面）：列容器与
+                     notify-banner 同吃 card-tier 投影 + edge-ring，几何接
+                     registry Card 依据（rounded-xl，ADR 0012 D1）；drop 染色
+                     是列盒的状态层，随列几何。 */
                   className={cn(
-                    'board-column relative flex h-full flex-col rounded-none border border-border bg-background',
+                    'board-column relative flex h-full flex-col rounded-xl border border-border bg-background',
                     isValidDropTarget(column.id) &&
                       'border-(--drop-tint-border) bg-(--drop-tint-base)',
                     dropColumnId === column.id &&

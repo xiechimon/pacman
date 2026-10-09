@@ -95,10 +95,12 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app?scenario=01');
 
     const column = await edgeContract(page, '.board-column');
-    // #414（B 面）+ V2 骨架（#792 P6）：列容器与卡片同行——1px 实描边 +
-    // 方角 + shadow-sm；通知条仍是旧的 inset 环配方（未迁面，见 board.css 残留层）
+    // #414（B 面）：列容器与卡片同行——1px 实描边 + card-tier 投影。
+    // 半径：#1004 对账声明留的遗留面（"residue for a later ruling"）由
+    // #1054 消费点清点裁定——列与 banner/卡片同吃 card-tier 投影，几何接
+    // registry Card 依据 rounded-xl（=14px，ADR 0012 D1），V2 骨架方角退役。
     expect(column.border).toBe('1px');
-    expect(column.radius).toBe('0px');
+    expect(column.radius).toBe('14px');
     expect(column.borderColorOwn).toBe(column.borderToken);
     expect(column.shadow).not.toContain('inset');
   });
@@ -113,8 +115,8 @@ for (const theme of ['light', 'dark'] as const) {
     // #161 通知条↔看板列边框对齐: the banner sits at the same elevation
     // tier as the column container — same ring, same shadow — so the two
     // surfaces read as one language. 半径：#1004 实审裁决 3（2026-10-08）回
-    // 默认圆角，取最接近的 registry 表面件 card 的 rounded-xl（=14px）；不再
-    // 与列容器（仍方角）同半径，理由见对账声明。
+    // 默认圆角，取最接近的 registry 表面件 card 的 rounded-xl（=14px）；
+    // #1054 起列容器同回 card 档，两者复归同半径（对账遗留面已裁）。
     expect(banner.border).toBe('0px');
     expect(banner.radius).toBe('14px');
     expect(banner.shadow.startsWith(banner.ring)).toBe(true);
@@ -129,9 +131,12 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=17');
 
     const menu = await edgeContract(page, '.user-menu');
-    // V2 弹层壳（#790 P3）: 1px 实框墨线 + 圆角 0,框色走 --border-default。
+    // V2 弹层壳（#790 P3）: 1px 实框墨线,框色走 --border-default。
+    // 半径：#1054 消费点清点——直角随 ADR 0012 D1 退役，接 registry
+    // popover 依据 rounded-lg（=10px，plan-dropdown #1006 同词汇）；
+    // 墨线/投影的 registry 化归 user-menu 弹层重建（协调者归属票）。
     expect(menu.border).toBe('1px');
-    expect(menu.radius).toBe('0px');
+    expect(menu.radius).toBe('10px');
     expect(menu.borderColorOwn).toBe(menu.borderColor);
     // #161: the popover opens over content and needs visible separation — NOT
     // --card-shadow. #854 换档：盘面投影正本从 --edge-shadow 的柔和档迁到

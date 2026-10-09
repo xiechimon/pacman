@@ -11,7 +11,7 @@
  *  圆角归 registry 默认（#1008 用户复核：ADR 0012 D1 registry 默认几何为
  *  正典——rounded-none 覆写摘除，rounded-lg 由件底座透出）。
  *  上指锚边描边 Arrow = 12×6 外三角压 10×5 内三角（clip-path utility，
- *  RES_SORT_MENU_CLS 同配方）；side 由消费点拼 LEFT/RIGHT 段。 */
+ *  detail/user-menu PANEL 同配方）；side 由消费点拼 LEFT/RIGHT 段。 */
 export const MENU_SHELL_CLS =
   "relative flex w-auto flex-col gap-0 border border-(--border) bg-(--popover) px-0 py-3 shadow-(--plate-shadow) ring-0 before:absolute before:top-px before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
 

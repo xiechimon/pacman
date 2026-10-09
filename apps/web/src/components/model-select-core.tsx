@@ -206,11 +206,13 @@ export function ModelPickRow({ skin, selected, label, providerLabel, onPick }: M
  *  两面同形单源在此；宿内横向缩进归各消费点（弹层壳行铺满律 #872：菜单壳
  *  零横垫、盒自带 mx-3；dialog 面骑自己的 p-4，不另缩）。 */
 export const SEARCH_BOX_CLS =
-  'flex h-8 items-center gap-2 border border-(--border) bg-(--card) px-3 text-(--text-tertiary)';
+  // #1054 清点：手搓输入盒接 Input 件圆角档 rounded-lg（ADR 0012 D1；
+  // 盒内 input 中和件骑本盒，focus 环律不变）。
+  'flex h-8 items-center gap-2 rounded-lg border border-(--border) bg-(--card) px-3 text-(--text-tertiary)';
 
 /** typeahead 搜索框 input 中和件单源（#756 续：用户裁决框不常驻、打字才
  *  现形）：框形由 SEARCH_BOX_CLS 承载，input 本体零装饰；focus 环走 #388
- *  家族律（RES_SEARCH_INPUT_CLS 同配方，#944 先例）——旧 #855「环清零」
+ *  家族律（#944 先例）——旧 #855「环清零」
  *  护栏随 per-face 退役，键盘可见环由全局律承接。 */
 export const SEARCH_INPUT_CLASS =
   'h-auto min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-sm leading-5 text-(--foreground) shadow-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) focus-visible:ring-0 dark:bg-transparent';

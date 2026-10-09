@@ -128,7 +128,7 @@ test('3. 图片附件受缩略约束——不再以原尺寸裸图撑破页面',
   expect(maxWidth).toBe('100%');
 });
 
-test('4. 简报卡配方 = composer 卡家族（1px 边线 / 方角 / surface-secondary 底）', async ({
+test('4. 简报卡配方 = 带框内容盒（1px 边线 / rounded-lg / surface-secondary 底）', async ({
   page,
 }) => {
   await stubWorld(page);
@@ -145,7 +145,10 @@ test('4. 简报卡配方 = composer 卡家族（1px 边线 / 方角 / surface-se
     };
   });
   expect(cs.borderTop).toBe('1px');
-  expect(cs.radius).toBe('0px');
+  // #1054：直角随 ADR 0012 D1 退役——带框内容盒接 registry 圆角词汇
+  // rounded-lg（=10px，#1072 同域先例）；composer 卡家族绑定随 #991 Q7
+  // 登记偏离解除（composer 保持手写方角是登记在案的偏离，不再拖带本盒）。
+  expect(cs.radius).toBe('10px');
   // --secondary 暗色侧 #2d2926；--border #2d2926（shadcn.css 正本；surface-secondary/border-default 已并，#1002）
   expect(cs.bg).toBe('rgb(45, 41, 38)');
   expect(cs.borderColor).toBe('rgb(45, 41, 38)');
