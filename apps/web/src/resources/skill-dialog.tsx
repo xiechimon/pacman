@@ -196,12 +196,12 @@ export function SkillDialog({
       open={open}
       onClose={onClose}
       width={560}
+      // #1006 段 2（dialog-shell 零皮化的消费点清理）：剥 footer 包装 div
+      // （band 自带 p-4；包装会把 w-full 钮塌成内容宽），裸钮直进。
       footer={
-        <div className="flex flex-col px-4 pb-4">
-          <Button className="w-full" disabled={!submittable} onClick={submit}>
-            {editing ? t('保存') : t('新建技能')}
-          </Button>
-        </div>
+        <Button className="w-full" disabled={!submittable} onClick={submit}>
+          {editing ? t('保存') : t('新建技能')}
+        </Button>
       }
     >
       {/* 编辑面（live）预填读失败 = 表单整体让位错误块——拿不到原 SKILL.md

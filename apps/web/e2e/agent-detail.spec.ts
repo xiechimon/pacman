@@ -118,13 +118,17 @@ test('概览：职责位渲染 canon 空态并可编辑', async ({ page }) => {
 // fixture agent = 存量 provider 绑定（r3-gw / claude-sonnet-5）；#770 起 picker
 // 候选只剩 claude-code 段——本组三件事：存量值裸串回显不断（R1）、一级不再列
 // providers 分组、切到 runtime 源是单向门（选不回 provider）。
+// #1010 载体重钉：菜单/行 locator 一律页面级——registry select 的弹层经
+// Positioner Portal 落 body，不再嵌在触发钮 wrap / detail 列里（#1060
+// machine-popover 同律）；触发钮仍在概览列内，保持 detail 作用域。
+// 行为断言语义一字不动（#910 口径）。
 test('概览：存量 provider 绑定裸串回显，一级只列内置行与运行时源', async ({ page }) => {
   const detail = await openDetail(page);
   const runtimeTrigger = detail.locator('.agent-runtime-select');
   // 存量 provider 值命中不了候选 → 裸串 provider id 即名，不空白不崩。
   await expect(runtimeTrigger).toContainText('r3-gw');
   await runtimeTrigger.click();
-  const runtimeMenu = detail.locator('.agent-runtime-menu');
+  const runtimeMenu = page.locator('.agent-runtime-menu');
   await expect(runtimeMenu).toBeVisible();
   // 首行恒是「内置 (pi)」清空行（provider null 的显示形）；providers 分组已除。
   await expect(runtimeMenu.locator('.agent-runtime-row').first()).toContainText('内置 (pi)');
@@ -134,56 +138,62 @@ test('概览：存量 provider 绑定裸串回显，一级只列内置行与运�
   // 切到 Claude Code：二级换成它的模型（claude-haiku-4-5 只活在 claude-code
   // 段——它出现才证明二级真换了源）；切走后旧 provider 选不回来（单向门）。
   await detail.locator('.agent-runtime-select').click();
-  await detail.locator('.agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await page.locator('.agent-runtime-row', { hasText: 'Claude Code' }).click();
   await expect(detail.locator('.agent-runtime-select')).toContainText('Claude Code');
   await detail.locator('.agent-model-select').click();
-  const menu = detail.locator('.agent-model-menu');
+  const menu = page.locator('.agent-model-menu');
   await expect(menu).toBeVisible();
   await expect(menu.locator('.agent-model-row').first()).toHaveText(/未设置模型/);
   await expect(menu.locator('.agent-model-row', { hasText: 'claude-haiku-4-5' })).toHaveCount(1);
   await page.keyboard.press('Escape');
   await detail.locator('.agent-runtime-select').click();
   await expect(
-    detail.locator('.agent-runtime-menu .agent-runtime-row', { hasText: 'r3-gw' }),
+    page.locator('.agent-runtime-menu .agent-runtime-row', { hasText: 'r3-gw' }),
   ).toHaveCount(0);
 });
 
-// 几何钉：菜单贴触发钮右缘、向下展开，且整块留在内容列内。
-// 只有几何断言能抓的前车之鉴（存在性/文案断言全绿）：
-// · 漏 `.agent-model-wrap` 的 align-self → wrap 被 flex 列拉满宽 → 菜单飘到
-//   离触发钮 400+px（散块布局期的故障）；
-// · 锚错边 → 菜单从触发钮往**外**长，越过 `.res-col` 的缘（`.res-body`
-//   overflow-x: hidden）被裁掉一截，模型名看不见。
-// XMON-117 把触发钮从字段列左缘挪到模板行的**右缘**（个人页模板的值槽在
-// 行右），锚边随之从左翻到右：左锚会让菜单往右长、出列右缘被裁——这正是
-// 下面两条边界断言钉的。
-test('概览：两级菜单贴触发钮右缘且在内容列内（几何）', async ({ page }) => {
+// 几何钉（#1010 重钉，ADR 0012 D1：registry 默认几何为正典）：弹层随
+// registry select 走 Base UI Positioner——Portal 落 body、align 居中、
+// alignItemWithTrigger（native-select 式：选中行骑在触发钮上）。旧钉法
+// （右缘锚 + 8px 锚距 + 留在内容列内）钉的是 absolute 壳的手写锚位配方；
+// 两条前车（wrap 被拉满宽 → 菜单飘离触发钮 400+px；锚错边 → 越出
+// `.res-body` overflow 裁剪盒被裁一截）在 Portal 形态下换成同构的存活律：
+// · 菜单必须锚在自己的触发钮上（水平相交 + 垂直重叠或 ≤8px 邻接——
+//   飘走 = 相交断）；
+// · 整块落在视口内（Portal 后无祖先裁剪盒，视口是唯一边界；越出 = 行画
+//   不出来也点不中，XMON-39/XMON-117 的本体律）。
+test('概览：两级菜单锚在触发钮上且整块在视口内（几何）', async ({ page }) => {
   const detail = await openDetail(page);
-  // 两缘都留在内容列内（列 = 768 宽居中；越出去就被裁）。
-  const col = await detail
-    .locator('xpath=ancestor::div[@data-testid="resource-col"]')
-    .boundingBox();
-  expect(col).not.toBeNull();
-  if (col === null) return;
-  // 一级运行时菜单与二级模型菜单同律：右锚贴触发钮右缘、向下展开。
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  if (viewport === null) return;
+  // 一级运行时菜单与二级模型菜单同律。
   for (const prefix of ['agent-runtime', 'agent-model']) {
     const trigger = detail.locator(`.${prefix}-select`);
     await trigger.click();
-    const menu = detail.locator(`.${prefix}-menu`);
+    const menu = page.locator(`.${prefix}-menu`);
     await expect(menu).toBeVisible();
-    // V2 进场（#790 P3：scale .98 + fade 100ms）窗内量几何会吃到动画帧位移——
-    // 静息锚距恰 8px（顶部锚距正本值），预算 ≤8 零余量。等进场播完再量，钉的是
-    // 静息几何（旧 slide 面同理：位移只存在于窗内）。
+    // registry 进场（duration-100 zoom/fade）窗内量几何会吃到动画帧位移——
+    // 等进场播完再量，钉的是静息几何（旧 V2 面同理：位移只存在于窗内）。
     await page.waitForTimeout(150);
     const tb = await trigger.boundingBox();
     const mb = await menu.boundingBox();
     expect(tb).not.toBeNull();
     expect(mb).not.toBeNull();
     if (tb === null || mb === null) return;
-    expect(Math.abs(mb.x + mb.width - (tb.x + tb.width))).toBeLessThanOrEqual(8);
-    expect(Math.abs(mb.y - (tb.y + tb.height))).toBeLessThanOrEqual(8);
-    expect(mb.x).toBeGreaterThanOrEqual(col.x - 1);
-    expect(mb.x + mb.width).toBeLessThanOrEqual(col.x + col.width + 1);
+    // 锚定：水平相交（align 居中 + w-(--anchor-width)，中心近乎重合；碰撞
+    // 平移最多让两盒错开一部分，相交断 = 飘走）。
+    expect(mb.x).toBeLessThan(tb.x + tb.width);
+    expect(mb.x + mb.width).toBeGreaterThan(tb.x);
+    // 垂直：重叠（alignItemWithTrigger 骑钮）或邻接 ≤8px（无选中行可对齐时
+    // 回落 side=bottom + sideOffset 4）。
+    expect(mb.y).toBeLessThanOrEqual(tb.y + tb.height + 8);
+    expect(mb.y + mb.height).toBeGreaterThanOrEqual(tb.y - 8);
+    // 整块落在视口内。
+    expect(mb.x).toBeGreaterThanOrEqual(-0.5);
+    expect(mb.y).toBeGreaterThanOrEqual(-0.5);
+    expect(mb.x + mb.width).toBeLessThanOrEqual(viewport.width + 0.5);
+    expect(mb.y + mb.height).toBeLessThanOrEqual(viewport.height + 0.5);
     await page.keyboard.press('Escape');
   }
 });

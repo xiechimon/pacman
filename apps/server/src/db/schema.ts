@@ -276,16 +276,10 @@ export const plan = sqliteTable('plan', {
   version: integer('version').notNull().default(1),
   /** [内部] plan.md 文件内容（diff 端点源，r5 §4 文件级 unified diff）。 */
   content: text('content').notNull().default(''),
-  createdAt: epochMs('createdAt').notNull(),
-});
-
-// —— document_diff（`documents/{id}/diff` 端点源，02 §4.2；驳回回路细面归 M4）————
-export const documentDiff = sqliteTable('document_diff', {
-  id: text('id').primaryKey(),
-  documentId: text('documentId').notNull(),
-  fromVersion: integer('fromVersion').notNull(),
-  toVersion: integer('toVersion').notNull(),
-  files: json<DocumentDiffFile[]>('files').notNull(),
+  /** [内部] 上传该版的步（#1026 幂等键「步+内容」的步半）：同一恢复重传不落
+   * 重复版本、换步重规划同文照落新版本。存量行 null = 不参与去重（升级窗口
+   * 按旧语义放行新版本）。wire 投影不含本列（planRecordSchema 不动）。 */
+  stepId: text('stepId'),
   createdAt: epochMs('createdAt').notNull(),
 });
 

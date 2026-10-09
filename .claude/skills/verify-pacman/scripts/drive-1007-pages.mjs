@@ -116,7 +116,9 @@ try {
     (await dialog.getByRole('tab', { name: '每周' }).getAttribute('aria-selected')) === 'true',
     '频率分段 = registry Tabs：切「每周」后 aria-selected 真',
   );
-  // 时 Select（手写件，#1010 退役面）：trigger aria-label=时 → listbox → 08
+  // 时 Select（#1010 回源 = registry compound select）：trigger aria-label=时 →
+  // getByRole(option)（role=listbox 迁内层 Select.List，无 aria-label；关闭弹层
+  // display:none 滞留被 getByRole 排除，值 08 唯一命中）→ 08
   await page.locator('button[aria-label="时"]').click();
   await page.getByRole('option', { name: '08', exact: true }).click();
   check(

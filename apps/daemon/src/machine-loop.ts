@@ -24,7 +24,7 @@ import { StepJournal } from './journal.js';
 import type { DaemonLogger } from './log.js';
 import { type MachineApi, MachineClient } from './machine-client.js';
 import { setupProxy } from './proxy.js';
-import { runStep, type StopRequest } from './runner.js';
+import { resumePendingUpload, runStep, type StopRequest } from './runner.js';
 import {
   ensureStateDirs,
   loadMachineJson,
@@ -312,6 +312,12 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     for (const stepRecord of recovered.steps) {
       const entry = journal.get(stepRecord.id);
       if (entry?.claimed) {
+        // #1026 快路径：终稿快照在（上传/done 失败残留）→ 只补报终稿 + done，
+        // 不重跑 agent 轮（重跑会白烧一轮模型并把同内容传成重复版本）。
+        if (entry.state === 'awaiting-upload' && entry.doneBody != null) {
+          await resumePendingUpload(stepDeps(), entry, { running: 1 });
+          continue;
+        }
         // journal 快照续跑：sessionId 在 → continue session（同 conv pi 会话
         // 复用，02 §4.2/§5.7）；不在 → new session 重发任务文本。
         const claimed: ClaimedStep = {

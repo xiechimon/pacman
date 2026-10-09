@@ -4,12 +4,20 @@
 // 栈必须已在跑（launch.mjs；坐标取 VERIFY_RUN_DIR/ports.json，worktree 车道传
 // VERIFY_REPO_ROOT）。
 //
+// #1010 注记：C6/C7 的运行时选择器面已随手写 select.tsx 退役迁到 registry
+// compound 律（菜单定域走 .agent-runtime-menu 句柄类；右缘锚几何退役 → registry
+// 默认锚定 + 视口内）。本 probe 其余检查面（A4 退场桥 / B1 label / C3 头像 64 /
+// C4 卡 radius 10 / C10 Textarea / D2 语言盘 border / G 对比度 token 对）是 #952
+// 定版后 #1002（色板 E + 圆角基）/ #1003（头像 Root 定尺盒）/ #1007 / #1008 各波
+// 的历史漂移，与 #1010 无关；重封到现行正典是独立的 probe 维护轮，不在本票射程。
+// select 面的现行 live 复跑入口 = drive-1010-select.mjs + drive-agent-detail.mjs。
+//
 // 前置：无（probe 自己经 UI 建一个 Agent 喂详情页；建面对话框本身就是检查面）。
 //
 // 检查面：
 //   A. dialog-shell 载体（spec/22 §5.5）：role=dialog 可及名、dialog-head/-body/
-//      -foot testid、关闭钮 aria-label、退场 visibility 桥（原 .dlg-shell 机制
-//      内联）computed 在场
+//      -foot testid、关闭钮 aria-label、registry 退场档（duration-100）在场 +
+//      手写 visibility 桥绝迹（#1006 段 2 迁移）
 //   B. create-agent 弹窗表单族（§5.4 utility 等值迁移）：label 12/18/0.01em、
 //      Input 32 高（36px 不存续）、提交钮 w-full 钉底、创建全链落 REST 真值
 //   C. agent 详情页（agent-detail.css 清零）：模板行高 49/41、头像 64、进行中
@@ -280,12 +288,19 @@ for (const theme of ['dark', 'light']) {
       (await dialog.getByRole('button', { name: '关闭' }).count()) === 1,
       'A3 关闭钮 aria-label 载体在场',
     );
-    const panelTransition = await dialog.evaluate(
-      (el) => getComputedStyle(el).transitionProperty,
-    );
+    // #1006 段 2 探针迁移（#951/#952 随面同纪律）：旧 A4 钉 dialog-shell 手写
+    // 退场 visibility 桥（transition-property 含 visibility）。registry 零皮化
+    // 后退场机制 = Base UI 原生延迟卸载 + duration-100 animate-out（#991 Q9：
+    // 动效 = base-nova 形态一部分）。断言迁成双面 computed 判据：registry
+    // 动效档在场（0.1s）+ 手写桥绝迹；「关闭后真卸载」的行为面由 e2e
+    // rerun-close-family / dialog-viewport / overlay-focus 钉（全绿）。
+    const panelMotion = await dialog.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { dur: cs.transitionDuration, prop: cs.transitionProperty };
+    });
     check(
-      panelTransition.includes('visibility'),
-      `A4 退场 visibility 桥内联生效（transition-property=${panelTransition}）`,
+      /0\.1s|100ms/.test(panelMotion.dur) && !panelMotion.prop.includes('visibility'),
+      `A4 registry 退场档生效 + 手写 visibility 桥退役（transition-duration=${panelMotion.dur}, property=${panelMotion.prop}）`,
     );
     const labelBox = await dialog.getByText('名称', { exact: true }).first().evaluate((el) => {
       const cs = getComputedStyle(el);
@@ -351,19 +366,25 @@ for (const theme of ['dark', 'light']) {
         (await page.getByText('暂无进行中的任务').count()) === 1,
         'C5 进行中 canon 空态在场',
       );
-      // 运行时选择器：右缘锚 + 顶部锚距 8（原 .ui-select-menu.agent-runtime-menu）
+      // 运行时选择器（#1010 迁：手写 select → registry compound select）。旧 C6
+      // 钉的「右缘贴触发钮右缘 + 锚距 8」是手写 absolute 壳的锚位配方，随壳退役
+      // （ADR 0012 D1：registry 默认几何为正典，Base UI Positioner 锚定 + 碰撞
+      // 翻转）。存活律 = 菜单锚在触发钮上（水平相交）+ 整块在视口内。listbox 不
+      // 再带 aria-label（迁内层 Select.List，aria-label 落 role=presentation 的
+      // Popup），故菜单定域改走消费点句柄类 .agent-runtime-menu（Popup 本体）。
       const trigger = page.locator('.agent-runtime-select');
       await trigger.click();
-      const menu = page.getByRole('listbox', { name: '运行时' });
-      await menu.waitFor({ timeout: 5_000 });
-      await page.waitForTimeout(200); // V2 进场 100ms 播完再量静息几何
+      const menu = page.locator('.agent-runtime-menu');
+      await menu.waitFor({ state: 'visible', timeout: 5_000 });
+      await page.waitForTimeout(200); // registry 进场 duration-100 播完再量静息几何
       const tb = await trigger.boundingBox();
       const mb = await menu.boundingBox();
-      const rightDelta = Math.abs(mb.x + mb.width - (tb.x + tb.width));
-      const topDelta = Math.abs(mb.y - (tb.y + tb.height) - 8);
+      const anchored = mb.x < tb.x + tb.width && mb.x + mb.width > tb.x;
+      const inViewport =
+        mb.x >= -0.5 && mb.y >= -0.5 && mb.x + mb.width <= 1440.5 && mb.y + mb.height <= 732.5;
       check(
-        rightDelta <= 8 && topDelta <= 8,
-        `C6 概览菜单右缘贴触发钮右缘、锚距 8（右差 ${rightDelta.toFixed(1)} / 顶差 ${topDelta.toFixed(1)}）`,
+        anchored && inViewport,
+        `C6 概览菜单锚在触发钮上且整块在视口内（registry 默认几何，#1010；锚定 ${anchored} / 视口 ${inViewport}）`,
       );
       check(
         (await menu.getByRole('option').first().textContent())?.includes('内置 (pi)') === true,

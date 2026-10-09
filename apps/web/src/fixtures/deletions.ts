@@ -4,6 +4,8 @@
 // A reload restores the frozen fixture set; the backend line (03 §M2)
 // replaces this with the real DELETE endpoint.
 
+import type { ScheduleRecord } from './records.js';
+
 const deleted = new Set<string>();
 
 export function markDeleted(id: string): void {
@@ -27,4 +29,20 @@ export function isDeleted(id: string): boolean {
  *  (#207 项目删除面语义,项目无关闭)。 */
 export function withoutDeleted<T extends { id: string }>(todos: T[]): T[] {
   return todos.filter((t) => !deleted.has(t.id) && !closed.has(t.id));
+}
+
+// #1037 创建覆面(删除同律:session 局部,重载还原):fixture 面新建定时的
+// 保存 必须落一张可见的卡——点下去没有可解释结果的按钮就是本票要灭的
+// 哑按钮。追加序 = 创建序;消费点先并创建再过滤删除,故新建的卡走同一
+// 条 更多→删除 链出列。id 由存储点自发——唯一性收口在它必须唯一的
+// 列表同一处,调用方不持序号。
+const createdSchedules: ScheduleRecord[] = [];
+let createdSeq = 0;
+
+export function markScheduleCreated(record: Omit<ScheduleRecord, 'id'>): void {
+  createdSchedules.push({ ...record, id: `fixture-created-${++createdSeq}` });
+}
+
+export function withCreatedSchedules(schedules: ScheduleRecord[]): ScheduleRecord[] {
+  return createdSchedules.length === 0 ? schedules : [...schedules, ...createdSchedules];
 }

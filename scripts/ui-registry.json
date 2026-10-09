@@ -64,7 +64,7 @@
     "dialog-shell.tsx": {
       "kind": "adapter",
       "reason": "#983 verdict / map #980 (ruling 2/4): zero-skin adapter over the registry dialog item — regular faces compose Dialog/DialogContent/DialogHeader/DialogTitle/DialogFooter (registry defaults win: panel/overlay skin, motion, close button all come from dialog.tsx), keeping only the repo behavior contracts as semantic mapping (#193 three-segment cap via layout classes + dialog-head/body/foot testids, #389 finalFocus, #73 retained-mount open flag, #318 layered dismiss, #68 family close law via native dismiss, width as a layout position). The viewportRoot and bare modes stay on the legacy direct-primitive mechanism unchanged — they are the #983 adapter-boundary pressure points whose surfaces belong to the L5 lane (#1008) and whose fate is ruled at that lane's prototype review; zIndex/onBackdropClick/backdropClassName serve only those two modes (#1006).",
-      "hash": "4f9b8042ecf9e2a5981b77dbc329ab9f9e43bcb035266ae8fa03fbde6ef6decd"
+      "hash": "0ac908d33f5614106109eb1d9ab172c5cb898443b79883051bbf072729632db9"
     },
     "dialog.tsx": {
       "kind": "registry",
@@ -90,11 +90,6 @@
       "upstreamItem": "field",
       "status": "pristine",
       "hash": "1d0df9a94372f632929cd3d46e846d15a4d8963c378a6085970a029db6641adc"
-    },
-    "floating-shell.tsx": {
-      "kind": "adapter",
-      "reason": "#425 B1 shared base for the anchored floating family over non-modal Dialog mechanics; Esc via the Base UI layer stack. #1008 (#983 ruling): the family split-retired to registry popover/dropdown-menu/dialog at the consumption points — sole remaining consumer is select.tsx until #1010 (wave 2), then this adapter is deleted.",
-      "hash": "be2d086c4863c502e22323b2d5844e0499750eedd0848ebd3388d236a3feeafd"
     },
     "input-group.tsx": {
       "kind": "registry",
@@ -158,9 +153,8 @@
     "select.tsx": {
       "kind": "registry",
       "upstreamItem": "select",
-      "status": "deviated",
-      "reason": "XMON-75: anchored-overlay family rework — FloatingShell + ClickCatcher injected in place of the upstream Positioner, options projected through label/meta, icons from the repo icons system. Retirement to the upstream compound family is #1010 (wave 2, blocked by the #1008 floating-shell retirement).",
-      "hash": "5be4e419aaf898ed4eb627012d0a0dd87708e76ae9467013c4e836bfa2a33411"
+      "status": "pristine",
+      "hash": "ab19e7f4d786d003373d4b1750be5efda931d18d388cbb163b83e2d29e7a93de"
     },
     "separator.tsx": {
       "kind": "registry",

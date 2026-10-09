@@ -88,10 +88,15 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu.js';
-import { Input } from '../components/ui/input.js';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../components/ui/input-group.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
-import { Select } from '../components/ui/select.js';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select.js';
 import { StatusChip } from '../components/ui/status-chip.js';
 import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
@@ -105,13 +110,7 @@ import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { PHASE_UI } from '../phase.js';
 import { SECRETS_HREF } from '../resources/secrets-page.js';
 import { ResourceShell } from '../resources/shell.js';
-import {
-  AGENT_SELECT_MENU_CLS,
-  AGENT_SELECT_MENU_NARROW_CLS,
-  AGENT_SELECT_TRIGGER_CLS,
-  AgentModelSelect,
-  AgentRuntimeSelect,
-} from './agent-model-select.js';
+import { AgentModelSelect, AgentRuntimeSelect } from './agent-model-select.js';
 
 /** 资源族根路径（非侧栏行——原版命令面板「前往」清单里没有 Agents 行，
  *  r2 §8.4；本面只从团队页的卡进入）。 */
@@ -379,24 +378,34 @@ export function AgentDetailPage() {
               >
                 {/* XMON-75：这一格此前是裸 select 控件，弹的是 macOS 系统菜单——
                     与紧邻的模型选择器（自制弹层）并排就是两套弹窗。换成同一个
-                    Select 壳后两格同形。值回显同模型面：候选里没有的值（技能已
-                    被删除）出裸 id，不空白。 */}
+                    Select 壳后两格同形（#1010：壳 = registry select compound 族，
+                    几何归 registry 默认）。值回显同模型面：候选里没有的值（技能
+                    已被删除）出裸 id，不空白。「未设置」清空行 = null item。
+                    prefix 句柄类（agent-skill-select/-menu/-row）零规则，e2e 用；
+                    弹层 Portal 落 body，locator 页面级取。 */}
                 <Select
-                  prefix="agent-skill"
-                  triggerClassName={AGENT_SELECT_TRIGGER_CLS}
-                  menuClassName={`${AGENT_SELECT_MENU_CLS} ${AGENT_SELECT_MENU_NARROW_CLS}`}
                   value={defaultSkill}
-                  options={skillOptions.map((skill) => ({ value: skill.id, label: skill.name }))}
-                  label={
-                    defaultSkill === null
-                      ? t('未设置')
-                      : (skillOptions.find((skill) => skill.id === defaultSkill)?.name ??
-                        defaultSkill)
-                  }
-                  unsetLabel={t('未设置')}
-                  menuLabel={t('默认 skill')}
-                  onPick={(next) => patch({ skills: next === null ? [] : [next] })}
-                />
+                  onValueChange={(next) => patch({ skills: next === null ? [] : [next as string] })}
+                >
+                  <SelectTrigger className="agent-skill-select">
+                    <SelectValue>
+                      {defaultSkill === null
+                        ? t('未设置')
+                        : (skillOptions.find((skill) => skill.id === defaultSkill)?.name ??
+                          defaultSkill)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent aria-label={t('默认 skill')} className="agent-skill-menu">
+                    <SelectItem className="agent-skill-row" value={null}>
+                      {t('未设置')}
+                    </SelectItem>
+                    {skillOptions.map((skill) => (
+                      <SelectItem key={skill.id} className="agent-skill-row" value={skill.id}>
+                        {skill.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </ProfileRow>
               <ProfileRow label={t('运行时')} labelClassName="agent-field-label">
                 {/* 运行时档 = 模型槽两级选择器的一级（t-0024 诉求 2；#499 时期
@@ -414,8 +423,6 @@ export function AgentDetailPage() {
                     patch({ provider: next, modelId: null });
                   }}
                   prefix="agent-runtime"
-                  triggerClassName={AGENT_SELECT_TRIGGER_CLS}
-                  menuClassName={`${AGENT_SELECT_MENU_CLS} ${AGENT_SELECT_MENU_NARROW_CLS}`}
                 />
               </ProfileRow>
               <ProfileRow label={t('模型')} labelClassName="agent-field-label">
@@ -425,8 +432,6 @@ export function AgentDetailPage() {
                   options={modelOptions}
                   onPick={(next) => patch({ modelId: next })}
                   prefix="agent-model"
-                  triggerClassName={AGENT_SELECT_TRIGGER_CLS}
-                  menuClassName={AGENT_SELECT_MENU_CLS}
                 />
               </ProfileRow>
               <ProfileRow label={t('思考强度')} labelClassName="agent-field-label">

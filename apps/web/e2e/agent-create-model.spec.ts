@@ -18,7 +18,13 @@ import { expect, type Page, test } from '@playwright/test';
 // 6. 切换运行时后旧模型残留进 POST body（跨 provider 的 modelId 是脏值）
 // 7. 只选运行时提交丢 provider（半态没带上）
 // 8. 选齐提交 POST body 不带 provider/modelId（选了个寂寞）
-// 9. 菜单被底栏压住 / 越出弹窗体裁剪盒（几何；XMON-39 前车）
+// 9. 菜单被裁掉一截 / 行够不着（几何；XMON-39 前车。#1010 重钉：弹层随
+//    registry select 走 Positioner + Portal 落 body——「越出 dialog-body 裁剪盒」
+//    在结构上不再可能，几何律收敛为「整块落在视口内 + 封顶后可滚达」）
+//
+// #1010 载体重钉：菜单/行 locator 一律页面级（Portal 落 body，不再嵌在
+// dialog DOM 里——#1060 machine-popover 同律）；触发钮仍在 dialog 内，保持
+// dialog 作用域。行为断言语义一字不动（#910 口径）。
 //
 // 有候选态用 fixture 场景 'agent-detail'（resources.providerSources 带
 // claude-code 四模型）；无候选态沿用 r7 捕获场景 '12'（无 resources）；
@@ -128,7 +134,7 @@ test('一级列运行时与内置清空行，二级只列所选运行时的模�
   await stubLive(page, { hasSources: true, bodies: [], withPiLeak: true });
   const dialog = await openDialog(page, '/app/team');
   await dialog.locator('.dlg-agent-runtime-select').click();
-  const runtimeMenu = dialog.locator('.dlg-agent-runtime-menu');
+  const runtimeMenu = page.locator('.dlg-agent-runtime-menu');
   await expect(runtimeMenu).toBeVisible();
   // 首行恒是「内置 (pi)」清空行（provider null 的显示形，与详情概览运行时档同词）。
   await expect(runtimeMenu.locator('.dlg-agent-runtime-row').first()).toContainText('内置 (pi)');
@@ -138,9 +144,9 @@ test('一级列运行时与内置清空行，二级只列所选运行时的模�
     1,
   );
   // 选 Claude Code 后模型菜单只有它的模型——pi 段的模型不得混进来。
-  await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await runtimeMenu.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
   await dialog.locator('.dlg-agent-model-select').click();
-  const modelMenu = dialog.locator('.dlg-agent-model-menu');
+  const modelMenu = page.locator('.dlg-agent-model-menu');
   await expect(modelMenu).toBeVisible();
   await expect(modelMenu.locator('.dlg-agent-model-row', { hasText: 'claude-sonnet-5' })).toHaveCount(
     1,
@@ -151,9 +157,9 @@ test('一级列运行时与内置清空行，二级只列所选运行时的模�
 test('模型行只出模型名：不带 provider 徽标、不编造上下文窗口数字', async ({ page }) => {
   const dialog = await openDialog(page, TEAM_WITH_SOURCES);
   await dialog.locator('.dlg-agent-runtime-select').click();
-  await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await page.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
   await dialog.locator('.dlg-agent-model-select').click();
-  const menu = dialog.locator('.dlg-agent-model-menu');
+  const menu = page.locator('.dlg-agent-model-menu');
   const row = menu.locator('.dlg-agent-model-row', { hasText: 'claude-sonnet-5' });
   await expect(row).toHaveCount(1);
   // provider 已是一级，行内不再重复；原版 `· 128k` 是内置目录的窗口数，本仓无此数据源。
@@ -161,53 +167,51 @@ test('模型行只出模型名：不带 provider 徽标、不编造上下文窗�
   await expect(menu).not.toContainText('128k');
 });
 
-// 几何钉：两级菜单都向上展开（模型槽是表单最后一个字段，向下必被底栏压住；
-// 运行时槽在它上一格，同律向上），且菜单体不得与底栏相交、不得越出弹窗体
-// 裁剪盒（存在性断言看不出被压住；XMON-39 前车）。
-test('创建弹窗：两级菜单不被底栏压住、不越出弹窗体（几何）', async ({ page }) => {
+// 几何钉（#1010 重钉，ADR 0012 D1：registry 默认几何为正典）：弹层随
+// registry select 走 Base UI Positioner——Portal 落 body、碰撞自动翻转、
+// 封顶吃 --available-height。旧钉法（bottom 锚 + max-h-192 保证「不与底栏
+// 相交、不越出 dialog-body 裁剪盒」）钉的是 absolute 壳的手写锚位配方，随壳
+// 退役；native-select 式的 alignItemWithTrigger 形态下弹层可以合法地盖住
+// 底栏（盖住 ≠ 裁掉，行始终可点）。几何律收敛为 XMON-39 的本体：菜单整块
+// 落在视口内（存在性断言看不出被裁；越出视口 = 行画不出来也点不中）。
+test('创建弹窗：两级菜单整块落在视口内（几何）', async ({ page }) => {
   const dialog = await openDialog(page, TEAM_WITH_SOURCES);
-  // #952：结构盒 → dialog-body/dialog-foot testid（§5.5 二级载体，几何断言
-  // 需要结构钩子；.dlg-form-foot 的规则已随 dialog.css 退役成 utility）。
-  const body = await dialog.getByTestId('dialog-body').boundingBox();
-  const foot = await dialog.getByTestId('dialog-foot').boundingBox();
-  expect(body).not.toBeNull();
-  expect(foot).not.toBeNull();
-  if (body === null || foot === null) return;
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  if (viewport === null) return;
 
   await dialog.locator('.dlg-agent-runtime-select').click();
-  const runtimeMenu = dialog.locator('.dlg-agent-runtime-menu');
+  const runtimeMenu = page.locator('.dlg-agent-runtime-menu');
   await expect(runtimeMenu).toBeVisible();
   const rb = await runtimeMenu.boundingBox();
   expect(rb).not.toBeNull();
   if (rb !== null) {
-    expect(rb.y + rb.height <= foot.y || rb.y >= foot.y + foot.height).toBe(true);
-    expect(rb.y).toBeGreaterThanOrEqual(body.y - 0.5);
-    expect(rb.y + rb.height).toBeLessThanOrEqual(body.y + body.height + 0.5);
+    expect(rb.y).toBeGreaterThanOrEqual(-0.5);
+    expect(rb.x).toBeGreaterThanOrEqual(-0.5);
+    expect(rb.y + rb.height).toBeLessThanOrEqual(viewport.height + 0.5);
+    expect(rb.x + rb.width).toBeLessThanOrEqual(viewport.width + 0.5);
   }
-  await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await runtimeMenu.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
 
   await dialog.locator('.dlg-agent-model-select').click();
-  const modelMenu = dialog.locator('.dlg-agent-model-menu');
+  const modelMenu = page.locator('.dlg-agent-model-menu');
   await expect(modelMenu).toBeVisible();
   const mb = await modelMenu.boundingBox();
   expect(mb).not.toBeNull();
   if (mb === null) return;
-  expect(mb.y + mb.height <= foot.y || mb.y >= foot.y + foot.height).toBe(true);
-  expect(mb.y).toBeGreaterThanOrEqual(body.y - 0.5);
-  expect(mb.y + mb.height).toBeLessThanOrEqual(body.y + body.height + 0.5);
-  // 菜单整个落在视口内（别修好压住、换成溢出到屏幕外）。
-  expect(mb.y).toBeGreaterThanOrEqual(0);
-  expect(mb.x).toBeGreaterThanOrEqual(0);
-  expect(mb.x + mb.width).toBeLessThanOrEqual(1440);
+  expect(mb.y).toBeGreaterThanOrEqual(-0.5);
+  expect(mb.x).toBeGreaterThanOrEqual(-0.5);
+  expect(mb.y + mb.height).toBeLessThanOrEqual(viewport.height + 0.5);
+  expect(mb.x + mb.width).toBeLessThanOrEqual(viewport.width + 0.5);
 });
 
-// XMON-39 模型很多时的显示区域：菜单向上展开，而它的 containing block（触发钮
-// 的 wrap）在 `.dlg-body` 这个 overflow-y:auto 的滚动盒里——菜单一旦比触发钮到
-// body 上缘的距离还高，超出的那截就被裁掉。两级化后模型槽上方多了一格运行时
-// 行，这段距离只增不减，封顶值仍须落在盒内。
+// XMON-39 模型很多时的显示区域（#1010 重钉）：旧病灶是 absolute 菜单的
+// containing block 在 `.dlg-body` overflow 滚动盒里、超高即被裁；registry
+// select 的 Positioner 弹层 Portal 落 body，裁剪盒失效，封顶改吃
+// --available-height（视口可用高）+ 弹层内滚。律本体不变：
 //
 // 每条断言钉一个失败方式：
-// 1. 菜单越出 .dlg-body 的裁剪盒（越出部分不可见不可点）
+// 1. 菜单越出视口（越出部分不可见不可点——旧「越出裁剪盒」的视口级同构）
 // 2. 首行模型点不中 —— 前几个模型选不了
 // 3. 用「截短列表」消灭 bug —— 行数与候选数不符（死规矩：所有模型仍须可见可选）
 // 4. 菜单封顶后仍能滚到最后一行 —— 修好压住、换成「只露前几行、后面的够不着」
@@ -216,34 +220,35 @@ const MANY_MODELS = Array.from({ length: 40 }, (_, i) => {
   return { id, name: id };
 });
 
-test('模型很多：选过运行时后菜单不越出裁剪盒，首行可点，40 行一个不少', async ({ page }) => {
+test('模型很多：选过运行时后菜单不越出视口，首行可点，40 行一个不少', async ({ page }) => {
   await stubLive(page, { hasSources: true, bodies: [], models: MANY_MODELS });
   const dialog = await openDialog(page, '/app/team');
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  if (viewport === null) return;
   await dialog.locator('.dlg-agent-runtime-select').click();
-  await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await page.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
   await dialog.locator('.dlg-agent-model-select').click();
-  const menu = dialog.locator('.dlg-agent-model-menu');
+  const menu = page.locator('.dlg-agent-model-menu');
   await expect(menu).toBeVisible();
 
   const mb = await menu.boundingBox();
-  const bb = await dialog.getByTestId('dialog-body').boundingBox();
   expect(mb).not.toBeNull();
-  expect(bb).not.toBeNull();
-  if (mb === null || bb === null) return;
-  expect(mb.y).toBeGreaterThanOrEqual(bb.y - 0.5);
-  expect(mb.y + mb.height).toBeLessThanOrEqual(bb.y + bb.height + 0.5);
+  if (mb === null) return;
+  expect(mb.y).toBeGreaterThanOrEqual(-0.5);
+  expect(mb.y + mb.height).toBeLessThanOrEqual(viewport.height + 0.5);
 
   // 行数 = 候选数 + 1（首位恒是「未设置模型」清空行）——不许靠删行/截短藏 bug
-  await expect(dialog.locator('.dlg-agent-model-row')).toHaveCount(MANY_MODELS.length + 1);
+  await expect(page.locator('.dlg-agent-model-row')).toHaveCount(MANY_MODELS.length + 1);
 
   // 被裁的那几行正是列表开头：点第一个模型，看它是否真选得上
-  const firstModel = dialog.locator('.dlg-agent-model-row', { hasText: 'vendor/model-01' });
+  const firstModel = page.locator('.dlg-agent-model-row', { hasText: 'vendor/model-01' });
   await firstModel.click({ timeout: 5000 });
   await expect(dialog.locator('.dlg-agent-model-select')).toContainText('vendor/model-01');
 
   // 末行仍够得着（封顶后的滚动是可达性，不是摆设）
   await dialog.locator('.dlg-agent-model-select').click();
-  const rows = dialog.locator('.dlg-agent-model-row');
+  const rows = page.locator('.dlg-agent-model-row');
   await rows.nth(MANY_MODELS.length).click({ timeout: 5000 });
   await expect(dialog.locator('.dlg-agent-model-select')).toContainText('vendor/model-40');
 });
@@ -254,9 +259,9 @@ test('选齐运行时与模型后提交，POST body 带 provider 与 modelId', a
   const dialog = await openDialog(page, '/app/team');
   await dialog.getByLabel('名称').fill('带模型的 agent');
   await dialog.locator('.dlg-agent-runtime-select').click();
-  await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await page.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
   await dialog.locator('.dlg-agent-model-select').click();
-  await dialog.locator('.dlg-agent-model-row', { hasText: 'claude-sonnet-5' }).click();
+  await page.locator('.dlg-agent-model-row', { hasText: 'claude-sonnet-5' }).click();
   await dialog.getByRole('button', { name: '创建', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
   expect(bodies).toHaveLength(1);
@@ -273,7 +278,7 @@ test('只选运行时提交：body 带 provider、modelId 为 null（半态不�
   const dialog = await openDialog(page, '/app/team');
   await dialog.getByLabel('名称').fill('半态 agent');
   await dialog.locator('.dlg-agent-runtime-select').click();
-  await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await page.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
   await dialog.getByRole('button', { name: '创建', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
   expect(bodies).toHaveLength(1);
@@ -286,13 +291,13 @@ test('切换运行时清掉旧模型：body 不带跨 provider 的脏 modelId', 
   const dialog = await openDialog(page, '/app/team');
   await dialog.getByLabel('名称').fill('换运行时 agent');
   await dialog.locator('.dlg-agent-runtime-select').click();
-  await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await page.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
   await dialog.locator('.dlg-agent-model-select').click();
-  await dialog.locator('.dlg-agent-model-row', { hasText: 'claude-sonnet-5' }).click();
+  await page.locator('.dlg-agent-model-row', { hasText: 'claude-sonnet-5' }).click();
   // 切回内置 (pi)：Claude Code 名下的 claude-sonnet-5 必须被清掉（modelId 只在
   // provider 内有意义，带过去就是脏值）。
   await dialog.locator('.dlg-agent-runtime-select').click();
-  await dialog.locator('.dlg-agent-runtime-row', { hasText: '内置 (pi)' }).click();
+  await page.locator('.dlg-agent-runtime-row', { hasText: '内置 (pi)' }).click();
   await expect(dialog.locator('.dlg-agent-model-select')).not.toContainText('claude-sonnet-5');
   await dialog.getByRole('button', { name: '创建', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
