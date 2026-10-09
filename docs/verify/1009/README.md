@@ -371,3 +371,29 @@ thinking / note / review 五 kind 扩 `id?: string`；`mapTranscript` 五处投�
 3. **`useChatFollow` 本体退役**——详情页是本 hook 最后一个消费者，A2 后它成
    死代码（含 `apps/web/test/chat-follow.test.ts`）。施工段拟整件删除（#873 单源
    律由原语承接）；若希望保留观察期请指明。
+
+## 13. B 原型（附件面 → registry Attachment 卡，2026-10-09）
+
+### 13.1 换装面
+
+| 现状面 | 换装后 | 中和 |
+|---|---|---|
+| `chat-markdown.tsx` AttachmentChip（`<a class="spec-chip …">` / `<Button>` + `SPEC_CHIP`/`SPEC_CHIP_IMG` utilities） | `overlay/attachment-card.tsx` 单源卡（`Attachment` 原语 + `AttachmentTrigger`/`Media`/`Content`/`Title`） | `.spec-chip` 族降为零规则钩子（挂触发钮上）——spec-brief-card 的 `a.spec-chip`/`img.spec-chip-img` 与 chief-composer-tools 的 `.spec-chip` 定位子原样存活 |
+| `attachment-strip.tsx` 在途占位卡（`<Button>`/`<span>` chip + 上传中 badge） | 同一卡 `state="uploading"` | 上传中 badge 改绝对定位——多一行会改盒、破「落定零位移」契约 |
+| 落定 chip（`AttachmentChip`） | 同一卡 `state="done"` | 根盒 `border-0`：原语 1px 缝线会让 root 盒比触发钮盒每边大 1px（占位读 root、落定读触发钮 → 2px 落差），去框后 root ≡ trigger |
+| 缩略几何（`SPEC_CHIP_IMG`：`max-h-40 max-w-full`） | 原语 `AttachmentMedia` image 档（`aspect-square w-10 object-cover`） | 常量退役；缩略由原语供给 |
+
+三宿主面（detail composer / new-task dialog / chief 抽屉 composer）共用 `AttachmentStrip` → `AttachmentCard`，一处改三面生效。
+
+### 13.2 账面
+
+- 域 e2e **122 绿 / 0 红**（10 spec：attachment-strip / attachment-title / spec-brief-card / chief-composer-tools / composer-paste / dead-buttons / chief-panel / chief-stream-markdown / detail-3pane / transcript-user-words）——**无重钉**：`FM2` 盒等值契约（占位盒 ≡ 落定盒）按设计保住
+- 全量本地 e2e **862/862 绿**；web units 464/464
+- 探针（`probe-after-b`，7 spec）：**KEPT 126 / DRIFT 0 / NOT-RUN 0 / VIOLATION 0**
+- typecheck / lint / registry 闸 / drift 闸 / consumer-shape 闸全绿（consumer 文件数 212→213，新增 `attachment-card.tsx`）
+
+### 13.3 待实审裁决
+
+1. **卡形从紧凑 chip 变 registry 卡片**（缩略块 + 文件名行）。几何契约未动，但观感明显不同——图 `b-card.drawio.svg` + 截图 `b-after/` 对照 `docs/verify/757/`。请确认卡形采纳。
+2. **`.spec-chip` 钩子保留**（零规则类，非皮肤）——为免 spec-brief-card / chief-composer-tools 一次载体重钉。若希望彻底清掉这些类名，需另开载体重钉（本段不做）。
+3. **#1009 的关闭时点**——B 是四段串行的最后一段，B 合并落地后 #1009 即完成、#1011/#1012 解除 blocking。按协调者口径：**本段 PR 与 commit 均不带关票关键字**（squash 消息由合并指令管住），#1009 由协调者在四段全落后关闭。确认此口径无误即放行施工段。
