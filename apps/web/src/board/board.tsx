@@ -230,7 +230,7 @@ export function BoardSurface({
 
   return (
     <div
-      className={`board-main relative flex min-w-0 flex-1 flex-col bg-background ${banner == null ? '' : 'board-main--banner'}`}
+      className={`board-main relative flex min-w-0 flex-1 flex-col bg-background ${banner == null ? '' : ''}`}
     >
       <header className="board-topbar relative flex h-11 flex-none items-center border-b border-[var(--border)]">
         <div className="board-topbar-title pointer-events-none absolute inset-x-0 text-center text-sm leading-[22px] font-medium text-foreground">
@@ -294,16 +294,11 @@ export function BoardSurface({
               {/* 具名生效筛选：空态要回答「我的卡去哪了」，只说「没有匹配」
                   会读成「这些卡不存在」。 */}
               {filters.summary !== '' && (
-                <span className="board-filter-empty-summary text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {t('筛选生效：{summary}', { summary: filters.summary })}
                 </span>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="board-filter-clear"
-                onClick={filters.onClear}
-              >
+              <Button variant="outline" size="sm" onClick={filters.onClear}>
                 {t('清除筛选')}
               </Button>
             </div>
@@ -339,9 +334,9 @@ export function BoardSurface({
                   data-drop-valid={isValidDropTarget(column.id) ? 'true' : undefined}
                   data-drop={dropColumnId === column.id ? 'true' : undefined}
                 >
-                  <header className="board-column-header flex h-[37px] flex-none items-center px-[13px] pt-[3px]">
+                  <header className="flex h-[37px] flex-none items-center px-[13px] pt-[3px]">
                     <span
-                      className="board-column-dot size-[7px] flex-none rounded-full"
+                      className="size-[7px] flex-none rounded-full"
                       style={{ background: column.dot }}
                     />
                     <span className="board-column-name ml-2 text-xs leading-4 text-muted-foreground">
@@ -351,12 +346,12 @@ export function BoardSurface({
                   r7 02/01b: digit present on empty columns, x = name+9) */}
                     <span
                       data-testid="column-count"
-                      className="board-column-count ml-[9px] text-xs leading-4 text-muted-foreground/70"
+                      className="ml-[9px] text-xs leading-4 text-muted-foreground/70"
                     >
                       {todos.length}
                     </span>
                     {column.label && (
-                      <span className="board-column-label ml-2 text-xs leading-4 text-muted-foreground">
+                      <span className="ml-2 text-xs leading-4 text-muted-foreground">
                         {t(column.label)}
                       </span>
                     )}
@@ -399,7 +394,7 @@ export function BoardSurface({
             - 抬升面 = 紧凑 DragCard（身份行 + 两行标题），不是板面卡复刻。 */}
         <DragOverlay dropAnimation={null} style={{ willChange: 'transform' }}>
           {dragged != null && (
-            <div data-testid="drag-overlay" className="board-drag-overlay">
+            <div data-testid="drag-overlay">
               <DragCard todo={dragged} projectName={fixture.projectNames?.[dragged.projectId]} />
             </div>
           )}
@@ -432,7 +427,7 @@ function ColumnList({
   const { setNodeRef } = useDroppable({ id: columnId });
   return (
     <div
-      className="board-column-list relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-[7.25px] py-px"
+      className="relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-[7.25px] py-px"
       ref={setNodeRef}
       data-column-list={columnId}
     >

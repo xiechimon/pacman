@@ -42,19 +42,17 @@ export function DeleteProjectConfirm({
       onClose={onClose}
       // #948 per-face 清零：旧 .delete-confirm--project 的 height:auto 在壳
       // utility 面（无固定高）上是 no-op，只余 16px 底垫 → pb-4。
-      className="delete-confirm--project pb-4"
+      className="pb-4"
     >
       <div className="delete-confirm-summary mx-4 mt-4 flex h-4 items-center gap-[7px] overflow-hidden text-[13px] leading-4 whitespace-nowrap text-(--foreground)">
         {projectName}
       </div>
-      <div className="delete-confirm-prompt mx-4 mt-3 text-xs leading-4 text-(--text-secondary)">
-        {prompt}
-      </div>
+      <div className="mx-4 mt-3 text-xs leading-4 text-(--text-secondary)">{prompt}</div>
       {/* #948：确认输入 = components/ui Input 件默认几何（h-8 32px 正本控件
           高，spec/22 §2.6-1；旧 per-face 30px 死值不留），描边/底色 1:1 迁
           --border-default / transparent。 */}
       <Input
-        className="delete-confirm-input mx-4 mt-2 w-[calc(100%-32px)] border-(--border) text-[13px] leading-[18px] text-(--foreground) md:text-[13px]"
+        className="mx-4 mt-2 w-[calc(100%-32px)] border-(--border) text-[13px] leading-[18px] text-(--foreground) md:text-[13px]"
         value={typed}
         onChange={(e) => setTyped(e.target.value)}
         aria-label={prompt}

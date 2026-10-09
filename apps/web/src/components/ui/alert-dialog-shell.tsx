@@ -28,7 +28,7 @@ interface AlertDialogShellProps {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
-  /** Face class on the panel（.delete-confirm--project 等 per-face 修饰）. */
+  /** Panel 上的 per-face 修饰类（几何补丁，如 pb-4）. */
   className?: string;
   /** Panel width in px (448 = 家族律 #66). */
   width?: number;
@@ -69,7 +69,7 @@ export function AlertDialogShell({
           style={{ width }}
           aria-label={ariaLabel}
         >
-          <div className="delete-confirm-head relative flex h-12 flex-none items-center border-b border-border px-4">
+          <div className="relative flex h-12 flex-none items-center border-b border-border px-4">
             <div className="delete-confirm-title text-sm font-medium text-foreground">{title}</div>
             <AlertDialogPrimitive.Close
               className="delete-confirm-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground"
@@ -103,7 +103,7 @@ export function AlertDialogActions({
   confirmClassName?: string;
 }) {
   return (
-    <div className="delete-confirm-actions flex flex-none items-center justify-end gap-2 px-4 py-3">
+    <div className="flex flex-none items-center justify-end gap-2 px-4 py-3">
       <Button variant="ghost" className="delete-confirm-cancel" onClick={onCancel}>
         {cancelLabel}
       </Button>

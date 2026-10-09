@@ -85,19 +85,17 @@ export function FreshBlock({ todo, tags, action, onAction, hasSpec }: FreshBlock
           {t('尚无描述')}
         </div>
       )}
-      <div className="fresh-meta mt-5 flex items-center text-(--text-tertiary)">
-        <span className="fresh-meta-time text-xs leading-4">
-          {formatCreatedAt(todo.phaseAt, t)}
-        </span>
+      <div className="mt-5 flex items-center text-(--text-tertiary)">
+        <span className="text-xs leading-4">{formatCreatedAt(todo.phaseAt, t)}</span>
       </div>
       {action != null && onAction != null && (
-        <div className="fresh-actions mt-8 flex items-center gap-3">
+        <div className="mt-8 flex items-center gap-3">
           {/* #1006 原型（#980 前提④）：老 primary/standard 的 13px/px-12
               冻结几何与描边中和退役——registry Button default 档默认形态。 */}
           <Button className="fresh-start" onClick={onAction}>
             {t(action)}
           </Button>
-          <span className="fresh-action-hint text-xs leading-4 text-(--text-tertiary)">
+          <span className="text-xs leading-4 text-(--text-tertiary)">
             {t('点开始后由总管编排派发，Agent 在你的机器上跑')}
           </span>
         </div>

@@ -194,12 +194,13 @@ export function isImageAttachmentKey(key: string): boolean {
   return /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(key);
 }
 
-// #945（detail.css 清零）：附件 chip 皮肤迁 utilities。形 = chat-taskline-seq
-// chip 同族（code-bg 底 + --border-default 缝线 + 次级字色），文件名是阅读
-// 文本给 12px 一档；图片 chip 2px 内衬 + 4px 内圆角（同心圆角：外 6 = 内 4
+// #945（detail.css 清零）：附件 chip 皮肤迁 utilities。形 = taskline 序号
+// chip 同族（code-bg 底 + --border-default 缝线 + 次级字色；原 chat-taskline-seq
+// 别名零引用，已随 #1036 终摘），文件名是阅读// 文本给 12px 一档；图片 chip 2px 内衬 + 4px 内圆角（同心圆角：外 6 = 内 4
 // + 内衬 2），缩略高度 cap 160px ≈ 6 行正文。hover 只动 color/border-color
-// 两属性、150ms 标准档（motion registry #73）。spec-chip--preview 的皮肤
-// 正本在 overlay/attachment-strip.css（overlay 域），类名照挂。
+// 两属性、150ms 标准档（motion registry #73）。spec-chip 皮肤正本 = 本文件
+// SPEC_CHIP utility 常量（attachment-strip.css 已随 #948 退役；
+// spec-chip--preview 别名零引用，同批终摘）。
 export const SPEC_CHIP =
   'inline-flex max-w-full items-center rounded-[6px] border border-(--border) bg-(--muted) px-2 py-[3px] text-xs leading-4 text-(--text-secondary) no-underline transition-[color,border-color] duration-(--dur-fast) ease-(--ease-standard) hover:border-(--input) hover:text-(--foreground)';
 export const SPEC_CHIP_IMAGE = 'border-none bg-transparent p-0.5 hover:bg-transparent';
@@ -212,7 +213,7 @@ export const SPEC_CHIP_IMG = 'block max-h-40 max-w-full rounded-[4px]';
  *  点开预览浮层而非新标签；#945 裸钮收编——ghost 底座 + 七通道中和钉回
  *  老 chip 形）；不传 = transcript 旧链形，字节不变。 */
 /** 长路径截断（composer/附件两 strip 共用）：label 收进内 span，省略号不断 chip 框。 */
-export const COMPOSER_CHIP_LABEL = 'composer-chip-label block min-w-0 max-w-[260px] truncate';
+export const COMPOSER_CHIP_LABEL = 'block min-w-0 max-w-[260px] truncate';
 
 export function AttachmentChip({
   name,
@@ -232,7 +233,7 @@ export function AttachmentChip({
       // 归零由 TW preflight 对 button 元素的复位承接，无需显式 utility。
       <Button
         variant="ghost"
-        className={`spec-chip spec-chip--image spec-chip--preview ${SPEC_CHIP} ${SPEC_CHIP_IMAGE} h-auto cursor-pointer rounded-[6px] whitespace-normal font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
+        className={`spec-chip spec-chip--image ${SPEC_CHIP} ${SPEC_CHIP_IMAGE} h-auto cursor-pointer rounded-[6px] whitespace-normal font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
         title={name}
         onClick={() => onPreview(name, href)}
       >
@@ -316,7 +317,7 @@ export function ChatMarkdown({ text }: { text: string }) {
                 data-depth={block.depth}
                 style={{ marginLeft: block.depth * DEPTH_PX }}
               >
-                <span className="chat-md-marker min-w-[14px] flex-none text-left text-(--text-tertiary) tabular-nums">
+                <span className="min-w-[14px] flex-none text-left text-(--text-tertiary) tabular-nums">
                   •
                 </span>
                 <span className="chat-md-content min-w-0">

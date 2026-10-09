@@ -99,7 +99,7 @@ const PANEL_CLS =
 
 /** 类目/实体行基底（原 .mention-row，Button ghost 七通道中和）。 */
 const ROW_CLS =
-  'mention-row flex w-full cursor-pointer items-center justify-start gap-2.5 border-0 bg-transparent px-3.5 py-0 text-left text-sm font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:cursor-default';
+  'flex w-full cursor-pointer items-center justify-start gap-2.5 border-0 bg-transparent px-3.5 py-0 text-left text-sm font-normal text-(--foreground) hover:bg-transparent hover:text-(--foreground) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:cursor-default';
 
 /** head 返回/关闭钮（原 .mention-picker-back/-close：22px 方钮、6px 圆角、
  *  tertiary 墨，hover 吃 #73 家族同值 --accent-soft tint + primary 墨）。 */
@@ -259,25 +259,25 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
       }}
     >
       <DialogContent className={PANEL_CLS} showCloseButton={false} aria-label={t('提及')}>
-        <div className="mention-picker-head flex items-center gap-2 border-b border-(--border) px-4 pt-3.5 pb-2.5">
+        <div className="flex items-center gap-2 border-b border-(--border) px-4 pt-3.5 pb-2.5">
           {layer !== 'top' ? (
             <Button
               variant="ghost"
               size="icon-xs"
-              className={`mention-picker-back ${HEAD_BTN_CLS} [&_svg:not([class*='size-'])]:size-auto`}
+              className={`${HEAD_BTN_CLS} [&_svg:not([class*='size-'])]:size-auto`}
               aria-label={t('返回')}
               onClick={() => setLayer('top')}
             >
               <ChevronLeft width={14} height={14} />
             </Button>
           ) : null}
-          <div className="mention-picker-title flex-1 text-[13px] font-medium text-(--foreground)">
+          <div className="flex-1 text-[13px] font-medium text-(--foreground)">
             {layer === 'top' ? t('提及') : `${labelFor(t, layer)} · ${counts[layer]}`}
           </div>
           <Button
             variant="ghost"
             size="icon-xs"
-            className={`mention-picker-close ${HEAD_BTN_CLS} [&_svg:not([class*='size-'])]:size-auto`}
+            className={`${HEAD_BTN_CLS} [&_svg:not([class*='size-'])]:size-auto`}
             aria-label={t('关闭')}
             onClick={onClose}
           >
@@ -285,7 +285,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           </Button>
         </div>
         {layer === 'top' ? (
-          <div className="mention-picker-list flex-1 overflow-auto py-1.5">
+          <div className="flex-1 overflow-auto py-1.5">
             {CATEGORIES.map(({ kind, Icon }) => (
               <TopRow
                 key={kind}
@@ -298,18 +298,18 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           </div>
         ) : (
           <>
-            <div className="mention-picker-search border-b border-(--border) px-3.5 pt-2.5 pb-1.5">
+            <div className="border-b border-(--border) px-3.5 pt-2.5 pb-1.5">
               <Input
                 type="text"
-                className="mention-picker-search-input h-7 border-(--border) bg-(--background) px-2.5 py-0 text-xs text-(--foreground) dark:bg-(--background) md:text-xs"
+                className="h-7 border-(--border) bg-(--background) px-2.5 py-0 text-xs text-(--foreground) dark:bg-(--background) md:text-xs"
                 placeholder={t('搜索…')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <div className="mention-picker-list flex-1 overflow-auto py-1.5">
+            <div className="flex-1 overflow-auto py-1.5">
               {filteredEntries.length === 0 ? (
-                <div className="mention-picker-empty px-3.5 py-[22px] text-center text-xs text-(--text-tertiary)">
+                <div className="px-3.5 py-[22px] text-center text-xs text-(--text-tertiary)">
                   {drilledQuery === ''
                     ? t('没有可引用的对象')
                     : t('没有与"{query}"匹配的结果', { query: drilledQuery })}
@@ -323,16 +323,16 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
                       variant="ghost"
                       type="button"
                       className={`${ROW_CLS} mention-row--entry h-[50px]${
-                        isSelected ? ' mention-row--selected bg-(--secondary)' : ''
+                        isSelected ? ' bg-(--secondary)' : ''
                       }`}
                       onClick={() => toggle(layer, entry.id)}
                     >
-                      <span className="mention-row-main flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="mention-row-title truncate text-[13px] font-medium">
                           {entry.label}
                         </span>
                         {entry.subtitle != null && (
-                          <span className="mention-row-sub truncate text-[11px] text-(--text-tertiary)">
+                          <span className="truncate text-[11px] text-(--text-tertiary)">
                             {entry.subtitle}
                           </span>
                         )}
@@ -344,11 +344,11 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
             </div>
           </>
         )}
-        <div className="mention-picker-foot flex items-center justify-end gap-3.5 border-t border-(--border) bg-(--popover) px-4 py-3">
+        <div className="flex items-center justify-end gap-3.5 border-t border-(--border) bg-(--popover) px-4 py-3">
           <Button
             variant="ghost"
             size="default"
-            className="mention-picker-cancel h-auto cursor-pointer justify-start gap-0 px-1.5 py-1 text-xs font-normal text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
+            className="h-auto cursor-pointer justify-start gap-0 px-1.5 py-1 text-xs font-normal text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
             onClick={onClose}
           >
             {t('取消')}
@@ -487,20 +487,18 @@ export function MentionInline({
             onClick={() => onPick(row)}
           >
             {row.kind === 'agent' ? (
-              <span className="mention-inline-avatar inline-flex size-6 items-center justify-center rounded-full bg-(--surface-tertiary) text-[11px] font-semibold text-(--foreground)">
+              <span className="inline-flex size-6 items-center justify-center rounded-full bg-(--surface-tertiary) text-[11px] font-semibold text-(--foreground)">
                 {row.label.charAt(0).toLowerCase()}
               </span>
             ) : (
-              <span className="mention-inline-avatar mention-inline-avatar--file inline-flex size-6 items-center justify-center rounded-full bg-(--surface-tertiary) text-[11px] font-semibold text-(--foreground)">
+              <span className="inline-flex size-6 items-center justify-center rounded-full bg-(--surface-tertiary) text-[11px] font-semibold text-(--foreground)">
                 <InlineKindIcon kind={row.kind} />
               </span>
             )}
-            <span className="mention-inline-main flex min-w-0 flex-col gap-px">
-              <span className="mention-inline-title truncate text-xs font-medium">{row.label}</span>
+            <span className="flex min-w-0 flex-col gap-px">
+              <span className="truncate text-xs font-medium">{row.label}</span>
               {row.subtitle != null && (
-                <span className="mention-inline-sub truncate text-[11px] text-(--text-tertiary)">
-                  {row.subtitle}
-                </span>
+                <span className="truncate text-[11px] text-(--text-tertiary)">{row.subtitle}</span>
               )}
             </span>
           </Button>

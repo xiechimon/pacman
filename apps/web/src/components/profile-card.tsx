@@ -199,7 +199,8 @@ interface ProfileNameRowProps {
   nameClassName?: string;
   /** 编辑铅笔钮附加类（e2e 锚别名，如 `.agent-name-edit`）。 */
   editClassName?: string;
-  /** 编辑态输入框附加类（几何/皮肤 + e2e 锚别名，如 `.agent-name-input`）。 */
+  /** 编辑态输入框附加类（几何/皮肤）；e2e 锚走 inputId（#agent-name-input），
+   *  类名别名已随 #1036 dead-class 终摘。 */
   inputClassName?: string;
   /** 编辑态输入框 id（e2e 锚，如 `agent-name-input`）。 */
   inputId?: string;

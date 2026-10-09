@@ -22,13 +22,12 @@
 // 触发钮走 PopoverTrigger 的 render 合成，Button 原语与 data-variant 契约
 // （board-filter e2e 的材质钉）原样透出。
 //
-// per-face 类名（board-filter-panel / board-type-filter / board-type-filter-count
-// / type-filter-popover / type-filter-option / repo-filter-option /
-// filter-dimension-* / filter-option-* / filter-chip / board-filter-empty /
-// board-filter-clear）历史上是 e2e 定位别名；#411 别名优先政策已被 #910
-// 裁定 1 废止——本域 spec 重钉到 role/label/text 一级载体，类名按 §5.0
-// 别名残留纪律原位保留（零 CSS 规则的惰性钩子，终摘属 #952/#953），供
-// 未重钉的跨域 spec 与 integration 面过渡期继续命中。
+// per-face 类名（board-filter-panel / filter-dimension-* / filter-option-*
+// 等）历史上是 e2e 定位别名；#411 别名优先政策已被 #910 裁定 1 废止——
+// 本域 spec 重钉到 role/label/text 一级载体。零规则别名的终摘已随 #1036
+// dead-class 闸落地：仍被 spec 命中的名字原位保留（board-type-filter /
+// type-filter-popover / type-filter-option，闸的 selector-exempt 台账逐名
+// 钉住引用文件），零引用的名字已摘除。
 //
 // 面板皮肤并全站 popup vocabulary（壳 p-1、行 rounded-md + hover/选中
 // bg-accent、维度间分隔线全出血 -mx-1、计数留右端 shortcut 位），行形与批次
@@ -120,7 +119,7 @@ export function FilterChips({
   const { t } = useI18n();
   if (chips.length === 0) return null;
   return (
-    <div className="board-filter-chips flex min-w-0 items-center gap-1.5 overflow-x-auto pl-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto pl-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {chips.map((chip) => (
         <Button
           key={chip.key}
@@ -129,18 +128,18 @@ export function FilterChips({
              理由偏离——生效筛选条是「板被收窄」的解释面，刻意做全屏最重的实底
              墨（header 注），圆药丸与方/圆角面板形成材质对比；不向 registry
              button 默认几何对齐，理由见对账声明。 */
-          className="filter-chip h-5 flex-none gap-1 rounded-full border border-transparent bg-foreground px-2 text-[11px] leading-none font-medium text-background hover:bg-foreground active:not-aria-[haspopup]:translate-y-0"
+          className="h-5 flex-none gap-1 rounded-full border border-transparent bg-foreground px-2 text-[11px] leading-none font-medium text-background hover:bg-foreground active:not-aria-[haspopup]:translate-y-0"
           aria-label={t('清除{name}筛选', { name: chip.label })}
           onClick={chip.onClear}
         >
-          <span className="filter-chip-label max-w-40 truncate">{chip.label}</span>
+          <span className="max-w-40 truncate">{chip.label}</span>
           <X className="size-2.5" />
         </Button>
       ))}
       {chips.length > 1 && (
         <Button
           variant="ghost"
-          className="filter-chips-clear h-5 flex-none rounded-full border-none px-2 text-[11px] leading-none font-medium text-muted-foreground hover:bg-transparent hover:text-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
+          className="h-5 flex-none rounded-full border-none px-2 text-[11px] leading-none font-medium text-muted-foreground hover:bg-transparent hover:text-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
           onClick={onClearAll}
         >
           {t('清除全部')}
@@ -176,33 +175,31 @@ function DimensionSection({
   const allSelected = actionable && dimension.selected.length === dimension.choices.length;
   const someSelected = dimension.selected.length > 0;
   return (
-    <section className="filter-dimension flex flex-col" data-dimension={dimension.key}>
+    <section className="flex flex-col" data-dimension={dimension.key}>
       {/* 维度间分隔线全出血（壳 p-1 内 -mx-1，DropdownMenuSeparator 同形）；
           my-1 节奏 = 线上线下各 4px，故 divided 时标题不再另加 pt。 */}
       {divided && <Separator className="-mx-1 mt-1 mb-1" />}
       {/* 标题行只留标题 + 已选读数（参考站形：标题带不挂批次键）；批次操作
           下沉到行表首的全选行。 */}
-      <header
-        className={`filter-dimension-head flex items-baseline gap-1.5 px-2 pb-1 ${divided ? 'pt-1' : 'pt-1.5'}`}
-      >
-        <span className="filter-dimension-name text-[11px] font-semibold tracking-wide text-muted-foreground">
+      <header className={`flex items-baseline gap-1.5 px-2 pb-1 ${divided ? 'pt-1' : 'pt-1.5'}`}>
+        <span className="text-[11px] font-semibold tracking-wide text-muted-foreground">
           {t(dimension.name)}
         </span>
-        <span className="filter-dimension-selected ml-auto text-[11px] text-muted-foreground tabular-nums">
+        <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
           {t('已选 {n}/{m}', { n: dimension.selected.length, m: dimension.choices.length })}
         </span>
       </header>
       {!actionable ? (
         // 空词表不是错误态：作用域里本来就没有可选项（旧 fixture 场景没有
         // 项目 / 标签源）。说清「本作用域内没有」而不是留一个空壳。
-        <EmptyDescription className="filter-dimension-empty px-1.5 pt-1 pb-2 text-xs">
+        <EmptyDescription className="px-1.5 pt-1 pb-2 text-xs">
           {dimension.key === 'repo' ? t('本作用域内没有可选的仓库') : t('本作用域内没有可选的类型')}
         </EmptyDescription>
       ) : (
         <>
           {dimension.choices.length > SEARCH_THRESHOLD && (
             <Input
-              className="filter-dimension-search mb-1 h-6 px-2 text-xs"
+              className="mb-1 h-6 px-2 text-xs"
               placeholder={t('搜索{name}', { name: t(dimension.name) })}
               aria-label={t('搜索{name}', { name: t(dimension.name) })}
               value={query}
@@ -212,7 +209,7 @@ function DimensionSection({
           {/* 全选行（行表首，参考站位置）：三态 checkbox + 全选文案；满选再点
               = 清本维——段内清除钮撤除后，「清」由本行满选态 / 反选 / 顶栏
               生效筛选条三路承接，功能不丢。反选挂该行右端（参考站位置与文案）。 */}
-          <div className="filter-dimension-allrow flex items-center">
+          <div className="flex items-center">
             {/* #952 回收（#943 deliberate-official 直消费 Root 的收口，#908
                 comment-6001887439 裁决 1②）：三态走共享 Checkbox 件——
                 indeterminate 官方一等 prop 直通 Root（aria-checked="mixed"
@@ -234,26 +231,26 @@ function DimensionSection({
             </label>
             <Button
               variant="link"
-              className="filter-dimension-invert mr-2 h-auto shrink-0 rounded border-none px-1 text-xs font-normal text-primary active:not-aria-[haspopup]:translate-y-0"
+              className="mr-2 h-auto shrink-0 rounded border-none px-1 text-xs font-normal text-primary active:not-aria-[haspopup]:translate-y-0"
               onClick={dimension.onInvert}
             >
               {t('反选')}
             </Button>
           </div>
           <div
-            className="filter-dimension-list flex max-h-[220px] flex-col overflow-y-auto"
+            className="flex max-h-[220px] flex-col overflow-y-auto"
             role="listbox"
             aria-multiselectable="true"
             aria-label={t(dimension.name)}
           >
             {shown.map((choice) => {
               const active = selectedSet.has(choice.value);
-              const alias = choice.color == null ? 'repo-filter-option' : 'type-filter-option';
+              // type-filter-option 是 spec 定位别名（escape-wiring /
+              // shadcn-primitives / drive-tags）；repo 侧别名零引用，已随
+              // #1036 dead-class 终摘（data-project 载体承担区分）。
+              const alias = choice.color == null ? '' : 'type-filter-option';
               return (
-                <div
-                  key={choice.value}
-                  className="filter-option-row group relative flex items-center"
-                >
+                <div key={choice.value} className="group relative flex items-center">
                   <Button
                     variant="ghost"
                     {...(choice.color == null
@@ -274,15 +271,13 @@ function DimensionSection({
                         tag={{ id: choice.value, name: choice.label, color: choice.color }}
                       />
                     ) : (
-                      <span className="filter-option-label min-w-0 flex-1 truncate text-left">
-                        {choice.label}
-                      </span>
+                      <span className="min-w-0 flex-1 truncate text-left">{choice.label}</span>
                     )}
                     {/* 计数仅有命中时画（参考站形：零命中不占右端位）。 */}
                     {choice.count > 0 && (
                       <span
                         data-testid="option-count"
-                        className="filter-option-count ml-auto text-[11px] text-muted-foreground tabular-nums transition-opacity group-hover:opacity-0"
+                        className="ml-auto text-[11px] text-muted-foreground tabular-nums transition-opacity group-hover:opacity-0"
                       >
                         {choice.count}
                       </span>
@@ -299,7 +294,7 @@ function DimensionSection({
                   <Button
                     variant="ghost"
                     disabled={dimension.selected.length === 0}
-                    className="filter-option-only absolute right-2 h-auto shrink-0 rounded border-none px-1 text-[11px] font-normal text-muted-foreground opacity-0 transition-opacity hover:bg-transparent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 dark:hover:bg-transparent disabled:opacity-0 disabled:group-hover:opacity-100 active:not-aria-[haspopup]:translate-y-0"
+                    className="absolute right-2 h-auto shrink-0 rounded border-none px-1 text-[11px] font-normal text-muted-foreground opacity-0 transition-opacity hover:bg-transparent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 dark:hover:bg-transparent disabled:opacity-0 disabled:group-hover:opacity-100 active:not-aria-[haspopup]:translate-y-0"
                     onClick={() => dimension.onOnly(choice.value)}
                   >
                     {t('仅此')}
@@ -308,7 +303,7 @@ function DimensionSection({
               );
             })}
             {shown.length === 0 && (
-              <EmptyDescription className="filter-dimension-empty px-1.5 py-1.5 text-xs">
+              <EmptyDescription className="px-1.5 py-1.5 text-xs">
                 {t('没有与“{q}”匹配的选项', { q: query })}
               </EmptyDescription>
             )}
@@ -359,7 +354,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         {totalSelected > 0 && (
           <span
             data-testid="filter-count"
-            className="board-type-filter-count rounded-full bg-accent px-1.5 text-[11px] leading-4 font-normal text-muted-foreground"
+            className="rounded-full bg-accent px-1.5 text-[11px] leading-4 font-normal text-muted-foreground"
           >
             {totalSelected}
           </span>
@@ -370,7 +365,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         side="bottom"
         sideOffset={6}
         aria-label={t('筛选')}
-        className="type-filter-popover board-filter-panel w-[268px] gap-0 p-1"
+        className="type-filter-popover w-[268px] gap-0 p-1"
       >
         {dimensions.map((dimension, index) => (
           <DimensionSection
@@ -384,7 +379,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         {totalSelected > 0 && (
           <Button
             variant="ghost"
-            className="filter-panel-clear mt-0.5 h-7 w-full rounded-md border-none text-xs font-normal text-muted-foreground hover:bg-accent-soft hover:text-foreground dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0"
+            className="mt-0.5 h-7 w-full rounded-md border-none text-xs font-normal text-muted-foreground hover:bg-accent-soft hover:text-foreground dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0"
             onClick={onClearAll}
           >
             {t('清除全部')}

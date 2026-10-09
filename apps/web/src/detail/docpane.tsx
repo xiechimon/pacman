@@ -22,7 +22,8 @@
 // 方案▾/变更▾ select became the pane-view picker (doc surface + the three
 // static sections, overlays/plan-dropdown). The head now always renders —
 // it carries that picker, so the empty surfaces keep their way out — and
-// the changes/diff file stack scrolls in .doc-files under the pinned head.
+// the changes/diff file stack scrolls in its column under the pinned head
+// (the .doc-files alias was zero-reference, final pick under #1036).
 
 import type { DiffFileContent } from '@pacman/shared';
 import { cn } from 'cn';
@@ -103,7 +104,7 @@ interface DocPaneProps {
 /** pane 头带（36px + 发丝缝，#366）——docpane 与 right-pane 三 section 头
  *  共用单源（#945：老 .doc-pane-head 规则族的两消费面防漂移律不变）。 */
 export const PANE_HEAD =
-  'doc-pane-head flex h-9 flex-none items-center border-b border-(--border) pl-[17px] text-xs leading-4 text-(--text-secondary) [&>svg]:text-(--text-tertiary)';
+  'flex h-9 flex-none items-center border-b border-(--border) pl-[17px] text-xs leading-4 text-(--text-secondary) [&>svg]:text-(--text-tertiary)';
 // #1006 原型（#980 前提④）：PANE_SELECT 七通道中和串退役——头带文字钮
 // 走 registry ghost xs 档默认形态（hover:bg-muted 反馈生效），只留 layout
 // 位（ml-0：wrap 内贴左）。plan-dropdown 的同名配方同步退役（两消费面
@@ -170,7 +171,7 @@ function DiffFileBlock({
   const fullQ = useBuildChangeFile(buildId, showFull ? file.path : null, fetchLive);
   const full = deriveFullFileView(fetchLive, showFull, file.fullContent ?? null, fullQ);
   return (
-    <div className="diff-file">
+    <div>
       {/* 文件行骑 surface-secondary（r7 27 双模）：chevron + 路径 + 👁 +
           右对齐 +N（mono，−N 走 danger 墨）。 */}
       <div className="doc-file-row flex h-8 flex-none items-center gap-1.5 bg-(--secondary) pl-[13px] text-[13px] leading-4 text-(--text-secondary) [&_svg]:text-(--text-tertiary)">
@@ -181,21 +182,21 @@ function DiffFileBlock({
         )}
         <FileText width={14} height={14} />
         {file.path}
-        <span className="doc-file-eye flex text-(--text-tertiary)">
+        <span className="flex text-(--text-tertiary)">
           <Eye width={14} height={14} />
         </span>
-        <span className="doc-file-add ml-auto pr-[17px] font-mono text-xs leading-4 text-(--diff-add-fg)">
+        <span className="ml-auto pr-[17px] font-mono text-xs leading-4 text-(--diff-add-fg)">
           +{file.added}
           {file.removed != null && file.removed > 0 && (
-            <span className="doc-file-del text-(--destructive)"> −{file.removed}</span>
+            <span className="text-(--destructive)"> −{file.removed}</span>
           )}
         </span>
       </div>
       {expanded && (
-        <div className="diff-body">
+        <div>
           {full.kind === 'hidden' &&
             file.hunks.map((hunk) => (
-              <div key={hunk.header} className="diff-hunk">
+              <div key={hunk.header}>
                 <div className="diff-hunk-head border-y border-(--border) bg-(--secondary) pl-[53px] font-mono text-[11px] leading-[22px] text-(--text-tertiary)">
                   {hunk.header}
                 </div>
@@ -203,43 +204,39 @@ function DiffFileBlock({
                   // fixture order is stable; lines carry no ids
                   <div
                     key={i}
-                    className={`diff-line diff-line--${line.kind} ${DIFF_LINE} ${
+                    className={`diff-line--${line.kind} ${DIFF_LINE} ${
                       DIFF_KIND_SKIN[line.kind] ?? ''
                     }`}
                     data-kind={line.kind}
                   >
-                    <span data-no="old" className={`diff-no diff-no--old ${DIFF_NO} w-[18px]`}>
+                    <span data-no="old" className={`${DIFF_NO} w-[18px]`}>
                       {line.oldNo ?? ''}
                     </span>
-                    <span data-no="new" className={`diff-no diff-no--new ${DIFF_NO} w-[19px]`}>
+                    <span data-no="new" className={`${DIFF_NO} w-[19px]`}>
                       {line.newNo ?? ''}
                     </span>
-                    <span className="diff-mark w-[11px] flex-none text-center text-(--diff-add-fg)">
+                    <span className="w-[11px] flex-none text-center text-(--diff-add-fg)">
                       {line.kind === 'add' ? '+' : line.kind === 'del' ? '-' : ''}
                     </span>
-                    <span className="diff-text pl-1.5 whitespace-pre">{line.text}</span>
+                    <span className="pl-1.5 whitespace-pre">{line.text}</span>
                   </div>
                 ))}
               </div>
             ))}
           {full.kind === 'text' && (
-            <div className="diff-full" data-testid="diff-full">
+            <div data-testid="diff-full">
               {full.content
                 .replace(/\n$/, '')
                 .split('\n')
                 .map((text, i) => (
                   // file order is stable; lines carry no ids
-                  <div
-                    key={i}
-                    className={`diff-line diff-line--context ${DIFF_LINE}`}
-                    data-kind="context"
-                  >
-                    <span data-no="old" className={`diff-no diff-no--old ${DIFF_NO} w-[18px]`} />
-                    <span data-no="new" className={`diff-no diff-no--new ${DIFF_NO} w-[19px]`}>
+                  <div key={i} className={`${DIFF_LINE}`} data-kind="context">
+                    <span data-no="old" className={`${DIFF_NO} w-[18px]`} />
+                    <span data-no="new" className={`${DIFF_NO} w-[19px]`}>
                       {i + 1}
                     </span>
-                    <span className="diff-mark w-[11px] flex-none text-center text-(--diff-add-fg)" />
-                    <span className="diff-text pl-1.5 whitespace-pre">{text}</span>
+                    <span className="w-[11px] flex-none text-center text-(--diff-add-fg)" />
+                    <span className="pl-1.5 whitespace-pre">{text}</span>
                   </div>
                 ))}
             </div>
@@ -247,7 +244,7 @@ function DiffFileBlock({
           {(full.kind === 'loading' || full.kind === 'error' || full.kind === 'binary') && (
             // #225 全文态占位：loading/error/binary 在 hunk 区同槽，左对齐
             // hunk 头文本位（53px），tertiary mono 同 hunk 头族。
-            <div className="diff-full diff-full--state py-2 pr-[13px] pl-[53px] font-mono text-[11px] leading-[17px] text-(--text-tertiary)">
+            <div className="py-2 pr-[13px] pl-[53px] font-mono text-[11px] leading-[17px] text-(--text-tertiary)">
               {full.kind === 'loading'
                 ? t('加载中…')
                 : full.kind === 'error'
@@ -260,7 +257,7 @@ function DiffFileBlock({
               hover:bg-muted 反馈生效。 */}
           <Button
             variant="ghost"
-            className="diff-expand w-full justify-start"
+            className="w-full justify-start"
             onClick={() => setShowFull((v) => !v)}
           >
             <UnfoldVertical width={12} height={12} />
@@ -314,7 +311,7 @@ function VersionMenu({
         align="end"
         side="bottom"
         sideOffset={8}
-        className="version-menu version-menu--sub w-auto min-w-[69px]"
+        className="version-menu--sub w-auto min-w-[69px]"
       >
         <DropdownMenuItem className="version-menu-row" onClick={onCompare}>
           {t('上一版本')}
@@ -323,11 +320,11 @@ function VersionMenu({
     );
   }
   return (
-    <DropdownMenuContent align="end" side="bottom" sideOffset={8} className="version-menu w-53">
+    <DropdownMenuContent align="end" side="bottom" sideOffset={8} className="w-53">
       {versions.map((row, i) => (
         <DropdownMenuItem
           key={row.v}
-          className={`version-menu-row justify-between${i === 0 ? ' version-menu-row--current font-semibold' : ''}`}
+          className={`version-menu-row justify-between${i === 0 ? ' font-semibold' : ''}`}
           onClick={() => onMenu(undefined)}
         >
           <span>
@@ -342,9 +339,7 @@ function VersionMenu({
         onClick={() => onMenu('compare')}
       >
         <span>{t('与其他版本对比…')}</span>
-        {diffOpen && diffFrom != null && (
-          <span className="version-menu-label text-(--text-tertiary)">{diffFrom}</span>
-        )}
+        {diffOpen && diffFrom != null && <span className="text-(--text-tertiary)">{diffFrom}</span>}
       </DropdownMenuItem>
       {diffOpen && (
         <DropdownMenuItem className="version-menu-row" onClick={onBase}>
@@ -501,19 +496,17 @@ export function DocPane({
           {hasData && (
             <>
               {/* changes mode（r7 27/36）：stat 簇 + 右对齐展开切换。 */}
-              <span className="doc-changes-stat ml-[18px] text-(--text-tertiary)">
+              <span className="ml-[18px] text-(--text-tertiary)">
                 {t('· {n} 个文件改动', { n: fileCount })}{' '}
-                <span className="doc-changes-add text-(--diff-add-fg)">+{added}</span>
-                {removed > 0 && (
-                  <span className="doc-changes-del text-(--destructive)"> −{removed}</span>
-                )}
+                <span className="text-(--diff-add-fg)">+{added}</span>
+                {removed > 0 && <span className="text-(--destructive)"> −{removed}</span>}
               </span>
               {/* #1006 原型（#980 前提④）：ghost xs 档默认形态（hover 反馈
                   生效），中和串退役；ml-auto 右对齐 + 17px 右衬是 layout 位。 */}
               <Button
                 variant="ghost"
                 size="xs"
-                className="doc-expand-all ml-auto mr-[17px] text-(--text-tertiary)"
+                className="ml-auto mr-[17px] text-(--text-tertiary)"
                 onClick={onToggleExpand}
               >
                 {expanded ? t('全部收起') : t('全部展开')}
@@ -522,7 +515,7 @@ export function DocPane({
           )}
         </header>
         {hasData ? (
-          <div className="doc-files min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {files.map((file) => (
               <DiffFileBlock
                 key={file.path}
@@ -535,7 +528,7 @@ export function DocPane({
         ) : (
           // changes-empty 占位（r7 38）：整 pane 居中、头上无 band——
           // --full 变体把 .doc-empty 的绝对居中改回 static flex 项。
-          <div className="doc-empty doc-empty--full static flex flex-1 items-center justify-center text-xs leading-4 text-(--text-tertiary)">
+          <div className="doc-empty static flex flex-1 items-center justify-center text-xs leading-4 text-(--text-tertiary)">
             {t('暂无可显示的变更')}
           </div>
         )}
@@ -561,7 +554,7 @@ export function DocPane({
         )}
       </header>
       <div
-        className="doc-pane-body relative min-h-0 flex-1 overflow-y-auto pt-4 pr-[18px] pb-6 pl-[17px]"
+        className="relative min-h-0 flex-1 overflow-y-auto pt-4 pr-[18px] pb-6 pl-[17px]"
         data-testid="doc-body"
       >
         {doc == null
@@ -576,10 +569,7 @@ export function DocPane({
               <p
                 // fixture order is stable; blocks carry no ids
                 key={i}
-                className={cn(
-                  `doc-block doc-block--${block.kind}`,
-                  docBlockClass(block.kind, i === 0),
-                )}
+                className={cn(`doc-block--${block.kind}`, docBlockClass(block.kind, i === 0))}
               >
                 {block.kind === 'bullet' ? '• ' : ''}
                 <Segments segments={block.segments} codeClassName="doc-code" />

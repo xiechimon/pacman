@@ -62,7 +62,7 @@ function OverlayDialog({
       }}
     >
       <DialogContent showCloseButton={false} className={PANEL_LAYOUT}>
-        <DialogHeader className="overlay-head flex-row items-center gap-1">
+        <DialogHeader className="flex-row items-center gap-1">
           {/* back/close = registry ghost icon-sm 默认档（老 20×20/24×24 冻结
               几何与七通道中和退役）；.overlay-back/.overlay-close 别名透传。
               back 不是 close：#168 语义 = 显式回退到 rerun 面（弹层仍在），
@@ -80,7 +80,7 @@ function OverlayDialog({
           )}
           <DialogTitle className="overlay-title">{title}</DialogTitle>
         </DialogHeader>
-        <div className="overlay-body min-h-0">{children}</div>
+        <div className="min-h-0">{children}</div>
         {footer != null && <DialogFooter className="overlay-actions">{footer}</DialogFooter>}
         <DialogClose
           render={
@@ -142,11 +142,11 @@ export function RerunDialog({
         </>
       }
     >
-      <div className="rerun-info pt-[18px] pb-0.5 text-center text-sm leading-[18px] text-(--text-secondary)">
+      <div className="pt-[18px] pb-0.5 text-center text-sm leading-[18px] text-(--text-secondary)">
         {t('这张任务将交给总管重新编排。')}
       </div>
       {pinOffline && onUnpin !== undefined && (
-        <div className="rerun-pin flex items-center justify-center gap-2 pt-2 text-xs leading-4 text-(--text-secondary)">
+        <div className="flex items-center justify-center gap-2 pt-2 text-xs leading-4 text-(--text-secondary)">
           <span>
             {t('钉选的机器「{machine}」当前离线，重跑仍会等它。', {
               machine: pin.machineName ?? t('（已移除）'),
@@ -192,7 +192,7 @@ export function ReusePanel({
         </>
       }
     >
-      <div className="reuse-prompt px-4 pt-[30px] pb-1 text-center text-sm leading-5 text-(--text-secondary)">
+      <div className="px-4 pt-[30px] pb-1 text-center text-sm leading-5 text-(--text-secondary)">
         {t('选择接下来如何使用这个方案')}
       </div>
     </OverlayDialog>

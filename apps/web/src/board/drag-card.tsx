@@ -33,7 +33,7 @@ export function DragCard({ todo, projectName }: DragCardProps) {
       className="board-drag-card flex flex-col gap-1.5 rounded-xl border border-(--border) bg-(--card) py-2.5 px-3 opacity-[0.92] rotate-2 [box-shadow:var(--drag-shadow)]"
       data-todo-id={todo.id}
     >
-      <div className="board-drag-card-row1 flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5">
         {/* 身份行项目徽标 = ProjectAvatar 的紧凑档（参考站 14px/3px 圆角/
             7px 字号，对 16px/4px/10px 的板面档）——原 board.css 的后代
             选择器覆写，#943 起走 className 逐组覆写（TagChip row-flush
@@ -42,14 +42,14 @@ export function DragCard({ todo, projectName }: DragCardProps) {
           char={initial}
           className="size-3.5 rounded-[3px] text-[7px] leading-[14px]"
         />
-        <span className="board-drag-card-project min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground">
+        <span className="min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground">
           {name}
         </span>
-        <span className="board-drag-card-seq flex-none text-[10px] leading-4 text-muted-foreground/70 tabular-nums">
+        <span className="flex-none text-[10px] leading-4 text-muted-foreground/70 tabular-nums">
           #{todo.seqNum}
         </span>
       </div>
-      <div className="board-drag-card-title line-clamp-2 text-sm leading-snug font-medium text-card-foreground">
+      <div className="line-clamp-2 text-sm leading-snug font-medium text-card-foreground">
         {todo.title}
       </div>
     </div>

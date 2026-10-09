@@ -15,7 +15,7 @@
 // 族 → registry Dialog。旧冻结坐标（top-228 / 400 宽 / 负 margin 居中）与
 // 手写皮肤/ClickCatcher 退役，居中与动效归 DialogContent 默认（#991 Q9
 // registry 默认赢）；400 宽与 70vh 封顶留 layout 槽。标题走 DialogTitle
-// 语义映射（别名 slash-help-title 随行）。listbox 面（SlashMenu 本体）
+// 语义映射（slash-help-title 别名零引用，已随 #1036 终摘）。listbox 面（SlashMenu 本体）
 // 仍是 composer 相对锚的内联面板（无壳，非本票射程）。
 // 行钮收编 components/ui Button（ghost 档七通道中和，#908
 // comment-6001887439 裁决 3；行不在 motion.css hover 家族名单，hover 底
@@ -58,8 +58,8 @@ const ROW_CLS =
 
 /** 命令行名（mono 13px）与描述（12px tertiary 截断）——menu 行与 /help 行
  *  共用（原 .slash-menu-name / .slash-menu-desc）。 */
-const NAME_CLS = 'slash-menu-name flex-none font-mono text-[13px]';
-const DESC_CLS = 'slash-menu-desc truncate text-xs text-(--text-tertiary)';
+const NAME_CLS = 'flex-none font-mono text-[13px]';
+const DESC_CLS = 'truncate text-xs text-(--text-tertiary)';
 
 export function SlashMenu({
   open,
@@ -99,10 +99,7 @@ export function SlashMenu({
           offset += section.rows.length;
           return (
             <Fragment key={section.title}>
-              <div
-                className="slash-menu-head px-2 pt-1.5 pb-0.5 text-xs text-(--text-tertiary)"
-                aria-hidden="true"
-              >
+              <div className="px-2 pt-1.5 pb-0.5 text-xs text-(--text-tertiary)" aria-hidden="true">
                 {section.title}
               </div>
               {section.rows.map((row, i) => {
@@ -115,7 +112,7 @@ export function SlashMenu({
                     tabIndex={-1}
                     role="option"
                     aria-selected={index === highlight}
-                    className={`${ROW_CLS}${index === highlight ? ' slash-menu-row--active bg-(--secondary)' : ''}`}
+                    className={`${ROW_CLS}${index === highlight ? ' bg-(--secondary)' : ''}`}
                     onMouseDown={(event) => event.preventDefault()}
                     onMouseEnter={() => onHover(index)}
                     onClick={() => onPick(row)}
@@ -156,8 +153,8 @@ export function SlashHelp({ open, onClose, commands, skillCount }: SlashHelpProp
           居中/动效/z 归 DialogContent 默认。registry 关闭钮（X）是官网
           confirm 形态一部分，缺省开启。别名 slash-help 随行（e2e 句柄）。 */}
       <DialogContent className="slash-help max-h-[70vh] w-[400px] max-w-[calc(100vw-2rem)] gap-0 overflow-auto p-3 sm:max-w-[400px]">
-        <DialogTitle className="slash-help-title mb-2">{t('命令说明')}</DialogTitle>
-        <div className="slash-help-list flex max-h-[320px] flex-col gap-0.5 overflow-auto">
+        <DialogTitle className="mb-2">{t('命令说明')}</DialogTitle>
+        <div className="flex max-h-[320px] flex-col gap-0.5 overflow-auto">
           {commands.map((row) => (
             <div key={row.name} className="slash-help-row flex items-baseline gap-2 px-2 py-1.5">
               <span className={NAME_CLS}>/{row.name}</span>
@@ -167,7 +164,7 @@ export function SlashHelp({ open, onClose, commands, skillCount }: SlashHelpProp
             </div>
           ))}
         </div>
-        <div className="slash-help-foot mt-2 border-t border-(--border) pt-2 text-xs text-(--text-tertiary)">
+        <div className="mt-2 border-t border-(--border) pt-2 text-xs text-(--text-tertiary)">
           {t('团队技能来自技能页面（共 {count} 个）', { count: skillCount })}
         </div>
       </DialogContent>

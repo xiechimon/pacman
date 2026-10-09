@@ -69,7 +69,7 @@ export function TokenGate() {
     // 门页盖住全部 UI：全屏黑幕（--overlay-scrim，正本单源）置于浮层阶梯的
     // 模态族之上——#688 阶梯给门页留了专属档 --z-gate（独立档位，不参与
     // 浮层家族的同档并列；门页显示时应用尚未解锁，其它浮层不可能同场）。
-    <div className="token-gate-backdrop fixed inset-0 z-(--z-gate) flex items-center justify-center bg-(--overlay-scrim)">
+    <div className="fixed inset-0 z-(--z-gate) flex items-center justify-center bg-(--overlay-scrim)">
       <Card
         role="dialog"
         aria-modal="true"
@@ -80,7 +80,7 @@ export function TokenGate() {
           <h1 className="token-gate-title text-base font-semibold text-foreground">
             {t('需要访问令牌')}
           </h1>
-          <p className="token-gate-desc text-[13px] leading-normal text-content-secondary">
+          <p className="text-[13px] leading-normal text-content-secondary">
             {t('服务端已开启令牌鉴权，输入访问令牌后继续使用。')}
           </p>
           <p className="token-gate-help text-xs leading-relaxed text-content-tertiary">
@@ -89,10 +89,7 @@ export function TokenGate() {
               { tokenVar: ENV_VARS.token },
             )}
           </p>
-          <label
-            className="token-gate-label text-xs text-content-tertiary"
-            htmlFor="pacman-token-input"
-          >
+          <label className="text-xs text-content-tertiary" htmlFor="pacman-token-input">
             {t('访问令牌')}
           </label>
           <Input

@@ -23,7 +23,7 @@
 // the #812 mention strip's), chief and new-task take it in flow.
 // #948 per-face 清零：attachment-strip.css 退役——本件自带的基础行规则迁
 // 本文件 utility；三个宿主面的定位规则迁到各自消费点（detail composer 的
-// .composer-float 列、chief 抽屉的 .chief-composer 流内垫、new-task body 的
+// float 列、chief 抽屉的流内垫、new-task body 的
 // 停靠垫），卡片几何由 .spec-chip 家族单源承载（#945 起 = chat-markdown 的
 // SPEC_CHIP utility 常量，detail.css 已退役），占位/落定两卡 boundingBox
 // 全等（attachment-strip.spec 钉）不靠本文件复制任何 chip 几何，只补 40px
@@ -56,25 +56,17 @@ export function AttachmentPreview({
 }) {
   const [broken, setBroken] = useState(false);
   return (
-    <DialogShell
-      title={name}
-      onClose={onClose}
-      onBackdropClick={onClose}
-      width={640}
-      className="attachment-preview"
-    >
+    <DialogShell title={name} onClose={onClose} onBackdropClick={onClose} width={640}>
       {/* 原 .attachment-preview-body：图片 contain 进面板、永不撑爆——面板宽
           随 DialogShell（640），高图滚 dlg-body（100vh−48px 封顶律）。 */}
-      <div className="attachment-preview-body flex items-center justify-center p-3">
+      <div className="flex items-center justify-center p-3">
         {broken ? (
-          <div className="attachment-preview-broken px-4 py-8 text-[13px] text-(--text-secondary)">
-            {name}
-          </div>
+          <div className="px-4 py-8 text-[13px] text-(--text-secondary)">{name}</div>
         ) : (
           <img
             src={src}
             alt={name}
-            className="attachment-preview-img max-h-[60vh] max-w-full rounded-[4px] object-contain"
+            className="max-h-[60vh] max-w-full rounded-[4px] object-contain"
             onError={() => setBroken(true)}
           />
         )}

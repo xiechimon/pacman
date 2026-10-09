@@ -165,7 +165,7 @@ export function TodoDetailPage() {
   const { live, teamId, userName } = useLiveData();
   const { t } = useI18n();
   const fixture = resolveScenario(searchParams);
-  // ADR 0013 D1/D6/D7 反转：总管面板不再占用 .detail-body 右栏格位——
+  // ADR 0013 D1/D6/D7 反转：总管面板不再占用 detail-body（testid）右栏格位——
   // 悬浮窗由根 layout 常驻挂载（chief-root.tsx），RightPane 恒在（fresh
   // 态整栏不渲染的 XMON-55 P0 律不动），detail 特例 FAB 位（right 504/
   // bottom 104，为躲 488 右栏而生）随族 FAB 退役。
@@ -848,7 +848,7 @@ export function TodoDetailPage() {
         onSearch={() => search.setOpen(true)}
       />
       <div
-        className="detail-main group/detail-main relative flex min-w-0 flex-1 flex-col bg-(--card)"
+        className="group/detail-main relative flex min-w-0 flex-1 flex-col bg-(--card)"
         data-testid="detail-main"
       >
         <DetailHead
@@ -861,7 +861,7 @@ export function TodoDetailPage() {
           onEditAssign={() => setAssignOpen(true)}
           moreButtonRef={moreAnchorRef}
         />
-        <div className="detail-body relative flex min-h-0 flex-1" data-testid="detail-body">
+        <div className="relative flex min-h-0 flex-1" data-testid="detail-body">
           <div className="detail-center flex min-w-0 flex-1 flex-col" data-testid="detail-center">
             {/* 来源 issue 行（#452 / ADR 0006 D5/D6）：live 专属——未建成给
                 重试入口；已建成进入拉一次回显（不一致中性提示、拉不到整行
@@ -1161,7 +1161,7 @@ export function TodoDetailPage() {
         title={t('确定删除该任务？此操作不可撤销。')}
         summary={
           <>
-            <span className="delete-confirm-seq text-(--text-tertiary)">#{todo.seqNum}</span>
+            <span className="text-(--text-tertiary)">#{todo.seqNum}</span>
             {todo.title}
           </>
         }

@@ -86,7 +86,7 @@ const PROJECT_CHIP_CLS =
  *  hover 吃 #791 家族同值 --accent-soft；shrink=0（机器标签是派发关键短
  *  数据，永不截断）。 */
 const MACHINE_CHIP_CLS =
-  "new-task-machine flex h-[30px] flex-none cursor-pointer items-center justify-start gap-2 border border-(--border) bg-(--card) pl-2.5 pr-3 text-[13px] font-normal text-(--foreground) hover:bg-(--accent-soft) hover:text-(--foreground) dark:hover:bg-(--accent-soft) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+  "flex h-[30px] flex-none cursor-pointer items-center justify-start gap-2 border border-(--border) bg-(--card) pl-2.5 pr-3 text-[13px] font-normal text-(--foreground) hover:bg-(--accent-soft) hover:text-(--foreground) dark:hover:bg-(--accent-soft) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
 
 /** 项目/机器 popover 面板 layout 槽（#1008：V2 弹层壳皮肤 / 描边 Arrow /
  *  absolute 定位 / z 档全退役——皮肤与动效归 PopoverContent 默认，定位归
@@ -96,7 +96,7 @@ const PROJECT_MENU_CLS = 'new-task-project-menu w-[220px] gap-0';
 
 /** 机器 popover：自底栏向上开（footer 在底，向下开出对话框边界）——
  *  Positioner side=top 承载（#1008，旧 bottom CSS + Arrow 翻转退役）。 */
-const MACHINE_MENU_CLS = 'new-task-machine-menu w-[220px] gap-0';
+const MACHINE_MENU_CLS = 'w-[220px] gap-0';
 
 /** popover 选项行（原 .new-task-project-row）：32px 行、8px 圆角；hover
  *  tint 归 motion.css #73 家族律（此处不写 hover bg，件配方被家族压掉）。 */
@@ -694,13 +694,13 @@ export function NewTaskDialog({
             计数、newtask 组的面板锚都吃这些 testid（#943 的 online-dot /
             column-count 同律）。 */}
         <div
-          className="new-task-head relative flex h-11 flex-none items-center border-b border-(--border) bg-(--popover) pr-1 pl-3"
+          className="relative flex h-11 flex-none items-center border-b border-(--border) bg-(--popover) pr-1 pl-3"
           data-testid="new-task-head"
         >
           {/* #682 第三轮（用户三审）：标题行回归抓拍形态——项目 chip + 居中
               标题 + 关闭，机器选择搬去底栏选项区（执行选择与「保存并开始」
               同族）。项目名 max-width 截断（长名不压居中标题）。 */}
-          <span className="new-task-project-wrap relative flex items-center">
+          <span className="relative flex items-center">
             {/* #176/#1008:anchored popover 家族律——#983 判决族拆退役，壳 =
                 registry Popover（Esc 归 Base UI 嵌套 layer 栈不变；定位从
                 wrap container + absolute CSS 迁 Positioner 参数 side=bottom
@@ -739,7 +739,7 @@ export function NewTaskDialog({
                     />
                   }
                 >
-                  <span className="new-task-project-avatar size-5 rounded-[6px] bg-(--project-avatar-bg) text-[11px] leading-5 text-center uppercase text-(--project-avatar-fg)">
+                  <span className="size-5 rounded-[6px] bg-(--project-avatar-bg) text-[11px] leading-5 text-center uppercase text-(--project-avatar-fg)">
                     {projectName.charAt(0).toLowerCase()}
                   </span>
                   <span className="new-task-project-name min-w-0 max-w-[220px] truncate text-[13px] leading-4 text-(--foreground)">
@@ -777,14 +777,14 @@ export function NewTaskDialog({
                       setProjectOpen(false);
                     }}
                   >
-                    <span className="new-task-project-row-avatar size-4 flex-none rounded-[5px] bg-(--project-avatar-bg) text-[9px] leading-4 text-center uppercase text-(--project-avatar-fg)">
+                    <span className="size-4 flex-none rounded-[5px] bg-(--project-avatar-bg) text-[9px] leading-4 text-center uppercase text-(--project-avatar-fg)">
                       {row.name.charAt(0).toLowerCase()}
                     </span>
                     <span className="new-task-project-row-name text-xs leading-4 text-(--foreground)">
                       {row.name}
                     </span>
                     {row.id === selected?.id && (
-                      <span className="new-task-project-check ml-auto flex text-(--card-button)">
+                      <span className="ml-auto flex text-(--card-button)">
                         <Check width={14} height={14} />
                       </span>
                     )}
@@ -793,7 +793,7 @@ export function NewTaskDialog({
               </PopoverContent>
             </Popover>
           </span>
-          <div className="new-task-title-label pointer-events-none absolute inset-x-0 text-center text-[13px] leading-4 font-medium text-(--foreground)">
+          <div className="pointer-events-none absolute inset-x-0 text-center text-[13px] leading-4 font-medium text-(--foreground)">
             {t('新建任务')}
           </div>
           {/* A4-deep 收编：icon 变体皮肤；#948：28×28 + margin-left:auto 几何
@@ -811,7 +811,7 @@ export function NewTaskDialog({
             <X />
           </Button>
         </div>
-        <div className="new-task-body flex min-h-0 flex-1 flex-col bg-(--card) px-4 pt-4 [&>.attachment-strip]:flex-none [&>.attachment-strip]:pb-2">
+        <div className="flex min-h-0 flex-1 flex-col bg-(--card) px-4 pt-4 [&>.attachment-strip]:flex-none [&>.attachment-strip]:pb-2">
           {/* spec 15 #394：单字段正文——标题输入位移除,占位提示 = 五行模板族
               （首行即任务一句话,占位标题派生取它）。
               #948：裸 textarea 收编 Textarea 件（§5.3），件配方逐位中和回
@@ -850,11 +850,11 @@ export function NewTaskDialog({
               列，strip 挂正文与 footer 之间、空时零节点。 */}
           <AttachmentStrip draft={spec} pending={pendingAttachments} />
         </div>
-        <div className="new-task-footer flex-none border-t border-(--border) bg-(--secondary) pt-[11px] pr-3 pb-3 pl-4">
-          <div className="new-task-actions flex h-[30px] items-center">
+        <div className="flex-none border-t border-(--border) bg-(--secondary) pt-[11px] pr-3 pb-3 pl-4">
+          <div className="flex h-[30px] items-center">
             {/* A4-deep 收编：icon 变体皮肤；#948：30×30 几何迁 size-[30px]
                 （原 .new-task-tools button 元素选择器，阶梯外一次性尺寸）。 */}
-            <div className="new-task-tools flex items-center gap-1.5" data-testid="new-task-tools">
+            <div className="flex items-center gap-1.5" data-testid="new-task-tools">
               {/* #304 C5 裁决:语音输入功能不做(local-first 无语音面)——
                   语音钮移除不渲染,不留死钮;添加附件/提及走 A4 Button 原语。 */}
               <Button
@@ -882,7 +882,7 @@ export function NewTaskDialog({
                 2× 律）。popover 向上开（footer 在底，向下开会出对话框边界）。
                 类名独立 new-task-machine* 家族：e2e 的 `.new-task-project*`
                 选择器钉单元素（strict mode），双 chip 共类名会打红整组。 */}
-            <span className="new-task-machine-wrap relative ms-3 flex flex-none items-center">
+            <span className="relative ms-3 flex flex-none items-center">
               {/* #656/#1008：壳 = registry Popover，与 head 的项目 popover
                   同族同律（#666 toggle 面：initialFocus=false 焦点留触发位，
                   toggle/aria-expanded 归 Trigger 原语）。向上开几何从
@@ -912,12 +912,12 @@ export function NewTaskDialog({
                       语义 = 步等它上线），灰点不是禁选态（属性载体 #910 裁定 3，
                       newtask-machine-persist.spec 钉）。 */}
                   <span
-                    className="new-task-machine-dot size-1.5 flex-none rounded-full bg-(--col-dot-done) data-[on=false]:bg-(--col-dot-idle)"
+                    className="size-1.5 flex-none rounded-full bg-(--col-dot-done) data-[on=false]:bg-(--col-dot-idle)"
                     data-testid="new-task-machine-dot"
                     data-on={machineSelected?.online ?? true}
                     aria-hidden="true"
                   />
-                  <span className="new-task-machine-name min-w-0 max-w-[120px] truncate text-[13px] leading-4 text-(--foreground)">
+                  <span className="min-w-0 max-w-[120px] truncate text-[13px] leading-4 text-(--foreground)">
                     {machineLabel}
                   </span>
                   <ChevronDown width={12} height={12} />
@@ -945,7 +945,7 @@ export function NewTaskDialog({
                     }}
                   >
                     <span
-                      className="new-task-machine-dot size-1.5 flex-none rounded-full bg-(--col-dot-done) data-[on=false]:bg-(--col-dot-idle)"
+                      className="size-1.5 flex-none rounded-full bg-(--col-dot-done) data-[on=false]:bg-(--col-dot-idle)"
                       data-on={true}
                       aria-hidden="true"
                     />
@@ -953,7 +953,7 @@ export function NewTaskDialog({
                       {t('自动')}
                     </span>
                     {machinePin === null && (
-                      <span className="new-task-project-check ml-auto flex text-(--card-button)">
+                      <span className="ml-auto flex text-(--card-button)">
                         <Check width={14} height={14} />
                       </span>
                     )}
@@ -974,7 +974,7 @@ export function NewTaskDialog({
                       }}
                     >
                       <span
-                        className="new-task-machine-dot size-1.5 flex-none rounded-full bg-(--col-dot-done) data-[on=false]:bg-(--col-dot-idle)"
+                        className="size-1.5 flex-none rounded-full bg-(--col-dot-done) data-[on=false]:bg-(--col-dot-idle)"
                         data-on={row.online ?? true}
                         aria-hidden="true"
                       />
@@ -982,7 +982,7 @@ export function NewTaskDialog({
                         {row.name}
                       </span>
                       {row.id === machinePin && (
-                        <span className="new-task-project-check ml-auto flex text-(--card-button)">
+                        <span className="ml-auto flex text-(--card-button)">
                           <Check width={14} height={14} />
                         </span>
                       )}
@@ -991,7 +991,7 @@ export function NewTaskDialog({
                 </PopoverContent>
               </Popover>
             </span>
-            <div className="new-task-buttons">
+            <div>
               {/* e2e 别名叠加：integration/test/m5-web-e2e.test.ts 钉
                   .new-task-start（overlays lane 误删致 CI 红，此处恢复；
                   类名与规则无关，纯选择器锚点） */}
@@ -1054,10 +1054,10 @@ currentColor 系而非 border-border/muted-foreground。
           className={DISCARD_PANEL_CLS}
           aria-label={t('放弃新建任务？未保存的内容将丢失。')}
         >
-          <div className="new-task-discard-title text-sm leading-5 font-medium text-(--foreground)">
+          <div className="text-sm leading-5 font-medium text-(--foreground)">
             {t('放弃新建任务？未保存的内容将丢失。')}
           </div>
-          <div className="new-task-discard-actions flex h-[30px] items-center justify-end gap-2.5">
+          <div className="flex h-[30px] items-center justify-end gap-2.5">
             {/* 原 .new-task-discard-keep：透明无框 12px 钮（ghost 七通道中和）。
                 墨色换 muted-foreground：旧 --text-dim 亮模 on --dialog-bg 实测
                 2.89:1，连正典给 dim 槽自留的 3:1 地板都不过（#943
@@ -1072,12 +1072,7 @@ currentColor 系而非 border-border/muted-foreground。
             >
               {t('继续编辑')}
             </Button>
-            <Button
-              variant="destructive"
-              size="default"
-              className="new-task-discard-drop"
-              onClick={discardAndClose}
-            >
+            <Button variant="destructive" size="default" onClick={discardAndClose}>
               {t('放弃并关闭')}
             </Button>
           </div>

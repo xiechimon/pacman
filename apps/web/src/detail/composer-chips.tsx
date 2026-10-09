@@ -76,12 +76,10 @@ export function ComposerChips({ draft, files, suspended }: ComposerChipsProps) {
         <span
           key={key}
           className={`${mentionChipClass(chip.kind)}${
-            freshKeys.has(key)
-              ? ' composer-chip--fresh animate-in fade-in-0 zoom-in-98 duration-100'
-              : ''
+            freshKeys.has(key) ? ' animate-in fade-in-0 zoom-in-98 duration-100' : ''
           }`}
-          // #910 裁定 3：fresh 是瞬态动画状态——data-fresh 数据载体替类名
-          // 断言面（composer-chip--fresh 类名保留作动画钩别名）。
+          // #910 裁定 3：fresh 是瞬态动画状态——data-fresh 数据载体是唯一
+          // 断言面（composer-chip--fresh 别名零引用，已随 #1036 终摘）。
           {...(freshKeys.has(key) ? { 'data-fresh': 'true' } : {})}
         >
           <span className={COMPOSER_CHIP_LABEL}>{chip.label}</span>

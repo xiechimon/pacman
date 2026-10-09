@@ -76,7 +76,7 @@ function TokenSection({
     ['缓存命中率', stats.cacheHitRate],
   ];
   return (
-    <section className="pane-section flex min-h-0 flex-1 flex-col">
+    <section className="flex min-h-0 flex-1 flex-col">
       <SectionHead icon={<BarChart3 width={14} height={14} />} select={select} />
       <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
         {/* #951（overlays.css 清零）：token 用量面（r7 30 实测 60/38/27 行族）
@@ -121,7 +121,7 @@ function HistorySection({
   // section has nothing to close, and the failed phase's header 重跑
   // primary already carries the real action, so the section lists rows only.
   return (
-    <section className="pane-section flex min-h-0 flex-1 flex-col">
+    <section className="flex min-h-0 flex-1 flex-col">
       <SectionHead icon={<History width={14} height={14} />} select={select} />
       <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
         {/* #951（overlays.css 清零）：运行历史面（r7 32 / r8 80）律等值迁
@@ -186,7 +186,7 @@ function BranchSection({
   const pr = buildQ.data?.prUrl ?? null;
   const prNumber = buildQ.data?.prNumber ?? null;
   return (
-    <section className="pane-section flex min-h-0 flex-1 flex-col">
+    <section className="flex min-h-0 flex-1 flex-col">
       <SectionHead icon={<Download width={14} height={14} />} select={select} />
       <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
         <div className="p-4">
@@ -206,7 +206,7 @@ function BranchSection({
               section tail — one static column, no sub-tabs. #1006 原型：
               标签走 registry Label 件，只读槽走 READONLY_BOX（branch-dialog
               单源）。 */}
-          <div className="pane-branch-pr mt-4 flex flex-col gap-2">
+          <div className="mt-4 flex flex-col gap-2">
             <Label>Pull Request</Label>
             {pr !== null && prNumber != null ? (
               // #704 PR 槽回填态：同 box 形，链接色 + 下划线（原 .dlg-pr-link）。
@@ -222,7 +222,7 @@ function BranchSection({
               <div className={READONLY_BOX}>{t('未创建')}</div>
             )}
           </div>
-          <div className="pane-branch-foot mt-4">
+          <div className="mt-4">
             <SyncButton
               buildId={buildId}
               canSync={sync.canSync}

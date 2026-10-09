@@ -90,9 +90,9 @@ export function TodoCard({
       data-todo-id={todo.id}
       className="todo-card relative w-full gap-0 px-[13.5px] pt-[9.5px] pb-[11.5px] select-none"
     >
-      <div className="todo-card-row1 flex min-h-4 items-center">
+      <div className="flex min-h-4 items-center">
         <ProjectAvatar char={chipInitial} />
-        <span className="todo-project-name ml-1 truncate text-[11px] leading-4 text-muted-foreground">
+        <span className="ml-1 truncate text-[11px] leading-4 text-muted-foreground">
           {chipName}
         </span>
         {/* #445 卡片标签 chip：首行项目名之后（身份行语义位）。#1006 R5
@@ -135,7 +135,7 @@ export function TodoCard({
         </Link>
       </h3>
 
-      <div className="todo-card-bottom mt-[7.5px] flex h-[26px] items-center">
+      <div className="mt-[7.5px] flex h-[26px] items-center">
         <span className="todo-agent-avatar relative size-5 flex-none [&_img]:block [&_img]:size-5">
           {fresh ? (
             // owner placeholder while no agent run exists (r7 22/22d)
@@ -152,7 +152,7 @@ export function TodoCard({
           {badge != null && (
             <span
               aria-hidden={badge === 'failed' ? true : undefined}
-              className={`todo-agent-badge todo-agent-badge--${badge} absolute -top-[2px] -right-1 flex size-[9px] items-center justify-center rounded-full text-[8px] leading-none font-bold ${
+              className={`todo-agent-badge--${badge} absolute -top-[2px] -right-1 flex size-[9px] items-center justify-center rounded-full text-[8px] leading-none font-bold ${
                 badge === 'idle'
                   ? 'bg-(--badge-idle)'
                   : badge === 'attention'
@@ -172,7 +172,7 @@ export function TodoCard({
             </span>
           )}
         </span>
-        <span className="todo-card-time relative top-[1.5px] ml-[7px] text-[11px] leading-4 text-muted-foreground">
+        <span className="relative top-[1.5px] ml-[7px] text-[11px] leading-4 text-muted-foreground">
           {relativeTime(todo.phaseAt, now, t)}
         </span>
         {/* #640 / r14 §5.4：总管建卡芯片（参考站 11-todo12-card-zoom 同构，
@@ -182,14 +182,14 @@ export function TodoCard({
         {todo.chiefCreated === true && (
           <Badge
             variant="outline"
-            className="todo-card-chief-chip ml-[10.5px] h-4 flex-none rounded-4xl border-border px-1.5 py-0 text-[10px] leading-none font-normal text-muted-foreground"
+            className="ml-[10.5px] h-4 flex-none rounded-4xl border-border px-1.5 py-0 text-[10px] leading-none font-normal text-muted-foreground"
           >
             {t('由总管创建')}
           </Badge>
         )}
         {todo.hasPlan && (
           <span
-            className="todo-card-metric ml-[10.5px] flex flex-none items-center text-muted-foreground"
+            className="ml-[10.5px] flex flex-none items-center text-muted-foreground"
             role="img"
             aria-label={t('方案')}
           >
@@ -198,14 +198,14 @@ export function TodoCard({
         )}
         {todo.hasChanges && (
           <span
-            className={`todo-card-metric flex flex-none items-center text-muted-foreground ${todo.hasPlan ? 'ml-[2px]' : 'ml-[10.5px]'}`}
+            className={`flex flex-none items-center text-muted-foreground ${todo.hasPlan ? 'ml-[2px]' : 'ml-[10.5px]'}`}
             role="img"
             aria-label={t('变更')}
           >
             <GitCommit />
           </span>
         )}
-        <span className="todo-card-spacer flex-1" />
+        <span className="flex-1" />
         {action != null && (
           <Button
             variant={action.kind === 'primary' ? 'default' : 'outline'}
