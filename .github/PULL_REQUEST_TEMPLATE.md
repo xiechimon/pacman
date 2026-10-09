@@ -8,6 +8,8 @@ before/after is best). The format is specified, not a suggestion:
 
   drawio -x -f svg -e --embed-svg-images -o name.drawio.svg name.drawio
 
+Before committing the diagram, run the text-fit gate over it -- a label that spills out of its shape fails the check (#1087): python3 scripts/check-diagram-text-fit.py 'docs/verify/**/*.drawio.svg'
+
 GitHub renders it as an inline SVG, draw.io reopens it for edits, and
 the pr-evidence gate probes it like any embedded image. Commit it
 under docs/verify/<ticket>/ and embed it here as ![label](raw-url).
