@@ -114,16 +114,31 @@ interface DialogShellProps {
 
 /** 触发位记忆（#389 回陷契约）：关闭态持续记住"最后一个对话框之外的活动元素"，
  *  关闭时归还。开态不记（那时的 activeElement 已在层内）；也不经 Base UI 的
- *  trigger 推定——仓内触发钮多在 dialog 树外。 */
+ *  trigger 推定——仓内触发钮多在 dialog 树外。
+ *  #1037 修采样机制：旧实现靠「每次渲染读一遍 activeElement」，而「点击触发钮
+ *  开层」路径上 mousedown 落焦到 open=true 提交之间通常没有任何渲染——origin
+ *  停在挂载时的 body，Esc 后焦点掉回 body（schedules 顶栏钮实测）；此前通过的
+ *  面（sidebar 新建任务）只是恰好有焦点/悬停引发的中间渲染，是巧合不是机制。
+ *  改走 focusin 事件跟踪：关闭态的每次焦点移动都被记录，与渲染时序解耦。
+ *  body 不记——它不是可归还的触发位（元素移除后焦点回落 body 不得覆盖真值）。 */
 function useReturnFocus(open: boolean) {
   const origin = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (open) return;
-    const el = document.activeElement;
-    if (el instanceof HTMLElement && el.closest('[data-slot="dialog-content"]') == null) {
-      origin.current = el;
-    }
-  });
+    const record = () => {
+      const el = document.activeElement;
+      if (
+        el instanceof HTMLElement &&
+        el !== document.body &&
+        el.closest('[data-slot="dialog-content"]') == null
+      ) {
+        origin.current = el;
+      }
+    };
+    record();
+    document.addEventListener('focusin', record);
+    return () => document.removeEventListener('focusin', record);
+  }, [open]);
   const restore = useCallback(() => {
     origin.current?.focus();
   }, []);

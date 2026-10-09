@@ -2,9 +2,11 @@ import { expect, type Locator, test } from '@playwright/test';
 
 // #193: 矮视口(800×500)+ 各弹窗最高内容态下,submit/取消恒在视口内可点,
 // 内容区(dialog-body)滚动而不推挤按钮区(dialog-foot)。#175 只修了 provider
-// 本弹窗,本 spec 把该验收钉到整族(DialogShell 全部 10 个消费点;自建
-// 自建 dialog 容器经 grep 证实不存在;mcp 添加弹窗已随 spec 13/#368 本地
-// config 只读制撤除)。每条钉一个面的一种失败方式:
+// 本弹窗,本 spec 把该验收钉到整族(DialogShell 全部消费点;mcp 添加弹窗已随
+// spec 13/#368 本地 config 只读制撤除)。「自建 dialog 容器经 grep 证实不
+// 存在」这句旧断言已过期——schedules 新建定时曾自组裸 DialogContent(无封
+// 顶/无滚动/footer 不钉底),#1037 收编回 DialogShell 并在 900×420 补钉
+// (本文件末条)。每条钉一个面的一种失败方式:
 // 1. provider(#175 源头面):3 模型行 → body 溢出,submit 钉底且滚动不位移
 // 2. secret / 4. agent / 5. charter:静态表单面 → submit/取消 在视口
 // 3. machine:disclosure 展开(最高内容态)→ 底部链接在视口
@@ -163,4 +165,36 @@ test('accept(34): 取消/完成在视口', async ({ page }) => {
   await expectShellCapped(dialog);
   await expect(dialog.getByRole('button', { name: '取消' })).toBeInViewport();
   await expect(dialog.getByRole('button', { name: '完成' })).toBeInViewport();
+});
+
+// 11. schedules 新建定时(#1037 c 面):曾是全仓唯一自组裸 DialogContent 的
+//     弹层——无封顶、body 不可滚、footer 不钉底,矮视口下面板上下溢出且
+//     取消/保存/X 全部够不着。收编回 DialogShell 后按票面在 900×420 实测;
+//     内容态取 r3-92b(单次档,日期行在场 = 最高内容态 ≈495px > 372 封顶)。
+test('schedules 新建定时(900×420): 封顶、body 内滚、取消/保存/X 恒在视口 (#1037)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 900, height: 420 });
+  await page.goto('/app/schedules?scenario=r3-92b');
+  const dialog = page.getByRole('dialog', { name: '新建定时' });
+  await expect(dialog).toBeVisible();
+  await expectBodyOverflows(dialog);
+  const box = await dialog.boundingBox();
+  expect(box).not.toBeNull();
+  if (box == null) return;
+  expect(box.height).toBeLessThanOrEqual(420 - 48 + 0.5);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(420.5);
+  const save = dialog.getByRole('button', { name: '保存' });
+  await expect(save).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '取消' })).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '关闭' })).toBeInViewport();
+  // 内容区滚到底,钉底钮位置不动(滚动不推挤按钮区)
+  const before = await save.boundingBox();
+  await dialog.getByTestId('dialog-body').evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  const after = await save.boundingBox();
+  expect(after).toEqual(before);
+  await expect(save).toBeInViewport();
 });

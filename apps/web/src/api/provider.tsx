@@ -8,6 +8,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createContext, type ReactNode, useContext, useMemo } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import { USER_NAME } from '../fixtures/fixtures.js';
+import { SCENARIO_PARAM } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { useMembers, useSession, useTeams } from './hooks.js';
 import { isFixtureMode } from './mode.js';
 import { useTeamStream } from './sse.js';
@@ -100,9 +102,30 @@ export function LiveDataBridge() {
     }),
     [live, teamId, session.data],
   );
+  // #1037 传播契约：`?scenario=` 随侧栏跳转传播是设计行为（sidebar 携带
+  // live search，fixture/e2e 数据源要活过导航；sidebar-nav / shell-consistency
+  // 等 18+ 断言钉住 URL 携带），生产 build 编译期折叠该参数、永不受影响。
+  // dev/fixture build 里误入该模式的代价是整站换成冻结样例数据——模式必须
+  // 自我声明：这枚 chip 就是可见提示。
+  const scenarioId = live ? null : new URLSearchParams(search).get(SCENARIO_PARAM);
   return (
     <LiveDataContext.Provider value={value}>
+      {scenarioId != null && <FixtureModeChip id={scenarioId} />}
       <Outlet />
     </LiveDataContext.Provider>
+  );
+}
+
+/** #1037：fixture 模式的自我声明 chip——底部居中悬浮、pointer-events-none
+ *  （一个模式提示自己绝不能成为下一个点不动的控件）、z 档压在 dialog 族
+ *  （z-50）与 chief 悬浮窗（--z-floating）之下：模态开着时让位，关层即回。
+ *  仅 fixture 模式渲染（isFixtureMode = scenario 机制存活位 + URL 带参），
+ *  生产 build 编译期折叠恒不可见。 */
+function FixtureModeChip({ id }: { id: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="fixture-mode-chip pointer-events-none fixed bottom-2 left-1/2 z-40 -translate-x-1/2 rounded-full bg-popover px-3 py-1 text-xs text-muted-foreground ring-1 ring-foreground/10">
+      {t('示例数据（scenario {id}）', { id })}
+    </div>
   );
 }
