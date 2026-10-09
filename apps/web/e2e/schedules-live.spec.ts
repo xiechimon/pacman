@@ -119,12 +119,19 @@ test('live face: 保存 fires POST /api/schedules with the form state (#1037)', 
   expect(panel!.width).toBeLessThanOrEqual(488.5);
 
   // Drive the form: 单次 tab + hour 10 — the wire body must carry both.
+  // #1010/#1084 hook migration (same law as m5-web-e2e): the registry compound
+  // select portals its popup to body — dialog-scoped listbox locators can never
+  // see it — and Base UI puts role=listbox on the inner Select.List while the
+  // SelectContent aria-label lands on the role=presentation outer Popup (the
+  // listbox's own aria-label is always null), so the old
+  // `[role=listbox][aria-label=时]` compound hook is unreachable on the
+  // pristine component. The trigger keeps aria-label=时 and still renders
+  // inside the dialog; the open popup is the only listbox in the a11y tree
+  // (closed popups stay display:none), so page-level getByRole('listbox')
+  // is unambiguous.
   await dialog.getByRole('tab', { name: '单次' }).click();
   await dialog.locator('button[aria-label="时"]').click();
-  await dialog
-    .locator('[role="listbox"][aria-label="时"]')
-    .getByRole('option', { name: '10', exact: true })
-    .click();
+  await page.getByRole('listbox').getByRole('option', { name: '10', exact: true }).click();
   await dialog.getByRole('button', { name: '保存' }).click();
 
   await expect.poll(() => posts.length).toBe(1);
