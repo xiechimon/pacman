@@ -7,6 +7,7 @@
 // claimed → running → awaiting-upload →（done | failed）；中断残留由
 // machine-loop recover 面对账续跑。
 
+import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
@@ -18,6 +19,7 @@ import type {
   CommitIdentity,
   DeliveredImage,
   LocalToolDef,
+  MachineAskBody,
   MachineDoneBody,
   PreparedWorkspace,
   ProviderConfig,
@@ -636,6 +638,45 @@ export async function runStep(
   const localToolDefs = [secretTool, remoteShellTool, createTagTool].filter(
     (t): t is LocalToolDef => t !== null,
   );
+  // —— #1049 问答阻塞通道（ask_user 拦截面；两后端共用）———————————————
+  // ask_user 不走 relayTool（10s 超时载不动「挂到人答为止」）——专用
+  // client.askUser 循环（hold 长轮询 + requestId 幂等）。等答期间无流事件，
+  // idle/body/duration 三臂看门狗由本循环 30s 重臂（人答延迟是合法等待，
+  // 不是死流）；askAbort 是唯一退出面（看门狗触发/流收尾即 abort，等答
+  // 随 poll 退场，步照常收尾——server 侧终态钩子随后收口卡片）。
+  const askAbort = new AbortController();
+  let askKeepAlive: (() => void) | null = null;
+  const runAskChannel = async (params: Record<string, unknown>): Promise<string> => {
+    if (client.askUser === undefined) throw new Error('ask channel unavailable');
+    const requestId = `ask-${randomUUID()}`;
+    const keepAlive = setInterval(() => askKeepAlive?.(), 30_000);
+    keepAlive.unref?.();
+    try {
+      // 注意绑定：client.askUser 必须作为方法调用（this.fetchImpl）——剥出来
+      // 当裸函数调用会丢 this（实测 TypeError: reading 'fetchImpl'）。
+      const response = await client.askUser(
+        stepId,
+        {
+          requestId,
+          questions: (params.questions ?? []) as MachineAskBody['questions'],
+        },
+        { signal: askAbort.signal },
+      );
+      return JSON.stringify(response);
+    } catch (err) {
+      // 等待被收线（停止/看门狗/传输终错）→ 不抛断回合：cancelled 文本回给
+      // 模型（它收束回合），收尾路径照常走。
+      const msg = err instanceof Error ? err.message : String(err);
+      return JSON.stringify({
+        status: 'cancelled',
+        requestId,
+        answers: null,
+        reason: `ask channel aborted: ${msg}`,
+      });
+    } finally {
+      clearInterval(keepAlive);
+    }
+  };
   // 工具面按步全量透传（#647/T4）：claude-code 后端把 host 注入工具
   // （remoteTools relay + localTools 本地执行）包成 in-process MCP server、
   // McpEndpoint 映射 SDK 原生 config——T1 期的 runtimeDrop 降级（worker/review
@@ -656,8 +697,12 @@ export async function runStep(
       ? {
           remoteTools,
           // relay 执行（r5 §3.1 bundle：execute → POST tool/<stepId> {name,params}
-          // → {text}；replaySafe 读工具带重试预算 + 10s 超时）。
+          // → {text}；replaySafe 读工具带重试预算 + 10s 超时；ask_user 拦截
+          // 走专用问答通道（#1049，见上方 runAskChannel）——pi customTool 与
+          // claude-code in-process MCP 工具两消费面同径。client.askUser 缺席
+          // （单测桩）回落 relayTool 旧径。
           executeRemoteTool: (name, params) => {
+            if (name === 'ask_user' && client.askUser) return runAskChannel(params);
             const def = remoteTools.find((t) => t.name === name);
             return client.relayTool(stepId, name, params, {
               ...(def?.replaySafe ? { replaySafe: true } : {}),
@@ -830,6 +875,7 @@ export async function runStep(
   const tripTimeout = (arm: StreamTimeoutArm) => {
     timedOut = true;
     timeoutArm = arm;
+    askAbort.abort(); // #1049：等答循环随看门狗退场（不占线）
     void handle.stop();
   };
   const armWatchdog = (ms: number, arm: 'first' | 'idle') => {
@@ -848,9 +894,17 @@ export async function runStep(
   };
   // 步级绝对上界（#699 失败方式 3）：不随事件重置、不随回落轮重置（单步一
   // 份预算）；超界即收——「事件流活跃但完全无上界」的日志/费用失控墙。
+  // #1049 例外：问答等待期不算「步在跑」——等答期间由 ask 循环 30s 重臂
+  // 三臂（人答延迟是合法等待，费用墙量的是模型在干活的时间）。
   const armDurationCap = () => {
+    if (durationCap) clearTimeout(durationCap);
     durationCap = setTimeout(() => tripTimeout('duration'), streamDurationCapMs);
     durationCap.unref?.();
+  };
+  askKeepAlive = () => {
+    armWatchdog(streamTimeouts.idle, 'idle');
+    armBodyTimeout();
+    armDurationCap();
   };
   // —— 段（#955 / ADR 0011）———————————————————————————————————————————————
   // 把模型的连续输出按「一段连续同类型增量」封成 transcript 行：封出即落
@@ -1248,6 +1302,9 @@ export async function runStep(
   if (watchdog) clearTimeout(watchdog);
   if (bodyTimeout) clearTimeout(bodyTimeout);
   if (durationCap) clearTimeout(durationCap);
+  // #1049：流收尾即收线问答等待（等答的 tool 调用随 poll 退场；卡片由
+  // server 侧终态钩子收口——步收尾序列先于 done 上报，不抢先取消）。
+  askAbort.abort();
   // —— #708 失败方式 1：终态错误优先级 = 真实终态错误 > 超时收尸文案。
   // 超时收尸与底层错误并存（storm 场景：auto_retry 吸收前错、lastError 被
   // 清）时组合成文（「stream timeout …；根因: 400 …」），不静默丢根因；

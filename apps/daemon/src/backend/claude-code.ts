@@ -886,8 +886,13 @@ export class ClaudeCodeBackend implements AgentBackend {
     // 非空值。
     const append = opts.systemPrompt;
     // A4 零凭据：不消费 opts.provider（inert 占位）；A11 model verbatim；
-    // A13 bypassPermissions + disallowedTools（readOnly 收 Edit/Write；
-    // AskUserQuestion 恒拒 = 非交互 daemon 面）。
+    // A13 bypassPermissions + disallowedTools（readOnly 收 Edit/Write）。
+    // #1049 起 AskUserQuestion 仍恒拒，理由换血：SDK 原生问答工具与 pacman 的
+    // 结构化 ask_user（mcp__pacman__ask_user，阻塞语义 = in-process MCP 工具
+    // 调用默认无超时）是同一能力的两个面——留一个通道（pacman 词表件），问答
+    // 卡/幂等/收口全走 server 单源；实测 SDK 会话里原生工具本就不进 toolset
+    // （verify/1049 probe：模型自报「no AskUserQuestion tool in my toolset」，
+    // onUserDialog + supportedDialogKinds 已声明也不改变）。
     const disallowedTools = [SDK_ASK_TOOL, ...(opts.readOnly === true ? SDK_WRITE_TOOLS : [])];
     const abort = new AbortController();
     const sessionId = resumeId ?? randomUUID(); // 自铸 UUID（A7 通道同值回传）

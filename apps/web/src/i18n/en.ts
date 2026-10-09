@@ -877,4 +877,12 @@ export const EN: Record<string, string> = {
   '删除 Agent 失败，请重试。': 'Could not delete the agent. Try again.',
   '删除记忆失败，请重试。': 'Could not delete the memory. Try again.',
   '同步失败，请重试。': 'Sync failed. Try again.',
+  总管提问: 'Chief question',
+  等你回答: 'Awaiting your answer',
+  已回答: 'Answered',
+  取消提问: 'Dismiss question',
+  提交回答: 'Submit answers',
+  输入你的回答: 'Type your answer',
+  '提交回答失败，请重试。': 'Could not submit your answers. Try again.',
+  '取消提问失败，请重试。': 'Could not dismiss the question. Try again.',
 };

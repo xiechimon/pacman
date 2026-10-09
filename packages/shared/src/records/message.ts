@@ -103,6 +103,94 @@ export const chiefTurnErrorContentSchema = z.object({
 });
 export type ChiefTurnErrorContent = z.infer<typeof chiefTurnErrorContentSchema>;
 
+// —— 结构化问答（#1049：ask_user 升级 + 阻塞回合 + 问答卡）——————————————————
+
+/** 问答卡 content kind（#1049 [设计]）：ask_user 的提问落 chief_message
+ * assistant 行，content = JSON 串（chief_turn_error 同族）。一问一行、
+ * id = `<requestId>`（幂等 upsert 键 = requestId，重投不叠卡）；答/取消由
+ * 答题端点就地改写 content 的 status/answers 位并重发 message 事件。写入端
+ * （services/chief-questions.ts）与呈现端（web mappers / chief drawer）双端
+ * 单源消费本 schema。 */
+export const ASK_USER_QUESTION_KIND = 'ask_user_question';
+
+/** 单题形（D1：选项 + 多选 + 一次多问）。options 空 = 自由文本答（pi
+ * ctx.ui.input 的映射位）；非空 = 可点选项（label + 可选 hint）。 */
+export const askUserQuestionSchema = z.object({
+  /** 短标题（卡上按块头渲染）。 */
+  header: z.string().min(1),
+  question: z.string().min(1),
+  options: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        description: z.string().optional(),
+      }),
+    )
+    .max(8),
+  /** 多选（选项题；自由文本题恒单答，位被忽略）。 */
+  multiSelect: z.boolean().optional(),
+});
+export type AskUserQuestion = z.infer<typeof askUserQuestionSchema>;
+
+/** 单题答案：选项题 = choices（选中的 label 集，按呈现序）；自由文本题 =
+ * text。两者互斥由答题端点按题形执法（选项题收 text / 文本题收 choices
+ * = 400）。 */
+export const askUserAnswerSchema = z
+  .object({
+    header: z.string(),
+    choices: z.array(z.string().min(1)).optional(),
+    text: z.string().optional(),
+  })
+  .refine((a) => (a.choices !== undefined) !== (a.text !== undefined), {
+    message: 'answer carries exactly one of choices | text',
+  });
+export type AskUserAnswer = z.infer<typeof askUserAnswerSchema>;
+
+/** 问答卡行 content 全形。status：pending（等答）→ answered（已答）/
+ * cancelled（用户取消或步终态收口——D3：永不因超时自动拍板， cancelled 是
+ * 唯一非答终态）。answers 与 status 同步改写（answered 时非 null）；
+ * cancelReason 在 cancelled 时携带语境（用户主动取消 vs 步终态收口），机器
+ * 面把它回给模型。 */
+export const askUserQuestionContentSchema = z.object({
+  kind: z.literal(ASK_USER_QUESTION_KIND),
+  requestId: z.string().min(1),
+  status: z.enum(['pending', 'answered', 'cancelled']),
+  questions: z.array(askUserQuestionSchema).min(1).max(4),
+  answers: z.array(askUserAnswerSchema).nullable(),
+  cancelReason: z.string().optional(),
+});
+export type AskUserQuestionContent = z.infer<typeof askUserQuestionContentSchema>;
+
+/** 答题端点 body（web → server）：answers 与卡上 questions 按序一一对应。 */
+export const askUserAnswerBodySchema = z.object({
+  answers: z.array(askUserAnswerSchema).min(1),
+});
+export type AskUserAnswerBody = z.infer<typeof askUserAnswerBodySchema>;
+
+/** 机器问答通道请求（daemon → server，POST /api/machine/ask/{stepId}）：
+ * requestId 由 daemon 生成（`ask-<uuid>`）并在整个等待循环里复用（D4 幂等
+ * 键——连接断开重投同 id，server 命中既有行，不重复建卡不重复通知）。形
+ * 状闸 = `ask-` 前缀（问句行 id 同值；前缀防与 `user-`/`chief-err-` 等
+ * special-row id 前缀撞车）。 */
+export const ASK_REQUEST_ID_PATTERN = /^ask-[0-9a-f][0-9a-f-]{7,63}$/;
+export const machineAskBodySchema = z.object({
+  requestId: z.string().regex(ASK_REQUEST_ID_PATTERN),
+  questions: z.array(askUserQuestionSchema).min(1).max(4),
+});
+export type MachineAskBody = z.infer<typeof machineAskBodySchema>;
+
+/** 机器问答通道响应：status = 行当前态；hold 到期未答 = pending（daemon 原样
+ * 重发）；answered 携 answers；cancelled 携 reason（用户取消 / 步终态收口）。
+ * text 字段是给模型读的工具结果串（pi customTool / claude-code MCP 工具面
+ * 同一消费形），由 daemon 侧组包。 */
+export const machineAskResponseSchema = z.object({
+  status: z.enum(['pending', 'answered', 'cancelled']),
+  requestId: z.string(),
+  answers: z.array(askUserAnswerSchema).nullable(),
+  reason: z.string().nullable(),
+});
+export type MachineAskResponse = z.infer<typeof machineAskResponseSchema>;
+
 /** 跨机续跑降级标记 canon（#862 T1）：daemon 会话续接失败
  *（SessionNotResumable，典型 = 他机认领释放步、原会话文件不在本机）回退新
  * 会话时插 transcript system 行。写入端（daemon runner 回退面）与呈现端（web

@@ -629,6 +629,12 @@ export const MACHINE_WIRE_EXTENSIONS = [
     reason: '[设计] M7 #308 stop 拉取-确认（停止钮单槽 pending，?stepId=；steer 同律）',
   },
   {
+    method: 'POST',
+    path: '/api/machine/ask/{stepId}',
+    reason:
+      '[设计] #1049 结构化问答阻塞通道（ask_user 升级；requestId 幂等 + hold 长轮询 ~70s 到期回 pending；响应 machineAskResponseSchema）',
+  },
+  {
     method: 'GET',
     path: '/api/machine/skills/{stepId}',
     reason:

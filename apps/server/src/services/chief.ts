@@ -56,6 +56,7 @@ import {
 import { sha256Hex } from '../lib/crypto.js';
 import { HttpError } from '../lib/errors.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
+import { cancelPendingQuestions } from './chief-questions.js';
 import { runtimeGatePasses, stepRuntimeFor } from './dispatch-eligibility.js';
 import {
   CHIEF_PIN_OFFLINE_HINT,
@@ -791,7 +792,7 @@ export function composeChiefSystemPrompt(deps: ChiefResourceDeps, teamId: string
     // 规则表、不按设置合成——设置槽已删）。判断纪律原句照抄 multica 内置
     // Chief of Staff（Mika）的出厂指令：产品只提供机制（判定 + 说 + 可推翻），
     // 不提供政策（D6：不把任何单一工作流焊进出厂默认）。
-    '- 派发判定（逐次派发自行判断，无团队设置槽，ADR 0014）：先规划还是直接修，由你自己判。判断纪律：当信息会实质改变结果、执行方式、权限或安全时才问；否则自己决定，并说出你决定了什么。可判信号（非硬规则）：有可复现步骤或失败测试的缺陷 → 直接修（run_builds 传 withPlan=false）；引入新能力、或改动跨包 → 先问（结构化问答通道就位前，问 = 先规划：传 withPlan=true，方案停在确认关口，方案文档即问题，用户批准或打回即表态）；判不准 → 先规划（withPlan 缺省即先规划）。直接修只跳过方案确认闸，审阅关口恒在——完成后仍停在审阅关口等用户审。',
+    '- 派发判定（逐次派发自行判断，无团队设置槽，ADR 0014）：先规划还是直接修，由你自己判。判断纪律：当信息会实质改变结果、执行方式、权限或安全时才问；否则自己决定，并说出你决定了什么。可判信号（非硬规则）：有可复现步骤或失败测试的缺陷 → 直接修（run_builds 传 withPlan=false）；引入新能力、或改动跨包 → 先问（问 = ask_user 结构化提问：本回合会挂起等用户在问答卡上作答，一次可带最多 4 问；判不准且不便当面问时也可传 withPlan=true 先规划，方案停在确认关口，用户批准或打回即表态）；判不准 → 先规划（withPlan 缺省即先规划）。直接修只跳过方案确认闸，审阅关口恒在——完成后仍停在审阅关口等用户审。',
     '- 派发回执：每次派发把判定理由写进 run_builds 的 dispatchReason 参数（随调用落 transcript，判定可审计），并在给用户的回执里写明「我判为直接修 / 先规划，因为 X」。用户可就地一句话推翻该判定——推翻只影响这一次派发（已开跑的先 cancel_builds 取消，再按相反模式重派），不外推为常设偏好。',
     '- 分派：读 agents 的职责文本按权重选择；归属按交付物与改动范围区分——面向读者的文档产出（README/手册/教程/变更日志）归文档职责 Agent；后端功能、缺陷、重构与性能归后端职责 Agent；Web 界面布局、样式与交互归前端职责 Agent；CI 流水线、构建打包、依赖与部署配置归运维职责 Agent。归属拿不准时先 ask_user 澄清，不猜。run_builds 传 assignment.build.agentId。',
     '- 交付物优先于路径：归属看交付物，不看请求里出现的路径或技术词——要更新的是 README 就归文档职责，哪怕那个 README 躺在 apps/web 下。',
@@ -1015,6 +1016,13 @@ export function failAbandonedChiefSteps(
     }
     if (reason === null) continue;
     deps.db.update(step).set({ status: 'failed' }).where(eq(step.id, row.id)).run();
+    // #1049 失联收口同款：pending 问答卡翻 cancelled（机器死等答的 hold 随
+    // poll 命中退场；卡片不再谎称还在等答）。
+    cancelPendingQuestions(
+      { db: deps.db, ...(deps.convHub !== undefined ? { convHub: deps.convHub } : {}) },
+      thread.id,
+      '执行机器失联，回合已失败收尾',
+    );
     finishChiefTurn(deps, thread.id, { status: 'failed' });
     const errorRow = {
       id: `chief-err-${row.id}`,

@@ -11,6 +11,7 @@
 import type { ToolCallRecord } from '@pacman/shared';
 import {
   machineActivityBodySchema,
+  machineAskBodySchema,
   machineClaimBodySchema,
   machineDoneBodySchema,
   machineEnrollBodySchema,
@@ -48,6 +49,7 @@ import {
   findMachineByToken,
   finishStep,
   heartbeatStep,
+  machineAsk,
   machineAttachmentDownload,
   machineSkillFile,
   machineSkillsManifest,
@@ -369,6 +371,24 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     const body = parseWith(machineToolBodySchema, raw, 'body');
     reportTool(deps, row.id, c.req.param('stepId'), body as ToolCallRecord);
     return c.json({ ok: true as const });
+  });
+
+  // —— POST /api/machine/ask/{stepId}（#1049 结构化问答阻塞通道，MACHINE_WIRE_
+  // EXTENSIONS 登记位）：{requestId, questions} → {status, requestId, answers,
+  // reason}。hold 长轮询（默认 ~70s；?holdMs= 测试注入，上限同默认）——到期
+  // 仍 pending，daemon 原样重发（requestId 幂等，D4 重投不叠卡）。signal =
+  // 请求断连（#1065 僵尸语义同律）。
+  app.post('/api/machine/ask/:stepId', async (c) => {
+    const row = me(c);
+    const body = parseWith(machineAskBodySchema, await jsonBody(c), 'body');
+    const rawHold = Number(c.req.query('holdMs'));
+    const holdMs = Number.isFinite(rawHold) && rawHold >= 0 ? Math.min(rawHold, 70_000) : 70_000;
+    return c.json(
+      await machineAsk(deps, row.id, c.req.param('stepId'), body, {
+        holdMs,
+        signal: c.req.raw.signal,
+      }),
+    );
   });
 
   // —— GET /api/machine/token/{stepId}（per-step 凭证下发，02 §8）——————————————

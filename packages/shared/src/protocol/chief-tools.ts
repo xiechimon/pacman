@@ -526,9 +526,42 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   },
   // —— Chief 私有侧 10 ——
   {
+    // #1049：结构化问答 + 阻塞语义。工具结果 = 用户在问答卡上的实际选择
+    // （等答期间本回合 step 挂起，答完同一回合继续）；取消/步终态 →
+    // cancelled 文本。D3：server 侧永不超时自动拍板。
     name: 'ask_user',
-    description: 'Ask the user a question in the chief thread and wait for the next user message.',
-    parameters: obj({ question: str('The question to ask.') }, ['question']),
+    description:
+      'Ask the user structured questions and block this turn until they answer a question card (same turn continues with their choices as the tool result). Use it whenever the answer would change what you do next; batch up to 4 questions per call instead of asking one at a time.',
+    parameters: obj(
+      {
+        questions: arr(
+          obj(
+            {
+              header: str('Short label of the question block (<= 24 chars).'),
+              question: str('The question text.'),
+              options: arr(
+                obj(
+                  {
+                    label: str('Choice label shown as a button.'),
+                    description: str('Optional one-line hint under the label.'),
+                  },
+                  ['label'],
+                ),
+                'Answer choices; empty array = free-text answer.',
+              ),
+              multiSelect: {
+                type: 'boolean',
+                description:
+                  'Allow multiple choices (default single). Ignored for free-text questions.',
+              },
+            },
+            ['header', 'question', 'options'],
+          ),
+          'Questions to ask in this call (1-4); each renders one block on the card.',
+        ),
+      },
+      ['questions'],
+    ),
   },
   {
     name: 'notify_user',

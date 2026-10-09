@@ -6,6 +6,8 @@
 import {
   type ClaimedStep,
   type ClaudeCodeReport,
+  type MachineAskBody,
+  type MachineAskResponse,
   type MachineAttachmentResponse,
   type MachineDoneBody,
   type MachineEnrollResponse,
@@ -19,6 +21,7 @@ import {
   type MachineStreamEvent,
   type MachineSyncResultBody,
   type MachineTokenResponse,
+  machineAskResponseSchema,
   machineAttachmentResponseSchema,
   machineClaimResponseSchema,
   machineEnrollPollResponseSchema,
@@ -108,6 +111,17 @@ export interface MachineApi {
     params: Record<string, unknown>,
     opts?: { replaySafe?: boolean; signal?: AbortSignal },
   ): Promise<string>;
+  /** 结构化问答阻塞通道（#1049）：POST /api/machine/ask/{stepId}
+   * {requestId, questions} → 终态（answered/cancelled）才 resolve；hold 到期
+   * 仍 pending = 同 requestId 原样重发（幂等，重投不叠卡——D4）。网络层瞬断
+   * 不终结等待（重试预算同 replaySafe 族）；server 4xx 单次即抛。可选成员 =
+   * 单测桩缺省不实现（与 transcriptRow/activity 同律）——缺席时 runner 拦截
+   * 面回落 relayTool（旧 daemon 等价行为，卡片照建不阻塞）。 */
+  askUser?(
+    stepId: string,
+    body: MachineAskBody,
+    opts?: { signal?: AbortSignal },
+  ): Promise<MachineAskResponse>;
   token(stepId: string): Promise<MachineTokenResponse>;
   /** 按步技能分发清单（XMON-109 S1 端点，#920 清单 + 按需拉 / S2 消费）：
    * worker 步 = agent.skills 白名单交集（selection='whitelist'），chief 步 =
@@ -377,6 +391,53 @@ export class MachineClient implements MachineApi {
     return this.request('GET', `/api/machine/token/${stepId}`, {
       parse: (raw) => machineTokenResponseSchema.parse(raw),
     });
+  }
+
+  /** 问答阻塞通道（#1049）：循环到终态。每轮 = 一次 hold 长轮询（server ~70s
+   * 返回 pending 时重发同 requestId——幂等命中既有卡）；请求超时 = hold + 15s
+   * 余量（连接挂死不当成「server 说 pending」）；网络/5xx 无限重试（D3 的
+   * daemon 半边：等答期间任何瞬断都不终结等待），server 4xx 抛错。signal 是
+   * 唯一退出面（runner 停止/收线）。 */
+  async askUser(
+    stepId: string,
+    body: MachineAskBody,
+    opts: { signal?: AbortSignal } = {},
+  ): Promise<MachineAskResponse> {
+    const HOLD_MS = 70_000;
+    const REQUEST_TIMEOUT_MS = HOLD_MS + 15_000;
+    for (;;) {
+      const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+      const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
+      try {
+        const res = await this.fetchImpl(this.url(`/api/machine/ask/${stepId}`), {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(this.opts.getToken?.()
+              ? { authorization: `Bearer ${this.opts.getToken?.()}` }
+              : {}),
+          },
+          body: JSON.stringify(body),
+          signal,
+        });
+        if (!res.ok) {
+          const raw = (await res.json().catch(() => null)) as { error?: unknown } | null;
+          const msg =
+            typeof raw?.error === 'string' ? raw.error : `ask_user failed (HTTP ${res.status})`;
+          if (res.status < 500) throw new MachineApiError(res.status, msg);
+          // 5xx → 稍歇重发（同 requestId 幂等）。
+          await new Promise((r) => setTimeout(r, 2_000));
+          continue;
+        }
+        const settled = machineAskResponseSchema.parse(await res.json());
+        if (settled.status !== 'pending') return settled;
+      } catch (err) {
+        if (err instanceof MachineApiError && err.status < 500) throw err;
+        if (opts.signal?.aborted === true) throw err;
+        // 网络瞬断/超时 → 稍歇重发；等待不因瞬断终结（signal 除外）。
+        await new Promise((r) => setTimeout(r, 2_000));
+      }
+    }
   }
 
   async skillsManifest(stepId: string): Promise<MachineSkillsManifestResponse> {

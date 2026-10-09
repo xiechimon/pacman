@@ -50,6 +50,7 @@ import type { FetchLike } from '../lib/github.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { applyBuildStepAction, requestMerge, startBuilds } from './builds.js';
 import { addChiefWatch, clearChiefWake, removeChiefWatches, setChiefWake } from './chief.js';
+import { askUserQuestionsOfParams, createOrGetQuestion } from './chief-questions.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { isGithubRepoRef, readFile } from './git.js';
 import type { MachineWakeHub } from './machines.js';
@@ -773,9 +774,30 @@ export async function executeChiefTool(
 
     // —— Chief 私有侧 10 ——
     case 'ask_user': {
-      // 提问 = chief 线程内 assistant 消息 + chief_message 通知；等待下一条
-      // 用户消息（本 relay 返回即 ack，回合续由 LLM 决定 [设计]）。
-      return json({ asked: true, question: str(params, 'question') });
+      // #1049：主通道走机器问答端点（POST /api/machine/ask，阻塞语义）；本
+      // relay 路径只服务两处不阻塞的消费者——旧 daemon（relayTool 10s 超时
+      // 载不动 hold）与 MCP face 探针：建卡（幂等 requestId = 自铸 id）后
+      // 即回 pending，答案由答题端点落到卡上，模型下一轮自见。
+      const questions = askUserQuestionsOfParams(params);
+      const requestId = optStr(params, 'requestId') ?? `ask-${newRecordId()}`;
+      const { content } = createOrGetQuestion(
+        {
+          db,
+          hub: deps.hub,
+          user: deps.user,
+          ...(deps.convHub !== undefined ? { convHub: deps.convHub } : {}),
+        },
+        {
+          threadId: ctx.threadId,
+          requestId,
+          questions,
+        },
+      );
+      return json({
+        status: content.status,
+        requestId,
+        note: 'question card delivered; the blocking answer channel is POST /api/machine/ask (newer daemon builds relay it automatically)',
+      });
     }
     case 'notify_user': {
       const text = str(params, 'message');
