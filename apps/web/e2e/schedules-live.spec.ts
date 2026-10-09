@@ -121,8 +121,14 @@ test('live face: 保存 fires POST /api/schedules with the form state (#1037)', 
   // Drive the form: 单次 tab + hour 10 — the wire body must carry both.
   await dialog.getByRole('tab', { name: '单次' }).click();
   await dialog.locator('button[aria-label="时"]').click();
-  await dialog
-    .locator('[role="listbox"][aria-label="时"]')
+  // #1010 registry compound select: role=listbox lives on the inner Select.List
+  // and the aria-label lands on the outer Popup (role=presentation), so the old
+  // `[role="listbox"][aria-label="时"]` hook never matches; the popup portals to
+  // body, so the listbox is taken page-level — closed popups are display:none
+  // and out of the a11y tree, leaving exactly one visible match. Same idiom as
+  // the m5 schedules probe (integration/test/m5-web-e2e.test.ts).
+  await page
+    .getByRole('listbox')
     .getByRole('option', { name: '10', exact: true })
     .click();
   await dialog.getByRole('button', { name: '保存' }).click();
