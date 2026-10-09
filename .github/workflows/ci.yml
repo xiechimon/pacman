@@ -265,3 +265,19 @@ jobs:
 
       - name: Dead class gate (#1036)
         run: node scripts/ui-dead-class-gate.mjs --compile
+
+  # 票标签闸（advisory）：每张 open issue 必须带「一个分类 + 一个状态」双标签
+  # （bug|enhancement + needs-triage|needs-info|ready-for-agent|ready-for-human|
+  # wontfix）。自建票开票即打双标签的规矩（10-05 定）靠 agent 自觉会漏——
+  # #1056/#1067 实漏，故上机器。wayfinder:* 车道票在排除面。
+  # 故意不进分支保护 required contexts（同 dead-class-gate 口径）。
+  # 只读 gh api，无需 node_modules。
+  issue-label-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Issue label gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/issue-label-gate.mjs
