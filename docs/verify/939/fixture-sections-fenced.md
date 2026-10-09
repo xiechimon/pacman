@@ -1,14 +1,14 @@
-## Summary of changes
+## What
 
 Quotes the new template for review; the quoted headings must not count
 as answered sections.
 
 ```markdown
-## Upstream equivalent
+## Verified
 
 guidance the author never replaced
 
-## Failure-path evidence
+## Upstream
 
 guidance the author never replaced
 ```

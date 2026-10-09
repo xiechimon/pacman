@@ -1,18 +1,34 @@
-# #939/#940 evidence: PR body gate widening
+# #939/#940/#1079 evidence: PR body gate widening
 
-One gate (`scripts/pr-evidence-gate.py`, CI job `pr-evidence`), two tickets:
+One gate (`scripts/pr-evidence-gate.py`, CI job `pr-evidence`), three
+tickets:
 
-- **#939** — the PR template gains two sections, *Upstream equivalent* and
-  *Failure-path evidence*, and the gate checks that both are answered
-  (answered-or-not only; the reviewer judges quality). Guidance ships as
-  HTML comments, and comments never count as an answer, so an untouched
-  template fails.
+- **#939** — the PR template gains two answer-checked sections (the
+  reviewer judges quality; the gate only checks that an answer exists).
+  Guidance ships as HTML comments, and comments never count as an
+  answer, so an untouched template fails. The two original section
+  names were later collapsed by #1079 (below).
 - **#940** — the image-link criteria widen from "raw.githubusercontent.com
   image extensions" to two parallel rules: (1) an image extension
   (`png|gif|jpe?g|webp|svg`) on **any** host; (2) an **extensionless** URL
   on a media-only host (`user-images.githubusercontent.com`,
   `github.com/user-attachments`) — the shape drag-and-drop uploads produce.
   Fenced code blocks still do not exempt image links (settled non-goal).
+- **#1079** — the template collapses to six sections (What / Verified /
+  Upstream / Risk / Acceptance / Issues). The two gate-checked sections
+  are renamed and merged: the verification question and the
+  failure-path question become one **Verified** section that asks for
+  the red-then-green output pair; the upstream question keeps its
+  heading, shortened to **Upstream**. Risk and Acceptance are new
+  non-gate sections (Acceptance is conditional on the ticket carrying a
+  checklist). What must embed one explanatory diagram (`.drawio.svg`).
+  `REQUIRED_SECTIONS` becomes `('Upstream', 'Verified')`; the gate's
+  mechanics are unchanged — it still checks answered-or-not, and it
+  still cannot judge the red/green pair, the diagram's explanatory
+  value, or an Acceptance reconciliation (all reviewer judgments). The
+  fixtures and recordings in this directory were re-shaped and
+  re-recorded against that gate; the verdict columns below read the
+  same as before because the collapse preserves every failure mode.
 
 Everything below was recorded before the PR was opened: fixtures and
 expected verdicts first, then the implementation, then re-runs
@@ -55,6 +71,11 @@ Section check:
 `pre-change-runs.txt` is the same sweep through the gate pinned at
 `da84ed9c` (pre-change main tip). The link-criteria fixtures carry
 answered sections on purpose, so their verdicts isolate the link rules.
+After #1079, `sections-missing` is shaped like the /pr skill's output
+(Summary / Evidence / Merge Danger) — the second template the #1079
+background describes — so the fixture pins the realistic post-merge
+failure: a body from either the old template shape or the /pr shape
+answers neither required section.
 
 | fixture | pins | old gate | new gate |
 |---|---|---|---|
@@ -99,9 +120,12 @@ through three criteria:
 0 open PRs existed at fetch time (no in-flight lane is hit at merge);
 0 of 25 bodies answer the two #939 sections (expected — the template is
 new). After merge, any PR that is edited or pushed to needs the two
-sections in its body; `pr-evidence` is not a branch-protection required
-check, so a red there blocks nothing, but lanes should fix their bodies
-to keep the signal clean.
+sections in its body; after #1079 merges, the same applies under the
+new names — bodies written against the pre-#1079 template or the /pr
+skill shape answer neither required section and fail the renamed check
+until their lanes edit them. `pr-evidence` is not a branch-protection
+required check, so a red there blocks nothing, but lanes should fix
+their bodies to keep the signal clean.
 
 Two measured facts about `github.com/user-attachments` worth knowing
 (they do not change the criteria — #940 names this host as a bypass to
@@ -125,7 +149,11 @@ the widened gate. All image-link findings are line-for-line identical to
 the recordings in `docs/verify/750/gate-*.txt`; each body additionally
 fails the two required sections (those fixtures predate the template).
 The #750 README's scope note ("only raw.githubusercontent.com image
-links are checked") is superseded by this directory.
+links are checked") is superseded by this directory. The file is a
+historical recording of the pre-#1079 gate and is kept as an archive:
+its FAIL lines name the pre-#1079 sections, and #1079 did not touch the
+link criteria, so the image-link findings would reproduce identically
+today while the section lines would carry the new names.
 
 ## Re-running
 

@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""PR evidence gate (#750; widened by #939/#940).
+"""PR evidence gate (#750; widened by #939/#940; sections collapsed by #1079).
 
-Section checks (#939): the PR body must answer two template sections,
-"Upstream equivalent" and "Failure-path evidence". The gate checks that
+Section checks (#939; section names collapsed by #1079): the PR body
+must answer two template sections, "Upstream" and "Verified". The gate
+checks that
 an answer exists, not that the answer is good: a missing heading, or a
 heading whose text is empty after stripping HTML comments, fails and
 names the section. Headings inside fenced code blocks do not count (a
 quoted template is not an answer), and the template ships its guidance
-as HTML comments so an untouched template fails.
+as HTML comments so an untouched template fails. What the Verified
+answer must contain (the red-then-green output pair) is a reviewer
+judgment, not a gate judgment.
 
 Link checks (#750): image links in the PR body must be embedded
 (`![label](url)`) and must answer HTTP 200 (catches bad SHAs).
@@ -75,7 +78,7 @@ def is_media_host_image(url):
     return bool(last) and not TAIL_EXT.search(last)
 
 
-REQUIRED_SECTIONS = ('Upstream equivalent', 'Failure-path evidence')
+REQUIRED_SECTIONS = ('Upstream', 'Verified')
 H2 = re.compile(r'^##[ \t]+(.+?)[ \t]*$', re.M)
 HTML_COMMENT = re.compile(r'<!--.*?-->', re.S)
 FENCE = re.compile(r'^ {0,3}(?:```|~~~)')
