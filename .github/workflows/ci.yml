@@ -16,6 +16,10 @@ name: ci
 # 由无条件的 pull_request 触发覆盖（lane/** docs/** 本就不在列，同一口径）。
 # 副作用：web/** 分支在「已 push、未开 PR」的窗口内没有 CI——需要早看信号就开
 # draft PR，pull_request 对 draft 同样触发。
+#
+# 第三方 action 一律钉完整 commit SHA + 尾注版本号（#1076）：浮动 tag 可被上游
+# 重指（或仓库接管后重指），等于 CI 里跑的第三方代码可变；尾注里的版本号是
+# Dependabot 升级时解析的锚点，别删。
 on:
   push:
     branches: [main, 'prototype/**']
@@ -25,11 +29,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      - uses: pnpm/action-setup@v4 # reads packageManager from package.json
+      # reads packageManager from package.json
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -149,11 +154,12 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      - uses: pnpm/action-setup@v4 # reads packageManager from root package.json
+      # reads packageManager from root package.json
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -212,11 +218,12 @@ jobs:
   pack-smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      - uses: pnpm/action-setup@v4 # reads packageManager from root package.json
+      # reads packageManager from root package.json
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: pnpm
