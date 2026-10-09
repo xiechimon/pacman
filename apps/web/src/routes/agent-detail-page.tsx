@@ -128,13 +128,10 @@ const AGENT_NAME_CLS = 'agent-name h-auto justify-start p-0 text-left font-norma
 /** 图标编辑钮：ghost 件默认 + muted 静息墨（hover 回件默认提亮）。 */
 const AGENT_ICON_EDIT_CLS = 'text-muted-foreground';
 
-/** 名称编辑器：Input 件默认形态（手写 border/card 皮肤与 15px 档退役，
- *  focus 环归件默认 ring-3，#855 收敛律）。 */
-const AGENT_NAME_INPUT_CLS = '';
-
-/** 职责编辑器：Textarea 件默认形态（手写 13px 墨 + card 皮肤退役；
- *  field-sizing-content 自增长即件正典）。 */
-const AGENT_ROLE_INPUT_CLS = '';
+/** 名称/职责编辑器：Input/Textarea 件默认形态（手写 border/card 皮肤、15px
+ *  档与 13px 墨退役，focus 环归件默认 ring-3 #855 收敛律；field-sizing-content
+ *  自增长即件正典）。别名类 agent-name-input / agent-role-input 零引用，随
+ *  #1036 终摘——e2e 锚走两编辑器的 id。 */
 
 /** 进行中任务行：ghost 件默认形态（hover 涂底归件）+ 整块行钮布局位
  *  （h-auto 行高由内容定）。 */
@@ -364,7 +361,6 @@ export function AgentDetailPage() {
                 onCommit={(displayName) => patch({ displayName })}
                 nameClassName={AGENT_NAME_CLS}
                 editClassName={`agent-name-edit ${AGENT_ICON_EDIT_CLS}`}
-                inputClassName={AGENT_NAME_INPUT_CLS}
                 inputId="agent-name-input"
                 labelClassName="agent-field-label"
               />
@@ -824,7 +820,6 @@ function RoleRow({
           <Textarea
             id="agent-role-input"
             ref={inputRef}
-            className={AGENT_ROLE_INPUT_CLS}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
           />
