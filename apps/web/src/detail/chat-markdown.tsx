@@ -178,12 +178,20 @@ function HeadingTag({ level, segments }: { level: number; segments: DocSegment[]
 }
 
 /** key teamId/id.ext → id：取末段去扩展名，兼容无扩展名情形
- *  （spec-block.tsx #310 原 helper，随附件块迁到渲染单源，#612）。 */
-function attachmentIdFromKey(key: string): string {
+ *  （spec-block.tsx #310 原 helper，随附件块迁到渲染单源，#612）。
+ *  #1009 B 起导出：composer strip（overlay/attachment-strip）自算服务端 URL，
+ *  key→id 映射单源在此，禁止第二份实现。 */
+export function attachmentIdFromKey(key: string): string {
   const lastSlash = key.lastIndexOf('/');
   const tail = lastSlash >= 0 ? key.slice(lastSlash + 1) : key;
   const dot = tail.lastIndexOf('.');
   return dot > 0 ? tail.slice(0, dot) : tail;
+}
+
+/** 扩展名白名单判图片（#310 契约：缩略/预览形 vs 文件名链接形的分界）。
+ *  单源在此，transcript chip 与 composer strip 共用。 */
+export function isImageAttachmentKey(key: string): boolean {
+  return /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(key);
 }
 
 // #945（detail.css 清零）：附件 chip 皮肤迁 utilities。形 = chat-taskline-seq
@@ -216,7 +224,7 @@ export function AttachmentChip({
   onPreview?: (name: string, src: string) => void;
 }) {
   const href = `/api/attachments/${encodeURIComponent(attachmentIdFromKey(attachmentKey))}`;
-  const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(attachmentKey);
+  const isImage = isImageAttachmentKey(attachmentKey);
   if (isImage && onPreview !== undefined) {
     return (
       // #945×#948 汇流：preview 卡收编 Button 件（#851 裸控件账，本票），
