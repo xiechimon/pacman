@@ -188,7 +188,8 @@ export async function holdForQuestion(
 }
 
 /** 答题执法（web 面）：answers 与卡上 questions 按序一一对应——选项题
- * （options 非空）收 choices ⊆ 选项 label 集（多选 ≥1；单选恰 1）；自由
+ * （options 非空）收 choices ⊆ 选项 label 集 ∪ 至多一条自定义串（Steps 卡
+ * 末行「其他…」的自由文本，2026-10-09 形态裁决；多选 ≥1；单选恰 1）；自由
  * 文本题（options 空）收非空 text。非 pending（已答/已取消）= 409。答毕
  * 改写行 content + 会话流 message 事件（卡片翻面）。 */
 export function answerQuestion(
@@ -222,10 +223,15 @@ export function answerQuestion(
     if (answer.choices.length > 1 && question.multiSelect !== true) {
       throw new HttpError(400, `question ${i} is single-select`);
     }
-    for (const choice of answer.choices) {
-      if (!labels.includes(choice)) {
-        throw new HttpError(400, `question ${i}: '${choice}' is not an offered option`);
-      }
+    // 「其他…」自定义串（Steps 卡末行自由文本）：用户自己的话上送为一条
+    // choice——与自由文本题同信任级；至多一条（多条 = 客户端坏形，不是
+    // 用户输入），label 集命中数不限。
+    const custom = answer.choices.filter((choice) => !labels.includes(choice));
+    if (custom.length > 1) {
+      throw new HttpError(
+        400,
+        `question ${i}: at most one custom (其他) answer, got ${custom.length}`,
+      );
     }
     return { header: question.header, choices: answer.choices };
   });

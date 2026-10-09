@@ -3,7 +3,7 @@
 // 端点）在此钉住；全链（pi 真会话阻塞 → 同回合续）归 integration
 // chief-ask-user.test.ts。
 
-import type { MachineAskResponse } from '@pacman/shared';
+import type { AskUserQuestion, MachineAskResponse } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Hono } from 'hono';
 import { afterAll, describe, expect, test } from 'vitest';
@@ -114,12 +114,12 @@ async function makeWorld(): Promise<World> {
 async function machineAsk(
   w: World,
   requestId: string,
-  opts: { holdMs?: number } = {},
+  opts: { holdMs?: number; questions?: AskUserQuestion[] } = {},
 ): Promise<{ status: number; body: MachineAskResponse | { error?: string } }> {
   const holdMs = opts.holdMs ?? 0;
   const res = await call(w.s.app, 'POST', `/api/machine/ask/${w.stepId}?holdMs=${holdMs}`, {
     cred: w.machineToken,
-    body: { requestId, questions: QUESTIONS },
+    body: { requestId, questions: opts.questions ?? QUESTIONS },
   });
   return { status: res.status, body: (await res.json()) as MachineAskResponse };
 }
@@ -160,7 +160,7 @@ describe('#1049 问答行生命周期（createOrGet / answer / cancel / 收口�
     expect(w.s.db.select().from(notificationTable).all()).toHaveLength(1);
   });
 
-  test('answer 执法：选项 ⊆ label 集 / 单选恰一 / 文本题收 text / 越界与缺项 400', async () => {
+  test('answer 执法：选项 ⊆ label 集 ∪ 一条其他 / 单选恰一 / 文本题收 text / 越界与缺项 400', async () => {
     const w = await makeWorld();
     const requestId = 'ask-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
     await machineAsk(w, requestId, { holdMs: 0 });
@@ -191,12 +191,56 @@ describe('#1049 问答行生命周期（createOrGet / answer / cancel / 收口�
     expect(dup.status).toBe(409);
   });
 
-  test('answer 非法形：选项不在 label 集 / 单选多选 / 自由文本题收 choices → 400', async () => {
+  test('answer 其他…自定义串：单条上送合法（Steps 卡末行自由文本），两条 = 400', async () => {
+    const w = await makeWorld();
+    const requestId = 'ask-bbbbbbbb-cccc-dddd-eeee-ffffffffffff';
+    await machineAsk(w, requestId, { holdMs: 0 });
+    // 「其他…」的单条自定义串 = 合法作答（用户自己的话，与自由文本题同信任级）。
+    const custom = await call(
+      w.s.app,
+      'POST',
+      `/api/teams/${w.teamId}/chief/threads/${w.threadId}/questions/${requestId}/answer`,
+      {
+        body: {
+          answers: [
+            { header: '缩进', choices: ['看心情，混合用'] },
+            { header: '备注', text: '无' },
+          ],
+        },
+      },
+    );
+    expect(custom.status).toBe(200);
+    const body = (await custom.json()) as { status: string; answers: { choices?: string[] }[] };
+    expect(body.status).toBe('answered');
+    expect(body.answers?.[0]?.choices).toEqual(['看心情，混合用']);
+    // 两条自定义串 = 客户端坏形（UI 只有一条其他行）→ 400。多选题上测：
+    // 避开单选「恰一」执法，钉的就是自定义条数闸本尊。
+    const multiId = 'ask-eeeeeeee-0000-0000-0000-00000000000e';
+    const multi = await machineAsk(w, multiId, {
+      questions: [
+        {
+          header: '范围',
+          question: '做哪些面？',
+          multiSelect: true,
+          options: [{ label: 'web' }, { label: 'server' }],
+        },
+      ],
+    });
+    expect(multi.status).toBe(200);
+    const res = await call(
+      w.s.app,
+      'POST',
+      `/api/teams/${w.teamId}/chief/threads/${w.threadId}/questions/${multiId}/answer`,
+      { body: { answers: [{ header: '范围', choices: ['Neither', 'Whatever'] }] } },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test('answer 非法形：单选多选 / 自由文本题收 choices → 400', async () => {
     const w = await makeWorld();
     const requestId = 'ask-bbbbbbbb-cccc-dddd-eeee-ffffffffffff';
     await machineAsk(w, requestId, { holdMs: 0 });
     for (const bad of [
-      [{ header: '缩进', choices: ['Neither'] }],
       [{ header: '备注', choices: ['x'] }],
       [{ header: '缩进', text: '随便' }],
       [],

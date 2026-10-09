@@ -883,6 +883,12 @@ export const EN: Record<string, string> = {
   取消提问: 'Dismiss question',
   提交回答: 'Submit answers',
   输入你的回答: 'Type your answer',
+  '其他…': 'Other…',
+  '数字键 1–{n} 选择': 'Press 1–{n} to choose',
+  '已选 {n} 项': '{n} selected',
+  未选: 'None selected',
+  上一步: 'Back',
+  下一步: 'Next',
   '提交回答失败，请重试。': 'Could not submit your answers. Try again.',
   '取消提问失败，请重试。': 'Could not dismiss the question. Try again.',
 };

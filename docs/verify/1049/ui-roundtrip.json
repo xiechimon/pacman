@@ -1,27 +1,45 @@
 {
-  "threadId": "chief-01a12081-b073-7b79-8710-0bfbf455ad12",
+  "threadId": "chief-01a1214d-e31f-71ac-a4cb-a9b4d0ebdcb4",
   "step": {
-    "id": "99DMeRwj6PZPF3yPSOLTc",
+    "id": "pbIuUOqSEiAVjq0Dv44Ze",
     "status": "done",
     "count": 1
   },
   "questionRow": {
     "kind": "ask_user_question",
-    "requestId": "ask-ab12eb22-7b02-4429-834f-26606035ea27",
+    "requestId": "ask-df9ccf1b-7ddb-44cf-9795-8e7fb45ba0e0",
     "status": "answered",
     "questions": [
       {
-        "header": "缩进",
-        "question": "Tabs 还是 spaces？",
+        "header": "范围",
+        "question": "这次改动覆盖哪些面？",
         "options": [
           {
-            "label": "Tabs"
+            "label": "web 前端"
           },
           {
-            "label": "Spaces",
-            "description": "软缩进"
+            "label": "server 接口"
+          },
+          {
+            "label": "daemon 后端"
+          },
+          {
+            "label": "shared 协议"
+          },
+          {
+            "label": "e2e 用例"
+          },
+          {
+            "label": "集成测试"
+          },
+          {
+            "label": "文档与证据"
+          },
+          {
+            "label": "迁移脚本"
           }
-        ]
+        ],
+        "multiSelect": true
       },
       {
         "header": "优先级",
@@ -37,6 +55,19 @@
         "multiSelect": true
       },
       {
+        "header": "缩进",
+        "question": "Tabs 还是 spaces？",
+        "options": [
+          {
+            "label": "Tabs"
+          },
+          {
+            "label": "Spaces",
+            "description": "软缩进"
+          }
+        ]
+      },
+      {
         "header": "备注",
         "question": "有什么要补充的吗？",
         "options": []
@@ -44,9 +75,10 @@
     ],
     "answers": [
       {
-        "header": "缩进",
+        "header": "范围",
         "choices": [
-          "Spaces"
+          "server 接口",
+          "daemon 后端"
         ]
       },
       {
@@ -54,6 +86,12 @@
         "choices": [
           "先修测试",
           "先写文档"
+        ]
+      },
+      {
+        "header": "缩进",
+        "choices": [
+          "看心情，混合用"
         ]
       },
       {
