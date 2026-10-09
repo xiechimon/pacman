@@ -539,7 +539,7 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
       if (GATE_ANNOUNCEMENTS.includes(text)) {
         entries.push({
           at: m.createdAt,
-          item: { kind: 'note', text: `${m.actor ?? userName} ${text}` },
+          item: { kind: 'note', text: `${m.actor ?? userName} ${text}`, id: m.id },
         });
         continue;
       }
@@ -554,7 +554,7 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
       // 退场后没有合法宿主——且本循环按落库序迭代、显示序在 sort 之后才
       // 成立，「首条」在 steer 早于终稿上传落库时会认错行；#seq+标题的真值
       // 展示位是 dhead。fixture 捕获面自带 seq/title，渲染路径保留。
-      entries.push({ at: m.createdAt, item: { kind: 'user', text, markdown: text } });
+      entries.push({ at: m.createdAt, item: { kind: 'user', text, markdown: text, id: m.id } });
       continue;
     }
     if (m.role === 'system') {
@@ -564,7 +564,7 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
         // 严重度标签；不是抽象 system kind（具形状）。
         const verdict = reviewVerdictOfContent(m.content);
         if (verdict !== null) {
-          entries.push({ at: m.createdAt, item: { kind: 'review', ...verdict } });
+          entries.push({ at: m.createdAt, item: { kind: 'review', ...verdict, id: m.id } });
         }
         continue;
       }
@@ -573,11 +573,12 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
       const echoName = toolNameByResult.get(text);
       if (echoName !== undefined) {
         const note = echoNoteOf(echoName);
-        if (note !== null) entries.push({ at: m.createdAt, item: { kind: 'note', text: note } });
+        if (note !== null)
+          entries.push({ at: m.createdAt, item: { kind: 'note', text: note, id: m.id } });
         continue;
       }
       if (isJsonPlumbing(text)) continue;
-      if (text !== '') entries.push({ at: m.createdAt, item: { kind: 'note', text } });
+      if (text !== '') entries.push({ at: m.createdAt, item: { kind: 'note', text, id: m.id } });
       continue;
     }
     // assistant 文本行 → robot 块级 markdown（#469：原文直入 markdown 槽，
@@ -585,14 +586,14 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     // 把块结构摊平成 chat-para；行内 code 仍走 inlineSegments 的 .chat-code
     // 芯片。空文本行跳过——pi 工具轮的空 content）。
     if (text !== '') {
-      entries.push({ at: m.createdAt, item: { kind: 'robot', markdown: text } });
+      entries.push({ at: m.createdAt, item: { kind: 'robot', markdown: text, id: m.id } });
       continue;
     }
     // #955：思考段行——无正文的 assistant 行若是 thinking 块，单列一行（与
     // 总管抽屉同一张脸；两面同改，不给共享层加分支）。
     const thinking = m.role === 'assistant' ? thinkingOfContent(m.content) : null;
     if (thinking !== null)
-      entries.push({ at: m.createdAt, item: { kind: 'thinking', text: thinking } });
+      entries.push({ at: m.createdAt, item: { kind: 'thinking', text: thinking, id: m.id } });
   }
 
   // 步标记：确认气泡（withPlan 的执行步入队时刻 = 确认点击，r7 26d）+

@@ -313,3 +313,87 @@ secondary 档（--secondary 既有槽，A0 册 §8 已双模实测过同槽族�
 lint / registry gate / drift gate / inventory 全绿、探针重钉后
 **KEPT 121 / DRIFT 0 / NOT-RUN 0 / VIOLATION 0**（probe-after-a1 重跑覆盖原型态
 dump；三方链 = probe-a1-pre 基线 → 原型 DRIFT 1 → 施工清零）。
+
+## 12. A2 原型（detail 对话列 → MessageScroller，2026-10-09）
+
+分支 `hp/pacman/t-0239-1-l6-chief-1009` 已并 origin/main（合并 `cb655e29`，
+含 #1006 detail-b / #1010 select / #1037 / #1026 等 11 提交），原型提交
+`14be5ed4`。波 1 其余五道（#1004–#1008）与 #1010 已合并，本票是 frontier 唯一
+未闭票。
+
+### 12.1 换装面（结构映射）
+
+| 现状面 | 换装后 | 中和（消费点，原语文件 pristine 零触碰） |
+|---|---|---|
+| `.chat-col`（`flex-col-reverse` + `overflow-y-auto` + `chatColRef`） | `MessageScroller` Root > Viewport（testid `transcript-col`） | Root `h-auto min-h-0 flex-1`（原语 `size-full` 的 h-full 顶爆 detail-center flex 链）；Viewport 承接 `chat-col` 类与 19/16/16/19 内垫（detail-3pane 的 `colPadBottom` / detail-narrow 的横滚断言读这里） |
+| `.chat-pin.mb-auto`（column-reverse 的底部钉） | `MessageScrollerContent` `block gap-0` | 行距语义留在行自身 margin；原语默认 `flex gap-6` 会双倍行距 |
+| 行（`key=index`，无锚） | `MessageScrollerItem`（`key`/`messageId` = 源 message id） | inline style `content-visibility: visible`（原语 `auto` 会让离屏行跳布局，探针/e2e 随滚动相位漂） |
+| `useChatFollow`（`reversed: true`） | Provider 原生 `autoScroll` + `defaultScrollPosition="end"` | 阈值 80 = `scrollEdgeThreshold={80}`（FOLLOW_THRESHOLD 同值，A1 同律） |
+| `requestFollow()`（onSend） | 列的 imperative handle `scrollToEnd()` | 页面经 `transcriptColRef` 调用；Provider 与消费者不同组件（hook 吃不到自己渲染树的 context） |
+| — | `MessageScrollerButton direction="end"`（jump-to-latest） | 随原语带入（#991 Q6），children 覆写为仓 ArrowDown + `t('滚动到最新')` sr-only |
+
+**行 id 贯通（票面「mapper 视图侧」）**：`TranscriptItem` 的 user / robot /
+thinking / note / review 五 kind 扩 `id?: string`；`mapTranscript` 五处投影
+`id: m.id`（run / plan / tools 组等合成行无 id → key 回落 index）。wire 零触碰
+（ADR 0011 封段在写入端）。
+
+**滚动律映射（#873 逐条 → 原语机制，与 A1 同律）**：贴底阈值 80px =
+`scrollEdgeThreshold`；增长只在读者贴最新端时拖动 = 原语 `autoScroll`；开列落
+最新 = `defaultScrollPosition="end"`（旧 hook `bind→scrollToNewest` 等价）；读者
+自己发出去的那条永远跳到最新 = `scrollToEnd()`。
+
+### 12.2 原型态账面
+
+- 域 e2e **120 绿 / 2 红**（11 spec：detail-3pane / detail-narrow /
+  chat-type-measure / transcript-user-words / thinking-row-truncate / spec-flow /
+  dead-buttons / attachment-strip / attachment-title / composer-paste /
+  chief-panel / chief-stream-markdown）
+- 两条红 = 载体重钉账（行为断言语义一字不动，归施工段）：
+  ① **spec-flow 2**「简报卡随流滚走」——旧列是 `column-reverse`（scrollTop 0 =
+     最新，读旧端用负 top）；换装后是普通滚动容器（最新 = `scrollHeight`，最旧 =
+     0）。断言语义（简报卡随流、最旧端在列首、最新端滚出视口）不变，只翻坐标约定。
+  ② **chat-type-measure「turn boundary is air」**——探针走 agent 行的
+     `previousElementSibling`；行现嵌在 `MessageScrollerItem` 里，载体要多走一层。
+     它断言的「边界只有空气、无横线」不变。
+- 探针三方 diff（`probe-a2-pre` → `probe-after-a2`，同 8 spec）：比较行 83
+  —— **KEPT 76 / DRIFT 1 / NOT-RUN 6 / VIOLATION 0**。唯一 DRIFT = spec-flow 的
+  滚动约定行（上①）；全部几何行 KEPT（列宽 / 行盒 / 排版 / 内垫逐值不变）。
+- 截图：`a2-detail-confirm-17b.png`（confirm 相 + 简报卡）、
+  `a2-detail-done-36.png`（done 相多轮会话），复跑配方见 `shoot-a2.mjs`。
+
+### 12.3 待实审裁决
+
+1. **滚动轴向反转**（`column-reverse` → 普通容器）——视觉契约不变（短会话顶对齐、
+   长会话开在最新行、简报卡随流），但凡驱动旧坐标的自定义脚本/e2e 需同步翻。
+   请确认接受。
+2. **jump-to-latest 钮落在详情列**（A1 只落在总管窗）。详情列宽 712px、内容端
+   恒可见，此钮的收益待判；#991 Q6 的「删除才是定制」口径在宽列上是否仍成立。
+3. **`useChatFollow` 本体退役**——详情页是本 hook 最后一个消费者，A2 后它成
+   死代码（含 `apps/web/test/chat-follow.test.ts`）。施工段拟整件删除（#873 单源
+   律由原语承接）；若希望保留观察期请指明。
+
+## 13. B 原型（附件面 → registry Attachment 卡，2026-10-09）
+
+### 13.1 换装面
+
+| 现状面 | 换装后 | 中和 |
+|---|---|---|
+| `chat-markdown.tsx` AttachmentChip（`<a class="spec-chip …">` / `<Button>` + `SPEC_CHIP`/`SPEC_CHIP_IMG` utilities） | `overlay/attachment-card.tsx` 单源卡（`Attachment` 原语 + `AttachmentTrigger`/`Media`/`Content`/`Title`） | `.spec-chip` 族降为零规则钩子（挂触发钮上）——spec-brief-card 的 `a.spec-chip`/`img.spec-chip-img` 与 chief-composer-tools 的 `.spec-chip` 定位子原样存活 |
+| `attachment-strip.tsx` 在途占位卡（`<Button>`/`<span>` chip + 上传中 badge） | 同一卡 `state="uploading"` | 上传中 badge 改绝对定位——多一行会改盒、破「落定零位移」契约 |
+| 落定 chip（`AttachmentChip`） | 同一卡 `state="done"` | 根盒 `border-0`：原语 1px 缝线会让 root 盒比触发钮盒每边大 1px（占位读 root、落定读触发钮 → 2px 落差），去框后 root ≡ trigger |
+| 缩略几何（`SPEC_CHIP_IMG`：`max-h-40 max-w-full`） | 原语 `AttachmentMedia` image 档（`aspect-square w-10 object-cover`） | 常量退役；缩略由原语供给 |
+
+三宿主面（detail composer / new-task dialog / chief 抽屉 composer）共用 `AttachmentStrip` → `AttachmentCard`，一处改三面生效。
+
+### 13.2 账面
+
+- 域 e2e **122 绿 / 0 红**（10 spec：attachment-strip / attachment-title / spec-brief-card / chief-composer-tools / composer-paste / dead-buttons / chief-panel / chief-stream-markdown / detail-3pane / transcript-user-words）——**无重钉**：`FM2` 盒等值契约（占位盒 ≡ 落定盒）按设计保住
+- 全量本地 e2e **862/862 绿**；web units 464/464
+- 探针（`probe-after-b`，7 spec）：**KEPT 126 / DRIFT 0 / NOT-RUN 0 / VIOLATION 0**
+- typecheck / lint / registry 闸 / drift 闸 / consumer-shape 闸全绿（consumer 文件数 212→213，新增 `attachment-card.tsx`）
+
+### 13.3 待实审裁决
+
+1. **卡形从紧凑 chip 变 registry 卡片**（缩略块 + 文件名行）。几何契约未动，但观感明显不同——图 `b-card.drawio.svg` + 截图 `b-after/` 对照 `docs/verify/757/`。请确认卡形采纳。
+2. **`.spec-chip` 钩子保留**（零规则类，非皮肤）——为免 spec-brief-card / chief-composer-tools 一次载体重钉。若希望彻底清掉这些类名，需另开载体重钉（本段不做）。
+3. **#1009 的关闭时点**——B 是四段串行的最后一段，B 合并落地后 #1009 即完成、#1011/#1012 解除 blocking。按协调者口径：**本段 PR 与 commit 均不带关票关键字**（squash 消息由合并指令管住），#1009 由协调者在四段全落后关闭。确认此口径无误即放行施工段。

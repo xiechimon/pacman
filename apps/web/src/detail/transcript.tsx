@@ -15,6 +15,7 @@ import { type CurrentUser, useLiveData } from '../api/provider.js';
 import { ThinkingRow } from '../components/chat/agent-rows.js';
 import { LiveRow, LiveSignal } from '../components/chat/live-row.js';
 import { Button } from '../components/ui/button.js';
+import { MessageScrollerItem } from '../components/ui/message-scroller.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -70,6 +71,11 @@ function formatElapsed(seconds: number, t: TFunc): string {
 // 选择器表达，这里改由渲染序派生（行 margin 是每行首个类，无叠层竞争）。
 // ghost 七通道中和（#908 裁决 3）随各钮带上。
 const ROW_BASE = 'chat-row flex items-start';
+
+/** #1009 A2：行骨架中和——原语 Item 的 [content-visibility:auto] 走 inline
+ *  style 钉回 visible。离屏行不跳布局，e2e 可见性断言与探针几何采样不随滚动
+ *  相位漂（determinism 优先于虚拟化收益，A1 同律）。 */
+const SCROLLER_ITEM_STYLE = { contentVisibility: 'visible' } as const;
 
 /** 行的 DOM 末节点是否 agent 行（连续 agent 收紧律的前件）：robot 无
  *  footer（有 footer 时末节点是 action 行）与 streaming 两形。 */
@@ -794,19 +800,25 @@ export function Transcript({
   const { user } = useLiveData();
   return (
     <>
-      {transcript.map((item, i) => (
-        // fixture order is stable; items carry no ids
-        <Row
-          key={i}
-          item={item}
-          prev={transcript[i - 1]}
-          t={t}
-          onOpenPlan={onOpenPlan}
-          agent={agent}
-          user={user}
-          liveStep={liveStep}
-        />
-      ))}
+      {transcript.map((item, i) => {
+        // #1009 A2：行骨架翻 MessageScrollerItem——live 面 messageId = 源
+        // message id（原语锚面），fixture 捕获形与合成行无 id → 无锚、key
+        // 回落 index。fixture order is stable。
+        const id = 'id' in item ? item.id : undefined;
+        return (
+          <MessageScrollerItem key={id ?? i} messageId={id} style={SCROLLER_ITEM_STYLE}>
+            <Row
+              item={item}
+              prev={transcript[i - 1]}
+              t={t}
+              onOpenPlan={onOpenPlan}
+              agent={agent}
+              user={user}
+              liveStep={liveStep}
+            />
+          </MessageScrollerItem>
+        );
+      })}
     </>
   );
 }

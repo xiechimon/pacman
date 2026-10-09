@@ -30,16 +30,10 @@
 // 退化尺寸下限与 preview 钮的 UA chrome 清零。
 
 import { useMemo, useState } from 'react';
-import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
-import {
-  AttachmentChip,
-  COMPOSER_CHIP_LABEL,
-  SPEC_CHIP,
-  SPEC_CHIP_IMAGE,
-  SPEC_CHIP_IMG,
-} from '../detail/chat-markdown.js';
+import { attachmentIdFromKey } from '../detail/chat-markdown.js';
 import { useI18n } from '../i18n/provider.js';
+import { AttachmentCard } from './attachment-card.js';
 import { type PendingAttachment, parseAttachmentTokens } from './attachment-paste.js';
 
 interface PreviewTarget {
@@ -86,14 +80,10 @@ export function AttachmentPreview({
  *  Button 件配方在此面逐位中和（#908 裁决 3 七通道）：h-auto（旧卡高随
  *  内容，不吃件 size 档 32px）、font-normal、press 位移禁掉；appearance
  *  清零沿旧 .spec-chip--preview（UA 按钮 chrome 不许漏进 chip 面）。 */
-const PENDING_CARD_CLS =
-  'spec-chip spec-chip--image relative h-auto cursor-pointer appearance-none font-normal hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 /** 在途角标（原 .attachment-pending-badge）：黑 veil 55% 是无 token 槽的
  *  一次性字面量（--overlay-scrim 是 60% 的模态 scrim，值不同不混用）；墨色
  *  --text-on-veil 正典槽。静止 veil、无假进度（#757）。 */
-const PENDING_BADGE_CLS =
-  'absolute bottom-1 left-1 rounded-[4px] bg-[rgb(0_0_0/0.55)] px-1.5 py-px text-[11px] leading-4 whitespace-nowrap text-(--text-on-veil)';
 
 export function AttachmentStrip({
   draft,
@@ -116,43 +106,29 @@ export function AttachmentStrip({
       role="status"
       aria-label={t('附件')}
     >
-      {pending.map((entry) =>
-        entry.url !== null ? (
-          <Button
-            key={entry.uid}
-            variant="ghost"
-            // #945×#948 汇流：卡面皮肤单源 = chat-markdown 的 SPEC_CHIP 族
-            // 常量（detail.css 已退役），#948 的中和件/testid 原样叠加。
-            className={`${SPEC_CHIP} ${SPEC_CHIP_IMAGE} ${PENDING_CARD_CLS}`}
-            // #910 二级载体：在途占位卡有 button/span 双形（图片/非图片），
-            // role 不恒——testid 是两形的共同锚（attachment-strip.spec 钉）。
-            data-testid="attachment-pending"
-            title={entry.name}
-            onClick={() => {
-              if (entry.url !== null) setPreview({ name: entry.name, src: entry.url });
-            }}
-          >
-            <img src={entry.url} alt={entry.name} className={`spec-chip-img ${SPEC_CHIP_IMG}`} />
-            <span className={PENDING_BADGE_CLS}>{t('上传中')}</span>
-          </Button>
-        ) : (
-          <span
-            key={entry.uid}
-            className={`spec-chip relative ${SPEC_CHIP}`}
-            data-testid="attachment-pending"
-            title={entry.name}
-          >
-            <span className={COMPOSER_CHIP_LABEL}>{entry.name}</span>
-            <span className={PENDING_BADGE_CLS}>{t('上传中')}</span>
-          </span>
-        ),
-      )}
+      {pending.map((entry) => (
+        <AttachmentCard
+          key={entry.uid}
+          name={entry.name}
+          source={entry.url ?? ''}
+          isImage={entry.url !== null}
+          state="uploading"
+          testId="attachment-pending"
+          {...(entry.url !== null
+            ? {
+                onPreview: (n: string, src: string) => setPreview({ name: n, src }),
+              }
+            : {})}
+        />
+      ))}
       {settled.map((token, index) => (
-        <AttachmentChip
+        <AttachmentCard
           key={`${token.key}#${index}`}
           name={token.name}
-          attachmentKey={token.key}
-          onPreview={(name, src) => setPreview({ name, src })}
+          source={`/api/attachments/${encodeURIComponent(attachmentIdFromKey(token.key))}`}
+          isImage={/\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(token.key)}
+          state="done"
+          onPreview={(n, src) => setPreview({ name: n, src })}
         />
       ))}
       {preview !== null && (
