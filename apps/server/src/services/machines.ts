@@ -186,9 +186,18 @@ export class MachineWakeHub {
     { teamId: string; send: (ev: MachineStreamEvent) => void }
   >();
 
-  /** 等待 wake；true = 被唤醒，false = 超时（长轮询节奏 ≈ timeoutMs，r3 §1.5）。 */
-  waitWake(teamId: string, timeoutMs: number): Promise<boolean> {
+  /** 等待 wake；true = 被唤醒，false = 超时（长轮询节奏 ≈ timeoutMs，r3 §1.5）。
+   * #1065 僵尸认领：signal = 认领请求的存活态（node-server 客户端断连即
+   * abort）——断连时即刻 settle(false) 并摘除 waiter，不等 hold 到期：否则死
+   * 机 waiter 会在 ≤75s 窗口内替死机抢领新步入队的 wake（waiter Set 按插入
+   * 序，僵尸先注册先醒），步落死机无人执行。 */
+  waitWake(teamId: string, timeoutMs: number, signal?: AbortSignal): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
+      // 请求已断：不注册等待（响应无处投递，领取即孤儿步）。
+      if (signal?.aborted) {
+        resolve(false);
+        return;
+      }
       let settled = false;
       let set = this.waiters.get(teamId);
       if (!set) {
@@ -199,21 +208,20 @@ export class MachineWakeHub {
       const cleanup = () => {
         holder.delete(fn);
         if (holder.size === 0) this.waiters.delete(teamId);
+        signal?.removeEventListener('abort', onAbort);
       };
-      const fn = () => {
+      const settle = (woken: boolean) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
         cleanup();
-        resolve(true);
+        resolve(woken);
       };
-      const timer = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve(false);
-      }, timeoutMs);
+      const fn = () => settle(true);
+      const onAbort = () => settle(false);
+      const timer = setTimeout(() => settle(false), timeoutMs);
       holder.add(fn);
+      signal?.addEventListener('abort', onAbort, { once: true });
     });
   }
 
@@ -1091,17 +1099,24 @@ function tryClaim(
 
 /** 长轮询 claim：先试领；空手则等 wake/超时后再试一次（节奏 ≈ holdMs ≈ 75s，
  * r3 §1.5 实测 ~75–76s；wake = 低延迟派发，02 §5.4）。origin = 请求源
- * （托管 cloneUrl 本地主机代位段，02 §5.8 gitHostDomain 槽）。 */
+ * （托管 cloneUrl 本地主机代位段，02 §5.8 gitHostDomain 槽）。
+ * #1065 僵尸认领：signal = 请求存活态，死请求不领活——hold 中断连（daemon
+ * 被杀）由 waitWake 的 abort 监听兜底返回；第二次 tryClaim 前再复查一次
+ * （wake 与 abort 竞序里 waitWake 可能已先 settle，出口复查是最后一个可靠拦
+ * 点）。步留 pending，活机下一轮照领（认领失败即天然可重试）。 */
 export async function claimStep(
   deps: MachineDeps,
   machineId: string,
   teamId: string,
   holdMs: number,
   origin: string,
+  signal?: AbortSignal,
 ): Promise<ClaimedStep | null> {
+  if (signal?.aborted) return null;
   const first = tryClaim(deps, machineId, teamId, origin);
   if (first) return first;
-  await deps.machineHub.waitWake(teamId, holdMs);
+  await deps.machineHub.waitWake(teamId, holdMs, signal);
+  if (signal?.aborted) return null;
   return tryClaim(deps, machineId, teamId, origin);
 }
 

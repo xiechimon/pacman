@@ -256,7 +256,16 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   app.post('/api/machine/tasks/claim', async (c) => {
     const row = me(c);
     parseWith(machineClaimBodySchema, (await jsonBody(c)) ?? {}, 'body');
-    const step = await claimStep(deps, row.id, row.teamId, ctx.claimHoldMs, originOf(c));
+    // #1065：透传请求存活态——客户端断连（daemon 被杀）时 node-server 对
+    // Request signal abort，claim 面据此不替死机领步。
+    const step = await claimStep(
+      deps,
+      row.id,
+      row.teamId,
+      ctx.claimHoldMs,
+      originOf(c),
+      c.req.raw.signal,
+    );
     return c.json({ step });
   });
 
