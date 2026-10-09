@@ -1,6 +1,6 @@
 pr-evidence: sections: 0/2 answered
-FAIL empty-section: Upstream equivalent
-FAIL empty-section: Failure-path evidence
+FAIL empty-section: Upstream
+FAIL empty-section: Verified
 pr-evidence: scanned 0 image link(s)
 pr-evidence: RED (2 problem(s))
 exit=1
