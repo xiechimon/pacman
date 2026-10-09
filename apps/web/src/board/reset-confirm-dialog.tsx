@@ -6,7 +6,6 @@
 
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
-import { ACCEPT_CANCEL_BTN, ACCEPT_FOOTER } from '../detail/accept-dialog.js';
 import { useI18n } from '../i18n/provider.js';
 
 interface ResetConfirmDialogProps {
@@ -33,26 +32,19 @@ export function ResetConfirmDialog({
       title={t('把任务重置回待开始？')}
       open={open}
       onClose={onClose}
-      // 挂账（#1004 PR body / thread report task #5）：等 #1006 的 registry
-      // dialog-shell 进 main 并合入本分支后，剥本消费点自携垫（body
-      // px-4 pt-[17px]、footer ACCEPT_FOOTER 的 px/py）改裸内容进
-      // DialogFooter 防双垫，并撤 ACCEPT_FOOTER / ACCEPT_CANCEL_BTN 的
-      // import。此刻不做：L3 的 registry 壳尚未进 main，现在剥会指向不存在
-      // 的形态。
+      // 挂账已清（#1004 → #1006 段 2）：registry dialog-shell 已进本分支，
+      // 消费点自携垫剥除、裸内容进 DialogFooter，ACCEPT_* import 撤除。
+      // 确认重置 = 销毁性动作（中断构建 + 清空对话/方案/改动，不可恢复）
+      // → destructive 档（R3 停止钮同判：registry 语义皮肤 = 语义映射）。
       footer={
-        <div className={ACCEPT_FOOTER}>
-          <Button variant="ghost" className={ACCEPT_CANCEL_BTN} onClick={onClose}>
+        <>
+          <Button variant="outline" onClick={onClose}>
             {t('取消')}
           </Button>
-          <Button
-            variant="ghost"
-            className="h-auto rounded-none p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0"
-            onClick={onConfirm}
-            disabled={confirming === true}
-          >
+          <Button variant="destructive" onClick={onConfirm} disabled={confirming === true}>
             {t('确认重置')}
           </Button>
-        </div>
+        </>
       }
     >
       {/* #951（overlays.css 清零）：#755 重置面律等值迁 utility——accept 同族
@@ -61,7 +53,7 @@ export function ResetConfirmDialog({
           （stale/kept）、13/18 primary（lead）、13/20 disc 清单。dlg-reset /
           dlg-reset-confirm 类名钩退役（board-dnd 载体换 role=dialog 可及名，
           同 PR 重钉；confirm 钩全仓零规则零 pin）。 */}
-      <div className="block px-4 pt-[17px]">
+      <div className="block">
         {stale === true && (
           <p className="m-0 mb-2 text-xs leading-4 text-(--text-tertiary)">
             {t('任务在你打开确认框后发生了变化，下面是最新状态，请重新确认。')}

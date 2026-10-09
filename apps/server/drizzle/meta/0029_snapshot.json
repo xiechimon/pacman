@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "cab060d3-676c-4d6d-8002-deb4578da467",
+  "id": "b0e21d6e-1721-4aa8-9426-94fc6f012bab",
   "prevId": "d0e1eea6-150f-4903-9f51-4e5d9b829d24",
   "tables": {
     "agent": {
@@ -962,58 +962,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "document_diff": {
-      "name": "document_diff",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "documentId": {
-          "name": "documentId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "fromVersion": {
-          "name": "fromVersion",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "toVersion": {
-          "name": "toVersion",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "files": {
-          "name": "files",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "github_connection": {
       "name": "github_connection",
       "columns": {
@@ -1357,13 +1305,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": "''"
-        },
-        "stepId": {
-          "name": "stepId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",

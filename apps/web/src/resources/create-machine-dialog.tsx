@@ -55,7 +55,10 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
   const apiKeyCmd = `${BRAND.cliCommandName} start --api-key <key> --team ${teamId ?? '<teamId>'}`;
   return (
     <DialogShell title={t('添加机器')} open={open} onClose={onClose}>
-      <div className="flex flex-col gap-3 p-4">
+      {/* #1006（dialog-shell 零皮化的消费点清理，resources 域代跑一处）：
+          body 外垫随壳 DialogContent 的 registry p-4 退役（双层垫会把最高
+          内容态撑出 #193 封顶滚动区，dialog-viewport machine 面钉）。 */}
+      <div className="flex flex-col gap-3">
         <p className="m-0 text-[13px] leading-5 text-(--text-secondary)">
           {t('有条件时优先使用云主机：笔记本会休眠或断网，云主机常在线，构建更稳定。')}
         </p>
@@ -70,7 +73,7 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
           <code className={CMD_CODE_CLS}>{installCmd}</code>
           <Button
             size="xs"
-            className="shrink-0"
+            className="shrink-0 px-2.5"
             onClick={() => void navigator.clipboard?.writeText(installCmd)}
           >
             {t('复制')}
@@ -81,18 +84,17 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
           <code className={CMD_CODE_CLS}>{startCmd}</code>
           <Button
             size="xs"
-            className="shrink-0"
+            className="shrink-0 px-2.5"
             onClick={() => void navigator.clipboard?.writeText(startCmd)}
           >
             {t('复制')}
           </Button>
         </div>
-        {/* disclosure 钮 = Button ghost 默认档（#1005 registry 对齐：七通道
-            中和配方退役，hover/展开态底色与按下位移由件承载）；贴左 px-0
-            与 secondary 墨（token 槽）是 layout/ink。 */}
+        {/* disclosure 钮 = 正典表 §5.4 model-add 同族配方（Button ghost +
+            贴左、无框、secondary 墨）；hover/展开态底色由件承载（D2）。 */}
         <Button
           variant="ghost"
-          className={`${INLINE_ACTION_CLS} px-0 text-(--text-secondary)`}
+          className={`${INLINE_ACTION_CLS} px-0 text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) dark:hover:bg-transparent font-normal active:not-aria-[haspopup]:translate-y-0`}
           aria-expanded={apiKeyOpen}
           onClick={() => setApiKeyOpen((value) => !value)}
         >

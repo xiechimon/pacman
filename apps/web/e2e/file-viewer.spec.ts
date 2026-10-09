@@ -37,9 +37,9 @@ test('selection survives a files/history seg round-trip', async ({ page }) => {
   const row = page.getByRole('button', { name: 'README.md', exact: true });
   await row.click();
   await expect(page.getByText('托管演示仓')).toBeVisible();
-  await page.getByRole('button', { name: '历史', exact: true }).click();
+  await page.locator('.prj-files').getByRole('tab', { name: '历史', exact: true }).click();
   await expect(page.getByRole('listitem').first()).toBeVisible();
-  await page.getByRole('button', { name: '文件', exact: true }).click();
+  await page.locator('.prj-files').getByRole('tab', { name: '文件', exact: true }).click();
   await expect(row).toHaveAttribute('aria-current', 'true');
   await expect(page.getByText('托管演示仓')).toBeVisible();
 });

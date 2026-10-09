@@ -126,11 +126,11 @@ test('project files pane: no export button, static branch chip, wired 文件|历
   const segTabs = page.locator('.prj-files-seg-tab');
   await expect(segTabs).toHaveCount(2);
   await segTabs.nth(1).click();
-  await expect(segTabs.nth(1)).toHaveClass(/prj-files-seg-tab--active/);
+  await expect(segTabs.nth(1)).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.prj-history-row').first()).toBeVisible();
   await expect(page.locator('.prj-file-row')).toHaveCount(0);
   await segTabs.nth(0).click();
-  await expect(segTabs.nth(0)).toHaveClass(/prj-files-seg-tab--active/);
+  await expect(segTabs.nth(0)).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.prj-file-row').first()).toBeVisible();
   await expect(page.locator('.prj-history-row')).toHaveCount(0);
 });

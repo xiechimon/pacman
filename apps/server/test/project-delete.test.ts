@@ -5,8 +5,8 @@
 // 清图 = step（无 FK 手动清，deleteTodo 同律）→ schedule（无 FK 列）→ tag →
 // todo（FK cascade 随行 build/plan/todo_tag）→ chief watch 摘除（JSON 列无 FK，
 // 陈旧 watch 不自愈）→ agentMemory.projectId 置 null（记忆属 Agent 资产，清
-// 作用域留本体）→ project 行；message/tokenUsage/document_diff 无 FK 孤儿 =
-// deleteTodo 既有面同口径。托管 bare repo 磁盘面随行清（repoName 复用安全：
+// 作用域留本体）→ project 行；message/tokenUsage 无 FK 孤儿 = deleteTodo 既有
+// 面同口径（document_diff 已随 #1029 死 schema 退役删表）。托管 bare repo 磁盘面随行清（repoName 复用安全：
 // uniqueRepoName 只查库行，留目录 = 同名新项目在旧库上 reinit/seed 冲突）。
 
 import { existsSync } from 'node:fs';

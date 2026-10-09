@@ -283,16 +283,6 @@ export const plan = sqliteTable('plan', {
   createdAt: epochMs('createdAt').notNull(),
 });
 
-// —— document_diff（`documents/{id}/diff` 端点源，02 §4.2；驳回回路细面归 M4）————
-export const documentDiff = sqliteTable('document_diff', {
-  id: text('id').primaryKey(),
-  documentId: text('documentId').notNull(),
-  fromVersion: integer('fromVersion').notNull(),
-  toVersion: integer('toVersion').notNull(),
-  files: json<DocumentDiffFile[]>('files').notNull(),
-  createdAt: epochMs('createdAt').notNull(),
-});
-
 // —— schedule（02 §6.2/§9.2；cron 闭环 = services/schedules + scheduler）——————
 export const schedule = sqliteTable('schedule', {
   id: text('id').primaryKey(),

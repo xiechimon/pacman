@@ -21,23 +21,13 @@ const STATE_FILTERS: { id: GithubIssueState; label: string }[] = [
   { id: 'all', label: '全部' },
 ];
 
-/** 过滤 chip（原 .prj-issues-filter）：24 高带框盒形，ghost 件配方按七通道
- *  律中和（hover 无涂底面——旧 per-face bg 简写恒压 hover 档）。选中态
- *  （原 --active）= 品牌描边 + tab-chip 填充，载体 aria-pressed。 */
-const FILTER_CLS =
-  'h-6 cursor-pointer rounded-none border border-(--border) bg-transparent px-2.5 text-xs font-normal leading-[inherit] text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
-const FILTER_ACTIVE_CLS =
-  'border-(--card-button) bg-(--card) text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card)';
+/** 过滤 chip：registry Button 形态（outline 底座 / secondary 选中档，几何
+ *  皮肤全归件默认 h-8），选中载体 aria-pressed（#910 裁定 3 状态断言归行为）。 */
 
-/** 翻页钮（原 .prj-issues-prev/-next，老 ui/Button quiet 皮肤）：零内距 /
- *  无边框 / 透明底 / 13 字号 / 弱化墨；禁用态无降档（quiet 无
- *  :disabled 规则）→ opacity-100 + pointer-events-auto 保「禁用仍画 pointer
- *  光标」的现行为。leading-[inherit] = 应用内 preflight 对 button 置
- *  line-height: inherit，老面继承 foot 行高（13px×1.4286≈18.57）；base
- *  text-sm 的比例行高与 normal 都凑不齐该值，inherit 逐位对齐（像素对拍
- *  实测 normal 会把 foot 压矮 0.56px）。 */
-const PAGER_BTN_CLS =
-  'h-auto cursor-pointer rounded-none border-none bg-transparent p-0 text-[13px] font-normal leading-[inherit] text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:opacity-100';
+/** 翻页钮：ghost 件默认形态 + muted 墨；禁用降档归件默认（opacity-50 +
+ *  pointer-events-none，registry 语义——「禁用仍画 pointer」的旧 quiet 行为
+ *  随件配方退役）。 */
+const PAGER_BTN_CLS = 'h-auto cursor-pointer p-0 text-muted-foreground hover:text-foreground';
 
 interface GithubIssuesDialogProps {
   /** #73 retained-mount open flag（DialogShell 家族律）。 */
@@ -96,7 +86,7 @@ export function GithubIssuesDialog({
           >
             {t('上一页')}
           </Button>
-          <span className="text-xs text-(--text-tertiary) tabular-nums">
+          <span className="text-xs text-muted-foreground tabular-nums">
             {t('第 {page} 页', { page })}
           </span>
           <Button
@@ -110,12 +100,11 @@ export function GithubIssuesDialog({
         </div>
       }
     >
-      <div className="flex gap-2 px-4 pt-3">
+      <div className="flex gap-2">
         {STATE_FILTERS.map((filter) => (
           <Button
             key={filter.id}
-            variant="ghost"
-            className={`${FILTER_CLS} ${state === filter.id ? FILTER_ACTIVE_CLS : ''}`}
+            variant={state === filter.id ? 'secondary' : 'outline'}
             aria-pressed={state === filter.id}
             onClick={() => {
               setState(filter.id);
@@ -127,36 +116,36 @@ export function GithubIssuesDialog({
         ))}
       </div>
       {issuesQ.isError ? (
-        <div className="px-4 py-6 text-center text-[13px] leading-4 text-(--text-tertiary)">
+        <div className="py-6 text-center text-sm leading-4 text-muted-foreground">
           {t('issue 列表加载失败')}
         </div>
       ) : data === undefined ? (
-        <div className="px-4 py-6 text-center text-[13px] leading-4 text-(--text-tertiary)">
+        <div className="py-6 text-center text-sm leading-4 text-muted-foreground">
           {t('加载中…')}
         </div>
       ) : data.issues.length === 0 ? (
-        <div className="px-4 py-6 text-center text-[13px] leading-4 text-(--text-tertiary)">
+        <div className="py-6 text-center text-sm leading-4 text-muted-foreground">
           {t('这个状态下没有 issue')}
         </div>
       ) : (
-        <div className="flex max-h-80 flex-col overflow-y-auto p-2">
+        <div className="flex max-h-80 flex-col overflow-y-auto">
           {data.issues.map((issue) => (
-            // 行（原 .prj-issues-row）：ghost 底座，font:inherit 简写旧形由
-            // text/leading inherit 等值承接；justify-start = text-align:left
-            // 的 flex 等价位；whitespace-normal 恢复标题双行换行（base
-            // whitespace-nowrap 会禁掉 wrap 面的 overflow-wrap）；h-auto 保
-            // 内容高——base h-8 钉 32px，双行行（60px）会溢出盒外。
+            // 行：ghost 件默认形态（hover 涂底 = registry 可供性），只留布局
+            // 位——justify-start = text-align:left 的 flex 等价位；
+            // whitespace-normal 恢复标题双行换行（base whitespace-nowrap 会
+            // 禁掉 wrap 面的 overflow-wrap）；h-auto 保内容高——base h-8 钉
+            // 32px，双行行（60px）会溢出盒外。
             <Button
               key={issue.number}
               variant="ghost"
-              className="h-auto w-full cursor-pointer items-baseline justify-start gap-1.5 whitespace-normal rounded-none border-none bg-transparent p-2 text-left font-normal text-[length:inherit] leading-[inherit] hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
+              className="h-auto w-full cursor-pointer items-baseline justify-start gap-1.5 rounded-lg p-2 text-left font-normal whitespace-normal"
               disabled={pending}
               onClick={() => importIssue(issue.number)}
             >
-              <span className="flex-none text-xs text-(--text-tertiary) tabular-nums">
+              <span className="flex-none text-xs text-muted-foreground tabular-nums">
                 #{issue.number}
               </span>
-              <span className="min-w-0 text-[13px] leading-[18px] text-(--foreground) [overflow-wrap:anywhere]">
+              <span className="min-w-0 text-sm leading-[18px] text-foreground [overflow-wrap:anywhere]">
                 {issue.title}
               </span>
               {issue.labels.length > 0 && (
@@ -173,9 +162,7 @@ export function GithubIssuesDialog({
           ))}
         </div>
       )}
-      {error !== null && (
-        <div className="mx-4 mb-3 text-xs leading-4 text-(--destructive)">{error}</div>
-      )}
+      {error !== null && <div className="text-xs leading-4 text-destructive">{error}</div>}
     </DialogShell>
   );
 }
