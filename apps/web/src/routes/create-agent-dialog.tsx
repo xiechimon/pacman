@@ -34,13 +34,7 @@ import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
-import {
-  AGENT_SELECT_MENU_NARROW_CLS,
-  AgentModelSelect,
-  AgentRuntimeSelect,
-  DLG_AGENT_SELECT_MENU_CLS,
-  DLG_AGENT_SELECT_TRIGGER_CLS,
-} from './agent-model-select.js';
+import { AgentModelSelect, AgentRuntimeSelect } from './agent-model-select.js';
 
 /** 槽位标签（运行时/模型 span，无控件配对不走 label 元素）：registry Label
  *  同款排印（text-sm leading-none font-medium）；12px/0.01em 手写档退役。 */
@@ -134,8 +128,11 @@ export function CreateAgentDialog({
         {modelOptions.length > 0 ? (
           <>
             {/* #951：.dlg-agent-slot-row 律等值迁 utility（标签与选择器纵向
-                排布，6 gap）；#952：选择器本体几何走 DLG_AGENT_SELECT_* 常量
-                （agent-model-select.tsx 单源，agent-detail.css 退役）。 */}
+                排布，6 gap）。#1010：选择器皮肤/几何归 registry select 默认
+                （DLG_AGENT_SELECT_* 常量退役，ADR 0012 D1）；本面只留 w-full
+                布局位（撑满行宽，#983 宽度归消费点判例）。菜单锚位/封顶归
+                Base UI Positioner（碰撞翻转 + --available-height），旧
+                bottom 锚 + max-h-192 覆写随 absolute 壳退役。 */}
             <div className="flex flex-col gap-1.5">
               <span className={SLOT_LABEL_CLS}>{t('运行时')}</span>
               <AgentRuntimeSelect
@@ -146,8 +143,7 @@ export function CreateAgentDialog({
                   setProvider(next);
                 }}
                 prefix="dlg-agent-runtime"
-                triggerClassName={DLG_AGENT_SELECT_TRIGGER_CLS}
-                menuClassName={`${DLG_AGENT_SELECT_MENU_CLS} ${AGENT_SELECT_MENU_NARROW_CLS}`}
+                triggerClassName="w-full"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -158,8 +154,7 @@ export function CreateAgentDialog({
                 options={modelOptions}
                 onPick={setModelId}
                 prefix="dlg-agent-model"
-                triggerClassName={DLG_AGENT_SELECT_TRIGGER_CLS}
-                menuClassName={DLG_AGENT_SELECT_MENU_CLS}
+                triggerClassName="w-full"
               />
             </div>
           </>
