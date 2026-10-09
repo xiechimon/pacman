@@ -16,8 +16,8 @@
 //
 // 检查面：
 //   A. dialog-shell 载体（spec/22 §5.5）：role=dialog 可及名、dialog-head/-body/
-//      -foot testid、关闭钮 aria-label、退场 visibility 桥（原 .dlg-shell 机制
-//      内联）computed 在场
+//      -foot testid、关闭钮 aria-label、registry 退场档（duration-100）在场 +
+//      手写 visibility 桥绝迹（#1006 段 2 迁移）
 //   B. create-agent 弹窗表单族（§5.4 utility 等值迁移）：label 12/18/0.01em、
 //      Input 32 高（36px 不存续）、提交钮 w-full 钉底、创建全链落 REST 真值
 //   C. agent 详情页（agent-detail.css 清零）：模板行高 49/41、头像 64、进行中
@@ -288,12 +288,19 @@ for (const theme of ['dark', 'light']) {
       (await dialog.getByRole('button', { name: '关闭' }).count()) === 1,
       'A3 关闭钮 aria-label 载体在场',
     );
-    const panelTransition = await dialog.evaluate(
-      (el) => getComputedStyle(el).transitionProperty,
-    );
+    // #1006 段 2 探针迁移（#951/#952 随面同纪律）：旧 A4 钉 dialog-shell 手写
+    // 退场 visibility 桥（transition-property 含 visibility）。registry 零皮化
+    // 后退场机制 = Base UI 原生延迟卸载 + duration-100 animate-out（#991 Q9：
+    // 动效 = base-nova 形态一部分）。断言迁成双面 computed 判据：registry
+    // 动效档在场（0.1s）+ 手写桥绝迹；「关闭后真卸载」的行为面由 e2e
+    // rerun-close-family / dialog-viewport / overlay-focus 钉（全绿）。
+    const panelMotion = await dialog.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { dur: cs.transitionDuration, prop: cs.transitionProperty };
+    });
     check(
-      panelTransition.includes('visibility'),
-      `A4 退场 visibility 桥内联生效（transition-property=${panelTransition}）`,
+      /0\.1s|100ms/.test(panelMotion.dur) && !panelMotion.prop.includes('visibility'),
+      `A4 registry 退场档生效 + 手写 visibility 桥退役（transition-duration=${panelMotion.dur}, property=${panelMotion.prop}）`,
     );
     const labelBox = await dialog.getByText('名称', { exact: true }).first().evaluate((el) => {
       const cs = getComputedStyle(el);

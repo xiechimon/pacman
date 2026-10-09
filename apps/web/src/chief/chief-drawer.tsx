@@ -44,17 +44,36 @@ import {
   CHIEF_INPUT_PLACEHOLDER_STEERING,
   type ChiefCompactionModel,
 } from '@pacman/shared';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { attachFile } from '../api/attachments.js';
 import { useMachines, useMembers, useProjects, useSkills, useTodos } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { ThinkingRow, ToolActivityRow } from '../components/chat/agent-rows.js';
 import { LiveRow, LiveSignal } from '../components/chat/live-row.js';
-import { useChatFollow } from '../components/chat/use-chat-follow.js';
+import { Bubble, BubbleContent } from '../components/ui/bubble.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Kbd } from '../components/ui/kbd.js';
+import { Marker, MarkerContent } from '../components/ui/marker.js';
+import { Message, MessageContent } from '../components/ui/message.js';
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+  useMessageScroller,
+} from '../components/ui/message-scroller.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Textarea } from '../components/ui/textarea.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip.js';
@@ -62,6 +81,7 @@ import { ChatMarkdown } from '../detail/chat-markdown.js';
 import type { ChiefContent, ChiefSegment, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import {
+  ArrowDown,
   ArrowUp,
   BarChart3,
   Check,
@@ -161,9 +181,42 @@ const TURN_TOOL_NAME_CLS = 'min-w-0 flex-auto truncate';
  *  出口（important 声明的层序优先于一切 normal 声明）。 */
 const MSG_COL_CLS =
   'min-w-0 flex-1 text-sm leading-6 text-(--foreground) [&_.chat-para+.chat-para]:mt-0.5!';
-const BUBBLE_CLS =
-  'rounded-(--radius-popover) bg-(--secondary) px-3 py-2.5 text-sm leading-6 text-(--foreground)';
 const BUBBLE_MD_CLS = '[&>:first-child]:mt-0! [&>:last-child]:mb-0!';
+
+/** #1009 A1：chat 原语换装的消费点中和配方（五件原语文件保持 pristine——
+ *  registry 账本 hash 零触碰，中和全走消费点 className/style）。滚动模型 =
+ *  MessageScroller 原生 autoScroll（#873 跟随律的原语实现，阈值 80px 同值、
+ *  发送跳最新 scrollToEnd、开窗关武装——Provider 注记见壳层）。Item 的
+ *  [content-visibility:auto] 用 inline style 钉回 visible：离屏行不跳布局，
+ *  e2e 可见性断言与探针几何采样不随滚动相位漂（determinism 优先于虚拟化
+ *  收益——380px 窗数十行的规模）。 */
+const SCROLLER_ITEM_STYLE: CSSProperties = { contentVisibility: 'visible' };
+const SCROLLER_ROOT_CLS = 'h-auto min-h-0 flex-1';
+/** Content 的 block + gap-0：行距语义保持在行自身的 margin 上（现状
+ *  mt-3.5 / my-2.5 的块级折叠律逐字存活），原语默认 flex gap-6 会双倍行距。 */
+const SCROLLER_CONTENT_CLS = 'block gap-0 px-[17px] pt-3.5';
+/** 行骨架中和：Message 原语默认（gap-2）钉回现行行几何；identity chip
+ *  列形 = flex-col gap-1.5（#741 参考站 assistant-message 形原值）。 */
+const MSG_ROW_CLS = 'mt-3.5 gap-2.5';
+const MSG_ROW_IDENTITY_CLS = 'mt-3.5 flex-col gap-1.5';
+const MSG_COL_MID_CLS = `${MSG_COL_CLS} gap-0`;
+const MSG_COL_LIVE_CLS = 'min-w-0 flex-1 gap-0';
+/** Bubble 默认皮几何中和（票面）。user 行 = secondary 档：--secondary 底
+ *  即原 BUBBLE_CLS 槽位、--secondary-foreground 双主题与 --foreground 等值
+ *  （#1002 色板实测同值）；几何钉回原值（radius-popover / px-3 py-2.5 /
+ *  leading-6 / 满列宽——原语 80% cap 与 w-fit 随现状面中和）。robot 行 =
+ *  ghost 档：裸文本面，结构走原语、皮肤零（p-0/bg-transparent 由 ghost
+ *  档父选择器承载，消费点只补 leading-6 与满宽）。 */
+const BUBBLE_WRAP_CLS = 'w-full max-w-full';
+// border-0：BubbleContent 原语自带 border border-transparent（不可见但吃
+// 2px 几何——F-R16 的 44px 药丸 canon 是零边框面值），中和面逐像素对齐。
+const BUBBLE_USER_CLS = 'w-full rounded-(--radius-popover) border-0 px-3 py-2.5 leading-6';
+const BUBBLE_ROBOT_CLS = 'w-full border-0 leading-6';
+/** note/error 的居中 annotation 行 = Marker 原语（上游用途本义）；字号/
+ *  墨色钉回现状（text-xs + tertiary/destructive，原语 text-sm/muted 中和），
+ *  error 二段面走 flex-col。 */
+const MARKER_NOTE_CLS = 'my-2.5 justify-center text-center text-xs text-(--text-tertiary)';
+const MARKER_ERROR_CLS = 'my-2.5 flex-col justify-center text-center text-xs text-(--destructive)';
 
 const EXAMPLE_ICONS = {
   'user-plus': ChiefUserPlus,
@@ -277,7 +330,72 @@ interface DrawerProps {
   onRewind?: (messageId: string) => void;
 }
 
-export function ChiefDrawer({
+interface InnerProps extends DrawerProps {
+  /** 主题切换器开态（壳层提升：Root onOpenChange 的 Esc 分层代收要读写它，
+   *  内容列整体住 Provider 之下——同组件 hook 吃不到自己渲染树的 context）。 */
+  threadsOpen: boolean;
+  setThreadsOpen: Dispatch<SetStateAction<boolean>>;
+}
+
+export function ChiefDrawer(props: DrawerProps) {
+  const { open = true, chief } = props;
+  const { t } = useI18n();
+  const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
+  return (
+    <DialogPrimitive.Root
+      open={open}
+      modal={false}
+      // 外点不关（Multica 同律，0004 现状继承）；Esc **永不关面板**（ADR
+      // 0013 D3——#146「分层第二按关抽屉」契约随贴右竖板退役，对 #168
+      // dialog 家族关闭律的自觉背离照 #443 先例记 0013 D3），只收面板内层
+      // 弹层：主题切换器在此代收，模型 popover 是 Base UI layer 栈自收。
+      disablePointerDismissal
+      onOpenChange={(next: boolean, details?: { reason?: string }) => {
+        if (next) return;
+        if (details?.reason === 'escape-key' && threadsOpen) setThreadsOpen(false);
+      }}
+    >
+      {/* D6/D10：Portal 回 body（dock 行发现随让位退役），keepMounted 承载
+          「关 = 在 DOM 但 inert」的常驻契约——Base UI 把关态 Popup 以
+          hidden 属性停驻（tailwind preflight 的 [hidden] display:none
+          !important 钉死 flex utility 的覆盖面），草稿/滚动/线程态全保；
+          退场动画仍先播（transition-status），播完才落 hidden。「关」的
+          可观测契约从「不在 DOM」改「在 DOM 但 hidden/inert」（D6，e2e
+          count-0 断言族按 0012 D6 载体重钉，行为语义不变）。 */}
+      <DialogPrimitive.Portal keepMounted>
+        <DialogPrimitive.Popup
+          // render 令 Popup 即 aside（悬浮窗本体）；fade+scale 进出场落在
+          // aside 上，origin bottom-right = 窗从 FAB 角长出（D7）。
+          render={<aside className={`${WINDOW_CLS} ${WINDOW_MOTION_CLS}`} aria-label={t('总管')} />}
+          initialFocus={false}
+          finalFocus={false}
+        >
+          {/* #1009 A1：MessageScroller Provider 包住整列窗内容——滚动律单源
+              从 useChatFollow 换成原语原生 autoScroll，#873 语义逐条保留：
+              贴底阈值 80px = FOLLOW_THRESHOLD 同值（scrollEdgeThreshold）、
+              关窗解除武装 = 旧 active=open 同律（autoScroll）、打开落底 =
+              chat 面通行律（defaultScrollPosition="end"）、发送跳最新 =
+              scrollToEnd()（实审裁决 2：不采 scrollAnchor 逐条锚定）。
+              消费点（composer wire 的 onSend 与切线程 effect）住内容列
+              hook 里，必须整体下沉到 Provider 之下——拆分点即此。 */}
+          <MessageScrollerProvider
+            autoScroll={open}
+            scrollEdgeThreshold={80}
+            defaultScrollPosition="end"
+          >
+            <ChiefDrawerInner
+              {...props}
+              threadsOpen={threadsOpen}
+              setThreadsOpen={setThreadsOpen}
+            />
+          </MessageScrollerProvider>
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
+function ChiefDrawerInner({
   chief,
   open = true,
   onSettings,
@@ -289,7 +407,9 @@ export function ChiefDrawer({
   modelOptions,
   onPickModel,
   onRewind,
-}: DrawerProps) {
+  threadsOpen,
+  setThreadsOpen,
+}: InnerProps) {
   const { t } = useI18n();
   // #650 / XMON-105: 用户行头像身份单源（live = /api/user/me；fixture =
   // canon 常量，avatarUrl 覆盖 > dicebear 名字种子 > 静态兜底）。
@@ -346,30 +466,21 @@ export function ChiefDrawer({
           return tokens;
         }
       : undefined;
-  const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
   const [modelOpen, setModelOpen] = useState(false);
-  // #651 流式视口：抽屉 body 是真滚动容器（overflow-y auto，#950 起
-  // utility 承载）。打开/切线程落底（chat 面通行律：最新消息在底部；
-  // retained-mount 节点常驻，open 翻 true 时 effect 即发）。
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const streamLen = chief.stream?.length ?? 0;
-  const lastItem = streamLen > 0 ? chief.stream?.[streamLen - 1] : undefined;
-  const typingText =
-    lastItem?.kind === 'robot' && lastItem.typing === true ? (lastItem.markdown ?? '') : null;
-  // #873 跟随单源（components/chat/use-chat-follow，详情页对话列同款）：打开/
-  // 切线程落底（chat 面通行律：最新消息在底部；retained-mount 节点常驻，
-  // open 翻 true 时 effect 即发）；增量仅在视口已近底部时贴底——上翻读历史时
-  // 不抢滚动条。打字行文本与行数是增长信号（250ms 聚合粒度）。本面是普通
-  // 纵向滚动容器（reversed=false）。
-  const { requestFollow } = useChatFollow({
-    ref: bodyRef,
-    // 增长信号 = 行数 + 打字行文本（250ms 聚合粒度）。拼成一个字符串而不是
-    // 数组：[…] 字面量每次渲染都是新身份，效应会跟着每一次无关重渲跑。
-    dep: `${streamLen}:${typingText ?? ''}`,
-    reversed: false,
-    active: open,
-    resetDep: chief.threadTitle,
-  });
+  // #651 → #1009 A1 滚动模型替换：真滚动容器 = MessageScroller Viewport
+  // （data-testid chief-body 载体随迁；overflowY auto 面由原语承载），贴底
+  // 跟随/打开落底 = Provider 原生 autoScroll + defaultScrollPosition（壳层
+  // 注记）；本层只剩「切线程落底」一条 effect——旧 useChatFollow 的
+  // resetDep 语义等价迁移（threadTitle 变 = 换线程 = 落底看最新；标题守卫
+  // 防无关重渲触发）。useChatFollow 本体留给详情页对话列（A2 段的替换面，
+  // 本段不动）。发送跳最新 = scrollToEnd（下方 wire.onSend）。
+  const { scrollToEnd } = useMessageScroller();
+  const prevThreadRef = useRef(chief.threadTitle);
+  useEffect(() => {
+    if (prevThreadRef.current === chief.threadTitle) return;
+    prevThreadRef.current = chief.threadTitle;
+    if (open) scrollToEnd();
+  }, [chief.threadTitle, open, scrollToEnd]);
   // #615 返工：恢复钮确认层锚（stream 行 index + live 消息 id）与过程折叠开态集。
   const [rewindConfirm, setRewindConfirm] = useState<{ index: number; id: string | null } | null>(
     null,
@@ -402,12 +513,14 @@ export function ChiefDrawer({
     editable: onSend != null,
     draft: onSend != null ? undefined : (chief.draft ?? ''),
     // #873：读者自己发出去的那条必须看得见——跳最新端与详情面同一规则
-    // （useChatFollow.requestFollow），四个分流出口之外的通用发送面。
+    // （A1 起机制 = useMessageScroller().scrollToEnd，语义 = 旧
+    // requestFollow 的「读者自己的发送恒赢」律），四个分流出口之外的通用
+    // 发送面。
     onSend:
       onSend == null
         ? undefined
         : (text: string) => {
-            requestFollow();
+            scrollToEnd();
             return onSend(text);
           },
     onAttachment,
@@ -529,38 +642,14 @@ export function ChiefDrawer({
     setThreadsOpen(false);
   }, [onNewThread]);
   useChiefNewThreadHotkey(open && onNewThread != null, newThread);
+  // A1 拆分：Dialog 壳（Root/Portal/Popup/aside）与 MessageScroller Provider
+  // 住外层 ChiefDrawer；本组件 = Provider 之下的整列窗内容（header/body/
+  // composer/弹层），hook 面得以消费 useMessageScroller。
   return (
-    <DialogPrimitive.Root
-      open={open}
-      modal={false}
-      // 外点不关（Multica 同律，0004 现状继承）；Esc **永不关面板**（ADR
-      // 0013 D3——#146「分层第二按关抽屉」契约随贴右竖板退役，对 #168
-      // dialog 家族关闭律的自觉背离照 #443 先例记 0013 D3），只收面板内层
-      // 弹层：主题切换器在此代收，模型 popover 是 Base UI layer 栈自收。
-      disablePointerDismissal
-      onOpenChange={(next: boolean, details?: { reason?: string }) => {
-        if (next) return;
-        if (details?.reason === 'escape-key' && threadsOpen) setThreadsOpen(false);
-      }}
-    >
-      {/* D6/D10：Portal 回 body（dock 行发现随让位退役），keepMounted 承载
-          「关 = 在 DOM 但 inert」的常驻契约——Base UI 把关态 Popup 以
-          hidden 属性停驻（tailwind preflight 的 [hidden] display:none
-          !important 钉死 flex utility 的覆盖面），草稿/滚动/线程态全保；
-          退场动画仍先播（transition-status），播完才落 hidden。「关」的
-          可观测契约从「不在 DOM」改「在 DOM 但 hidden/inert」（D6，e2e
-          count-0 断言族按 0012 D6 载体重钉，行为语义不变）。 */}
-      <DialogPrimitive.Portal keepMounted>
-        <DialogPrimitive.Popup
-          // render 令 Popup 即 aside（悬浮窗本体）；fade+scale 进出场落在
-          // aside 上，origin bottom-right = 窗从 FAB 角长出（D7）。
-          render={<aside className={`${WINDOW_CLS} ${WINDOW_MOTION_CLS}`} aria-label={t('总管')} />}
-          initialFocus={false}
-          finalFocus={false}
-        >
-          <header className="relative px-[17px] pt-[5px] pb-3">
-            <div className="flex items-center">
-              {/* XMON-23→#950：ghost 原语 + 头部 chip 皮肤 utility（旧
+    <>
+      <header className="relative px-[17px] pt-[5px] pb-3">
+        <div className="flex items-center">
+          {/* XMON-23→#950：ghost 原语 + 头部 chip 皮肤 utility（旧
                 .chief-chip 等值：零装饰 / tertiary 墨 / gap 6 / 可点）。
                 中和件沿旧：h-auto（原语 h-8 会撑高 22.5 的行）、
                 leading-[inherit]（原语 text-sm 的定值 20px 行高会压掉 15px
@@ -568,71 +657,71 @@ export function ChiefDrawer({
                 让 title 省略号生效）、hover/expanded 涂底钉回透明（旧
                 unlayered 恒压件配方无反馈）、svg size-auto（ChiefHash 13px
                 属性尺寸）。 */}
-              <Button
-                variant="ghost"
-                className="h-auto min-w-0 shrink cursor-pointer gap-1.5 rounded-none border-none bg-transparent p-0 leading-[inherit] text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                aria-label={t('主题')}
-                onClick={() => setThreadsOpen((v) => !v)}
-              >
-                <ChiefHash />
-                <span className="max-w-[210px] truncate text-[15px] font-semibold text-(--foreground)">
-                  {t(chief.threadTitle)}
-                </span>
-                <ChevronDown width={12} height={12} />
-              </Button>
-              <div className="ml-auto flex items-center gap-3.5">
-                {/* 头部三钮：ghost/icon 收编 + HEAD_ICON_BTN_CLS（旧
+          <Button
+            variant="ghost"
+            className="h-auto min-w-0 shrink cursor-pointer gap-1.5 rounded-none border-none bg-transparent p-0 leading-[inherit] text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            aria-label={t('主题')}
+            onClick={() => setThreadsOpen((v) => !v)}
+          >
+            <ChiefHash />
+            <span className="max-w-[210px] truncate text-[15px] font-semibold text-(--foreground)">
+              {t(chief.threadTitle)}
+            </span>
+            <ChevronDown width={12} height={12} />
+          </Button>
+          <div className="ml-auto flex items-center gap-3.5">
+            {/* 头部三钮：ghost/icon 收编 + HEAD_ICON_BTN_CLS（旧
                   .chief-head-actions button 元素选择器等值，七通道归零）。 */}
-                {/* #645/#1008: N 悬浮提示（kbd-hint 族第四消费点）——kbd-hint
+            {/* #645/#1008: N 悬浮提示（kbd-hint 族第四消费点）——kbd-hint
                   退役（#983 判决）→ 官网 Tooltip+Kbd 组合（A0 已在 chief-root
                   的 ⌘J 面移植同款，本钮随形）；side=bottom sideOffset=8 =
                   旧 below 落位（头部贴视口顶，above 会落屏外）。 */}
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`relative ${HEAD_ICON_BTN_CLS}`}
-                        aria-label={t('新主题')}
-                        aria-keyshortcuts="N"
-                        onClick={onNewThread != null ? newThread : undefined}
-                      />
-                    }
-                  >
-                    <Plus width={18} height={18} />
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={8}>
-                    <Kbd>N</Kbd>
-                  </TooltipContent>
-                </Tooltip>
-                {onSettings != null && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={HEAD_ICON_BTN_CLS}
-                    aria-label={t('总管设置')}
-                    onClick={onSettings}
-                  >
-                    <ChiefGear />
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={HEAD_ICON_BTN_CLS}
-                  // ADR 0013 D3：关闭模型对齐 Multica——唯一的收起动作是
-                  // Minimize（Minus 字形，最小化心智，无 X）；语义 = 窗退
-                  // 回右下角 FAB，面板状态全保留（GLOSSARY「最小化」正名，
-                  // 「关闭」在悬浮窗语境入 avoid 列）。⌘J 再按同收。
-                  aria-label={t('最小化')}
-                  onClick={onClose}
-                >
-                  <Minus width={16} height={16} />
-                </Button>
-              </div>
-            </div>
-            {/* 模型行（旧 .chief-model 等值：12px tertiary、gap 5、3 上距）。
+                    className={`relative ${HEAD_ICON_BTN_CLS}`}
+                    aria-label={t('新主题')}
+                    aria-keyshortcuts="N"
+                    onClick={onNewThread != null ? newThread : undefined}
+                  />
+                }
+              >
+                <Plus width={18} height={18} />
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={8}>
+                <Kbd>N</Kbd>
+              </TooltipContent>
+            </Tooltip>
+            {onSettings != null && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={HEAD_ICON_BTN_CLS}
+                aria-label={t('总管设置')}
+                onClick={onSettings}
+              >
+                <ChiefGear />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={HEAD_ICON_BTN_CLS}
+              // ADR 0013 D3：关闭模型对齐 Multica——唯一的收起动作是
+              // Minimize（Minus 字形，最小化心智，无 X）；语义 = 窗退
+              // 回右下角 FAB，面板状态全保留（GLOSSARY「最小化」正名，
+              // 「关闭」在悬浮窗语境入 avoid 列）。⌘J 再按同收。
+              aria-label={t('最小化')}
+              onClick={onClose}
+            >
+              <Minus width={16} height={16} />
+            </Button>
+          </div>
+        </div>
+        {/* 模型行（旧 .chief-model 等值：12px tertiary、gap 5、3 上距）。
                   #615 A/B：显示行翻控制件——行首 = 运行时标记（FAB / 消息流的
                   Agent 头像脸不受影响，XMON-105 律），点开 = 主模型覆盖锚定
                   弹层（#751：贴行底下，家族律见 ChiefModelPopover；live
@@ -641,174 +730,177 @@ export function ChiefDrawer({
                   leading-[inherit]/font-normal 防原语定值撑高 12px 行、
                   hover 底/墨 = 旧 per-face 配方（surface-secondary +
                   secondary 墨）、svg size-auto（ChevronDown 12 属性尺寸）。 */}
-            <div className="mt-[3px] flex items-center gap-[5px] text-xs text-(--text-tertiary)">
-              {chief.bound ? (
-                <span className="relative block min-w-0 -ml-1">
-                  <ChiefModelPopover
-                    open={modelOpen}
-                    onOpenChange={setModelOpen}
-                    value={modelValue}
-                    options={modelOptions}
-                    onPick={onPickModel}
-                    trigger={
-                      <Button
-                        variant="ghost"
-                        className="h-auto min-w-0 max-w-full shrink cursor-pointer justify-start gap-[5px] rounded-none border-none bg-transparent px-1 py-px leading-[inherit] font-normal text-(--text-tertiary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                        aria-label={t('总管主模型')}
-                      >
-                        {/* #615 返工（用户裁决）：行首 = 运行时标记，不是 Agent 头像
+        <div className="mt-[3px] flex items-center gap-[5px] text-xs text-(--text-tertiary)">
+          {chief.bound ? (
+            <span className="relative block min-w-0 -ml-1">
+              <ChiefModelPopover
+                open={modelOpen}
+                onOpenChange={setModelOpen}
+                value={modelValue}
+                options={modelOptions}
+                onPick={onPickModel}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    className="h-auto min-w-0 max-w-full shrink cursor-pointer justify-start gap-[5px] rounded-none border-none bg-transparent px-1 py-px leading-[inherit] font-normal text-(--text-tertiary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                    aria-label={t('总管主模型')}
+                  >
+                    {/* #615 返工（用户裁决）：行首 = 运行时标记，不是 Agent 头像
                           ——标记正本 = 参考站 providers 运行时 tab 的 SVG（用户指认
                           /app/resources/providers?runtime=pi 面，DOM 捕获入库）：
                           pi = RuntimePi 块状 π，claude-code = RuntimeClaudeCode
                           品牌星标（填色随捕获）。FAB / 消息流的 Agent 头像脸不受
                           影响（XMON-105 律在其各自面继续生效）。 */}
-                        <span className="inline-flex flex-none items-center">
-                          {(chief.modelProvider ?? 'pi') === 'claude-code' ? (
-                            <RuntimeClaudeCode width={12} height={12} />
-                          ) : (
-                            <RuntimePi width={12} height={12} />
-                          )}
-                        </span>
-                        <span className="min-w-0 truncate">{chief.modelSlot}</span>
-                        <ChevronDown width={12} height={12} />
-                      </Button>
-                    }
-                  />
-                </span>
-              ) : (
-                <span>n/a</span>
-              )}
-            </div>
-            {threadsOpen && (
-              // 主题切换器（r5 116，旧 .chief-switcher 等值：头部锚定绝对
-              // 位、262 宽、popover 底、drawer-local z 5——#688 阶梯外，
-              // 收编于抽屉 stacking context 只压内部内容）。
-              <div
-                className="absolute top-8 left-3 z-[5] w-[262px] rounded-none bg-(--popover) p-1 shadow-(--chief-shadow)"
-                role="menu"
-              >
-                {(chief.threads ?? []).map((thread, index) => (
-                  // #950 裸控件收编：行钮 = Button ghost + 七通道归零（旧
-                  // .chief-switcher-row 等值：30 行 / 13px 次级墨 / 方角
-                  // 透明底）；当前主题态载体 = aria-current（旧 .is-active
-                  // 类退役，#910 裁定 3——surface-hover 底随条件挂）。
-                  <Button
-                    variant="ghost"
-                    role="menuitem"
-                    key={thread.title}
-                    aria-current={thread.active ? 'true' : undefined}
-                    className="h-[30px] w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-2 text-left text-[13px] font-normal text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-[current=true]:bg-(--secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                    onClick={
-                      onThread != null
-                        ? () => {
-                            onThread(thread.title, index);
-                            setThreadsOpen(false);
-                          }
-                        : undefined
-                    }
-                  >
-                    <ChiefHash
-                      width={11}
-                      height={11}
-                      className="flex-none text-(--text-tertiary)"
-                    />
-                    <span className="truncate">{t(thread.title)}</span>
+                    <span className="inline-flex flex-none items-center">
+                      {(chief.modelProvider ?? 'pi') === 'claude-code' ? (
+                        <RuntimeClaudeCode width={12} height={12} />
+                      ) : (
+                        <RuntimePi width={12} height={12} />
+                      )}
+                    </span>
+                    <span className="min-w-0 truncate">{chief.modelSlot}</span>
+                    <ChevronDown width={12} height={12} />
                   </Button>
-                ))}
-              </div>
-            )}
-          </header>
+                }
+              />
+            </span>
+          ) : (
+            <span>n/a</span>
+          )}
+        </div>
+        {threadsOpen && (
+          // 主题切换器（r5 116，旧 .chief-switcher 等值：头部锚定绝对
+          // 位、262 宽、popover 底、drawer-local z 5——#688 阶梯外，
+          // 收编于抽屉 stacking context 只压内部内容）。
+          <div
+            className="absolute top-8 left-3 z-[5] w-[262px] rounded-none bg-(--popover) p-1 shadow-(--chief-shadow)"
+            role="menu"
+          >
+            {(chief.threads ?? []).map((thread, index) => (
+              // #950 裸控件收编：行钮 = Button ghost + 七通道归零（旧
+              // .chief-switcher-row 等值：30 行 / 13px 次级墨 / 方角
+              // 透明底）；当前主题态载体 = aria-current（旧 .is-active
+              // 类退役，#910 裁定 3——surface-hover 底随条件挂）。
+              <Button
+                variant="ghost"
+                role="menuitem"
+                key={thread.title}
+                aria-current={thread.active ? 'true' : undefined}
+                className="h-[30px] w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-2 text-left text-[13px] font-normal text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-[current=true]:bg-(--secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                onClick={
+                  onThread != null
+                    ? () => {
+                        onThread(thread.title, index);
+                        setThreadsOpen(false);
+                      }
+                    : undefined
+                }
+              >
+                <ChiefHash width={11} height={11} className="flex-none text-(--text-tertiary)" />
+                <span className="truncate">{t(thread.title)}</span>
+              </Button>
+            ))}
+          </div>
+        )}
+      </header>
 
-          {/* #651: 真滚动容器——auto 只在溢出时出滚动条；打字期贴底跟随归
-                上方 useChatFollow（打开/切线程落底、近底才跟随）。 */}
-          <div className="min-h-0 flex-1 overflow-y-auto" data-testid="chief-body" ref={bodyRef}>
-            {!chief.bound && (
-              <div className="mx-[17px] flex h-[54px] items-center rounded-none bg-(--secondary) pr-3 pl-5 text-[13px] text-(--text-secondary)">
-                <span>{t('请先为总管选择一个 Agent。')}</span>
-                {/* XMON-23 收编：default 档 = A3 primary 等价位。中和件对齐 A6 实测形（50×26、12px 字、
+      {/* gate / hero 移出滚动区（#1009 A1）：两面只在无流状态出场
+                （未绑定 gate / 空线程 hero），移出后视觉等价；滚动区自此
+                纯消息流。gate 在位（= 未绑定）时 hero 上距 62，否则 54
+                ——条件类随 JSX 状态切换（旧 .chief-hero 兄弟选择器等值）。 */}
+      {!chief.bound && (
+        <div className="mx-[17px] flex h-[54px] flex-none items-center rounded-none bg-(--secondary) pr-3 pl-5 text-[13px] text-(--text-secondary)">
+          <span>{t('请先为总管选择一个 Agent。')}</span>
+          {/* XMON-23 收编：default 档 = A3 primary 等价位。中和件对齐 A6 实测形（50×26、12px 字、
                   8px 内边距、8 圆角、400 字重）：h-[26px]/px-2/rounded-md/
                   border-0/font-normal + 既有 inline style；active 位移中和。 */}
+          <Button
+            className="h-[26px] cursor-pointer rounded-md border-0 px-2 font-normal active:not-aria-[haspopup]:translate-y-0"
+            style={{ width: 50, fontSize: 12 }}
+            onClick={onSettings}
+          >
+            {t('设置')}
+          </Button>
+        </div>
+      )}
+      {chief.examples && (
+        <div className="flex-none">
+          <h2
+            className={`text-center text-[15px] font-semibold text-(--foreground) ${
+              chief.bound ? 'mt-[54px]' : 'mt-[62px]'
+            }`}
+          >
+            {t('选择一个主题开始')}
+          </h2>
+          <div className="mx-[33px] mt-3 grid grid-cols-2 gap-2.5" data-testid="chief-examples">
+            {chief.examples.map((ex) => {
+              const Icon = EXAMPLE_ICONS[ex.icon];
+              return (
+                // #146: 点击即发预置词进 chief 线程（live 面走 onSend，
+                // 等同用户键入发送；zh 权威 canon 串上行，r5 111 逐字）。
+                // #631：onSend 异步化（被拒保留 draft）后 hero 面消费
+                // fire-and-forget——失败 toast 归 surface，此处无 draft
+                // 可保，不悬挂未处理 promise。
+                // XMON-23→#950：ghost 原语 + 示例卡皮肤 utility（旧
+                // .chief-example 等值：64 卡 / 12 gap / surface-secondary
+                // 底）。中和件沿旧：justify-start/whitespace-normal/
+                // font-normal（原语居中+nowrap+medium 会破 170 卡内
+                // 左对齐换行文案）、hover 涂底钉回卡底（旧 unlayered
+                // 恒压件配方）、active 位移、svg size-auto（瓦片字形
+                // 14px 属性尺寸）。
                 <Button
-                  className="h-[26px] cursor-pointer rounded-md border-0 px-2 font-normal active:not-aria-[haspopup]:translate-y-0"
-                  style={{ width: 50, fontSize: 12 }}
-                  onClick={onSettings}
+                  variant="ghost"
+                  className="h-16 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--secondary) px-3 text-left whitespace-normal font-normal hover:bg-(--secondary) dark:hover:bg-(--secondary) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                  key={ex.text}
+                  onClick={onSend != null ? () => void onSend(ex.text) : undefined}
                 >
-                  {t('设置')}
-                </Button>
-              </div>
-            )}
-            {chief.examples && (
-              <>
-                {/* 旧 .chief-hero + gate 兄弟选择器等值：gate 在位（= 未
-                      绑定）时上距 62，否则 54——条件类随 JSX 状态切换。 */}
-                <h2
-                  className={`text-center text-[15px] font-semibold text-(--foreground) ${
-                    chief.bound ? 'mt-[54px]' : 'mt-[62px]'
-                  }`}
-                >
-                  {t('选择一个主题开始')}
-                </h2>
-                <div
-                  className="mx-[33px] mt-3 grid grid-cols-2 gap-2.5"
-                  data-testid="chief-examples"
-                >
-                  {chief.examples.map((ex) => {
-                    const Icon = EXAMPLE_ICONS[ex.icon];
-                    return (
-                      // #146: 点击即发预置词进 chief 线程（live 面走 onSend，
-                      // 等同用户键入发送；zh 权威 canon 串上行，r5 111 逐字）。
-                      // #631：onSend 异步化（被拒保留 draft）后 hero 面消费
-                      // fire-and-forget——失败 toast 归 surface，此处无 draft
-                      // 可保，不悬挂未处理 promise。
-                      // XMON-23→#950：ghost 原语 + 示例卡皮肤 utility（旧
-                      // .chief-example 等值：64 卡 / 12 gap / surface-secondary
-                      // 底）。中和件沿旧：justify-start/whitespace-normal/
-                      // font-normal（原语居中+nowrap+medium 会破 170 卡内
-                      // 左对齐换行文案）、hover 涂底钉回卡底（旧 unlayered
-                      // 恒压件配方）、active 位移、svg size-auto（瓦片字形
-                      // 14px 属性尺寸）。
-                      <Button
-                        variant="ghost"
-                        className="h-16 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--secondary) px-3 text-left whitespace-normal font-normal hover:bg-(--secondary) dark:hover:bg-(--secondary) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                        key={ex.text}
-                        onClick={onSend != null ? () => void onSend(ex.text) : undefined}
-                      >
-                        <span className="flex size-6 flex-none items-center justify-center rounded-none bg-(--seg-active) text-(--text-tertiary)">
-                          <Icon width={14} height={14} />
-                        </span>
-                        {/* 12px: r5 100 wraps 帮我组建 Agent 团/队 but keeps
+                  <span className="flex size-6 flex-none items-center justify-center rounded-none bg-(--seg-active) text-(--text-tertiary)">
+                    <Icon width={14} height={14} />
+                  </span>
+                  {/* 12px: r5 100 wraps 帮我组建 Agent 团/队 but keeps
                               帮我创建一个新项目 on one line inside the
                               170-wide card */}
-                        <span className="text-xs leading-[21px] text-(--text-secondary)">
-                          {t(ex.text)}
-                        </span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-            {chief.stream && (
-              <div className="px-[17px] pt-3.5" data-testid="chief-stream">
-                {chief.stream.map((item, i) => {
-                  // #631 失败行（chief_turn_error 投影）：居中 danger 提示 +
-                  // 原因原文（server 数据，不经 t()——用户/agent 内容同律）。
-                  if (item.kind === 'error')
-                    return (
-                      <div
-                        key={i}
-                        className="my-2.5 text-center text-xs text-(--destructive)"
-                        role="alert"
-                      >
-                        {t('总管本轮执行失败')}
-                        <span className="mt-0.5 block break-all text-(--text-tertiary)">
-                          {item.text}
-                        </span>
-                      </div>
-                    );
-                  if (item.kind === 'note')
-                    return (
-                      <div key={i} className="my-2.5 text-center text-xs text-(--text-tertiary)">
+                  <span className="text-xs leading-[21px] text-(--text-secondary)">
+                    {t(ex.text)}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {/* #651 → #1009 A1 滚动模型替换：真滚动容器 = MessageScroller
+                Viewport（原语 overflow-y-auto 承载 F-R6/R8 的 chief-body
+                pin 面）；Root 中和 h-auto（原语 size-full 的 h-full 在
+                header/composer 兄弟列里会顶爆 flex 链）；Content 中和
+                block + gap-0（行距留在行 margin 上，注记见常量）。
+                chief-body / chief-stream 两 testid 载体随迁。 */}
+      <MessageScroller className={SCROLLER_ROOT_CLS}>
+        <MessageScrollerViewport data-testid="chief-body">
+          <MessageScrollerContent className={SCROLLER_CONTENT_CLS} data-testid="chief-stream">
+            {chief.stream?.map((item, i) => {
+              // #631 失败行（chief_turn_error 投影）：居中 danger 提示 +
+              // 原因原文（server 数据，不经 t()——用户/agent 内容同律）。
+              // #1009 A1：居中 annotation 行 = Marker 原语（上游用途
+              // 本义）；role=alert 与二段面（提示 + 原因块）原样，字号
+              // 墨色中和钉回现状（MARKER_ERROR_CLS 注记）。error 行无
+              // 源 message id（system 行投影），key 走 index。
+              if (item.kind === 'error')
+                return (
+                  <MessageScrollerItem key={i} style={SCROLLER_ITEM_STYLE}>
+                    <Marker role="alert" className={MARKER_ERROR_CLS}>
+                      <MarkerContent>{t('总管本轮执行失败')}</MarkerContent>
+                      <span className="mt-0.5 block break-all text-(--text-tertiary)">
+                        {item.text}
+                      </span>
+                    </Marker>
+                  </MessageScrollerItem>
+                );
+              if (item.kind === 'note')
+                return (
+                  <MessageScrollerItem key={i} style={SCROLLER_ITEM_STYLE}>
+                    <Marker className={MARKER_NOTE_CLS}>
+                      <MarkerContent>
                         {t(item.text)}
                         {item.machineName && (
                           <>
@@ -817,25 +909,38 @@ export function ChiefDrawer({
                             {t('上')}
                           </>
                         )}
-                      </div>
-                    );
-                  if (item.kind === 'user')
-                    return (
-                      <div key={i} className="mt-3.5 flex gap-2.5" data-testid="chief-msg">
-                        {/* #650 / XMON-105: 用户行头像接全站单源——与详情页对话
+                      </MarkerContent>
+                    </Marker>
+                  </MessageScrollerItem>
+                );
+              // #1009 A1：行骨架翻 Message 原语（头像列 + 内容列），气泡翻
+              // Bubble secondary 档（--secondary 底 = 原 BUBBLE_CLS 槽位，
+              // 几何中和钉回原值——BUBBLE_USER_CLS 注记）；A1 行 id 贯通后
+              // key/messageId 走源 chief_message id（fixture 面缺省回落 index）。
+              if (item.kind === 'user')
+                return (
+                  <MessageScrollerItem
+                    key={item.id ?? i}
+                    messageId={item.id}
+                    style={SCROLLER_ITEM_STYLE}
+                  >
+                    <Message className={MSG_ROW_CLS} data-testid="chief-msg">
+                      {/* #650 / XMON-105: 用户行头像接全站单源——与详情页对话
                           用户行（transcript.tsx）逐字节同配方：avatarUrl 覆盖 >
                           dicebear 名字种子 > 静态兜底资产。原写死的
-                          ChiefUserSolid 通用人形字形是全站最后一个漏网点。 */}
-                        <span className={AVATAR_IMG_CLS}>
-                          <SeededAvatar
-                            className="size-6"
-                            name={user.displayName}
-                            src={user.avatarUrl}
-                            fallback="/avatar-user.png"
-                          />
-                        </span>
-                        <div className={MSG_COL_CLS} data-testid="chief-msg-col">
-                          {/* #742：live 用户行的 markdown 槽（详情页用户行
+                          ChiefUserSolid 通用人形字形是全站最后一个漏网点。
+                          （A1：头像槽保持 recipes 单源 span——MessageAvatar 原语
+                          自带 bg-muted/min-w-8 皮，中性化成本高于收益，A2 再裁。） */}
+                      <span className={AVATAR_IMG_CLS}>
+                        <SeededAvatar
+                          className="size-6"
+                          name={user.displayName}
+                          src={user.avatarUrl}
+                          fallback="/avatar-user.png"
+                        />
+                      </span>
+                      <MessageContent className={MSG_COL_MID_CLS} data-testid="chief-msg-col">
+                        {/* #742：live 用户行的 markdown 槽（详情页用户行
                                 transcript.tsx #612 同款配方）——经共用块级解析器
                                 渲染，todo 提及 chip / 粗体 / 行内 code / 围栏不再
                                 按字面漏出；md 形气泡首/尾块 margin 归零（上下
@@ -843,293 +948,159 @@ export function ChiefDrawer({
                                 双倍间距或尾部空转），纯文本槽（fixture 捕获形）
                                 保持字面路径 DOM 与几何逐字不变。复制载荷照旧取
                                 item.text 原文（#469 律），rewind 锚 id 透传不动。 */}
-                          <div
+                        <Bubble variant="secondary" className={BUBBLE_WRAP_CLS}>
+                          <BubbleContent
                             data-testid="chief-bubble"
                             data-md={item.markdown != null ? '' : undefined}
-                            className={
-                              item.markdown != null ? `${BUBBLE_CLS} ${BUBBLE_MD_CLS}` : BUBBLE_CLS
-                            }
+                            className={`${BUBBLE_USER_CLS} ${
+                              item.markdown != null ? BUBBLE_MD_CLS : ''
+                            }`}
                           >
                             {item.markdown != null ? (
                               <ChatMarkdown text={item.markdown} />
                             ) : (
                               item.text
                             )}
-                          </div>
-                          <div
-                            className="mt-[7px] flex gap-2.5 text-(--text-tertiary)"
-                            data-testid="chief-msg-tools"
+                          </BubbleContent>
+                        </Bubble>
+                        <div
+                          className="mt-[7px] flex gap-2.5 text-(--text-tertiary)"
+                          data-testid="chief-msg-tools"
+                        >
+                          {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）。 */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={MSG_TOOL_BTN_CLS}
+                            aria-label={t('复制')}
+                            onClick={() => copyText(`u${i}`, item.text)}
                           >
-                            {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）。 */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={MSG_TOOL_BTN_CLS}
-                              aria-label={t('复制')}
-                              onClick={() => copyText(`u${i}`, item.text)}
-                            >
-                              {copiedKey === `u${i}` ? (
-                                <Check width={13} height={13} />
-                              ) : (
-                                <Copy width={13} height={13} />
-                              )}
-                            </Button>
-                            {/* #615 返工（用户裁决覆盖 #306 二分律）：恢复钮闭环
+                            {copiedKey === `u${i}` ? (
+                              <Check width={13} height={13} />
+                            ) : (
+                              <Copy width={13} height={13} />
+                            )}
+                          </Button>
+                          {/* #615 返工（用户裁决覆盖 #306 二分律）：恢复钮闭环
                               ——aria 正词「恢复到此处」= 参考站 live 同名控件；
                               语义 = rewind 锚（截断锚后消息 + 新会话重发该条，
                               server POST chief threads rewind）。破坏性 → 确认
                               层先行；fixture 面（onRewind 缺省 / id 缺省）走
                               accept 律关窗零请求。 */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={MSG_TOOL_BTN_CLS}
-                              aria-label={t('恢复到此处')}
-                              onClick={() => setRewindConfirm({ index: i, id: item.id ?? null })}
-                            >
-                              <Restore width={13} height={13} />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={MSG_TOOL_BTN_CLS}
+                            aria-label={t('恢复到此处')}
+                            onClick={() => setRewindConfirm({ index: i, id: item.id ?? null })}
+                          >
+                            <Restore width={13} height={13} />
+                          </Button>
                         </div>
-                      </div>
-                    );
-                  // #955 思考段行：与 robot 行同槽（绑定身份脸 / 未绑定虚线 chief 字形）+
-                  // 折叠式思考体，无 foot（思考不参与复制/恢复）。
-                  // #1033：本行与工具行是 chief.css 退役（#950）后仅存的两处
-                  // 死类名残留——骨架接回 robot/streaming 行同一套原语
-                  // （AVATAR_IMG_CLS / AVATAR_SLOT_CLS / MSG_COL_CLS，行几何
-                  // mt-3.5 flex gap-2.5）。`chief-msg` 类名保留：e2e 用它当
-                  // 选择器（chief-stream-markdown.spec F-R19/R20）。
-                  if (item.kind === 'thinking')
-                    return (
-                      <div key={i} className="chief-msg mt-3.5 flex gap-2.5">
-                        {chief.bound && chief.agent ? (
-                          <span className={AVATAR_IMG_CLS}>
-                            <SeededAvatar
-                              className="size-6"
-                              name={chief.agent.displayName}
-                              src={chief.agent.avatarUrl}
-                              fallback="/avatar-robot-1.svg"
-                            />
-                          </span>
-                        ) : (
-                          <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
-                        )}
-                        <div className={MSG_COL_CLS} data-testid="chief-msg-col">
-                          <ThinkingRow text={item.text} />
-                        </div>
-                      </div>
-                    );
-                  // #955 流式期工具行：mapper 只在回合在飞（activeRun 非空）时
-                  // 产出，与文本段按序交错；收口后回到 robot 行的折叠面。
-                  // #1033：同思考行——骨架接回原语，`chief-msg` 类名保留。
-                  if (item.kind === 'tool')
-                    return (
-                      <div key={i} className="chief-msg mt-3.5 flex gap-2.5">
-                        <span className="w-6 shrink-0" aria-hidden="true" />
-                        <div className={MSG_COL_CLS} data-testid="chief-msg-col">
-                          <ToolActivityRow
-                            name={item.label}
-                            {...(item.startedAt !== undefined ? { startedAt: item.startedAt } : {})}
-                            {...(item.seconds !== undefined ? { seconds: item.seconds } : {})}
-                            {...(item.running !== undefined ? { running: item.running } : {})}
-                            {...(item.error !== undefined ? { error: item.error } : {})}
+                      </MessageContent>
+                    </Message>
+                  </MessageScrollerItem>
+                );
+              // #955 思考段行：与 robot 行同槽（绑定身份脸 / 未绑定虚线 chief 字形）+
+              // 折叠式思考体，无 foot（思考不参与复制/恢复）。
+              // #1033：本行与工具行是 chief.css 退役（#950）后仅存的两处
+              // 死类名残留——骨架接回 robot/streaming 行同一套原语
+              // （AVATAR_IMG_CLS / AVATAR_SLOT_CLS / MSG_COL_CLS，行几何
+              // mt-3.5 flex gap-2.5）。`chief-msg` 类名保留：e2e 用它当
+              // 选择器（chief-stream-markdown.spec F-R19/R20）。
+              if (item.kind === 'thinking')
+                return (
+                  <MessageScrollerItem
+                    key={item.id ?? i}
+                    messageId={item.id}
+                    style={SCROLLER_ITEM_STYLE}
+                  >
+                    <Message className={`chief-msg ${MSG_ROW_CLS}`}>
+                      {chief.bound && chief.agent ? (
+                        <span className={AVATAR_IMG_CLS}>
+                          <SeededAvatar
+                            className="size-6"
+                            name={chief.agent.displayName}
+                            src={chief.agent.avatarUrl}
+                            fallback="/avatar-robot-1.svg"
                           />
-                        </div>
-                      </div>
-                    );
-                  // #739 在飞存在行：回合在飞但首 token 未至的静默窗口——头像槽
-                  // 复用 robot 行的 agent 身份脸（bound = 绑定 Agent，未 bound =
-                  // 虚线 chief 字形），右侧 = loading-dev Atom + `处理中...`，与
-                  // 详情页对话区 streaming 行同一套词汇（transcript.tsx 正典）。
-                  // 不挂秒数（#471），首 delta 到达即被 typing 行取代。
-                  if (item.kind === 'streaming')
-                    return (
-                      <div key={i} className="mt-3.5 flex gap-2.5" data-testid="chief-msg">
-                        {chief.bound && chief.agent ? (
-                          <span className={AVATAR_IMG_CLS}>
-                            <SeededAvatar
-                              className="size-6"
-                              name={chief.agent.displayName}
-                              src={chief.agent.avatarUrl}
-                              fallback="/avatar-robot-1.svg"
-                            />
-                          </span>
-                        ) : (
-                          <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
-                        )}
-                        {/* #873：行骨架/展开律/走秒律全部收进共享 LiveRow
+                        </span>
+                      ) : (
+                        <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
+                      )}
+                      <MessageContent className={MSG_COL_MID_CLS} data-testid="chief-msg-col">
+                        <ThinkingRow text={item.text} />
+                      </MessageContent>
+                    </Message>
+                  </MessageScrollerItem>
+                );
+              // #955 流式期工具行：mapper 只在回合在飞（activeRun 非空）时
+              // 产出，与文本段按序交错；收口后回到 robot 行的折叠面。
+              // #1033：同思考行——骨架接回原语，`chief-msg` 类名保留。
+              if (item.kind === 'tool')
+                return (
+                  <MessageScrollerItem
+                    key={item.id ?? i}
+                    messageId={item.id}
+                    style={SCROLLER_ITEM_STYLE}
+                  >
+                    <Message className={`chief-msg ${MSG_ROW_CLS}`}>
+                      <span className="w-6 shrink-0" aria-hidden="true" />
+                      <MessageContent className={MSG_COL_MID_CLS} data-testid="chief-msg-col">
+                        <ToolActivityRow
+                          name={item.label}
+                          {...(item.startedAt !== undefined ? { startedAt: item.startedAt } : {})}
+                          {...(item.seconds !== undefined ? { seconds: item.seconds } : {})}
+                          {...(item.running !== undefined ? { running: item.running } : {})}
+                          {...(item.error !== undefined ? { error: item.error } : {})}
+                        />
+                      </MessageContent>
+                    </Message>
+                  </MessageScrollerItem>
+                );
+              // #739 在飞存在行：回合在飞但首 token 未至的静默窗口——头像槽
+              // 复用 robot 行的 agent 身份脸（bound = 绑定 Agent，未 bound =
+              // 虚线 chief 字形），右侧 = loading-dev Atom + `处理中...`，与
+              // 详情页对话区 streaming 行同一套词汇（transcript.tsx 正典）。
+              // 不挂秒数（#471），首 delta 到达即被 typing 行取代。
+              if (item.kind === 'streaming')
+                return (
+                  <MessageScrollerItem key={i} style={SCROLLER_ITEM_STYLE}>
+                    <Message className={MSG_ROW_CLS} data-testid="chief-msg">
+                      {chief.bound && chief.agent ? (
+                        <span className={AVATAR_IMG_CLS}>
+                          <SeededAvatar
+                            className="size-6"
+                            name={chief.agent.displayName}
+                            src={chief.agent.avatarUrl}
+                            fallback="/avatar-robot-1.svg"
+                          />
+                        </span>
+                      ) : (
+                        <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
+                      )}
+                      {/* #873：行骨架/展开律/走秒律全部收进共享 LiveRow
                           （components/chat/live-row）——与详情页 streaming 行
                           同一份行为源。本面只提供皮肤（SKIN.chief utility，
                           #950 起住 live-row 本体）与展开面内容（#822 的过程
                           披露：正在调用的工具 + 本轮已落库工具行）。
                           秒数不挂：本面没有真实起点（activeRun 封套不带时间戳），
                           没有起点就不摆数字（#471 律），而不是摆一个冻结的数。 */}
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <LiveRow
-                            variant="chief"
-                            label={item.label}
-                            labelVars={item.labelVars}
-                            disclosure={{ expand: '展开实时步骤', collapse: '收起实时步骤' }}
-                          >
-                            <div className={TURN_TOOLS_CLS} data-testid="chief-turn-tools">
-                              {chief.runningTool != null && (
-                                <div className={TURN_TOOL_ROW_CLS}>
-                                  <span className={TURN_TOOL_NAME_CLS}>
-                                    {t('正在调用 {n}', { n: chief.runningTool })}
-                                  </span>
-                                </div>
-                              )}
-                              {item.tools?.map((tool, k) => (
-                                <div key={k} className={TURN_TOOL_ROW_CLS}>
-                                  <span className={TURN_TOOL_NAME_CLS}>{tool.label}</span>
-                                  {tool.seconds !== undefined && (
-                                    <span className="flex-none">{tool.seconds}s</span>
-                                  )}
-                                  {tool.error === true && (
-                                    <span className="flex-none text-(--destructive)">
-                                      {t('失败')}
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                              {/* 兜底行 = 零信号窗口的存在证明（#739）；
-                                    #905 活动信号在位时行首标签已给出相位，
-                                    兜底行退场避免语义重复（interface-review
-                                    收尾发现）。 */}
-                              {chief.runningTool == null &&
-                                (item.tools?.length ?? 0) === 0 &&
-                                item.signalAt == null && (
-                                  <div className={TURN_TOOL_ROW_CLS}>
-                                    <span className={TURN_TOOL_NAME_CLS}>
-                                      {t('等待 Agent 响应…')}
-                                    </span>
-                                  </div>
-                                )}
-                              {/* #905：最近信号新鲜度与详情披露面同源
-                                    （LiveSignal 走表）；无信号不渲染该行。 */}
-                              {item.signalAt != null && (
-                                <div className={TURN_TOOL_ROW_CLS}>
-                                  <LiveSignal at={item.signalAt} className={TURN_TOOL_NAME_CLS} />
-                                </div>
-                              )}
-                            </div>
-                          </LiveRow>
-                        </div>
-                      </div>
-                    );
-                  // XMON-105: a bound chief answers as its agent — the stream
-                  // row carries that agent's identity; unbound keeps the dashed
-                  // chief glyph. #741: the bound identity is a chip (avatar +
-                  // name, whole chip → the agent's settings page) heading the
-                  // row, content full-width below it (reference assistant-
-                  // message form) — the row flips to a column. The dashed form
-                  // keeps the old side-avatar slot, byte-identical DOM.
-                  const identity =
-                    chief.bound && chief.agent ? <ChiefIdentity agent={chief.agent} /> : null;
-                  return (
-                    // #741：绑定形行翻列（identity chip 头 + 全宽正文，参考站
-                    // assistant-message 形）；虚线未绑定形保持侧头像槽，
-                    // DOM 逐字不变。gap：identity 形 6（[设计] 2/7/10 档中值），
-                    // 侧头像形 10。
-                    <div
-                      key={i}
-                      data-testid="chief-msg"
-                      className={
-                        identity != null ? 'mt-3.5 flex flex-col gap-1.5' : 'mt-3.5 flex gap-2.5'
-                      }
-                    >
-                      {identity ?? (
-                        <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
-                      )}
-                      <div className={MSG_COL_CLS} data-testid="chief-msg-col">
-                        {item.markdown != null ? (
-                          // #650: live 回复原文走共用块级解析器（chat-markdown，
-                          // transcript robot 行 #469 同律）——bold / 行内 code /
-                          // mention / 列表 / 代码栅栏与详情页同形；抽屉节奏
-                          // （14px/24px、段距 2px）由 MSG_COL_CLS 的容器
-                          // inheritance + scoped 覆盖承载（正本注释见常量）。
-                          // #651 typing 尾行同源同渲染——增量面与终稿面同形，
-                          // 收敛不跳变。
-                          <ChatMarkdown text={item.markdown} />
-                        ) : (
-                          <>
-                            {(item.paragraphs ?? []).map((p, j) => (
-                              <p
-                                key={j}
-                                className={j > 0 ? 'mt-0.5 text-sm leading-6' : 'text-sm leading-6'}
-                              >
-                                <Segments segments={p} />
-                              </p>
-                            ))}
-                            {item.bullets?.map((b, j) => (
-                              <p key={`b${j}`} className="mt-0.5 flex gap-[7px] text-sm leading-6">
-                                <span className="flex-none">•</span>
-                                <span>
-                                  <Segments segments={b} />
-                                </span>
-                              </p>
-                            ))}
-                          </>
-                        )}
-                        {/* #651: typing 打字面是未定稿行——foot（复制/完成/过程
-                          折叠）只属定稿行，打字行不渲染。 */}
-                        {item.typing !== true && (
-                          <div
-                            className="mt-[9px] flex items-center gap-[7px] text-xs text-(--text-tertiary)"
-                            data-testid="chief-msg-foot"
-                          >
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={MSG_TOOL_BTN_CLS}
-                              aria-label={t('复制')}
-                              onClick={() => copyText(`r${i}`, robotText(item))}
-                            >
-                              {copiedKey === `r${i}` ? (
-                                <Check width={13} height={13} />
-                              ) : (
-                                <Copy width={13} height={13} />
-                              )}
-                            </Button>
-                            {/* live 面 seconds 空串（mapChiefStream 无耗时数据源）
-                            不再渲染空「完成」行；fixture canon 44s 照旧。 */}
-                            {item.seconds !== '' && (
-                              <span>{t('完成 {n}', { n: item.seconds })}</span>
-                            )}
-                            {/* #615 返工（用户裁决覆盖 #306 二分律）：foot 折叠箭头
-                            闭环 = 该回合过程披露（Multica OuterProcessFold 同
-                            族：chevron + 展开内容 = 工具步；r5 114 捕获位 = 完
-                            成 Ns 之后的 ›）。展开面 = 被流主呈现滤掉的工具调
-                            用行（chief_message toolcall 投影，DB 既有零新后端）；
-                            无工具行的回合不渲染触发器（无可披露内容）。 */}
-                            {(item.tools?.length ?? 0) > 0 && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={MSG_TOOL_BTN_CLS}
-                                aria-label={toolsOpen.has(i) ? t('收起过程') : t('展开过程')}
-                                aria-expanded={toolsOpen.has(i)}
-                                onClick={() =>
-                                  setToolsOpen((cur) => {
-                                    const next = new Set(cur);
-                                    if (next.has(i)) next.delete(i);
-                                    else next.add(i);
-                                    return next;
-                                  })
-                                }
-                              >
-                                {toolsOpen.has(i) ? (
-                                  <ChevronDown width={11} height={11} />
-                                ) : (
-                                  <ChevronRight width={11} height={11} />
-                                )}
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                        {(item.tools?.length ?? 0) > 0 && toolsOpen.has(i) && (
+                      <MessageContent className={MSG_COL_LIVE_CLS}>
+                        <LiveRow
+                          variant="chief"
+                          label={item.label}
+                          labelVars={item.labelVars}
+                          disclosure={{ expand: '展开实时步骤', collapse: '收起实时步骤' }}
+                        >
                           <div className={TURN_TOOLS_CLS} data-testid="chief-turn-tools">
+                            {chief.runningTool != null && (
+                              <div className={TURN_TOOL_ROW_CLS}>
+                                <span className={TURN_TOOL_NAME_CLS}>
+                                  {t('正在调用 {n}', { n: chief.runningTool })}
+                                </span>
+                              </div>
+                            )}
                             {item.tools?.map((tool, k) => (
                               <div key={k} className={TURN_TOOL_ROW_CLS}>
                                 <span className={TURN_TOOL_NAME_CLS}>{tool.label}</span>
@@ -1143,32 +1114,205 @@ export function ChiefDrawer({
                                 )}
                               </div>
                             ))}
+                            {/* 兜底行 = 零信号窗口的存在证明（#739）；
+                                    #905 活动信号在位时行首标签已给出相位，
+                                    兜底行退场避免语义重复（interface-review
+                                    收尾发现）。 */}
+                            {chief.runningTool == null &&
+                              (item.tools?.length ?? 0) === 0 &&
+                              item.signalAt == null && (
+                                <div className={TURN_TOOL_ROW_CLS}>
+                                  <span className={TURN_TOOL_NAME_CLS}>
+                                    {t('等待 Agent 响应…')}
+                                  </span>
+                                </div>
+                              )}
+                            {/* #905：最近信号新鲜度与详情披露面同源
+                                    （LiveSignal 走表）；无信号不渲染该行。 */}
+                            {item.signalAt != null && (
+                              <div className={TURN_TOOL_ROW_CLS}>
+                                <LiveSignal at={item.signalAt} className={TURN_TOOL_NAME_CLS} />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                        </LiveRow>
+                      </MessageContent>
+                    </Message>
+                  </MessageScrollerItem>
+                );
+              // XMON-105: a bound chief answers as its agent — the stream
+              // row carries that agent's identity; unbound keeps the dashed
+              // chief glyph. #741: the bound identity is a chip (avatar +
+              // name, whole chip → the agent's settings page) heading the
+              // row, content full-width below it (reference assistant-
+              // message form) — the row flips to a column. The dashed form
+              // keeps the old side-avatar slot, byte-identical DOM.
+              const identity =
+                chief.bound && chief.agent ? <ChiefIdentity agent={chief.agent} /> : null;
+              return (
+                // #741：绑定形行翻列（identity chip 头 + 全宽正文，参考站
+                // assistant-message 形）；虚线未绑定形保持侧头像槽，
+                // DOM 逐字不变。gap：identity 形 6（[设计] 2/7/10 档中值），
+                // 侧头像形 10。
+                // #1009 A1：骨架翻 Message 原语，正文包 Bubble ghost 档
+                // （裸文本面——结构走原语、皮肤零：p-0/bg-transparent/
+                // rounded-none 由 ghost 档父选择器承载）；定稿行 key/
+                // messageId 走源 chief_message id（打字尾行无 id 回落 index）。
+                <MessageScrollerItem
+                  key={item.id ?? i}
+                  messageId={item.id}
+                  style={SCROLLER_ITEM_STYLE}
+                >
+                  <Message
+                    className={identity != null ? MSG_ROW_IDENTITY_CLS : MSG_ROW_CLS}
+                    data-testid="chief-msg"
+                  >
+                    {identity ?? (
+                      <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
+                    )}
+                    <MessageContent className={MSG_COL_MID_CLS} data-testid="chief-msg-col">
+                      <Bubble variant="ghost" className={BUBBLE_WRAP_CLS}>
+                        <BubbleContent className={BUBBLE_ROBOT_CLS}>
+                          {item.markdown != null ? (
+                            // #650: live 回复原文走共用块级解析器（chat-markdown，
+                            // transcript robot 行 #469 同律）——bold / 行内 code /
+                            // mention / 列表 / 代码栅栏与详情页同形；抽屉节奏
+                            // （14px/24px、段距 2px）由 MSG_COL_CLS 的容器
+                            // inheritance + scoped 覆盖承载（正本注释见常量）。
+                            // #651 typing 尾行同源同渲染——增量面与终稿面同形，
+                            // 收敛不跳变。
+                            <ChatMarkdown text={item.markdown} />
+                          ) : (
+                            <>
+                              {(item.paragraphs ?? []).map((p, j) => (
+                                <p
+                                  key={j}
+                                  className={
+                                    j > 0 ? 'mt-0.5 text-sm leading-6' : 'text-sm leading-6'
+                                  }
+                                >
+                                  <Segments segments={p} />
+                                </p>
+                              ))}
+                              {item.bullets?.map((b, j) => (
+                                <p
+                                  key={`b${j}`}
+                                  className="mt-0.5 flex gap-[7px] text-sm leading-6"
+                                >
+                                  <span className="flex-none">•</span>
+                                  <span>
+                                    <Segments segments={b} />
+                                  </span>
+                                </p>
+                              ))}
+                            </>
+                          )}
+                        </BubbleContent>
+                      </Bubble>
+                      {/* #651: typing 打字面是未定稿行——foot（复制/完成/过程
+                          折叠）只属定稿行，打字行不渲染。 */}
+                      {item.typing !== true && (
+                        <div
+                          className="mt-[9px] flex items-center gap-[7px] text-xs text-(--text-tertiary)"
+                          data-testid="chief-msg-foot"
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={MSG_TOOL_BTN_CLS}
+                            aria-label={t('复制')}
+                            onClick={() => copyText(`r${i}`, robotText(item))}
+                          >
+                            {copiedKey === `r${i}` ? (
+                              <Check width={13} height={13} />
+                            ) : (
+                              <Copy width={13} height={13} />
+                            )}
+                          </Button>
+                          {/* live 面 seconds 空串（mapChiefStream 无耗时数据源）
+                            不再渲染空「完成」行；fixture canon 44s 照旧。 */}
+                          {item.seconds !== '' && <span>{t('完成 {n}', { n: item.seconds })}</span>}
+                          {/* #615 返工（用户裁决覆盖 #306 二分律）：foot 折叠箭头
+                            闭环 = 该回合过程披露（Multica OuterProcessFold 同
+                            族：chevron + 展开内容 = 工具步；r5 114 捕获位 = 完
+                            成 Ns 之后的 ›）。展开面 = 被流主呈现滤掉的工具调
+                            用行（chief_message toolcall 投影，DB 既有零新后端）；
+                            无工具行的回合不渲染触发器（无可披露内容）。 */}
+                          {(item.tools?.length ?? 0) > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={MSG_TOOL_BTN_CLS}
+                              aria-label={toolsOpen.has(i) ? t('收起过程') : t('展开过程')}
+                              aria-expanded={toolsOpen.has(i)}
+                              onClick={() =>
+                                setToolsOpen((cur) => {
+                                  const next = new Set(cur);
+                                  if (next.has(i)) next.delete(i);
+                                  else next.add(i);
+                                  return next;
+                                })
+                              }
+                            >
+                              {toolsOpen.has(i) ? (
+                                <ChevronDown width={11} height={11} />
+                              ) : (
+                                <ChevronRight width={11} height={11} />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {(item.tools?.length ?? 0) > 0 && toolsOpen.has(i) && (
+                        <div className={TURN_TOOLS_CLS} data-testid="chief-turn-tools">
+                          {item.tools?.map((tool, k) => (
+                            <div key={k} className={TURN_TOOL_ROW_CLS}>
+                              <span className={TURN_TOOL_NAME_CLS}>{tool.label}</span>
+                              {tool.seconds !== undefined && (
+                                <span className="flex-none">{tool.seconds}s</span>
+                              )}
+                              {tool.error === true && (
+                                <span className="flex-none text-(--destructive)">{t('失败')}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </MessageContent>
+                  </Message>
+                </MessageScrollerItem>
+              );
+            })}
+          </MessageScrollerContent>
+        </MessageScrollerViewport>
+        {/* #991 Q6：jump-to-latest 随原语带入（删除才是定制；原型实审
+                过目）——MessageScrollerButton direction=end，render 缺省 =
+                仓 Button secondary/icon-sm 档（档位在位）；children 覆写 =
+                仓 ArrowDown 字形 + t() sr-only 文案（pristine 面的英文
+                字面量不进 i18n 账）。落位/显隐动效 = 原语默认（底缘居中、
+                近底自动退场 data-[active=false]）。 */}
+        <MessageScrollerButton direction="end">
+          <ArrowDown width={16} height={16} />
+          <span className="sr-only">{t('滚动到最新')}</span>
+        </MessageScrollerButton>
+      </MessageScroller>
 
-          {/* #948：strip 的流内垫规则自 attachment-strip.css 迁入（该文件
+      {/* #948：strip 的流内垫规则自 attachment-strip.css 迁入（该文件
                 退役）——composer 卡在流内，strip 垫 8px 骑在输入与工具栏之间。
                 #950：旧 .chief-composer 皮肤等值 utility（#775：--edge-ring
                 发丝环 + card-shadow 卡级抬升，双主题随 token）。类名
                 chief-composer 以零规则钩子存活：#948 把外域规则内联进本 div
                 后，余下消费者 = spec 容器 scope（chief-panel.spec 的
                 composer bar 定位）；摘除归 #952 终账。 */}
-          <div className="chief-composer [&>.attachment-strip]:mt-2 mx-[17px] my-2.5 rounded-none bg-(--secondary) px-3 pt-3 pb-2.5 shadow-[var(--edge-ring),var(--card-shadow)] transition-shadow duration-(--dur-fast) ease-(--ease-out)">
-            {/* #624：占位双态随回合态（r5 §3.6，截图 113）——活动线程 activeRun
+      <div className="chief-composer [&>.attachment-strip]:mt-2 mx-[17px] my-2.5 rounded-none bg-(--secondary) px-3 pt-3 pb-2.5 shadow-[var(--edge-ring),var(--card-shadow)] transition-shadow duration-(--dur-fast) ease-(--ease-out)">
+        {/* #624：占位双态随回合态（r5 §3.6，截图 113）——活动线程 activeRun
               在位（chief.running，mapChief 单点投影）= steer canon「执行过程中
               即可送达」，空闲 / 新主题 / 回合收尾 = 空闲 canon。两值经 t() 消费
               shared 单源常量，抽屉文件零 CJK 占位字面量（en 键由
               i18n-coverage COMPUTED_KEYS 钉住）；刷新节奏骑既有
               invalidateAll / conversation SSE 重取，无新增轮询。 */}
-            <div className="relative">
-              {/* #732：textarea 皮肤照 detail composer 同款 combobox 律——内联
+        <div className="relative">
+          {/* #732：textarea 皮肤照 detail composer 同款 combobox 律——内联
                 listbox 开窗时报 combobox + 指向高亮行（DOM 焦点恒在框内，
                 listbox 行不可聚焦）；caret-only 移动重判 token（change 事件
                 覆盖不到那些）；fixture 静态面 editable=off → wire 重判永不发动。
@@ -1182,212 +1326,208 @@ export function ChiefDrawer({
                 显式归零）。e2e 载体 = data-testid（#910 二级：role 随补全
                 开合在 textbox/combobox 间翻转、placeholder 随回合态双值，
                 语义 locator 不稳）。 */}
-              <Textarea
-                ref={attachComposer}
-                data-testid="chief-composer-input"
-                className="h-[60px] max-h-[120px] min-h-0 resize-none overflow-y-auto rounded-none border-none bg-transparent p-0 font-sans text-[13px] leading-5 text-(--foreground) tabular-nums shadow-none field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent"
-                readOnly={onSend == null}
-                value={wire.draft}
-                onChange={wire.handleChange}
-                onKeyDown={wire.handleKeyDown}
-                // #732：剪贴板图片/文件走 #310 attachFile 链（纯文本粘贴永不
-                // 进 preventDefault，detail composer 同律）。
-                onPaste={handlePaste}
-                onKeyUp={handleCaretMoved}
-                onClick={handleCaretMoved}
-                onSelect={handleCaretMoved}
-                onCompositionEnd={handleCompositionEnd}
-                onBlur={handleBlur}
-                placeholder={t(
-                  chief.running === true
-                    ? CHIEF_INPUT_PLACEHOLDER_STEERING
-                    : CHIEF_INPUT_PLACEHOLDER,
-                )}
-                {...(inlineOpen
-                  ? {
-                      role: 'combobox',
-                      'aria-expanded': true,
-                      'aria-controls': inlineListboxId,
-                      'aria-autocomplete': 'list' as const,
-                    }
-                  : slashOpen
-                    ? {
-                        role: 'combobox',
-                        'aria-expanded': true,
-                        'aria-controls': slashListboxId,
-                        'aria-autocomplete': 'list' as const,
-                      }
-                    : {})}
-                {...(inlineOpen && inlineHighlight != null
-                  ? { 'aria-activedescendant': `${inlineListboxId}-opt-${inlineHighlight}` }
-                  : slashOpen && slashHighlight != null
-                    ? { 'aria-activedescendant': `${slashListboxId}-opt-${slashHighlight}` }
-                    : {})}
-              />
-              {/* #732：@ 内联 listbox（detail composer 同皮；mention-picker.css
-                的 z-40 阶梯 = 宿主 drawer stacking context 内局部压住 composer）。 */}
-              <MentionInline
-                open={inlineOpen}
-                rows={inlineRows}
-                caret={inlineCaret}
-                query={inlineQuery}
-                highlight={inlineHighlight}
-                onHover={setInlineHighlight}
-                onPick={(row) => {
-                  if (row.kind === 'file') {
-                    insertFile(row.label);
-                  } else {
-                    // #848: every entity kind inserts through serializeMention.
-                    insertToken({
-                      kind: row.kind,
-                      id: row.id,
-                      label: row.label,
-                      ...(row.seq !== undefined ? { seq: row.seq } : {}),
-                    });
+          <Textarea
+            ref={attachComposer}
+            data-testid="chief-composer-input"
+            className="h-[60px] max-h-[120px] min-h-0 resize-none overflow-y-auto rounded-none border-none bg-transparent p-0 font-sans text-[13px] leading-5 text-(--foreground) tabular-nums shadow-none field-sizing-fixed placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent"
+            readOnly={onSend == null}
+            value={wire.draft}
+            onChange={wire.handleChange}
+            onKeyDown={wire.handleKeyDown}
+            // #732：剪贴板图片/文件走 #310 attachFile 链（纯文本粘贴永不
+            // 进 preventDefault，detail composer 同律）。
+            onPaste={handlePaste}
+            onKeyUp={handleCaretMoved}
+            onClick={handleCaretMoved}
+            onSelect={handleCaretMoved}
+            onCompositionEnd={handleCompositionEnd}
+            onBlur={handleBlur}
+            placeholder={t(
+              chief.running === true ? CHIEF_INPUT_PLACEHOLDER_STEERING : CHIEF_INPUT_PLACEHOLDER,
+            )}
+            {...(inlineOpen
+              ? {
+                  role: 'combobox',
+                  'aria-expanded': true,
+                  'aria-controls': inlineListboxId,
+                  'aria-autocomplete': 'list' as const,
+                }
+              : slashOpen
+                ? {
+                    role: 'combobox',
+                    'aria-expanded': true,
+                    'aria-controls': slashListboxId,
+                    'aria-autocomplete': 'list' as const,
                   }
-                }}
-                listboxRef={inlineListboxRef}
-                listboxId={inlineListboxId}
-              />
-              {/* #841 `/` slash menu（detail composer 同皮同锚：包层
+                : {})}
+            {...(inlineOpen && inlineHighlight != null
+              ? { 'aria-activedescendant': `${inlineListboxId}-opt-${inlineHighlight}` }
+              : slashOpen && slashHighlight != null
+                ? { 'aria-activedescendant': `${slashListboxId}-opt-${slashHighlight}` }
+                : {})}
+          />
+          {/* #732：@ 内联 listbox（detail composer 同皮；mention-picker.css
+                的 z-40 阶梯 = 宿主 drawer stacking context 内局部压住 composer）。 */}
+          <MentionInline
+            open={inlineOpen}
+            rows={inlineRows}
+            caret={inlineCaret}
+            query={inlineQuery}
+            highlight={inlineHighlight}
+            onHover={setInlineHighlight}
+            onPick={(row) => {
+              if (row.kind === 'file') {
+                insertFile(row.label);
+              } else {
+                // #848: every entity kind inserts through serializeMention.
+                insertToken({
+                  kind: row.kind,
+                  id: row.id,
+                  label: row.label,
+                  ...(row.seq !== undefined ? { seq: row.seq } : {}),
+                });
+              }
+            }}
+            listboxRef={inlineListboxRef}
+            listboxId={inlineListboxId}
+          />
+          {/* #841 `/` slash menu（detail composer 同皮同锚：包层
                 .chief-composer-input-wrap 即 relative 锚，行不可聚焦、DOM
                 焦点恒在框内；Click = Enter-with-highlight 语义）。 */}
-              <SlashMenu
-                open={slashOpen}
-                sections={slashSections.map((s) => ({
-                  title: s.section === 'builtin' ? t('命令') : t('技能'),
-                  rows: s.rows,
-                }))}
-                caret={slashCaret}
-                query={slashQuery}
-                highlight={slashHighlight}
-                onHover={setSlashHighlight}
-                onPick={(row) => acceptSlashRow(row, 'enter')}
-                listboxRef={slashListboxRef}
-                listboxId={slashListboxId}
-              />
-            </div>
-            {/* #757 附件 strip（detail composer 同件：在途占位 + 落定 chip，
+          <SlashMenu
+            open={slashOpen}
+            sections={slashSections.map((s) => ({
+              title: s.section === 'builtin' ? t('命令') : t('技能'),
+              rows: s.rows,
+            }))}
+            caret={slashCaret}
+            query={slashQuery}
+            highlight={slashHighlight}
+            onHover={setSlashHighlight}
+            onPick={(row) => acceptSlashRow(row, 'enter')}
+            listboxRef={slashListboxRef}
+            listboxId={slashListboxId}
+          />
+        </div>
+        {/* #757 附件 strip（detail composer 同件：在途占位 + 落定 chip，
               可点预览）。chief composer 卡是 in-flow 布局，strip 走流式、
               空时零节点。 */}
-            <AttachmentStrip draft={wire.draft} pending={pendingAttachments} />
-            {/* deliberate-native（#855）：隐藏的文件选择触发器
+        <AttachmentStrip draft={wire.draft} pending={pendingAttachments} />
+        {/* deliberate-native（#855）：隐藏的文件选择触发器
                   （display:none，编程式打开），可见皮肤在附件 Button 上；
                   Input 原语是可见输入框皮肤，此处无可收编之物。 */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              style={{ display: 'none' }}
-              onChange={onPickFiles}
-              // 客户端 mime 守门（与服务层 ALLOWED_MIME_* 镜像，detail
-              // composer 同值）；note accept 只是 hint，最终由 server 强拒兜底。
-              accept="text/*,image/*,application/json,application/pdf,application/xml"
-            />
-            <div className="mt-2.5 flex items-center gap-4">
-              {/* #732（#146 隐藏裁决翻案）：附件 + 提及开闸渲染（detail composer
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          style={{ display: 'none' }}
+          onChange={onPickFiles}
+          // 客户端 mime 守门（与服务层 ALLOWED_MIME_* 镜像，detail
+          // composer 同值）；note accept 只是 hint，最终由 server 强拒兜底。
+          accept="text/*,image/*,application/json,application/pdf,application/xml"
+        />
+        <div className="mt-2.5 flex items-center gap-4">
+          {/* #732（#146 隐藏裁决翻案）：附件 + 提及开闸渲染（detail composer
                 同款交互面，无新后端面）。语音输入维持 wontfix 不渲染（#304 C5）。
                 fixture 面：onAttachment 缺省 → 附件钮惰性 disabled（件配方
                 opacity-50/pointer-events-none 即 canon）；mentionGroups
                 空 → popover 零计数开面（wire EMPTY_GROUPS 律）。 */}
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('添加附件')}
-                className={TOOL_BTN_CLS}
-                disabled={attaching || onAttachment == null}
-                onClick={openFilePicker}
-              >
-                <Paperclip width={16} height={16} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('提及')}
-                className={TOOL_BTN_CLS}
-                onClick={togglePicker}
-              >
-                <Grid2x2 width={16} height={16} />
-              </Button>
-              {/* XMON-23→#950：ghost/icon 原语；实底双态（seg-active 歇 /
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('添加附件')}
+            className={TOOL_BTN_CLS}
+            disabled={attaching || onAttachment == null}
+            onClick={openFilePicker}
+          >
+            <Paperclip width={16} height={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('提及')}
+            className={TOOL_BTN_CLS}
+            onClick={togglePicker}
+          >
+            <Grid2x2 width={16} height={16} />
+          </Button>
+          {/* XMON-23→#950：ghost/icon 原语；实底双态（seg-active 歇 /
                 card-button 亮）utility 化随 draft 条件切（旧 .is-on 状态类
                 退役——态正本在 wire.draft，无需 DOM 载体）。rounded-md =
                 旧 .btn 的 8 圆角档随件；border-0 防原语 1px transparent 边 +
                 bg-clip-padding 在实底外圈切出 1px 缝（像素对拍实测）；
                 ArrowUp 16px = 原语 size-4 同值。 */}
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('发送')}
-                className={wire.draft !== '' ? `${SEND_BTN_CLS} ${SEND_ON_CLS}` : SEND_BTN_CLS}
-                onClick={wire.send}
-              >
-                <ArrowUp width={16} height={16} />
-              </Button>
-            </div>
-            {/* #732：提及 popover（detail composer 同皮；壳 FloatingShell 非模态
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('发送')}
+            className={wire.draft !== '' ? `${SEND_BTN_CLS} ${SEND_ON_CLS}` : SEND_BTN_CLS}
+            onClick={wire.send}
+          >
+            <ArrowUp width={16} height={16} />
+          </Button>
+        </div>
+        {/* #732：提及 popover（detail composer 同皮；壳 FloatingShell 非模态
               Dialog，Esc 走 Base UI layer 栈只收顶层——drawer 侧的 #146 分层律
               不受扰）。 */}
-            <MentionPicker
-              open={pickerOpen}
-              onClose={closePicker}
-              groups={groups}
-              onInsert={(tokens) => {
-                insertTokens(tokens);
-                closePicker();
-              }}
-            />
-            {/* #841 `/help` panel（detail composer 同件：当前可用 builtins
+        <MentionPicker
+          open={pickerOpen}
+          onClose={closePicker}
+          groups={groups}
+          onInsert={(tokens) => {
+            insertTokens(tokens);
+            closePicker();
+          }}
+        />
+        {/* #841 `/help` panel（detail composer 同件：当前可用 builtins
               只读一览）。 */}
-            <SlashHelp
-              open={helpOpen}
-              onClose={closeHelp}
-              commands={helpRows}
-              skillCount={helpSkillCount}
-            />
-          </div>
-          {/* #615 返工：恢复钮确认层（破坏性：截断锚后消息并以锚重发）。壳与
+        <SlashHelp
+          open={helpOpen}
+          onClose={closeHelp}
+          commands={helpRows}
+          skillCount={helpSkillCount}
+        />
+      </div>
+      {/* #615 返工：恢复钮确认层（破坏性：截断锚后消息并以锚重发）。壳与
             按钮档复用 chief-agent-dialog 同族配方（#950 后 = §5.4 容器
             utility + outline/default 件正典 + px-3/text-[13px] 内联档）。
             fixture 面 id 缺省 = accept 律关窗零请求。 */}
-          <DialogShell
-            title={t('恢复到此处')}
-            open={rewindConfirm !== null}
-            onClose={() => setRewindConfirm(null)}
-            footer={
-              <div className="flex flex-col px-4 pb-4">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    className="px-3 text-[13px]"
-                    onClick={() => setRewindConfirm(null)}
-                  >
-                    {t('取消')}
-                  </Button>
-                  <Button
-                    className="px-3 text-[13px]"
-                    onClick={() => {
-                      const anchor = rewindConfirm;
-                      setRewindConfirm(null);
-                      if (anchor?.id != null) onRewind?.(anchor.id);
-                    }}
-                  >
-                    {t('恢复到此处')}
-                  </Button>
-                </div>
-              </div>
-            }
-          >
-            <div className="flex flex-col gap-4 p-4">
-              <p className="text-[13px] leading-5 text-(--foreground)">
-                {t('恢复到此处？该条之后的 {n} 条消息会移除，总管从这条重发开新回合。', {
-                  n: Math.max(0, (chief.stream?.length ?? 0) - (rewindConfirm?.index ?? 0) - 1),
-                })}
-              </p>
+      <DialogShell
+        title={t('恢复到此处')}
+        open={rewindConfirm !== null}
+        onClose={() => setRewindConfirm(null)}
+        footer={
+          <div className="flex flex-col px-4 pb-4">
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                className="px-3 text-[13px]"
+                onClick={() => setRewindConfirm(null)}
+              >
+                {t('取消')}
+              </Button>
+              <Button
+                className="px-3 text-[13px]"
+                onClick={() => {
+                  const anchor = rewindConfirm;
+                  setRewindConfirm(null);
+                  if (anchor?.id != null) onRewind?.(anchor.id);
+                }}
+              >
+                {t('恢复到此处')}
+              </Button>
             </div>
-          </DialogShell>
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4 p-4">
+          <p className="text-[13px] leading-5 text-(--foreground)">
+            {t('恢复到此处？该条之后的 {n} 条消息会移除，总管从这条重发开新回合。', {
+              n: Math.max(0, (chief.stream?.length ?? 0) - (rewindConfirm?.index ?? 0) - 1),
+            })}
+          </p>
+        </div>
+      </DialogShell>
+    </>
   );
 }

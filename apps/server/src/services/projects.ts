@@ -11,8 +11,8 @@
 //   agentMemory.projectId 置 null（记忆 = Agent 资产，agentId+teamId 键、
 //   projectId 可空作用域：清作用域指针留知识本体；sourceTodoId/sourceBuildId
 //   溯源槽悬空 = deleteTodo 既有面同口径）→ project 行。
-// - message/tokenUsage/document_diff 无 FK 孤儿行 = deleteTodo 既有面同口径
-//   保留（清运面归后票 GC，不在本票扩面）。
+// - message/tokenUsage 无 FK 孤儿行 = deleteTodo 既有面同口径保留（清运面归
+//   后票 GC，不在本票扩面；document_diff 已随 #1029 死 schema 退役删表）。
 // - 托管 bare repo 磁盘面随行清（removeHostedRepoDir，services/git.ts 与
 //   provisionHostedRepo 对偶位）；库面先落、磁盘后清——rm 失败不吞（500
 //   实情），force 幂等（目录缺位不阻断删除）。

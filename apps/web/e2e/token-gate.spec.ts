@@ -9,12 +9,21 @@
 //   5. localStorage 已有好 token → 首访直达 UI，零门页
 //   6. 鉴权关 → 零门页，stream URL 不带 token 参数（现况一致）
 // 会话流与团队流共用 sse.ts connect() 单缝——URL 构造由团队流断言代表。
+// #1048 增补（文案面，纯信息缺口票）：
+//   7. zh 面指引缺失——门页只说「已开启鉴权」，不说令牌从哪来（改前状态）
+//   8. en 面指引退化——字典模板丢 {tokenVar} 占位 → 英文面失环境变量名
+//   9. 文案带「变量名=具体值」的示例赋值，诱导把真值贴进公网可见的文案
+// 指引三事实（与 apps/server config.ts 的读取机制一致）：令牌 = 服务端环境
+// 变量 ENV_VARS.token 的值（部署方设定，页面读不到）；自部署的文件级落点 =
+// systemd 单元 EnvironmentFile 指向的 env 文件；删变量 + 重启服务端 = 关闭
+// 鉴权（envStr 只在进程启动时读一次）。
 
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { ENV_VARS } from '@pacman/shared';
 import { expect, type Page, test } from '@playwright/test';
 
 declare global {
@@ -211,4 +220,37 @@ test('鉴权关：零门页零 token 附带，行为与现状一致', async ({ p
   for (const url of await streamUrls(page)) {
     expect(url).not.toContain('token=');
   }
+});
+
+test('#1048 门页指引：zh 面告诉令牌从哪来（变量名 / EnvironmentFile / 重启关闭）', async ({
+  page,
+}) => {
+  await page.goto(`${authed.base}/app`);
+  const help = page.locator('.token-gate-help');
+  await expect(help).toBeVisible();
+
+  // 失败方式 7：指引必须含环境变量名的正典值（BRAND 槽，禁硬编码字面量）
+  await expect(help).toContainText(ENV_VARS.token);
+  // 自部署的文件级落点：systemd 单元 EnvironmentFile 指向的 env 文件
+  await expect(help).toContainText('EnvironmentFile');
+  // 关闭语义：env 只在进程启动时读取，删变量后必须重启才生效
+  await expect(help).toContainText('重启');
+  // 失败方式 9：变量名后不得跟示例赋值（任何 = 右值都算诱导贴真值）
+  expect(await help.innerText()).not.toMatch(new RegExp(`${ENV_VARS.token}\\s*=`));
+});
+
+test('#1048 门页指引：en 面同一事实不失真（变量名经字典模板插值）', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pacman.locale', 'en');
+    localStorage.setItem('pacman-locale', 'en');
+  });
+  await page.goto(`${authed.base}/app`);
+  const help = page.locator('.token-gate-help');
+  await expect(help).toBeVisible();
+
+  // 失败方式 8：en 模板若丢 {tokenVar} 占位，英文指引里变量名消失
+  await expect(help).toContainText(ENV_VARS.token);
+  await expect(help).toContainText('EnvironmentFile');
+  await expect(help).toContainText(/restart/i);
+  expect(await help.innerText()).not.toMatch(new RegExp(`${ENV_VARS.token}\\s*=`));
 });

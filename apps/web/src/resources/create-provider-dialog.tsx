@@ -246,13 +246,13 @@ export function CreateProviderDialog({
       title={t('添加模型服务')}
       open={open}
       onClose={onClose}
+      // #1006 段 2（dialog-shell 零皮化的消费点清理）：剥 footer 包装 div
+      // （band 自带 p-4；包装会把 w-full 钮塌成内容宽），裸钮直进。
       footer={
         view === 'form' ? (
-          <div className="flex flex-col px-4 pb-4">
-            <Button className="w-full" disabled={!ready || pending === true} onClick={submit}>
-              {t('添加模型服务')}
-            </Button>
-          </div>
+          <Button className="w-full" disabled={!ready || pending === true} onClick={submit}>
+            {t('添加模型服务')}
+          </Button>
         ) : undefined
       }
     >

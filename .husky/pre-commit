@@ -6,23 +6,17 @@ set -e
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 [ -z "$STAGED" ] && exit 0
 
-# 1. Lockfile guard — confirm before letting pnpm-lock.yaml into the commit.
-#    Escape hatch is an explicit env var, mirroring pi's PI_ALLOW_LOCKFILE_CHANGE
-#    (pi: scripts/check-lockfile-commit.mjs). AGENTS.md bans `git commit --no-verify`,
-#    so an authorized lockfile change needs a sanctioned exit through the hook itself.
-if printf '%s\n' "$STAGED" | grep -qE '^pnpm-lock\.yaml$'; then
-  ALLOW_LOCKFILE=${PACMAN_ALLOW_LOCKFILE_CHANGE:-}
-  if [ "$ALLOW_LOCKFILE" = "1" ] || [ "$ALLOW_LOCKFILE" = "true" ] || [ "$ALLOW_LOCKFILE" = "yes" ]; then
-    echo "pnpm-lock.yaml is staged; PACMAN_ALLOW_LOCKFILE_CHANGE is set, allowing commit." >&2
-  else
-    echo "⚠  pnpm-lock.yaml is staged." >&2
-    echo "   This is allowed ONLY when the change is part of a deliberate dependency bump." >&2
-    echo "   If this lockfile change is intentional, commit with:" >&2
-    echo "     PACMAN_ALLOW_LOCKFILE_CHANGE=1 git commit ..." >&2
-    echo "   To drop it, run \`git reset pnpm-lock.yaml\`." >&2
-    exit 1
-  fi
-fi
+# 1. Lockfile guard — diff-aware (#1077), delegated to
+#    scripts/check-lockfile-commit.mjs (pi's check-lockfile-commit.mjs shape
+#    adapted from npm's package-lock.json to pnpm-lock.yaml): workspace-side
+#    lockfile changes (importers/catalogs/settings) auto-pass; external
+#    dependency changes (packages/snapshots) block with a per-package summary.
+#    Escape hatch keeps the same env var the binary gate used —
+#    PACMAN_ALLOW_LOCKFILE_CHANGE (1/true/yes) — so lane discipline and
+#    AGENTS.md keep working unchanged. AGENTS.md bans `git commit --no-verify`,
+#    so an authorized lockfile change needs a sanctioned exit through the
+#    hook itself.
+node scripts/check-lockfile-commit.mjs
 
 # 1.5 黑名单注释（实现 ~/Code/AgentProjects/pacman/CLAUDE.md「注释纪律」）
 # 黑名单外置到 .husky/banned.txt，本文件不含关键字词自身（避免自匹配）

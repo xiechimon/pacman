@@ -15,7 +15,14 @@
 // 铺开是纯结构换件，per-face 数值仍是几何正本（#411 政策 4），故不取 shadcn
 // 默认档。聚焦环按仓级 #388 canon（2px --focus-ring + offset 2）。
 // 聚焦锚点仍是既有 htmlFor/id（pacman-token-input，开门聚焦）。
+// #1048 增补（纯信息缺口，鉴权逻辑零改动）：desc 下加一段「令牌从哪来」
+// 指引（.token-gate-help，e2e 定位锚）——三事实钉在 token-gate.spec.ts
+// 失败方式 7/8/9：令牌 = 服务端环境变量 ENV_VARS.token 的值（BRAND 槽，
+// 经 {tokenVar} 插值，页面读不到）；自部署落点 = systemd 单元 EnvironmentFile
+// 指向的文件；删变量 + 重启 = 关闭鉴权（server config 只在进程启动时读 env）。
+// 文案禁止出现示例令牌值（票 AC4：示例会诱导贴真值）。
 
+import { ENV_VARS } from '@pacman/shared';
 import { type FormEvent, useEffect, useState } from 'react';
 import { passGate, probeToken, useAuth } from '../api/auth.js';
 import { Button } from '../components/ui/button.js';
@@ -75,6 +82,12 @@ export function TokenGate() {
           </h1>
           <p className="token-gate-desc text-[13px] leading-normal text-content-secondary">
             {t('服务端已开启令牌鉴权，输入访问令牌后继续使用。')}
+          </p>
+          <p className="token-gate-help text-xs leading-relaxed text-content-tertiary">
+            {t(
+              '令牌由部署方在服务端用环境变量 {tokenVar} 设定，页面无法读出它的值：自己部署的服务，去启动它的环境里找这个变量（systemd 部署看单元 EnvironmentFile 指向的文件）；别人部署的，向部署者索取。删除该变量并重启服务端即可关闭令牌鉴权。',
+              { tokenVar: ENV_VARS.token },
+            )}
           </p>
           <label
             className="token-gate-label text-xs text-content-tertiary"
