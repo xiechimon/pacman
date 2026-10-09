@@ -8,8 +8,10 @@ import { expect, type Page, test } from '@playwright/test';
 //  2. 滚到底简报卡仍在视口（没随流滚走）/ 滚到顶简报卡不在列首（流序错位）
 //  3. 超长无断点行撑过中栏（#827 第二轮：flex min-width 陷阱，chat-col 横滚 +
 //     接缝裁切）——200 字符链接行 scrollWidth 必须等于 clientWidth
-// 时序坑：.chat-col 是 column-reverse，scrollTop 复数语义（0 = 底/最新，
-// -max = 顶/最旧）——正数 scrollTo 是 no-op，轮询断言只看符号与位移。
+// 时序坑（#1009 A2 换装后改写）：.chat-col 从 column-reverse 换骑 registry
+// MessageScroller，滚动端口是普通纵向容器——scrollTop 0 = 顶/最旧，
+// scrollHeight - clientHeight = 底/最新。零位移只影响坐标约定，流序与
+// 「卡随流滚走」的语义不动。
 
 const TEAM_ID = 'team-1';
 const FLOW_ID = 'todo-flow-1';
@@ -119,12 +121,12 @@ test('2. 简报卡随流滚走：滚到底出视口，滚到顶回列首', async
   const spec = page.locator('.chat-col .spec-block');
   await expect(spec).toBeAttached();
   const chatTop = (await list.boundingBox())!.y;
-  // 底（最新）：简报卡滚出视口上方
-  await list.evaluate((el) => el.scrollTo({ top: 0 }));
+  // 最新端（普通滚动容器 = scrollHeight 侧）：简报卡滚出视口上方
+  await list.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
   const bottomTop = await spec.evaluate((el) => el.getBoundingClientRect().top);
   expect(bottomTop).toBeLessThan(chatTop);
-  // 顶（最旧）：简报卡回到列首视口内
-  await list.evaluate((el) => el.scrollTo({ top: -(el.scrollHeight - el.clientHeight) }));
+  // 最旧端（scrollTop 0）：简报卡回到列首视口内
+  await list.evaluate((el) => el.scrollTo({ top: 0 }));
   const topTop = await spec.evaluate((el) => el.getBoundingClientRect().top);
   expect(topTop).toBeGreaterThanOrEqual(chatTop - 1);
   expect(Math.abs(topTop - bottomTop)).toBeGreaterThan(200);

@@ -519,12 +519,10 @@ export function TodoDetailPage() {
       }
     : fixtureView;
 
-  // #873 会话跟随单源（components/chat/use-chat-follow）：列容器是
-  // column-reverse（最新在 scrollTop 0 侧），规则与总管抽屉逐字同款——增长
-  // 只在读者已贴最新端时拖动视口；读者自己发出去的那条永远跳到最新。
-  // #1009 A2 换装：滚动律改骑 registry MessageScroller 原语（增长跟随 =
-  // 原语 autoScroll，发送跳最新 = 列的 imperative handle），旧 hook 与
-  // column-reverse 布局在详情面退役；#873 两律语义逐条保留。
+  // #873 会话跟随（#1009 A2 起单源 = registry MessageScroller，手写
+  // useChatFollow 与 column-reverse 布局均已退役）：增长只在读者已贴最新端
+  // 时拖动视口（原语 autoScroll），读者自己发出去的那条永远跳到最新
+  // （列的 imperative handle → scrollToEnd）。
   const transcriptColRef = useRef<TranscriptColumnHandle | null>(null);
   // 在飞行数据（活行披露面 + 会话跟随时机）：步类词表 = 详情头部 chip 同族。
   const liveStep = useMemo<LiveStep | null>(
@@ -985,7 +983,7 @@ export function TodoDetailPage() {
                     ? (text) => {
                         // #873：读者自己发出去的那条必须看得见——这一刻先跳到
                         // 最新端（四个分流出口共用；被拒 409 不清稿，落在最新端
-                        // 也无害）。增长跟随的其余判断在 useChatFollow 里。
+                        // 也无害）。增长跟随的其余判断在原语 autoScroll 里。
                         if (text !== '') transcriptColRef.current?.scrollToEnd();
                         // 驳回回路（r5 §4）：confirm 关口发送 = revision + feedback
                         // → 重规划步入队 → plan v(N+1)（会话流即时呈现）。

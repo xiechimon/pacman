@@ -472,8 +472,9 @@ function ChiefDrawerInner({
   // 跟随/打开落底 = Provider 原生 autoScroll + defaultScrollPosition（壳层
   // 注记）；本层只剩「切线程落底」一条 effect——旧 useChatFollow 的
   // resetDep 语义等价迁移（threadTitle 变 = 换线程 = 落底看最新；标题守卫
-  // 防无关重渲触发）。useChatFollow 本体留给详情页对话列（A2 段的替换面，
-  // 本段不动）。发送跳最新 = scrollToEnd（下方 wire.onSend）。
+  // 防无关重渲触发）。发送跳最新 = scrollToEnd（下方 wire.onSend）。
+  // #1009 A2：详情页对话列也已换骑原语，useChatFollow 整件退役（#873 单源律
+  // 由 MessageScroller 承接）。
   const { scrollToEnd } = useMessageScroller();
   const prevThreadRef = useRef(chief.threadTitle);
   useEffect(() => {
