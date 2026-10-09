@@ -92,11 +92,11 @@ export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
       className="board-notify-banner absolute inset-x-[17px] top-14 flex h-16 items-center rounded-xl border-0 bg-(--secondary) px-4 [box-shadow:var(--edge-ring),var(--card-shadow)]"
       aria-label={t(NOTIFICATION_BANNER_COPY.title)}
     >
-      <span className="board-notify-banner-icon flex size-7 flex-none items-center justify-center rounded-full bg-(--notify-icon-bg) text-(--card-button)">
+      <span className="flex size-7 flex-none items-center justify-center rounded-full bg-(--notify-icon-bg) text-(--card-button)">
         <Bell />
       </span>
-      <div className="board-notify-banner-text ml-3.5 min-w-0">
-        <div className="board-notify-banner-title text-sm leading-5 font-medium text-foreground">
+      <div className="ml-3.5 min-w-0">
+        <div className="text-sm leading-5 font-medium text-foreground">
           {t(NOTIFICATION_BANNER_COPY.title)}
         </div>
         {/* 正文墨色（#943 better-colors 实测修正）：旧 --text-dim ×
@@ -106,7 +106,7 @@ export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
             12px 正文按 AA 要 4.5：换次级文本的正角色 token
             --muted-foreground（仓内 todo-card 时间/列计数同款习语），双模
             实测 ≥6.9（docs/verify/943/contrast.json）。 */}
-        <div className="board-notify-banner-body text-xs leading-4 text-muted-foreground">
+        <div className="text-xs leading-4 text-muted-foreground">
           {t(NOTIFICATION_BANNER_COPY.body)}
         </div>
       </div>
@@ -120,7 +120,7 @@ export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
           布局差值原住 board.css，#943 随文件清零迁到件上。 */}
       <Button
         size="sm"
-        className="board-notify-banner-action ml-auto flex-none px-3 text-[13px] font-normal"
+        className="ml-auto flex-none px-3 text-[13px] font-normal"
         onClick={onEnable}
       >
         {t(NOTIFICATION_BANNER_COPY.action)}

@@ -53,7 +53,7 @@ const ROWS = [
 // 10px 圆角），伪元经 before:/after: 变体承载。
 const PANEL =
   "user-menu absolute bottom-12 left-2 z-10 flex w-56 flex-col rounded-lg border border-(--border) bg-(--popover) p-3 shadow-(--plate-shadow) before:absolute before:bottom-px before:left-5 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_0,50%_100%,100%_0)] before:content-[''] after:absolute after:bottom-0.5 after:left-[21px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_0,50%_100%,100%_0)] after:content-['']";
-const PANEL_FLOATING = 'user-menu--floating relative bottom-auto left-auto z-auto';
+const PANEL_FLOATING = 'relative bottom-auto left-auto z-auto';
 
 // 外观 seg（r7 37 probe #138）：~20px 描边格 + 8px 侧内边距 + 发丝缝。
 // ghost 七通道中和（#908 裁决 3）+ --seg-hover 自立 token 的 hover tint
@@ -96,12 +96,10 @@ export function UserMenu({ theme: initialTheme, floating = false, className }: U
           fallback="/avatar-user.png"
         />
         <div>
-          <div className="user-menu-name text-[13px] leading-4 text-(--foreground)">
-            {user.displayName}
-          </div>
+          <div className="text-[13px] leading-4 text-(--foreground)">{user.displayName}</div>
         </div>
       </div>
-      <div className="user-menu-rows flex flex-col gap-3 py-3">
+      <div className="flex flex-col gap-3 py-3">
         <div className="user-menu-row flex h-4 items-center text-xs leading-4 text-(--text-secondary)">
           {t('外观')}
           <span className="user-menu-seg ml-auto flex items-center gap-0.5">

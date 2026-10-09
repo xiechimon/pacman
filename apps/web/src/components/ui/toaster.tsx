@@ -50,7 +50,7 @@ function Toaster({ ...props }: ToasterProps) {
     <Sonner
       theme={theme}
       position="bottom-left"
-      className="toaster group"
+      className="group"
       style={
         {
           '--normal-bg': 'var(--popover)',

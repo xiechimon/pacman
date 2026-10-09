@@ -240,3 +240,28 @@ jobs:
 
       - name: Pack smoke (main package tarball, bare node)
         run: scripts/pack-smoke.sh
+
+  # 死类名闸（#1036，advisory）：TSX 渲染的类名与活样式表（Tailwind 编译物 +
+  # src/**/*.css 选择子）求差集，零命中且零 spec/verify 引用即红——#950 退役
+  # chief.css 留下的死类名不报错、不红 CI、布局静默塌掉，只有机器能替人抓住。
+  # **故意不进分支保护 required contexts**（仓规：必需检查一律等合完之后再
+  # 加）：本 job 红灯可见但不拦合并，跑干净一段时间后再由用户决定是否收紧。
+  # 需要 node_modules（@tailwindcss/postcss 现场编译 ~0.5s，不依赖 dist）。
+  dead-class-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      # reads packageManager from root package.json
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Dead class gate (#1036)
+        run: node scripts/ui-dead-class-gate.mjs --compile

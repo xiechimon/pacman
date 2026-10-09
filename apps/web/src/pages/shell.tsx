@@ -9,11 +9,12 @@
 // route); the sidebar is the shared AppSidebar, so its geometry/behavior
 // matches the board's exactly.
 // #946: pages.css 清零——本壳的全部几何/配色迁为 token utility（值 =
-// 原规则等值迁移）；page-shell/page-main(-col)/page-topbar/
+// 原规则等值迁移）；page-shell/page-main-col/page-topbar/
 // page-tab(s-group) 类名留存 DOM：跨域 spec 的既有定位别名（#910 裁定 1
-// 两级制下 spec 载体已迁语义位，类名摘除归 #952/#953 终账）；page-main
-// 曾是 chief-drawer DOCK_ROWS 的停靠行钩子，随 0013 让位退役只剩别名面
-// （page-fab 类随族 FAB 退役删除）。
+// 两级制下 spec 载体已迁语义位；零规则别名的终摘 = #1036 dead-class 闸，
+// 仍被 spec 命中的名字由闸的 selector-exempt 台账钉住）。page-main
+// 曾是 chief-drawer DOCK_ROWS 的停靠行钩子，随 0013 让位退役，别名
+// 零引用终摘（#1036；page-fab 类随族 FAB 退役删除）。
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AppSidebar } from '../board/app-sidebar.js';
@@ -108,9 +109,9 @@ export function PageShell({
       <AppSidebar fixture={fixture} selected={selected} onNewTask={onNewTask} />
       {/* ADR 0013 D1/D6: the docking row is gone — the chief surface is a
           root-level floating window (chief-root.tsx), nothing yields here
-          anymore. page-main keeps its class as the cross-domain spec
-          alias it already was (#946). */}
-      <div className="page-main relative flex min-w-0 flex-1 bg-(--card)">
+          anymore. The former page-main alias went with it: zero spec
+          references, final pick under the #1036 dead-class gate. */}
+      <div className="relative flex min-w-0 flex-1 bg-(--card)">
         <div className="page-main-col flex min-w-0 flex-1 flex-col">
           <header className="page-topbar relative flex h-11 flex-none items-center border-b border-(--border) pl-3">
             <Link

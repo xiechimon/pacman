@@ -16,8 +16,9 @@
 // muted-foreground 族。
 // #943: 裸控件收编——九个行钮/头像钮全走 components/ui Button（ghost 档 +
 // ROW_BTN/RAIL_BTN 中和件：行视觉盒在 before: pill，件配方的涂底/圆角/
-// 边框/press 位移逐位归零，r7 几何不动）。类别名（sidebar-row/rail-row/
-// sidebar-kbd…）按 spec/22 §5.0 别名残留律原位保留（跨域 spec 仍消费它们），
+// 边框/press 位移逐位归零，r7 几何不动）。跨域 spec 仍消费的类别名
+// （sidebar-row/rail-row/sidebar-kbd…）原位保留（#1036 dead-class 闸的
+// selector-exempt 台账钉住引用），零引用别名已终摘；
 // 本域 spec 的钉扎载体已按 #910 换 role/label/text + 少量二级 testid。
 // #949: #137 常亮互斥的调暗覆写从 overlays.css 的 :root[data-search-open]
 // 规则迁进本文件的 SEARCH_OPEN_DIM utility 变体（选中档常量随行携带，
@@ -180,8 +181,8 @@ const SEARCH_OPEN_DIM =
    ROW_BASE 的 text-muted-foreground 在无 tailwind-merge 的模板串里共存，编译
    序恒让 muted 胜——选中行墨自 #414 以来即 muted，选择信号由 pill 底承担
    （docs/verify/943/contrast-943.md 实测；#953 摘除死档前后双模复测逐字节
-   一致，docs/verify/953/）。--selected 别名状态类按 spec/22 §5.0 别名残留律
-   原位保留（CSS 零规则，spec 一律钉 aria-current="page"）。 */
+   一致，docs/verify/953/）。--selected 别名状态类（CSS 零规则、零 spec
+   引用——spec 一律钉 aria-current="page"）已随 #1036 dead-class 终摘。 */
 const ROW_SELECTED = `before:bg-sidebar-active ${SEARCH_OPEN_DIM}`;
 
 /** 行钮中和件（#943 裸控件收编 Button）：行的视觉盒 = before: pill 层，
@@ -218,9 +219,7 @@ function GroupHeader({
       <span className="sidebar-group-chevron flex-none text-muted-foreground transition-transform duration-150 group-[.sidebar-group--collapsed]:[transform:rotate(-90deg)]">
         <ChevronDown />
       </span>
-      <span className="sidebar-group-label ml-[11px] text-[13px] leading-4 text-muted-foreground">
-        {t(label)}
-      </span>
+      <span className="ml-[11px] text-[13px] leading-4 text-muted-foreground">{t(label)}</span>
     </Button>
   );
 }
@@ -296,7 +295,7 @@ function UserMenuPopover({
         alignOffset={8}
         sideOffset={4}
         aria-label={t('用户菜单')}
-        className="user-menu-popover block rounded-none border-none bg-transparent p-0 shadow-none"
+        className="block rounded-none border-none bg-transparent p-0 shadow-none"
       >
         <UserMenu floating theme={readStoredTheme(localStorage)} />
       </PopoverContent>
@@ -359,7 +358,7 @@ export function BoardSidebar({
         >
           <PanelLeftOpen />
         </Button>
-        <nav className="rail-nav flex flex-none flex-col pt-1">
+        <nav className="flex flex-none flex-col pt-1">
           {/* #468: rail 态没有常亮 badge 位，悬浮浮出 ⌘K 提示（展开态行的
               sidebar-kbd 角标见下）。#983 判决（#1004 施工段执行）：kbd-hint
               退役回消费点组合 = registry Tooltip + Kbd（side=right 对应原
@@ -436,7 +435,7 @@ export function BoardSidebar({
               </Link>
             ))}
         </nav>
-        <div className="sidebar-spacer flex-1" />
+        <div className="flex-1" />
         <UserMenuPopover
           open={userMenuOpen}
           onOpenChange={setUserMenuOpen}
@@ -478,7 +477,7 @@ export function BoardSidebar({
             : 'h-[43px] pl-[19px]'
         }`}
       >
-        <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
+        <span className="flex size-4 flex-none items-center justify-center">
           {/* 品牌槽（#390）：mark = logo.svg 真资产 alpha mask，随
               currentColor 取行墨——工具类表达不了 mask url，inline 承载 */}
           <span
@@ -525,16 +524,16 @@ export function BoardSidebar({
         </Button>
       </div>
 
-      <nav className="sidebar-nav flex min-h-0 flex-[0_1_auto] flex-col overflow-y-auto border-t border-[var(--border)] pt-[9.5px]">
+      <nav className="flex min-h-0 flex-[0_1_auto] flex-col overflow-y-auto border-t border-[var(--border)] pt-[9.5px]">
         <Button
           variant="ghost"
           className={`sidebar-row ${ROW_BASE} ${ROW_HOVER} ${ROW_BTN} h-9 cursor-pointer pl-[18px]`}
           onClick={onSearch}
         >
-          <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
+          <span className="flex size-4 flex-none items-center justify-center">
             <Search />
           </span>
-          <span className="sidebar-row-label ml-3 truncate">{t('搜索')}</span>
+          <span className="ml-3 truncate">{t('搜索')}</span>
           {/* #983/#1004：手写 kbd 角标退役回 registry Kbd（保留 sidebar-kbd
               别名类作 e2e 载体与 ROW_BASE 抬层选择器钩）。 */}
           <Kbd className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2">⌘K</Kbd>
@@ -549,10 +548,10 @@ export function BoardSidebar({
           className={`sidebar-row sidebar-new-task ${ROW_BASE} ${ROW_HOVER} ${ROW_BTN} h-9 cursor-pointer pl-[18px]`}
           onClick={onNewTask}
         >
-          <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
+          <span className="flex size-4 flex-none items-center justify-center">
             <Plus />
           </span>
-          <span className="sidebar-row-label ml-3 truncate">{t('新任务')}</span>
+          <span className="ml-3 truncate">{t('新任务')}</span>
           <Kbd className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2">C</Kbd>
         </Button>
         <Link
@@ -560,12 +559,12 @@ export function BoardSidebar({
           to={{ pathname: '/app', search }}
           aria-current={selected === 'board' ? 'page' : undefined}
         >
-          <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
+          <span className="flex size-4 flex-none items-center justify-center">
             <Kanban />
           </span>
-          <span className="sidebar-row-label ml-3 truncate">{t('工作台')}</span>
+          <span className="ml-3 truncate">{t('工作台')}</span>
           {attention > 0 && (
-            <span className="sidebar-badge mr-[18px] ml-auto h-4 min-w-4 rounded-full bg-(--badge-attention) px-1 text-center text-[10px] leading-4 font-semibold text-(--badge-attention-fg)">
+            <span className="mr-[18px] ml-auto h-4 min-w-4 rounded-full bg-(--badge-attention) px-1 text-center text-[10px] leading-4 font-semibold text-(--badge-attention-fg)">
               {attention}
             </span>
           )}
@@ -575,10 +574,10 @@ export function BoardSidebar({
           to={{ pathname: '/app/schedules', search }}
           aria-current={selected === 'schedules' ? 'page' : undefined}
         >
-          <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
+          <span className="flex size-4 flex-none items-center justify-center">
             <Clock />
           </span>
-          <span className="sidebar-row-label ml-3 truncate">{t('定时')}</span>
+          <span className="ml-3 truncate">{t('定时')}</span>
         </Link>
 
         <GroupHeader
@@ -590,13 +589,13 @@ export function BoardSidebar({
         {!groupCollapsed.project && (
           <>
             <Link
-              className={`sidebar-subrow sidebar-new-project ${ROW_BASE} ${ROW_HOVER} h-9 pl-[34px]`}
+              className={`sidebar-subrow ${ROW_BASE} ${ROW_HOVER} h-9 pl-[34px]`}
               to={{ pathname: '/app/project/new', search }}
             >
-              <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
+              <span className="flex size-4 flex-none items-center justify-center">
                 <Plus />
               </span>
-              <span className="sidebar-subrow-label ml-3 truncate">{t('新建项目')}</span>
+              <span className="ml-3 truncate">{t('新建项目')}</span>
             </Link>
             {/* #207 + 侧栏 live 收编:项目行 = 调用面投影多行渲染,行随
                 fixture 删除覆面隐去(#66 deletions 同律);pill 按路径匹配。 */}
@@ -611,7 +610,7 @@ export function BoardSidebar({
                   aria-current={pathname === href ? 'page' : undefined}
                 >
                   <ProjectAvatar char={row.name.charAt(0).toLowerCase()} />
-                  <span className="sidebar-subrow-label ml-3 truncate">{row.name}</span>
+                  <span className="ml-3 truncate">{row.name}</span>
                 </Link>
               );
             })}
@@ -631,10 +630,10 @@ export function BoardSidebar({
               to={{ pathname: href, search }}
               aria-current={selected === href ? 'page' : undefined}
             >
-              <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
+              <span className="flex size-4 flex-none items-center justify-center">
                 <Icon />
               </span>
-              <span className="sidebar-subrow-label ml-3 truncate">{t(label)}</span>
+              <span className="ml-3 truncate">{t(label)}</span>
               {machineOnline && label === '机器' && (
                 <span
                   data-testid="online-dot"
@@ -645,7 +644,7 @@ export function BoardSidebar({
           ))}
       </nav>
 
-      <div className="sidebar-spacer flex-1" />
+      <div className="flex-1" />
 
       <UserMenuPopover
         open={userMenuOpen}
@@ -662,10 +661,10 @@ export function BoardSidebar({
               src={user.avatarUrl}
               fallback="/avatar-user.png"
             />
-            <span className="sidebar-user-name relative -top-px ml-[9px] text-sm leading-[14px] whitespace-nowrap text-muted-foreground">
+            <span className="relative -top-px ml-[9px] text-sm leading-[14px] whitespace-nowrap text-muted-foreground">
               {user.displayName}
             </span>
-            <span className="sidebar-user-more ml-auto flex size-6 items-center justify-center text-muted-foreground">
+            <span className="ml-auto flex size-6 items-center justify-center text-muted-foreground">
               <EllipsisVertical />
             </span>
           </Button>

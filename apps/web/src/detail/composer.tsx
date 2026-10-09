@@ -193,12 +193,9 @@ export function Composer({
   });
 
   return (
-    <div
-      className={`${COMPOSER_CARD} composer--with-mention min-h-[84px]`}
-      data-testid="composer-card"
-    >
+    <div className={`${COMPOSER_CARD} min-h-[84px]`} data-testid="composer-card">
       {editable ? (
-        <div className="composer-input-wrap">
+        <div>
           {/* #728 combobox wiring: while the inline listbox is open the
               textarea announces itself as the combobox and points
               aria-activedescendant at the highlighted row — it keeps DOM
@@ -294,7 +291,7 @@ export function Composer({
           pointer-events auto 复原预览点击（列本身永不拦截）。 */}
       <div
         data-testid="composer-float"
-        className="composer-float pointer-events-none absolute inset-x-0 bottom-[calc(100%+6px)] z-30 flex flex-col gap-1.5 [&>.attachment-strip]:pointer-events-auto [&>.composer-chips]:static!"
+        className="pointer-events-none absolute inset-x-0 bottom-[calc(100%+6px)] z-30 flex flex-col gap-1.5 [&>.attachment-strip]:pointer-events-auto [&>.composer-chips]:static!"
       >
         <ComposerChips draft={draft} files={mentionFiles} suspended={inlineOpen || slashOpen} />
         <AttachmentStrip draft={draft} pending={pendingAttachments} />
@@ -363,7 +360,7 @@ export function Composer({
           aria-label={t('停止')}
           onClick={onStop}
         >
-          <span className="composer-stop-glyph size-2.5 rounded-[2px] bg-current" />
+          <span className="size-2.5 rounded-[2px] bg-current" />
         </Button>
       )}
       {/* XMON-24 发送钮 shadcn ghost 底座不变；#945 漆底/过渡钉迁
@@ -376,7 +373,7 @@ export function Composer({
         className={`composer-send ${COMPOSER_SQUARE} right-[13px] transition-[background-color,color] duration-(--dur-fast) ease-[cubic-bezier(0.2,0,0,1)] ${
           draft.trim() === ''
             ? 'bg-(--seg-active) text-(--text-tertiary) hover:bg-(--seg-active) hover:text-(--text-tertiary) dark:hover:bg-(--seg-active) dark:hover:text-(--text-tertiary)'
-            : 'composer-send--ready bg-(--card-button) text-(--text-on-accent) hover:bg-(--card-button) hover:text-(--text-on-accent) dark:hover:bg-(--card-button) dark:hover:text-(--text-on-accent)'
+            : 'bg-(--card-button) text-(--text-on-accent) hover:bg-(--card-button) hover:text-(--text-on-accent) dark:hover:bg-(--card-button) dark:hover:text-(--text-on-accent)'
         } [&_svg:not([class*='size-'])]:size-auto`}
         aria-label={t('发送')}
         onClick={send}

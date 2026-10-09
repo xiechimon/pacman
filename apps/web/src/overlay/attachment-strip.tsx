@@ -23,7 +23,7 @@
 // the #812 mention strip's), chief and new-task take it in flow.
 // #948 per-face 清零：attachment-strip.css 退役——本件自带的基础行规则迁
 // 本文件 utility；三个宿主面的定位规则迁到各自消费点（detail composer 的
-// .composer-float 列、chief 抽屉的 .chief-composer 流内垫、new-task body 的
+// float 列、chief 抽屉的流内垫、new-task body 的
 // 停靠垫），卡片几何由 .spec-chip 家族单源承载（#945 起 = chat-markdown 的
 // SPEC_CHIP utility 常量，detail.css 已退役），占位/落定两卡 boundingBox
 // 全等（attachment-strip.spec 钉）不靠本文件复制任何 chip 几何，只补 40px
@@ -62,25 +62,17 @@ export function AttachmentPreview({
 }) {
   const [broken, setBroken] = useState(false);
   return (
-    <DialogShell
-      title={name}
-      onClose={onClose}
-      onBackdropClick={onClose}
-      width={640}
-      className="attachment-preview"
-    >
+    <DialogShell title={name} onClose={onClose} onBackdropClick={onClose} width={640}>
       {/* 原 .attachment-preview-body：图片 contain 进面板、永不撑爆——面板宽
           随 DialogShell（640），高图滚 dlg-body（100vh−48px 封顶律）。 */}
-      <div className="attachment-preview-body flex items-center justify-center p-3">
+      <div className="flex items-center justify-center p-3">
         {broken ? (
-          <div className="attachment-preview-broken px-4 py-8 text-[13px] text-(--text-secondary)">
-            {name}
-          </div>
+          <div className="px-4 py-8 text-[13px] text-(--text-secondary)">{name}</div>
         ) : (
           <img
             src={src}
             alt={name}
-            className="attachment-preview-img max-h-[60vh] max-w-full rounded-[4px] object-contain"
+            className="max-h-[60vh] max-w-full rounded-[4px] object-contain"
             onError={() => setBroken(true)}
           />
         )}
@@ -95,13 +87,13 @@ export function AttachmentPreview({
  *  内容，不吃件 size 档 32px）、font-normal、press 位移禁掉；appearance
  *  清零沿旧 .spec-chip--preview（UA 按钮 chrome 不许漏进 chip 面）。 */
 const PENDING_CARD_CLS =
-  'spec-chip spec-chip--image spec-chip--preview attachment-pending relative h-auto cursor-pointer appearance-none font-normal hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+  'spec-chip spec-chip--image relative h-auto cursor-pointer appearance-none font-normal hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 /** 在途角标（原 .attachment-pending-badge）：黑 veil 55% 是无 token 槽的
  *  一次性字面量（--overlay-scrim 是 60% 的模态 scrim，值不同不混用）；墨色
  *  --text-on-veil 正典槽。静止 veil、无假进度（#757）。 */
 const PENDING_BADGE_CLS =
-  'attachment-pending-badge absolute bottom-1 left-1 rounded-[4px] bg-[rgb(0_0_0/0.55)] px-1.5 py-px text-[11px] leading-4 whitespace-nowrap text-(--text-on-veil)';
+  'absolute bottom-1 left-1 rounded-[4px] bg-[rgb(0_0_0/0.55)] px-1.5 py-px text-[11px] leading-4 whitespace-nowrap text-(--text-on-veil)';
 
 export function AttachmentStrip({
   draft,
@@ -146,7 +138,7 @@ export function AttachmentStrip({
         ) : (
           <span
             key={entry.uid}
-            className={`spec-chip attachment-pending relative ${SPEC_CHIP}`}
+            className={`spec-chip relative ${SPEC_CHIP}`}
             data-testid="attachment-pending"
             title={entry.name}
           >

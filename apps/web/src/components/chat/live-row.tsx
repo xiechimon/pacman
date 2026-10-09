@@ -61,7 +61,7 @@ export function useLiveSeconds(startedAt: number | null | undefined): number | n
  *  h-6 与旧共享尾串的 h-auto 同 twMerge 轴、后写者胜会砸 #885 命中盒。 */
 const SKIN = {
   detail: {
-    head: 'chat-streaming ml-[15px] flex h-5 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs leading-4 text-(--text-tertiary)',
+    head: 'ml-[15px] flex h-5 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs leading-4 text-(--text-tertiary)',
     /** #873/#885 disclosure 钮形态：命中盒 20→24px（WCAG 2.5.8），纵向
      *  +2px 内边距被等量负 margin 抵掉，content box 仍 20px、相邻行零位移。
      *  ghost 七通道中和（#908 裁决 3）：hover/aria-expanded 底与墨、字重、
@@ -69,8 +69,8 @@ const SKIN = {
     headBtn:
       "h-6 -my-0.5 cursor-pointer rounded-none justify-start border-none bg-transparent py-0.5 text-left text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto",
     spinner:
-      'chat-spinner flex-none text-(--card-button) animate-[spinner-breathe_1800ms_var(--ease-standard)_infinite] motion-reduce:animate-none',
-    secs: 'chat-streaming-secs tabular-nums',
+      'flex-none text-(--card-button) animate-[spinner-breathe_1800ms_var(--ease-standard)_infinite] motion-reduce:animate-none',
+    secs: 'tabular-nums',
     /** #910 二级载体：live 行是无 role 结构位；spinner 是库件封闭 props
      *  （loading-dev SpinnerProps 无 data-* 透传），spec 按 row scope +
      *  aria-hidden 库根载体定位，不另铺钩。 */

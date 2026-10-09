@@ -461,7 +461,7 @@ function TasksPane({
               {/* #318: 标题是真 <a>,after: 拉伸盖满整行 = 点行开详情
                   (todo-card-link #58 同款,行内无其它交互件无需抬 z) */}
               <Link
-                className="prj-task-title prj-task-link min-w-0 flex-1 truncate text-sm leading-5 text-foreground no-underline after:absolute after:inset-0 after:content-['']"
+                className="prj-task-link min-w-0 flex-1 truncate text-sm leading-5 text-foreground no-underline after:absolute after:inset-0 after:content-['']"
                 to={{ pathname: `/app/todo/${todo.id}`, search }}
               >
                 {todo.title}
@@ -509,7 +509,7 @@ function TasksPane({
               {/* #318: 同列表行——标题 <a> 的 after: 拉伸盖满整卡；两行截断 =
                   max-height 40 idiom（detail.css chat-preview 注同源）。 */}
               <Link
-                className="prj-task-card-title prj-task-link max-h-10 overflow-hidden text-sm leading-5 text-foreground no-underline after:absolute after:inset-0 after:content-['']"
+                className="prj-task-link max-h-10 overflow-hidden text-sm leading-5 text-foreground no-underline after:absolute after:inset-0 after:content-['']"
                 to={{ pathname: `/app/todo/${todo.id}`, search }}
               >
                 {todo.title}

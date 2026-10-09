@@ -2,7 +2,7 @@
 // agent 产出方案之前的整个执行期，文档槽没有内容职责，由任务元信息承接。
 // 字段序（#473 决策记录）：来源 issue（标题 + 链接）→ 分支 / PR → 机器 →
 // 模型 → 创建时间 → 尾注引导句；字段缺省整行不渲染、不占空行。
-// 几何：顶对齐右栏 head 下 16px inset（走 doc-pane-body padding-top 同值），
+// 几何：顶对齐右栏 head 下 16px inset（与 pane body 顶部内衬等值），
 // 行距 = 中列 chat-row 的 18px 律；不引入新滚动区（字段数有界）。
 // 数据 live 面供数（fixture 面无来源/机器/模型数据源——SourceIssueLine
 // 同律），fixture 空态维持居中「暂无方案」字节不变。
@@ -40,10 +40,10 @@ export interface TaskMetaFields {
 function Row({ label, first, children }: { label: string; first?: boolean; children: ReactNode }) {
   return (
     <div
-      className={`task-meta-row flex items-baseline text-xs leading-[18px]${first === true ? '' : ' mt-[18px]'}`}
+      className={`flex items-baseline text-xs leading-[18px]${first === true ? '' : ' mt-[18px]'}`}
     >
-      <span className="task-meta-label w-[68px] flex-none text-(--text-tertiary)">{label}</span>
-      <span className="task-meta-value min-w-0 flex-1 text-(--text-secondary) [overflow-wrap:anywhere]">
+      <span className="w-[68px] flex-none text-(--text-tertiary)">{label}</span>
+      <span className="min-w-0 flex-1 text-(--text-secondary) [overflow-wrap:anywhere]">
         {children}
       </span>
     </div>
@@ -60,7 +60,7 @@ export function TaskMetaBlock({ meta, now }: { meta: TaskMetaFields; now: number
       label: t('来源 issue'),
       content: (
         <a
-          className="task-meta-link text-(--chip-plan-fg) no-underline hover:underline"
+          className="text-(--chip-plan-fg) no-underline hover:underline"
           href={meta.sourceIssue.url}
           target="_blank"
           rel="noopener noreferrer"
@@ -75,14 +75,12 @@ export function TaskMetaBlock({ meta, now }: { meta: TaskMetaFields; now: number
       label: t('分支 / PR'),
       content: (
         <>
-          {meta.branch != null && (
-            <code className="task-meta-code font-mono text-[11px]">{meta.branch}</code>
-          )}
+          {meta.branch != null && <code className="font-mono text-[11px]">{meta.branch}</code>}
           {meta.pr != null && (
             <a
               // 老 `.task-meta-code + .task-meta-link` 相邻律：branch code 在
               // 场时链接让 8px；无 branch 时链接行首无 margin。
-              className={`task-meta-link text-(--chip-plan-fg) no-underline hover:underline${
+              className={`text-(--chip-plan-fg) no-underline hover:underline${
                 meta.branch != null ? ' ml-2' : ''
               }`}
               href={meta.pr.url}
@@ -103,9 +101,7 @@ export function TaskMetaBlock({ meta, now }: { meta: TaskMetaFields; now: number
         <>
           {meta.machine}
           {meta.machineWaiting && (
-            <span className="task-meta-waiting text-(--text-tertiary)">
-              {t('（等待机器上线）')}
-            </span>
+            <span className="text-(--text-tertiary)">{t('（等待机器上线）')}</span>
           )}
         </>
       ),
@@ -114,22 +110,20 @@ export function TaskMetaBlock({ meta, now }: { meta: TaskMetaFields; now: number
   if (meta.model != null) {
     rows.push({
       label: t('模型'),
-      content: <code className="task-meta-code font-mono text-[11px]">{meta.model}</code>,
+      content: <code className="font-mono text-[11px]">{meta.model}</code>,
     });
   }
   if (meta.createdAt != null) {
     rows.push({ label: t('创建时间'), content: relativeTime(meta.createdAt, now, t) });
   }
   return (
-    <div className="task-meta" data-testid="task-meta">
+    <div data-testid="task-meta">
       {rows.map((row, i) => (
         <Row key={row.label} label={row.label} first={i === 0}>
           {row.content}
         </Row>
       ))}
-      <div className="task-meta-foot mt-6 text-xs leading-4 text-(--text-tertiary)">
-        {t('方案产出后显示于此')}
-      </div>
+      <div className="mt-6 text-xs leading-4 text-(--text-tertiary)">{t('方案产出后显示于此')}</div>
     </div>
   );
 }

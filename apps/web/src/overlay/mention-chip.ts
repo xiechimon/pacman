@@ -55,7 +55,7 @@ export function mentionChipClass(kind: string | null | undefined): string {
 /** picker 首层的 kind 图标 tile（原 .mention-row-icon + .mention-icon--*）：
  *  28px 圆角 6 tile，18% tint 底 + 身份色字形（非文本 3:1 面）。 */
 const ICON_BASE =
-  'mention-row-icon inline-flex size-7 shrink-0 items-center justify-center rounded-[6px] bg-(--surface-tertiary) text-(--foreground)';
+  'inline-flex size-7 shrink-0 items-center justify-center rounded-[6px] bg-(--surface-tertiary) text-(--foreground)';
 
 const KIND_ICON_CLS: Record<string, string> = {
   todo: 'bg-[color-mix(in_srgb,var(--spot-text-on-tint)_18%,transparent)] text-(--spot-text-on-tint)',

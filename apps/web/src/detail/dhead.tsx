@@ -85,13 +85,13 @@ export function DetailHead({
       <Button
         variant="ghost"
         size="icon-sm"
-        className="detail-back flex-none"
+        className="flex-none"
         render={<Link to={{ pathname: '/app', search }} />}
         aria-label={t('返回')}
       >
         <ChevronLeft />
       </Button>
-      <span className="detail-seq ml-1 flex-none text-xs leading-4 text-(--text-tertiary)">
+      <span className="ml-1 flex-none text-xs leading-4 text-(--text-tertiary)">
         #{todo.seqNum}
       </span>
       {/* #949：chipwrap 定位类随 overlays.css 清零退役（relative flex
@@ -167,7 +167,7 @@ export function DetailHead({
           attach them to. Ellipsised, never wrapped: the head is a fixed 44px
           band. */}
       <span
-        className="detail-title ml-3.5 min-w-0 flex-1 truncate text-[15px] leading-5 font-semibold text-(--foreground)"
+        className="ml-3.5 min-w-0 flex-1 truncate text-[15px] leading-5 font-semibold text-(--foreground)"
         title={todo.title}
         data-testid="detail-title"
       >
@@ -175,7 +175,7 @@ export function DetailHead({
       </span>
 
       <div
-        className="detail-head-actions ml-3 flex flex-none items-center gap-1.5 pr-3"
+        className="ml-3 flex flex-none items-center gap-1.5 pr-3"
         data-testid="detail-head-actions"
       >
         {/* XMON-24 更多钮 shadcn ghost 底座；#1006 原型：registry ghost
@@ -185,7 +185,7 @@ export function DetailHead({
           variant="ghost"
           ref={moreButtonRef}
           size="icon-sm"
-          className="detail-head-icon detail-head-icon--more flex-none"
+          className="detail-head-icon--more flex-none"
           aria-label={t('更多')}
           onClick={onMore}
         >

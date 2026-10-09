@@ -45,10 +45,10 @@ export function SourceIssueLine({
     const parsed = todo.sourceRef !== null ? parseOrchestrationSourceRef(todo.sourceRef) : null;
     return (
       <div
-        className="source-issue flex min-w-0 items-center gap-2 px-4 pt-2 text-xs leading-4 text-(--text-tertiary)"
+        className="flex min-w-0 items-center gap-2 px-4 pt-2 text-xs leading-4 text-(--text-tertiary)"
         data-testid="source-orchestration"
       >
-        <span className="source-issue-label flex-none text-(--text-tertiary)">{t('来源')}</span>
+        <span className="flex-none text-(--text-tertiary)">{t('来源')}</span>
         {/* #1006 原型（#980 前提②④）：ghost 中和成文字链的老面 → registry
             Button link 档（text-primary + hover:underline 原生形态）；
             --card-button 品牌墨与 disabled 中性化退役（禁用态走 registry
@@ -56,7 +56,7 @@ export function SourceIssueLine({
             实审裁。 */}
         <Button
           variant="link"
-          className="source-orchestration-link h-auto p-0"
+          className="h-auto p-0"
           data-testid="source-orchestration-link"
           onClick={
             parsed !== null && onOpenThread ? () => onOpenThread(parsed.threadId) : undefined
@@ -71,17 +71,15 @@ export function SourceIssueLine({
   if (todo.sourceRef === null) {
     return (
       <div
-        className="source-issue flex min-w-0 items-center gap-2 px-4 pt-2 text-xs leading-4 text-(--text-tertiary)"
+        className="flex min-w-0 items-center gap-2 px-4 pt-2 text-xs leading-4 text-(--text-tertiary)"
         data-testid="source-issue-pending"
       >
-        <span className="source-issue-label flex-none text-(--text-tertiary)">
-          {t('GitHub issue 未建成')}
-        </span>
+        <span className="flex-none text-(--text-tertiary)">{t('GitHub issue 未建成')}</span>
         {/* #1006 原型：registry Button link 档（同上）——老 text 变体的
             品牌墨/无降档中和退役。 */}
         <Button
           variant="link"
-          className="source-issue-retry h-auto p-0"
+          className="h-auto p-0"
           data-testid="source-issue-retry"
           onClick={onRetry}
           disabled={retryPending}
@@ -97,20 +95,15 @@ export function SourceIssueLine({
   const mismatch = echo.title !== todo.title;
   return (
     <div
-      className="source-issue flex min-w-0 items-center gap-2 px-4 pt-2 text-xs leading-4 text-(--text-tertiary)"
+      className="flex min-w-0 items-center gap-2 px-4 pt-2 text-xs leading-4 text-(--text-tertiary)"
       data-testid="source-issue-echo"
     >
-      <span className="source-issue-label flex-none text-(--text-tertiary)">{t('来源 issue')}</span>
-      <span className="source-issue-number flex-none text-(--text-secondary)">#{echo.number}</span>
-      <span className="source-issue-state flex-none">
-        {echo.state === 'open' ? t('打开') : t('已关闭')}
-      </span>
-      <span className="source-issue-title truncate">{echo.title}</span>
+      <span className="flex-none text-(--text-tertiary)">{t('来源 issue')}</span>
+      <span className="flex-none text-(--text-secondary)">#{echo.number}</span>
+      <span className="flex-none">{echo.state === 'open' ? t('打开') : t('已关闭')}</span>
+      <span className="truncate">{echo.title}</span>
       {mismatch && (
-        <span
-          className="source-issue-drift flex-none text-(--text-tertiary) italic"
-          data-testid="source-issue-drift"
-        >
+        <span className="flex-none text-(--text-tertiary) italic" data-testid="source-issue-drift">
           {t('与本地标题不一致')}
         </span>
       )}

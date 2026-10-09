@@ -30,7 +30,7 @@ type Phase = 'idle' | 'pending' | 'authorizing' | 'authorized' | 'expired' | 'er
 const POLL_INTERVAL_MS = 2_000;
 
 /** 相位文案共用的一档字样（13px / 1.5 行高 / 次级墨）。 */
-const DESC_CLASS = 'authorize-desc text-[13px] leading-normal text-content-secondary';
+const DESC_CLASS = 'text-[13px] leading-normal text-content-secondary';
 
 export function MachineAuthorizePage() {
   const { t } = useI18n();
@@ -109,13 +109,13 @@ export function MachineAuthorizePage() {
       <Card
         role="region"
         aria-label={t('授权机器')}
-        className="authorize-card w-[360px] max-w-[calc(100vw-48px)] gap-3 p-6"
+        className="w-[360px] max-w-[calc(100vw-48px)] gap-3 p-6"
       >
-        <h1 className="authorize-title text-base font-semibold text-foreground">{t('授权机器')}</h1>
+        <h1 className="text-base font-semibold text-foreground">{t('授权机器')}</h1>
         {phase === 'idle' && (
           <>
             <p className={DESC_CLASS}>{t('生成授权链接，在执行机上完成注册发起。')}</p>
-            <Button className="authorize-submit w-full" onClick={() => void startEnrollment()}>
+            <Button className="w-full" onClick={() => void startEnrollment()}>
               {t('生成授权链接')}
             </Button>
           </>
@@ -125,7 +125,7 @@ export function MachineAuthorizePage() {
             <p className={DESC_CLASS}>
               {t('一台执行机请求加入你的团队。确认后它将以自己的凭据连接。')}
             </p>
-            <Button className="authorize-submit w-full" onClick={() => void confirm()}>
+            <Button className="w-full" onClick={() => void confirm()}>
               {t('确认授权')}
             </Button>
           </>
@@ -134,7 +134,7 @@ export function MachineAuthorizePage() {
         {phase === 'authorized' && machine !== null && (
           <>
             <p className={DESC_CLASS}>{t('授权完成，机器已注册。')}</p>
-            <p className="authorize-meta text-xs break-all text-content-tertiary">
+            <p className="text-xs break-all text-content-tertiary">
               machineId: {machine.machineId}
             </p>
           </>
@@ -143,7 +143,7 @@ export function MachineAuthorizePage() {
           <p className={DESC_CLASS}>{t('授权链接已失效，请在执行机上重新发起。')}</p>
         )}
         {error !== null && phase !== 'authorized' && (
-          <p className="authorize-error text-xs text-destructive" role="alert">
+          <p className="text-xs text-destructive" role="alert">
             {error}
           </p>
         )}
