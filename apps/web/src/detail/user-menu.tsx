@@ -44,12 +44,15 @@ const ROWS = [
 ];
 
 // #945（detail.css 清零）：面板皮肤迁 token utilities。V2 弹层壳（#790
-// P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / --plate-shadow 盘投影（#854
-// 三件套）；#163/#388/#610 锚定律的底边 48px 不动（floating 变体交给
-// Popover Positioner，本壳只留触发形态标记）。Arrow = before/after 双三角
-// （描边 12×6 下指触发行左上），伪元经 before:/after: 变体承载。
+// P3）：12px 内边距 / 1px 墨线框 / --plate-shadow 盘投影（#854 三件套）；
+// 圆角接 registry popover 依据 rounded-lg（#1054 消费点清点，ADR 0012 D1
+// ——直角随 V2 骨架退役，plan-dropdown #1006 迁移同词汇；墨线/投影的
+// registry 化归弹层重建票）。#163/#388/#610 锚定律的底边 48px 不动
+// （floating 变体交给 Popover Positioner，本壳只留触发形态标记）。
+// Arrow = before/after 双三角（描边 12×6 下指触发行左上，锚位 20px 避开
+// 10px 圆角），伪元经 before:/after: 变体承载。
 const PANEL =
-  "user-menu absolute bottom-12 left-2 z-10 flex w-56 flex-col rounded-none border border-(--border) bg-(--popover) p-3 shadow-(--plate-shadow) before:absolute before:bottom-px before:left-5 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_0,50%_100%,100%_0)] before:content-[''] after:absolute after:bottom-0.5 after:left-[21px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_0,50%_100%,100%_0)] after:content-['']";
+  "user-menu absolute bottom-12 left-2 z-10 flex w-56 flex-col rounded-lg border border-(--border) bg-(--popover) p-3 shadow-(--plate-shadow) before:absolute before:bottom-px before:left-5 before:h-1.5 before:w-3 before:bg-(--border) before:[clip-path:polygon(0_0,50%_100%,100%_0)] before:content-[''] after:absolute after:bottom-0.5 after:left-[21px] after:h-[5px] after:w-2.5 after:bg-(--popover) after:[clip-path:polygon(0_0,50%_100%,100%_0)] after:content-['']";
 const PANEL_FLOATING = 'user-menu--floating relative bottom-auto left-auto z-auto';
 
 // 外观 seg（r7 37 probe #138）：~20px 描边格 + 8px 侧内边距 + 发丝缝。

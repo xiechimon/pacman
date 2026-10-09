@@ -1,7 +1,7 @@
 name: pr-evidence
 
-# PR body evidence gate (#750, #939, #940): the body must answer the
-# "Upstream equivalent" and "Failure-path evidence" template sections, and
+# PR body evidence gate (#750, #939, #940, #1079): the body must answer the
+# "Upstream" and "Verified" template sections, and
 # image links (any host by extension; media hosts by URL shape) must be
 # embedded (`![...]()`, not `[...]()`) and must answer HTTP 200.
 #

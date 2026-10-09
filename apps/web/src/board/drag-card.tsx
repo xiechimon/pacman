@@ -28,7 +28,9 @@ export function DragCard({ todo, projectName }: DragCardProps) {
   const initial = projectName ? projectName.charAt(0).toLowerCase() : PROJECT_INITIAL;
   return (
     <div
-      className="board-drag-card flex flex-col gap-1.5 rounded-none border border-(--border) bg-(--card) py-2.5 px-3 opacity-[0.92] rotate-2 [box-shadow:var(--drag-shadow)]"
+      /* #1054 清点：拖拽克隆镜像 todo-card 的 registry Card 几何
+         （rounded-xl），V2 骨架方角（#792 P6）随 ADR 0012 D1 退役。 */
+      className="board-drag-card flex flex-col gap-1.5 rounded-xl border border-(--border) bg-(--card) py-2.5 px-3 opacity-[0.92] rotate-2 [box-shadow:var(--drag-shadow)]"
       data-todo-id={todo.id}
     >
       <div className="board-drag-card-row1 flex items-center gap-1.5">

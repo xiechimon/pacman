@@ -1,7 +1,7 @@
-## Upstream equivalent
+## Upstream
 
 No new mechanism: this PR changes copy only.
 
-## Related issues
+## Issues
 
 Closes #1

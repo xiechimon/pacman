@@ -67,17 +67,17 @@ import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
 
-/* —— #1031 名称行内编辑面配方（account 面几何，与 agent 详情同构、只差档）——
-   ProfileNameRow 是共享模板件，本面只注入自己的几何/皮肤 utility。值钮吃
-   profile-value 缺省的 14px 值墨（agent 面是 15px），ghost 底座差额按七通道
-   律中和（hover 换主题色 = 可点感信号，补齐旧「纯文本假可供性」缺的可点暗示）；
-   铅笔钮 tertiary 墨 hover 回 foreground；编辑器 32 高带框盒、14px 值墨。
+/* —— #1031 名称行内编辑面配方（account 面几何，与 agent 详情同构）——
+   ProfileNameRow 是共享模板件，本面只注入自己的几何/皮肤 utility。值钮 =
+   ghost 件默认形态 + 左对齐布局位（agent 面 #980 同款裁决：手写值墨档与
+   hover 换墨配方退役，hover 涂底 = registry 可供性；hover 品牌墨另按
+   #1055/#987 退役——品牌墨只做 spot 强调，不当文字色）；铅笔钮 tertiary 墨
+   hover 回 foreground；编辑器 32 高带框盒、14px 值墨。
    account 面 e2e 载体走 role/text（#910 裁定 1，类名别名退役），故这里不再挂
    `.account-name*` 锚类，几何 utility 是唯一职责。 */
 
-/** 名称值钮（14px 值墨，hover 换主题色补可点感）。 */
-const ACCOUNT_NAME_CLS =
-  'h-auto cursor-pointer justify-start gap-0 border-none bg-transparent p-0 text-left text-[14px] font-normal leading-[inherit] text-(--foreground) hover:bg-transparent hover:text-(--card-button) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
+/** 名称值钮：ghost 件默认形态 + 左对齐布局位。 */
+const ACCOUNT_NAME_CLS = 'h-auto justify-start p-0 text-left font-normal';
 
 /** 编辑铅笔钮（tertiary 墨，hover 回 foreground；icon-only 只留 padding 盒）。 */
 const ACCOUNT_ICON_EDIT_CLS =
