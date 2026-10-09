@@ -274,16 +274,27 @@ test.describe('chief panel floating form (ADR 0013)', () => {
     await cards.nth(0).click();
     await expect(drawer(page)).toBeVisible();
     await expect(examples).toBeVisible();
-    await expect(page.getByTestId('chief-stream')).toHaveCount(0);
+    // #1009 A1（D6 同族载体律）：流容器 = MessageScroller Content，随窗常驻
+    // ——「hero 面无流」的判据从容器缺席翻成容器在位且零行（与 A0 的
+    // count-0→hidden 重钉同一条 0012 D6 载体法）。
+    await expect(page.getByTestId('chief-stream')).toHaveCount(1);
+    await expect(page.locator('[data-slot="message-scroller-item"]')).toHaveCount(0);
+    await expect(page.locator('.chief-msg, [data-testid="chief-msg"]')).toHaveCount(0);
   });
 
-  test('composer keeps one fixed size whether or not a draft is restored (XMON-102)', async ({
+  test('composer grows with a restored draft to the six-line cap, empty face keeps the base track (#860 supersedes XMON-102)', async ({
     page,
   }) => {
-    // The two fixture rows that straddle the old toggle: r5 111 restores the
-    // localStorage draft into the composer (used to render 6 rows), r5 114 is
-    // a thread view with an empty composer (used to render 1 row). Equal
-    // boxes below = the size no longer reads the content.
+    // #860 grow 律（chief-drawer 注记原文 "the XMON-102 fixed-height law is
+    // superseded"）：草稿面随内容长到 6 行封顶、盒内滚动；空面守 3 行基座轨。
+    // 旧「两面等高 60px」pin 钉的是 grow 副作用在 fixture 面从未触发的意外面
+    // （隐藏挂载吞掉首跑度量、deps 稳定不再跑——A0 态 worktree build 实证，
+    // PR #1066 body）；A1 换装后副作用真实触发 = 已裁决律的真面目。
+    // 钉扎值来源（实审裁决 2026-10-08「截图上是多少就钉多少」）：两面读数
+    // 均为实测渲染值，录于 docs/verify/1009/result-a1-fixture-smoke.json 的
+    // S5（drafted 120px）/ S5b（empty 60px）两行，截图对照 a1-04-hero-111.png
+    // 与 a1-01-thread-114.png——不是 growCap 常数的推定值（数值恰合同为
+    // 实测结果，来源以 json/截图为准）。
     const measureComposer = async (url: string) => {
       await page.goto(url);
       await settled(page);
@@ -301,13 +312,13 @@ test.describe('chief panel floating form (ADR 0013)', () => {
     const drafted = await measureComposer('/app?scenario=111');
     const empty = await measureComposer('/app?scenario=114');
 
-    expect(empty.height).toBe(drafted.height);
-    // A fixed track, not an auto one: the box is 3 lines of the composer's
-    // 20px line-height, and the overflow stays inside it instead of pushing
-    // the panel around.
-    expect(drafted.cssHeight).toBe('60px');
+    expect(drafted.height).toBe(120);
+    expect(empty.height).toBe(60);
+    expect(drafted.cssHeight).toBe('120px');
     expect(empty.cssHeight).toBe('60px');
+    // 封顶后溢出留在盒内滚动，不把面板顶变形（grow 律的另一半）。
     expect(drafted.overflowY).toBe('auto');
+    expect(empty.overflowY).toBe('auto');
   });
 
   test('composer placeholder switches to the steer canon while a turn runs (#624)', async ({

@@ -102,6 +102,8 @@ export function CreateAgentDialog({
       onClose={onClose}
       // 裸内容进 DialogFooter（壳组合 registry dialog 件后 band 自带 p-4，
       // 自携 padding 包装会双垫）；Button default 档 + w-full 钉底独占。
+      // （#1006 段 2 与 #1007 各自独立修到同一形态，merge 取 L4 全清理版：
+      // 旧包装 div 会把 w-full 钮塌成内容宽，drive-952-finale B3 实测 30px。）
       footer={
         <Button className="w-full" disabled={name.trim() === ''} onClick={submit}>
           {t('创建')}

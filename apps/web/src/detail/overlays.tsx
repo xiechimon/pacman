@@ -1,111 +1,108 @@
 // Centered modal overlays of the detail route (issue #75, r8 56/74/75):
 // the 开始任务 rerun dialog and the 复用方案 sub-panel (back arrow +
-// centered prompt + 查看方案/直接执行). Geometry on top of the 448-wide
-// centered law (r7 §3.5). (The former 运行历史 dialog of #68 is a static
-// right-pane section since #366 — right-pane.tsx.)
+// centered prompt + 查看方案/直接执行).
 // #640（r14 §5.7 前置裁决落地，用户 2026-10-02）：开始任务不再给选择——
-// 「先做规划/立即执行」双分支、「规划与执行分用不同 Agent」开关与指派
-// 选择器（#318 载荷）全部撤销；待开始相位的开始入口不经 dialog，直接发
-// 总管编排回合（use-orchestrate-start.ts）。本 dialog 只剩 failed 重跑面：
-// 重跑（= 编排回合）+ — 仅当失败轮持有方案文档（r8 §3.4）— indigo
-// 复用方案 第三钮。fixture 面保持静态：无 onRerun/onReuse 时钮无 wire。
+// 本 dialog 只剩 failed 重跑面：重跑（= 编排回合）+ — 仅当失败轮持有方案
+// 文档（r8 §3.4）— 复用方案 第三钮。fixture 面保持静态：无 onRerun/onReuse
+// 时钮无 wire。
+//
+// #1006 原型（#980 前提②④；#983「居中 fixed 模态族 → Dialog」同族判例）：
+// #75 自建的 Overlay/PanelHead 手写壳（裸 div scrim + window Esc 监听，无
+// 焦点圈定/滚动锁/退场动效）退役，组合 registry dialog.tsx 件——
+// Dialog/DialogContent/DialogHeader/DialogTitle/DialogFooter 默认形态，
+// 三路可关（X / Esc / 背板外点，#168 家族关闭律）归 Base UI 原生 dismiss。
+// .overlay* 别名类随形透传（e2e 句柄，spec/22 §5.0 残留律——
+// rerun-close-family / todo-detail-page ESC 布线按它定位；重钉归施工段）。
+// OVERLAY_BTN/OVERLAY_GHOST 冻结几何（30 高/13px）退役，钮走 registry
+// Button variant 档。
 
-import { useEffect } from 'react';
 import { Button } from '../components/ui/button.js';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, X } from '../icons/index.js';
 
-// XMON-24：老 ui/button overlay 档（30 高 + 12 内边距 + 18 行高 @13px）的
-// 几何/皮肤逐值搬进 registry Button utilities。ghost 另有 1px --card-border
-// 描边 + secondary 墨；老 .btn--ghost 无 hover 规则，hover 底色两档都要清零
-// （dark 档不清会在默认暗色主题下透出 dark:hover:bg-muted/50）。primary 漆面
-// 配 border-none：底座 1px 透明描边 + bg-clip-padding 会在漆边留一圈未 paint 环。
-const OVERLAY_BTN =
-  'h-[30px] px-3 text-[13px] leading-[18px] font-normal border-none cursor-pointer active:not-aria-[haspopup]:translate-y-0';
-const OVERLAY_GHOST =
-  'h-[30px] px-3 text-[13px] leading-[18px] font-normal border-(--border) text-(--text-secondary) cursor-pointer hover:bg-transparent dark:hover:bg-transparent hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0';
+/** 家族面板 layout 位（#983 判决：宽度归消费点布局类）：448 = dialog
+ *  家族律 #68；移动收口与 registry max-w 配方等值。 */
+const PANEL_LAYOUT = 'overlay overlay-panel w-[448px] max-w-[calc(100%-2rem)] sm:max-w-[448px]';
 
-// #168: the rerun/reuse pair joins the dialog family close law (DialogShell
-// #68) — Esc, backdrop click, and the X head button all carry the same
-// `onClose` (dismiss the whole overlay); `back` stays the explicit
-// step-back affordance. Mount/unmount is conditional at the call site, so
-// the Esc listener needs no open flag (DialogShell keeps one only for the
-// #73 retained-mount exit fade).
-function Overlay({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-  // #945（detail.css 清零）：scrim 皮肤迁 token utilities；.overlay 类名
-  // 保留——todo-detail-page 的 ESC 布线 querySelector('.overlay, …') 与
-  // rerun-close-family spec（detail-b 批次重钉）都按它定位。
-  return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop is a click-to-dismiss surface
-    // biome-ignore lint/a11y/useKeyWithClickEvents: Esc closes — see comment
-    <div
-      className="overlay fixed inset-0 z-(--z-modal-scrim) flex items-center justify-center bg-(--overlay-scrim)"
-      onClick={(event) => {
-        // only the backdrop itself dismisses; panel clicks bubble harmlessly
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div className="overlay-panel w-[448px] rounded-(--radius-popover) bg-(--popover) shadow-[0_12px_32px_rgb(0_0_0/0.25)]">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function PanelHead({
+/** #168: the rerun/reuse pair joins the dialog family close law — Esc,
+ *  backdrop click, and the X head button all carry the same `onClose`
+ *  (dismiss the whole overlay); `back` stays the explicit step-back
+ *  affordance. Mount/unmount is conditional at the call site. Base UI 原生
+ *  dismiss 三路同归 onOpenChange(false)。 */
+function OverlayDialog({
+  onClose,
   title,
   back,
   onBack,
-  onClose,
+  children,
+  footer,
 }: {
+  onClose: () => void;
   title: string;
   back?: boolean;
   onBack?: () => void;
-  onClose: () => void;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   const { t } = useI18n();
   return (
-    <div className="overlay-head flex h-12 items-center gap-1 border-b border-(--border) pl-4 pr-3">
-      {/* XMON-24：back/close 切 shadcn ghost；#945：per-face 皮肤退役，
-          老 computed 逐项搬 utilities——ghost 七通道中和（#908 裁决 3）：
-          hover/aria-expanded 底与墨钉回透明 + tertiary，尺寸/内边距/边框
-          逐值同形（back 20×20 -ml-1，close 24×24 ml-auto）。 */}
-      {back === true && (
-        <Button
-          variant="ghost"
-          className="overlay-back flex size-5 -ml-1 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-          onClick={onBack}
-          aria-label={t('返回')}
+    <Dialog
+      open
+      modal
+      onOpenChange={(next: boolean) => {
+        if (!next) onClose();
+      }}
+    >
+      <DialogContent showCloseButton={false} className={PANEL_LAYOUT}>
+        <DialogHeader className="overlay-head flex-row items-center gap-1">
+          {/* back/close = registry ghost icon-sm 默认档（老 20×20/24×24 冻结
+              几何与七通道中和退役）；.overlay-back/.overlay-close 别名透传。
+              back 不是 close：#168 语义 = 显式回退到 rerun 面（弹层仍在），
+              走 onBack 而非 DialogClose。 */}
+          {back === true && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="overlay-back -ml-1"
+              aria-label={t('返回')}
+              onClick={onBack}
+            >
+              <ChevronLeft width={16} height={16} />
+            </Button>
+          )}
+          <DialogTitle className="overlay-title">{title}</DialogTitle>
+        </DialogHeader>
+        <div className="overlay-body min-h-0">{children}</div>
+        {footer != null && <DialogFooter className="overlay-actions">{footer}</DialogFooter>}
+        <DialogClose
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="overlay-close absolute top-2 right-2"
+              aria-label={t('关闭')}
+            />
+          }
         >
-          <ChevronLeft width={16} height={16} />
-        </Button>
-      )}
-      <span className="overlay-title text-sm leading-5 font-medium text-(--foreground)">
-        {title}
-      </span>
-      <Button
-        variant="ghost"
-        className="overlay-close ml-auto flex size-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-        onClick={onClose}
-        aria-label={t('关闭')}
-      >
-        <X width={16} height={16} />
-      </Button>
-    </div>
+          <X width={16} height={16} />
+        </DialogClose>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 /** 开始任务 dialog —— #640 起只剩 failed 重跑面（待开始相位的开始入口
  *  不经 dialog，直发总管编排回合）：一行说明 + 重跑（= 编排回合）；
- *  `reuse`（失败轮持有方案文档，r8 §3.4）加 indigo 复用方案 钮并把重跑
- *  降为 ghost 次钮。 */
+ *  `reuse`（失败轮持有方案文档，r8 §3.4）加 复用方案 主钮并把重跑降为
+ *  outline 次钮（老 ghost+描边形的 registry variant 对应）。 */
 export function RerunDialog({
   reuse,
   pin,
@@ -133,40 +130,34 @@ export function RerunDialog({
   const { t } = useI18n();
   const pinOffline = pin != null && pin.offline;
   return (
-    <Overlay onClose={onClose}>
-      <PanelHead title={t('开始任务')} onClose={onClose} />
-      <div className="overlay-body px-4 pt-3 pb-4">
-        <div className="rerun-info pt-[18px] pb-0.5 text-center text-[13px] leading-[18px] text-(--text-secondary)">
-          {t('这张任务将交给总管重新编排。')}
-        </div>
-        {pinOffline && onUnpin !== undefined && (
-          <div className="rerun-pin flex items-center justify-center gap-2 pt-2 text-xs leading-4 text-(--text-secondary)">
-            <span>
-              {t('钉选的机器「{machine}」当前离线，重跑仍会等它。', {
-                machine: pin.machineName ?? t('（已移除）'),
-              })}
-            </span>
-            <Button variant="ghost" className={OVERLAY_GHOST} onClick={onUnpin}>
-              {t('改为自动')}
-            </Button>
-          </div>
-        )}
-        <div className="overlay-actions mt-4 flex justify-end gap-2">
-          <Button
-            variant={reuse ? 'ghost' : 'default'}
-            className={reuse ? OVERLAY_GHOST : OVERLAY_BTN}
-            onClick={onRerun}
-          >
+    <OverlayDialog
+      onClose={onClose}
+      title={t('开始任务')}
+      footer={
+        <>
+          <Button variant={reuse ? 'outline' : 'default'} onClick={onRerun}>
             {t('重跑')}
           </Button>
-          {reuse && (
-            <Button className={OVERLAY_BTN} onClick={onReuse}>
-              {t('复用方案')}
-            </Button>
-          )}
-        </div>
+          {reuse && <Button onClick={onReuse}>{t('复用方案')}</Button>}
+        </>
+      }
+    >
+      <div className="rerun-info pt-[18px] pb-0.5 text-center text-sm leading-[18px] text-(--text-secondary)">
+        {t('这张任务将交给总管重新编排。')}
       </div>
-    </Overlay>
+      {pinOffline && onUnpin !== undefined && (
+        <div className="rerun-pin flex items-center justify-center gap-2 pt-2 text-xs leading-4 text-(--text-secondary)">
+          <span>
+            {t('钉选的机器「{machine}」当前离线，重跑仍会等它。', {
+              machine: pin.machineName ?? t('（已移除）'),
+            })}
+          </span>
+          <Button variant="outline" size="sm" onClick={onUnpin}>
+            {t('改为自动')}
+          </Button>
+        </div>
+      )}
+    </OverlayDialog>
   );
 }
 
@@ -187,23 +178,23 @@ export function ReusePanel({
 }) {
   const { t } = useI18n();
   return (
-    <Overlay onClose={onClose}>
-      <PanelHead title={t('复用方案')} back onBack={onBack} onClose={onClose} />
-      {/* reuse-body = 老 .reuse-body 覆写规则（padding-top 0）的消费端
-          等价形：字面 className 不经 twMerge，直接写终值 pt-0。 */}
-      <div className="overlay-body reuse-body px-4 pt-0 pb-4">
-        <div className="reuse-prompt px-4 pt-[30px] pb-1 text-center text-sm leading-5 text-(--text-secondary)">
-          {t('选择接下来如何使用这个方案')}
-        </div>
-        <div className="overlay-actions mt-4 flex justify-end gap-2">
-          <Button variant="ghost" className={OVERLAY_GHOST} onClick={onView}>
+    <OverlayDialog
+      onClose={onClose}
+      title={t('复用方案')}
+      back
+      onBack={onBack}
+      footer={
+        <>
+          <Button variant="outline" onClick={onView}>
             {t('查看方案')}
           </Button>
-          <Button className={OVERLAY_BTN} onClick={onDirect}>
-            {t('直接执行')}
-          </Button>
-        </div>
+          <Button onClick={onDirect}>{t('直接执行')}</Button>
+        </>
+      }
+    >
+      <div className="reuse-prompt px-4 pt-[30px] pb-1 text-center text-sm leading-5 text-(--text-secondary)">
+        {t('选择接下来如何使用这个方案')}
       </div>
-    </Overlay>
+    </OverlayDialog>
   );
 }

@@ -27,7 +27,6 @@ import type { Db } from '../db/client.js';
 import {
   agent,
   build,
-  documentDiff,
   machine,
   message,
   plan as planTable,
@@ -493,7 +492,7 @@ export function isStartedTodoRow(row: {
  *    pending 步无机器可通知，随 build 行删除而消失（claim 面按 build join，
  *    无 build 即无领取）。
  *  - 清空 = 硬删除（参考站「清空对话、方案和改动记录」字面）：build 行 +
- *    step/message/plan/steer/stop 单槽 + document_diff（planDocId 键）。分支
+ *    step/message/plan/steer/stop 单槽。分支
  *    同步行随 build FK cascade；todo 行保留（标题/需求/标签/指派/钉选机器是
  *    任务定义，不是产物）。执行机工作区文件与会话资产不动（daemon 本地物，
  *    server 够不着——dialog 文案如实声明）。
@@ -546,15 +545,11 @@ export function resetTodo(
         deps.machineHub?.stopSignal(row.teamId, active.id);
       }
     }
-    const planDocIds = buildRows.map((b) => b.planDocId).filter((v): v is string => v != null);
     db.delete(stopPending).where(inArray(stopPending.conversationId, buildIds)).run();
     db.delete(steerPending).where(inArray(steerPending.conversationId, buildIds)).run();
     db.delete(step).where(inArray(step.buildId, buildIds)).run();
     db.delete(message).where(inArray(message.conversationId, buildIds)).run();
     db.delete(planTable).where(inArray(planTable.buildId, buildIds)).run();
-    if (planDocIds.length > 0) {
-      db.delete(documentDiff).where(inArray(documentDiff.documentId, planDocIds)).run();
-    }
     db.delete(build).where(eq(build.todoId, id)).run();
     for (const bid of buildIds) deps.convHub?.clearConversationBuffer(bid);
   }

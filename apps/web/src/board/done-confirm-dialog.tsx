@@ -8,7 +8,6 @@
 
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
-import { ACCEPT_CANCEL_BTN, ACCEPT_FOOTER } from '../detail/accept-dialog.js';
 import { useI18n } from '../i18n/provider.js';
 
 interface DoneConfirmDialogProps {
@@ -27,29 +26,22 @@ export function DoneConfirmDialog({ open, onClose, onConfirm }: DoneConfirmDialo
       title={t('把任务标记为已完成？')}
       open={open}
       onClose={onClose}
-      // 挂账（#1004 PR body / thread report task #5）：等 #1006 的 registry
-      // dialog-shell 进 main 并合入本分支后，剥本消费点自携垫改裸内容进
-      // DialogFooter 防双垫，并撤 ACCEPT_FOOTER / ACCEPT_CANCEL_BTN 的
-      // import。此刻不做：L3 的 registry 壳尚未进 main。
+      // 挂账已清（#1004 → #1006 段 2）：registry dialog-shell 已进本分支，
+      // 消费点自携垫剥除、裸内容进 DialogFooter，ACCEPT_* import 撤除；
+      // 钮走家族律 registry 档（取消 outline / 确认 default）。
       footer={
-        <div className={ACCEPT_FOOTER}>
-          <Button variant="ghost" className={ACCEPT_CANCEL_BTN} onClick={onClose}>
+        <>
+          <Button variant="outline" onClick={onClose}>
             {t('取消')}
           </Button>
-          <Button
-            variant="ghost"
-            className="h-auto rounded-none p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0"
-            onClick={onConfirm}
-          >
-            {t('确认完成')}
-          </Button>
-        </div>
+          <Button onClick={onConfirm}>{t('确认完成')}</Button>
+        </>
       }
     >
       {/* 几何/字档 = reset-confirm-dialog 同族（#951 overlays.css 清零后的
           utility 形态）：内容纵 stacked，13/18 primary 主句、13/20 disc
-          清单、12/16 tertiary 尾注。 */}
-      <div className="block px-4 pt-[17px]">
+          清单、12/16 tertiary 尾注。外垫随壳 DialogContent p-4。 */}
+      <div className="block">
         <p className="m-0 mb-1.5 text-[13px] leading-[18px] text-(--text-primary)">
           {t('这张卡有正在验收的变更产物，直接拖到已完成会跳过合并：')}
         </p>
