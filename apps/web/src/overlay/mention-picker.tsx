@@ -353,10 +353,13 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           >
             {t('取消')}
           </Button>
+          {/* #1055 角色分槽：确认动作 = 主操作按钮 → registry Button default
+              档（--primary 中性实底，#987「primary 保 neutral，品牌只走
+              spot 族」）；品牌墨文字档与 brightness hover / disabled 中和
+              退役（禁用态走 registry opacity 降档，source-issue #1006 同款）。
+              类名锚原位保留（e2e 定位面，零规则）。 */}
           <Button
-            variant="ghost"
-            size="default"
-            className="mention-picker-insert h-auto cursor-pointer justify-start gap-0 px-1.5 py-1 text-xs font-medium text-(--card-button) transition-[filter] duration-(--dur-fast) ease-(--ease-standard) hover:bg-transparent hover:brightness-[1.07] dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--card-button) disabled:cursor-default disabled:text-(--text-tertiary) disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            className="mention-picker-insert h-auto px-2 py-1 text-xs"
             disabled={allSelected.length === 0}
             onClick={insert}
           >

@@ -57,24 +57,28 @@ const TABS: { id: ChiefSettingsTab; label: string }[] = [
 
 /** 设置面卡片族公共皮肤（#950 清零，旧 .chief-compress/.chief-host 等值：
  *  surface-secondary 块 / 16 横垫 8 纵垫 / min-height 62——#772 律英文描述
- *  换行时长高 / 17 上距）。 */
-const CARD_CLS = 'mt-[17px] flex min-h-[62px] items-center gap-4 bg-(--secondary) px-4 py-2';
+ *  换行时长高 / 17 上距）。圆角接 registry Card 依据 rounded-xl（#1054
+ *  消费点清点，ADR 0012 D1；卡族三成员 CARD/EMPTY_CARD/LIST_CARD 与章程块
+ *  同档，8px 一次性档随「几何自由」授权废止收敛回 registry 默认）。 */
+const CARD_CLS =
+  'mt-[17px] flex min-h-[62px] items-center gap-4 rounded-xl bg-(--secondary) px-4 py-2';
 
 /** 卡片文字组（旧 .chief-compress-text h3/p 等值）。 */
 const CARD_TITLE_CLS = 'text-sm font-semibold text-(--foreground)';
 const CARD_DESC_CLS = 'mt-0.5 text-xs text-(--text-tertiary)';
 
 /** 空态卡（旧 .chief-memo/.chief-watches 等值，#772 min-height + 居中 +
- *  tertiary 统一律）。 */
+ *  tertiary 统一律；圆角随卡族 = registry Card rounded-xl，#1054）。 */
 const EMPTY_CARD_CLS =
-  'mt-[17px] flex min-h-11 items-center justify-center rounded-none bg-(--secondary) px-4 py-2 text-[13px] text-(--text-tertiary)';
+  'mt-[17px] flex min-h-11 items-center justify-center rounded-xl bg-(--secondary) px-4 py-2 text-[13px] text-(--text-tertiary)';
 
-/** 列表卡（旧 .chief-memory-card/.chief-watch-card 等值：8 圆角一次性尺寸
- *  §3.1(a)，XMON-117 一卡多行律）。 */
-const LIST_CARD_CLS = 'mt-[17px] rounded-[8px] bg-(--secondary) text-[13px]';
+/** 列表卡（旧 .chief-memory-card/.chief-watch-card 等值，XMON-117 一卡多行
+ *  律；8px 一次性档收敛回 registry Card rounded-xl，#1054，ADR 0012 D1）。 */
+const LIST_CARD_CLS = 'mt-[17px] rounded-xl bg-(--secondary) text-[13px]';
 
 /** tab chip（#950 清零，旧 .chief-tab 等值：26 高 / 11 横垫 / 13px 次级墨 /
- *  方角透明底；z-[1] 压在滑动指示条之上）。选中态载体 = aria-selected
+ *  透明底，圆角骑件默认 trigger 档 rounded-md（#1054）；z-[1] 压在滑动
+ *  指示条之上）。选中态载体 = aria-selected
  *  （Base UI 自带，#910 裁定 3——旧 .is-active 类退役）：primary 墨 + 600。
  *  hover tint 只给未选中 chip、只吃精细指针（#73/#138 律）；过渡只动
  *  background-color（旧律：选中墨切换瞬切不过渡）。
@@ -83,7 +87,7 @@ const LIST_CARD_CLS = 'mt-[17px] rounded-[8px] bg-(--secondary) text-[13px]';
  *  chip 的墨由 aria-selected 段承载）；data-active 漆面/阴影中和为透明——
  *  选中底色由滑动指示条（TAB_INDICATOR_CLS，z-0）承载，chip 本体恒透明。 */
 const TAB_CLS =
-  'relative z-[1] h-[26px] cursor-pointer rounded-none border-none bg-transparent px-[11px] text-[13px] text-(--text-secondary) transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) pointer-fine:hover:aria-[selected=false]:bg-(--seg-hover) aria-selected:font-semibold aria-selected:text-(--foreground) font-normal hover:aria-[selected=false]:text-(--text-secondary) dark:hover:aria-[selected=false]:text-(--text-secondary) data-active:bg-transparent data-active:shadow-none dark:data-active:bg-transparent';
+  'relative z-[1] h-[26px] cursor-pointer border-none bg-transparent px-[11px] text-[13px] text-(--text-secondary) transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) pointer-fine:hover:aria-[selected=false]:bg-(--seg-hover) aria-selected:font-semibold aria-selected:text-(--foreground) font-normal hover:aria-[selected=false]:text-(--text-secondary) dark:hover:aria-[selected=false]:text-(--text-secondary) data-active:bg-transparent data-active:shadow-none dark:data-active:bg-transparent';
 
 /** 滑动指示条（#644，旧 .chief-tab-indicator 等值）：Base UI 把激活 chip 的
  *  几何写进内联 --active-tab-* 自定义属性，pill 垫在 chip 下层（z-0）按
@@ -92,9 +96,12 @@ const TAB_CLS =
  *  transition 走任意值 shorthand 而非 transition-[…] + duration 拆件：四条
  *  逐属性声明的 computed 读回是 4 元列表（'0.15s, 0.15s, 0.15s, 0.15s' /
  *  'ease, ease, ease, ease'），segmented-controls 探针按旧 CSS 逐字钉该形。
- *  减弱动效瞬切（r1 §4.3 全站降级律，motion-reduce 承旧 reduce 块）。 */
+ *  减弱动效瞬切（r1 §4.3 全站降级律，motion-reduce 承旧 reduce 块）。
+ *  pill 圆角接 registry Tabs trigger 档 rounded-md（#1054 清点：#644 判决
+ *  「pill shape carried by consumer CSS」的 shape 归件默认词汇；与 lg 列表
+ *  p-0.5 内衬成同心圆角 10−2=8px）。 */
 const TAB_INDICATOR_CLS =
-  'pointer-events-none absolute left-(--active-tab-left) top-(--active-tab-top) z-0 h-(--active-tab-height) w-(--active-tab-width) rounded-none bg-(--chief-tab-active) shadow-[0_1px_2px_0_rgb(0_0_0/0.05)] [transition:left_var(--dur-fast)_ease,top_var(--dur-fast)_ease,width_var(--dur-fast)_ease,height_var(--dur-fast)_ease] motion-reduce:[transition:none]';
+  'pointer-events-none absolute left-(--active-tab-left) top-(--active-tab-top) z-0 h-(--active-tab-height) w-(--active-tab-width) rounded-md bg-(--chief-tab-active) shadow-[0_1px_2px_0_rgb(0_0_0/0.05)] [transition:left_var(--dur-fast)_ease,top_var(--dur-fast)_ease,width_var(--dur-fast)_ease,height_var(--dur-fast)_ease] motion-reduce:[transition:none]';
 
 /** 已绑定 Agent 行头像（旧 .chief-agent-row-avatar 等值：首字母 chip =
  *  24 圆盘 surface 底 + 墨线框；--img 律去 chip 底边，图即圆盘）。 */
@@ -239,7 +246,7 @@ export function ChiefSettings({
             onValueChange={(value) => setTab(value as ChiefSettingsTab)}
             className="contents"
           >
-            <TabsList className="relative inline-flex rounded-none bg-(--secondary) p-0.5 group-data-horizontal/tabs:h-auto">
+            <TabsList className="relative inline-flex bg-(--secondary) p-0.5 group-data-horizontal/tabs:h-auto">
               {/* #644 滑动指示条：选中 chip 的底色不再画在 chip 上，改由这根
                 pill 承载——切 tab 时它按参考站实测的过渡滑到新位并变宽。 */}
               <TabsIndicator data-testid="chief-tab-indicator" className={TAB_INDICATOR_CLS} />
@@ -264,7 +271,7 @@ export function ChiefSettings({
                 24 / ChevronRight 14 属性尺寸）+ 行首 svg tertiary 墨。 */}
               <Button
                 variant="ghost"
-                className="mt-[17px] h-11 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--secondary) px-4 text-sm leading-normal font-normal text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) dark:hover:text-(--text-secondary) aria-expanded:bg-(--secondary) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:first-child]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
+                className="mt-[17px] h-11 w-full cursor-pointer justify-start gap-3 border-none bg-(--secondary) px-4 text-sm leading-normal font-normal text-(--text-secondary) hover:bg-(--secondary) hover:text-(--text-secondary) dark:hover:bg-(--secondary) dark:hover:text-(--text-secondary) aria-expanded:bg-(--secondary) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:first-child]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
                 onClick={() => setAgentOpen(true)}
               >
                 {boundAgent != null ? (
@@ -329,11 +336,13 @@ export function ChiefSettings({
               {charter !== '' ? (
                 // live 既有章程呈现位(r5 未拍非空章程 tab,[设计]:同空态块
                 // 语言换实文)。旧 .chief-charter-text 等值迁移。
-                <div className="mt-[17px] bg-(--secondary) px-4 py-3 text-[13px] leading-5 whitespace-pre-wrap text-(--foreground)">
+                <div className="mt-[17px] rounded-xl bg-(--secondary) px-4 py-3 text-[13px] leading-5 whitespace-pre-wrap text-(--foreground)">
                   {charter}
                 </div>
               ) : (
-                <div className="mt-[17px] grid min-h-[78px] place-items-center rounded-none border border-dashed border-(--input) bg-(--secondary) text-[13px] text-(--text-tertiary)">
+                /* 空态虚线框 = registry Empty 件词汇（rounded-xl +
+                   border-dashed，#1054 清点接依据）。 */
+                <div className="mt-[17px] grid min-h-[78px] place-items-center rounded-xl border border-dashed border-(--input) bg-(--secondary) text-[13px] text-(--text-tertiary)">
                   {t('尚无章程。点击编辑，为总管添加常设指示。')}
                 </div>
               )}

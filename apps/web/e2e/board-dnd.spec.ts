@@ -731,7 +731,9 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(card).toBeVisible();
     const expected = await resolveStyle(page, {
       'box-shadow': 'var(--drag-shadow)',
-      'border-radius': '0px',
+      // #1054：拖拽克隆镜像 todo-card 的 registry Card 几何（rounded-xl
+      // = 14px，半径基 10px/#988）；V2 骨架方角（#792 P6）随 ADR 0012 D1 退役。
+      'border-radius': '14px',
     });
     const actual = await card.evaluate((el) => {
       const cs = getComputedStyle(el);

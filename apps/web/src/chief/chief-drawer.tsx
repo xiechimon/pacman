@@ -167,8 +167,11 @@ const SEND_ON_CLS =
   'bg-(--card-button) text-(--text-on-accent) hover:bg-(--card-button) hover:text-(--text-on-accent)';
 
 /** 回合过程折叠面（旧 .chief-turn-tools 等值：foot 下挂工具行表，
- *  surface-secondary 底 6/8 内垫，mono 名 + 秒数 + 失败徽标 dim 墨压底）。 */
-const TURN_TOOLS_CLS = 'mt-1.5 flex flex-col gap-[3px] rounded-none bg-(--secondary) px-2 py-1.5';
+ *  surface-secondary 底 6/8 内垫，mono 名 + 秒数 + 失败徽标 dim 墨压底）。
+ *  圆角随流面家族 = --radius-popover 12px（BUBBLE_USER_CLS 同档，A1 几何
+ *  钉回原值；#1054 清点接依据，直角退役）。 */
+const TURN_TOOLS_CLS =
+  'mt-1.5 flex flex-col gap-[3px] rounded-(--radius-popover) bg-(--secondary) px-2 py-1.5';
 const TURN_TOOL_ROW_CLS = 'flex items-center gap-2 font-mono text-[11px] text-(--text-tertiary)';
 const TURN_TOOL_NAME_CLS = 'min-w-0 flex-auto truncate';
 
@@ -771,9 +774,10 @@ function ChiefDrawerInner({
         {threadsOpen && (
           // 主题切换器（r5 116，旧 .chief-switcher 等值：头部锚定绝对
           // 位、262 宽、popover 底、drawer-local z 5——#688 阶梯外，
-          // 收编于抽屉 stacking context 只压内部内容）。
+          // 收编于抽屉 stacking context 只压内部内容）。圆角接 registry
+          // popover 依据 rounded-lg（#1054 清点，ADR 0012 D1）。
           <div
-            className="absolute top-8 left-3 z-[5] w-[262px] rounded-none bg-(--popover) p-1 shadow-(--chief-shadow)"
+            className="absolute top-8 left-3 z-[5] w-[262px] rounded-lg bg-(--popover) p-1 shadow-(--chief-shadow)"
             role="menu"
           >
             {(chief.threads ?? []).map((thread, index) => (
@@ -809,7 +813,9 @@ function ChiefDrawerInner({
                 纯消息流。gate 在位（= 未绑定）时 hero 上距 62，否则 54
                 ——条件类随 JSX 状态切换（旧 .chief-hero 兄弟选择器等值）。 */}
       {!chief.bound && (
-        <div className="mx-[17px] flex h-[54px] flex-none items-center rounded-none bg-(--secondary) pr-3 pl-5 text-[13px] text-(--text-secondary)">
+        /* gate 横幅 = 卡族面，圆角接 registry Card 依据 rounded-xl
+           （#1054 清点，ADR 0012 D1）。 */
+        <div className="mx-[17px] flex h-[54px] flex-none items-center rounded-xl bg-(--secondary) pr-3 pl-5 text-[13px] text-(--text-secondary)">
           <span>{t('请先为总管选择一个 Agent。')}</span>
           {/* XMON-23 收编：default 档 = A3 primary 等价位。中和件对齐 A6 实测形（50×26、12px 字、
                   8px 内边距、8 圆角、400 字重）：h-[26px]/px-2/rounded-md/
@@ -850,11 +856,15 @@ function ChiefDrawerInner({
                 // 14px 属性尺寸）。
                 <Button
                   variant="ghost"
-                  className="h-16 w-full cursor-pointer justify-start gap-3 rounded-none border-none bg-(--secondary) px-3 text-left whitespace-normal font-normal hover:bg-(--secondary) dark:hover:bg-(--secondary) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                  /* #1054 清点：示例卡是 Button 承载 → 圆角骑件默认
+                     rounded-lg（L5 #1008 同款摘除覆写）；行首 icon tile
+                     接 tile 词汇 rounded-lg（schedules-page size-7 tile
+                     L4 先例同档）。 */
+                  className="h-16 w-full cursor-pointer justify-start gap-3 border-none bg-(--secondary) px-3 text-left whitespace-normal font-normal hover:bg-(--secondary) dark:hover:bg-(--secondary) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                   key={ex.text}
                   onClick={onSend != null ? () => void onSend(ex.text) : undefined}
                 >
-                  <span className="flex size-6 flex-none items-center justify-center rounded-none bg-(--seg-active) text-(--text-tertiary)">
+                  <span className="flex size-6 flex-none items-center justify-center rounded-lg bg-(--seg-active) text-(--text-tertiary)">
                     <Icon width={14} height={14} />
                   </span>
                   {/* 12px: r5 100 wraps 帮我组建 Agent 团/队 but keeps

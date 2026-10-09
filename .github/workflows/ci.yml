@@ -78,6 +78,13 @@ jobs:
           UI_REGISTRY_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: node scripts/ui-registry-gate.mjs
 
+      # 消费点方角盒闸（#1054，ADR 0012 D1）：registry 闸的面到 components/ui
+      # 为止，消费点画盒的几何没有任何闸判——本闸补上：每个「看得见的方形盒」
+      # 消费行必须接 registry 依据 / 骑件默认 / 在 scripts/ui-consumer-registry.json
+      # 登记偏离理由，台账 diff 即评审面。零依赖，同样排在 install 之前。
+      - name: UI consumer shape gate (#1054)
+        run: node scripts/ui-consumer-shape-gate.mjs
+
       # e2e 迁去独立分片 job（#693）后 ffmpeg 随迁；chromium 留在本 job——
       # integration vitest 的四个 e2e 套件（m5-web-e2e 等）在场内起真
       # Chromium（2026-10-03 实测摘掉即红：browserType.launch executable
