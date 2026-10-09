@@ -396,4 +396,4 @@ thinking / note / review 五 kind 扩 `id?: string`；`mapTranscript` 五处投�
 
 1. **卡形从紧凑 chip 变 registry 卡片**（缩略块 + 文件名行）。几何契约未动，但观感明显不同——图 `b-card.drawio.svg` + 截图 `b-after/` 对照 `docs/verify/757/`。请确认卡形采纳。
 2. **`.spec-chip` 钩子保留**（零规则类，非皮肤）——为免 spec-brief-card / chief-composer-tools 一次载体重钉。若希望彻底清掉这些类名，需另开载体重钉（本段不做）。
-3. **B 段关闭 #1009**——这是四段串行的最后一段，合并后 #1009 关闭、#1011/#1012 解除 blocking。确认无误即按此合并。
+3. **#1009 的关闭时点**——B 是四段串行的最后一段，B 合并落地后 #1009 即完成、#1011/#1012 解除 blocking。按协调者口径：**本段 PR 与 commit 均不带关票关键字**（squash 消息由合并指令管住），#1009 由协调者在四段全落后关闭。确认此口径无误即放行施工段。
