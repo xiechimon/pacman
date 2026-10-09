@@ -177,20 +177,27 @@ test('turn boundary is air, not a rule: no divider between a user turn and the a
         return (top > 0 || bot > 0) && el.getBoundingClientRect().height > 0;
       })
       .map((el) => el.className);
-    // every 用户→agent boundary: an agent row whose left sibling is the user
-    // turn's action row (data-row/data-testid carriers, #910 裁定 3)
-    const turns = [...document.querySelectorAll('[data-row="agent"]')]
-      .filter(
-        (row) => row.previousElementSibling?.getAttribute('data-testid') === 'msg-actions',
-      )
-      .map((row) => {
+    // every 用户→agent boundary: an agent row whose preceding row-carrier
+    // ends with the user turn's action row (data-row/data-testid carriers,
+    // #910 裁定 3). #1009 A2：行骨架换骑 MessageScrollerItem——边界判定改在
+    // 载体层（Item 的最后一个子节点 = 用户行的收尾 action row），行内断言不变。
+    const turns = [...document.querySelectorAll('[data-slot="message-scroller-item"]')]
+      .filter((item) => {
+        const prev = item.previousElementSibling;
+        return (
+          item.querySelector('[data-row="agent"]') != null &&
+          prev?.lastElementChild?.getAttribute('data-testid') === 'msg-actions'
+        );
+      })
+      .map((item) => {
+        const row = item.querySelector('[data-row="agent"]')!;
+        const prev = item.previousElementSibling!.lastElementChild!;
         const cs = getComputedStyle(row);
         const rect = row.getBoundingClientRect();
-        const prev = row.previousElementSibling!.getBoundingClientRect();
         return {
           borderTop: cs.borderTopWidth,
           paddingTop: cs.paddingTop,
-          gap: rect.top - prev.bottom,
+          gap: rect.top - prev.getBoundingClientRect().bottom,
         };
       });
     return { ruled, turns };

@@ -67,7 +67,6 @@ import {
 } from '../chief/chief-agent-dialog.js';
 import { useChiefRoot } from '../chief/chief-root.js';
 import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
-import { useChatFollow } from '../components/chat/use-chat-follow.js';
 import { toastError } from '../components/ui/toaster.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { Composer } from '../detail/composer.js';
@@ -84,7 +83,8 @@ import { SourceIssueLine } from '../detail/source-issue.js';
 import { SpecBlock } from '../detail/spec-block.js';
 import { StopConfirmDialog } from '../detail/stop-confirm-dialog.js';
 import { TaskMetaBlock, type TaskMetaFields } from '../detail/task-meta-block.js';
-import { type LiveStep, Transcript } from '../detail/transcript.js';
+import type { LiveStep } from '../detail/transcript.js';
+import { TranscriptColumn, type TranscriptColumnHandle } from '../detail/transcript-column.js';
 import { UserMenu } from '../detail/user-menu.js';
 import { markClosed, markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
@@ -519,17 +519,11 @@ export function TodoDetailPage() {
       }
     : fixtureView;
 
-  // #873 会话跟随单源（components/chat/use-chat-follow）：列容器是
-  // column-reverse（最新在 scrollTop 0 侧），规则与总管抽屉逐字同款——增长
-  // 只在读者已贴最新端时拖动视口；读者自己发出去的那条永远跳到最新。
-  const chatColRef = useRef<HTMLDivElement | null>(null);
-  const { requestFollow } = useChatFollow({
-    ref: chatColRef,
-    dep: view.transcript,
-    reversed: true,
-    // 会话列只在真挂了 transcript 的那一支持存在（fresh 面没有 .chat-col）。
-    active: live && view.transcript.length > 0,
-  });
+  // #873 会话跟随（#1009 A2 起单源 = registry MessageScroller，手写
+  // useChatFollow 与 column-reverse 布局均已退役）：增长只在读者已贴最新端
+  // 时拖动视口（原语 autoScroll），读者自己发出去的那条永远跳到最新
+  // （列的 imperative handle → scrollToEnd）。
+  const transcriptColRef = useRef<TranscriptColumnHandle | null>(null);
   // 在飞行数据（活行披露面 + 会话跟随时机）：步类词表 = 详情头部 chip 同族。
   const liveStep = useMemo<LiveStep | null>(
     () =>
@@ -903,48 +897,35 @@ export function TodoDetailPage() {
                 {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} fresh />}
               </div>
             ) : (
-              <div
-                className="chat-col flex min-h-0 flex-1 flex-col-reverse overflow-y-auto pt-[19px] pr-4 pb-4 pl-[19px]"
-                data-testid="transcript-col"
-                ref={chatColRef}
-              >
-                {/* margin-top:auto pins an overflowing transcript to the
-                      newest row at first paint (r8 63–77) and keeps short r7
-                      transcripts top-aligned — no scroll scripting, so the
-                      fixture capture is deterministic. #873: the reader's own
-                      send still jumps here (useChatFollow), which the layout
-                      alone never did. */}
-                <div className="chat-pin mb-auto">
-                  {/* #827：简报卡住线程列首（随流滚动，不钉住）——此前它挂
-                        在 chat-col 之外，长线程下恒占列首视口（M7 #310 把它
-                        从 doc 列迁到中心列的理由不变：用户原始输入属于线程
-                        流）。fixture 面无 spec 数据，捕获字节不动。 */}
-                  {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
-                  <Transcript
-                    transcript={view.transcript}
-                    // #873：活行披露面 = 在跑步（哪一步、哪台机器）——详情面
-                    // 唯一时间线里没有的事；fixture 面无此数据 = 无面板。
-                    liveStep={live ? liveStep : null}
-                    // XMON-105: agent message rows carry the executing
-                    // agent's own avatar (same identity as board card /
-                    // team page), never the logged-in user's.
-                    agent={
-                      todo.agent
-                        ? {
-                            displayName: todo.agent.displayName,
-                            avatarUrl: agentAvatarUrl.get(todo.agent.id) ?? null,
-                          }
-                        : null
-                    }
-                    // #366 AC：线程内 plan 卡激活 = 右 pane 切文档面的
-                    // plan 显示面（与 复用方案「查看方案」同律）。
-                    onOpenPlan={() => {
-                      setPaneView('doc');
-                      setPlanView(true);
-                    }}
-                  />
-                </div>
-              </div>
+              <TranscriptColumn
+                ref={transcriptColRef}
+                transcript={view.transcript}
+                // #873：活行披露面 = 在跑步（哪一步、哪台机器）——详情面
+                // 唯一时间线里没有的事；fixture 面无此数据 = 无面板。
+                liveStep={live ? liveStep : null}
+                // XMON-105: agent message rows carry the executing
+                // agent's own avatar (same identity as board card /
+                // team page), never the logged-in user's.
+                agent={
+                  todo.agent
+                    ? {
+                        displayName: todo.agent.displayName,
+                        avatarUrl: agentAvatarUrl.get(todo.agent.id) ?? null,
+                      }
+                    : null
+                }
+                // #366 AC：线程内 plan 卡激活 = 右 pane 切文档面的
+                // plan 显示面（与 复用方案「查看方案」同律）。
+                onOpenPlan={() => {
+                  setPaneView('doc');
+                  setPlanView(true);
+                }}
+                // #827：简报卡住线程列首（随流滚动，不钉住）。fixture 面无
+                // spec 数据，捕获字节不动。
+                spec={live && todo.spec.trim() !== '' ? todo.spec : undefined}
+                // #873 增长跟随的武装位（旧 hook 的 active：live 且有行）。
+                autoScroll={live && view.transcript.length > 0}
+              />
             )}
             {/* #472：composer 是中心列的最后一个 flex 项（in-flow）——
                 滚动区在卡片上缘之上结束，正文永不被压进不透明卡片底下。 */}
@@ -1002,8 +983,8 @@ export function TodoDetailPage() {
                     ? (text) => {
                         // #873：读者自己发出去的那条必须看得见——这一刻先跳到
                         // 最新端（四个分流出口共用；被拒 409 不清稿，落在最新端
-                        // 也无害）。增长跟随的其余判断在 useChatFollow 里。
-                        if (text !== '') requestFollow();
+                        // 也无害）。增长跟随的其余判断在原语 autoScroll 里。
+                        if (text !== '') transcriptColRef.current?.scrollToEnd();
                         // 驳回回路（r5 §4）：confirm 关口发送 = revision + feedback
                         // → 重规划步入队 → plan v(N+1)（会话流即时呈现）。
                         if (phase === 'confirm' && buildId && text !== '') {
