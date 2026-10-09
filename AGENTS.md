@@ -79,6 +79,8 @@ Git 拦截（autoresearch / pre-commit 共识）：
 
 ## Issues and PRs
 
+**审 PR 走 `docs/pr-review.md`**（#1080）：五步流程 + 固定六节评分卡（What it does / Good / Bad / Ugly / Tests / Open questions）。其中「**不切分支看 diff**」是硬要求——`gh pr view` / `gh pr diff` / `gh api` / `git show <ref>:<path>`，绝不 `gh pr checkout`：本仓多车道并行、各占独立 worktree，评审者一 checkout 就撞别的 lane 的现场。
+
 仓库只有 origin（xiechimon/pacman），裸 `gh` 命令解析正确；显式 `-R xiechimon/pacman` 写法仍可用：
 - `gh issue list -R xiechimon/pacman`
 - `gh pr view 149 -R xiechimon/pacman`
