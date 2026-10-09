@@ -18,9 +18,11 @@ import type {
   CommitIdentity,
   DeliveredImage,
   LocalToolDef,
+  MachineDoneBody,
   PreparedWorkspace,
   ProviderConfig,
   SessionOpts,
+  TranscriptUpload,
   WorktreeOps,
 } from '@pacman/shared';
 import {
@@ -59,9 +61,9 @@ import {
 } from './claude-code-auth.js';
 import { clearCredentials, pushCredential } from './credentials.js';
 import { githubRepoRefOf, probeGithubPr } from './github-probe.js';
-import { type StepJournal, TranscriptBuffer } from './journal.js';
+import { type StepJournal, type StepJournalEntry, TranscriptBuffer } from './journal.js';
 import type { DaemonLogger } from './log.js';
-import type { MachineApi } from './machine-client.js';
+import { isTransientUploadError, type MachineApi } from './machine-client.js';
 import { extractReviewVerdict } from './review-findings.js';
 import { buildSecretTool } from './secret-channel.js';
 import { type SealedSegment, SegmentBuffer, segmentContent } from './segment.js';
@@ -1493,37 +1495,53 @@ export async function runStep(
     }
   }
 
-  // upload-urls → transcript 终稿 + plan.md 产物回传落库（02 §1.3 数据所有权；
-  // plan 即文件、版本 = 文件版本——规划步收尾上传当前版，02 §4.2/r5 §4）。
+  // —— 终稿快照 + 回传（02 §1.3 数据所有权；plan 即文件、版本 = 文件版本，
+  // 02 §4.2/r5 §4）。
+  // #1026 快照先行：doneBody + plan 内容在上传前落 journal——「PUT 成功 /
+  // done 失败」与上传失败的恢复面（recover 快路径）拿这份补报，不再重跑
+  // agent 轮（此前恢复 = 整会话重跑：白烧一轮 agent + 同内容重复版本）。
+  const messages = transcript.messages();
+  let planContent: string | null = null;
+  if (claimed.step.kind === 'plan' && !stopped) {
+    // #703 闸 1 真值面：产物契约不随 repo 形态变化——cwd = worktree 检出或
+    // 无 repo 裸任务目录（此前仅 worktree 收集，无 repo withPlan 恒无方案，
+    // 闸会把它们全拦死）。空白文件不算产物（空方案 = 无方案）。
+    const planPath = join(cwd, PLAN_FILE_NAME);
+    if (existsSync(planPath)) {
+      const content = readFileSync(planPath, 'utf8');
+      if (content.trim() !== '') {
+        planContent = content;
+      }
+    }
+  }
+  // AI 审核步 findings（M7 #330，r8 §3.1；#700）：仅 review 步提取——其它
+  // 步类无该输出契约，不提取避免假阳。提取成功 → findings；提取失败 →
+  // findingsError 携带原因（server 侧 verdict 消息区分「判定提取失败」与
+  // 旧 daemon 无信号的「审核未返回结论」兜底）；两态均无 blocking 可判、
+  // 均不触发修订。（#1026：随 doneBody 持久化，快路径补报不再重提取。）
+  const reviewExtraction =
+    claimed.step.kind === 'review' ? extractReviewVerdict(transcript.messages()) : null;
+  const doneBody: MachineDoneBody = {
+    status,
+    ...(lastError !== null ? { errorMessage: lastError } : {}),
+    sessionId: handle.sessionId,
+    usage: [...usage],
+    hasChanges,
+    // per-step checkpoint（done 回传 commit：「恢复到此处」数据源 + 合并步
+    // fast-forward 落地键，r3 §3.5/§3.9 [设计]）。
+    ...(headCommit !== null ? { commit: headCommit } : {}),
+    ...(reviewExtraction?.status === 'ok' ? { findings: reviewExtraction.verdict } : {}),
+    ...(reviewExtraction?.status === 'failed' ? { findingsError: reviewExtraction.reason } : {}),
+    // 交付面回填（#704）：探测命中才带（无 PR / 失败 = 缺席）；diff 上报
+    // 恒带算得值（含空串——「已上报且零改动」与「未上报」在 server 侧分列）。
+    ...(prProbe !== null ? { prUrl: prProbe.url, prNumber: prProbe.number } : {}),
+    ...(changesDiff !== null ? { changesDiff } : {}),
+  };
+  journal.update(stepId, { state: 'awaiting-upload', doneBody, planContent });
   try {
-    const messages = transcript.messages();
-    const files: { name: string; size?: number }[] = [
-      { name: 'transcript.json', size: JSON.stringify(messages).length },
-    ];
-    let planContent: string | null = null;
-    if (claimed.step.kind === 'plan' && !stopped) {
-      // #703 闸 1 真值面：产物契约不随 repo 形态变化——cwd = worktree 检出或
-      // 无 repo 裸任务目录（此前仅 worktree 收集，无 repo withPlan 恒无方案，
-      // 闸会把它们全拦死）。空白文件不算产物（空方案 = 无方案）。
-      const planPath = join(cwd, PLAN_FILE_NAME);
-      if (existsSync(planPath)) {
-        const content = readFileSync(planPath, 'utf8');
-        if (content.trim() !== '') {
-          planContent = content;
-          files.push({ name: PLAN_FILE_NAME, size: content.length });
-        }
-      }
-    }
-    const { uploads } = await client.uploadUrls(stepId, files);
-    for (const upload of uploads) {
-      if (upload.name === PLAN_FILE_NAME && planContent !== null) {
-        await client.putUpload(upload.url, upload.headers, planContent, 'text/markdown');
-      } else if (upload.name === 'transcript.json') {
-        await client.putUpload(upload.url, upload.headers, { stepId, messages });
-      }
-    }
+    await putFinalArtifacts(client, logger, stepId, messages, planContent);
   } catch (err) {
-    // 回传失败 = journal 残留 awaiting-upload，recover 面重传 [设计]。
+    // 回传失败 = journal 残留 awaiting-upload，recover 快路径重传（#1026）。
     logger.step(`transcript upload failed: ${err instanceof Error ? err.message : String(err)}`);
     clearCredentials(creds);
     deps.sessionHandles?.delete(stepId); // journal 残留 recover 面重传，handle 不再 steer
@@ -1532,29 +1550,7 @@ export async function runStep(
   }
 
   try {
-    // AI 审核步 findings（M7 #330，r8 §3.1；#700）：仅 review 步提取——其它
-    // 步类无该输出契约，不提取避免假阳。提取成功 → findings；提取失败 →
-    // findingsError 携带原因（server 侧 verdict 消息区分「判定提取失败」与
-    // 旧 daemon 无信号的「审核未返回结论」兜底）；两态均无 blocking 可判、
-    // 均不触发修订。
-    const reviewExtraction =
-      claimed.step.kind === 'review' ? extractReviewVerdict(transcript.messages()) : null;
-    await client.done(stepId, {
-      status,
-      ...(lastError !== null ? { errorMessage: lastError } : {}),
-      sessionId: handle.sessionId,
-      usage: [...usage],
-      hasChanges,
-      // per-step checkpoint（done 回传 commit：「恢复到此处」数据源 + 合并步
-      // fast-forward 落地键，r3 §3.5/§3.9 [设计]）。
-      ...(headCommit !== null ? { commit: headCommit } : {}),
-      ...(reviewExtraction?.status === 'ok' ? { findings: reviewExtraction.verdict } : {}),
-      ...(reviewExtraction?.status === 'failed' ? { findingsError: reviewExtraction.reason } : {}),
-      // 交付面回填（#704）：探测命中才带（无 PR / 失败 = 缺席）；diff 上报
-      // 恒带算得值（含空串——「已上报且零改动」与「未上报」在 server 侧分列）。
-      ...(prProbe !== null ? { prUrl: prProbe.url, prNumber: prProbe.number } : {}),
-      ...(changesDiff !== null ? { changesDiff } : {}),
-    });
+    await client.done(stepId, doneBody);
   } catch (err) {
     logger.step(`done report failed: ${err instanceof Error ? err.message : String(err)}`);
     clearCredentials(creds);
@@ -1567,6 +1563,106 @@ export async function runStep(
   deps.sessionHandles?.delete(stepId);
   deps.stopRequests?.delete(stepId);
   logger.raw(`finished (${running - 1} running)`);
+}
+
+// —— 终稿回传共享面（runStep 收尾 + #1026 recover 快路径）———————————————————
+
+/** #1028 重试预算：PUT 瞬态失败（404/5xx/网络）重取 URL 重传的轮数上限；
+ * 耗尽 = journal 残留走 recover 面（daemon 重启时快路径补报）。轮间退避
+ * 覆盖 server 滚动重启窗（部署重启通常秒级回到可用）。 */
+const UPLOAD_RETRY_ATTEMPTS = 3;
+const UPLOAD_RETRY_DELAY_MS = 1_000;
+
+/** 终稿回传文件清单（transcript.json + plan.md，收尾与快路径同构）。 */
+function finalUploadFiles(
+  messages: TranscriptUpload['messages'],
+  planContent: string | null,
+): { name: string; size?: number }[] {
+  const files: { name: string; size?: number }[] = [
+    { name: 'transcript.json', size: JSON.stringify(messages).length },
+  ];
+  if (planContent !== null) files.push({ name: PLAN_FILE_NAME, size: planContent.length });
+  return files;
+}
+
+/** 终稿回传（transcript.json + plan.md）：预签名 URL 每轮重取——URL 只活在
+ * server 进程内存（#1028），重启即 404；重取即愈 = 恢复不依赖进程内存。
+ * 瞬态失败（isTransientUploadError）有界重试；语义 4xx（#1027 拒绝腿等）
+ * 直接上抛（重试永不成功）。transcript 行 id 幂等、plan 上传按「步+内容」
+ * 幂等（server 侧 #1026）——整轮重传不产生重复面。 */
+async function putFinalArtifacts(
+  client: MachineApi,
+  logger: DaemonLogger,
+  stepId: string,
+  messages: TranscriptUpload['messages'],
+  planContent: string | null,
+): Promise<void> {
+  const files = finalUploadFiles(messages, planContent);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const { uploads } = await client.uploadUrls(stepId, files);
+      for (const upload of uploads) {
+        if (upload.name === PLAN_FILE_NAME) {
+          if (planContent !== null) {
+            await client.putUpload(upload.url, upload.headers, planContent, 'text/markdown');
+          }
+        } else if (upload.name === 'transcript.json') {
+          await client.putUpload(upload.url, upload.headers, { stepId, messages });
+        }
+      }
+      return;
+    } catch (err) {
+      if (attempt >= UPLOAD_RETRY_ATTEMPTS || !isTransientUploadError(err)) throw err;
+      logger.step(
+        `upload attempt ${attempt} failed (${
+          err instanceof Error ? err.message : String(err)
+        }) — re-requesting presigned urls`,
+      );
+      await new Promise((r) => setTimeout(r, UPLOAD_RETRY_DELAY_MS));
+    }
+  }
+}
+
+/** #1026 recover 快路径：awaiting-upload 残留步的补报——不重跑 agent 轮。
+ * 素材 = journal 终稿快照（doneBody + planContent）+ outbox transcript 缓冲
+ * （TranscriptBuffer 构造即重读落盘文件）。上传/done 失败 = journal 残留
+ * 保留（与 runStep 收尾失败路径同律，下次重启再试）。URL 每轮重取，旧 URL
+ * 404（server 期间重启过）同样被重取吸收（#1028）。machine-loop 的 recover
+ * 派发 gate = `state === 'awaiting-upload' && doneBody != null`；快照缺失
+ * （旧格式条目/快照前崩溃）派发方走整步重跑原路径。 */
+export async function resumePendingUpload(
+  deps: Pick<
+    RunStepDeps,
+    'client' | 'journal' | 'logger' | 'paths' | 'sessionHandles' | 'stopRequests'
+  >,
+  entry: StepJournalEntry,
+  opts: { running?: number } = {},
+): Promise<void> {
+  const { client, journal, logger } = deps;
+  const stepId = entry.stepId;
+  const doneBody = entry.doneBody;
+  if (doneBody == null) return; // 快照缺失守卫（派发 gate 不该放行到这里）
+  const running = opts.running ?? 1;
+  logger.recover(`step ${stepId} awaiting upload — replaying final report (no agent round)`);
+  const transcript = new TranscriptBuffer(deps.paths.outboxDir, stepId);
+  const messages = transcript.messages();
+  const planContent = entry.planContent ?? null;
+  try {
+    await putFinalArtifacts(client, logger, stepId, messages, planContent);
+  } catch (err) {
+    logger.step(`transcript upload failed: ${err instanceof Error ? err.message : String(err)}`);
+    return; // journal 残留保留，下次重启再试
+  }
+  try {
+    await client.done(stepId, doneBody);
+  } catch (err) {
+    logger.step(`done report failed: ${err instanceof Error ? err.message : String(err)}`);
+    return; // journal 残留保留，下次重启再试
+  }
+  journal.remove(stepId);
+  deps.sessionHandles?.delete(stepId);
+  deps.stopRequests?.delete(stepId);
+  logger.raw(`finished (${running - 1} running)`); // 02 §5.7 收尾 canon 行
 }
 
 async function failStep(deps: RunStepDeps, stepId: string, message: string): Promise<void> {
