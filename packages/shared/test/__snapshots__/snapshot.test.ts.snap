@@ -4890,81 +4890,6 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > chief_thre
 }
 `;
 
-exports[`record 形状 24 表投影——zod → JSON Schema 快照 > document_diff > document_diff.json 1`] = `
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
-  "properties": {
-    "files": {
-      "items": {
-        "additionalProperties": false,
-        "properties": {
-          "additions": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer",
-          },
-          "deletions": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer",
-          },
-          "hunks": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "header": {
-                  "type": "string",
-                },
-                "lines": {
-                  "items": {
-                    "type": "string",
-                  },
-                  "type": "array",
-                },
-              },
-              "required": [
-                "header",
-                "lines",
-              ],
-              "type": "object",
-            },
-            "type": "array",
-          },
-          "path": {
-            "type": "string",
-          },
-        },
-        "required": [
-          "path",
-          "additions",
-          "deletions",
-          "hunks",
-        ],
-        "type": "object",
-      },
-      "type": "array",
-    },
-    "fromVersion": {
-      "maximum": 9007199254740991,
-      "minimum": -9007199254740991,
-      "type": "integer",
-    },
-    "toVersion": {
-      "maximum": 9007199254740991,
-      "minimum": -9007199254740991,
-      "type": "integer",
-    },
-  },
-  "required": [
-    "fromVersion",
-    "toVersion",
-    "files",
-  ],
-  "type": "object",
-}
-`;
-
 exports[`record 形状 24 表投影——zod → JSON Schema 快照 > machine > machine.json 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6808,7 +6733,6 @@ exports[`协议词表快照（02 §5/§6 canonical） > 存储表清单（01 §6
   "stop_pending",
   "message",
   "plan",
-  "document_diff",
   "schedule",
   "notification",
   "agent",
