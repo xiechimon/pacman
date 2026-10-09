@@ -44,6 +44,7 @@ export const EN: Record<string, string> = {
   更多: 'More',
   关闭: 'Close',
   最小化: 'Minimize',
+  滚动到最新: 'Scroll to latest',
   取消: 'Cancel',
   保存: 'Save',
   删除: 'Delete',

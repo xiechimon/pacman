@@ -762,6 +762,9 @@ export type ChiefStreamItem =
       typing?: boolean;
       seconds: string;
       tools?: ChiefToolRow[];
+      /** #1009 A1 行 id 贯通：live 面源 chief_message id（React key +
+       *  MessageScroller messageId 锚）；fixture 面与打字中尾行缺省。 */
+      id?: string;
     }
   /** #739 在飞存在行：回合在飞（activeRun 非空）但还没有任何 text_delta 到达
    *  的静默窗口里，stream 尾挂此行——与详情页对话区 streaming 行同一套词汇
@@ -774,7 +777,12 @@ export type ChiefStreamItem =
    *  本轮暂无工具调用，面板走 fallback 行。 */
   /** #955 段行（思考）：模型内部推理按段单列一行——折叠态一行预览、展开看
    *  全文（形态照 Multica 的 ThinkingRow）。默认折叠：思考是过程不是结论。 */
-  | { kind: 'thinking'; text: string }
+  | {
+      kind: 'thinking';
+      text: string;
+      /** #1009 A1 行 id 贯通（robot 行同注）：live 面源 chief_message id。 */
+      id?: string;
+    }
   /** #955 段行（工具，仅流式期）：`activeRun` 在飞时工具行平铺进主呈现、与
    *  文本段按序交错；`running` 位 = 该次调用尚无结果（进行中，渲染层走表补
    *  秒数）。回合收口后不再产出此类行——工具退回 robot 行的 `tools` 折叠面
@@ -791,6 +799,8 @@ export type ChiefStreamItem =
       seconds?: number;
       running?: boolean;
       error?: boolean;
+      /** #1009 A1 行 id 贯通（robot 行同注）：live 面源 chief_message id。 */
+      id?: string;
     }
   | {
       kind: 'streaming';

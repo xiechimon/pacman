@@ -9,7 +9,8 @@
 //   F5 混合行双出：存量的原始块数组（text + thinking 同一条）仍只出 robot
 //      行，思考不重复呈现。
 //   F6 默认面漂移：不传 inlineTools 的既有调用（mapChiefStream 单参）投影
-//      必须与改动前逐字相同。
+//      必须与契约逐字相同（#1009 A1 起契约含行 id 贯通：robot/thinking/tool
+//      行带源 chief_message id——React key + MessageScroller messageId 锚）。
 
 import { describe, expect, test } from 'vitest';
 import { mapChiefStream, type MessageRow } from '../src/api/mappers.js';
@@ -58,8 +59,8 @@ describe('段行投影（F1..F6）', () => {
       ],
       true,
     );
-    expect(items[0]).toEqual({ kind: 'tool', label: 'bash', startedAt: 1000, running: true });
-    expect(items[1]).toEqual({ kind: 'tool', label: 'read', startedAt: 1000, seconds: 2 });
+    expect(items[0]).toEqual({ kind: 'tool', label: 'bash', id: 't1', startedAt: 1000, running: true });
+    expect(items[1]).toEqual({ kind: 'tool', label: 'read', id: 't2', startedAt: 1000, seconds: 2 });
   });
 
   test('F3 回合收口后工具回到 robot 行的 tools 折叠面，不再平铺', () => {
@@ -76,7 +77,7 @@ describe('段行投影（F1..F6）', () => {
 
   test('F4 无正文的 thinking 行出 thinking 项', () => {
     const items = mapChiefStream([row('m1', 'assistant', thinking('想了一下'), 1)]);
-    expect(items).toEqual([{ kind: 'thinking', text: '想了一下' }]);
+    expect(items).toEqual([{ kind: 'thinking', text: '想了一下', id: 'm1' }]);
   });
 
   test('F5 混合行（text + thinking）仍只出 robot 行，思考不重复', () => {
@@ -94,7 +95,13 @@ describe('段行投影（F1..F6）', () => {
       row('m2', 'assistant', text('乙'), 3),
     ]);
     expect(items.map((i) => i.kind)).toEqual(['robot', 'robot']);
-    expect(items[0]).toEqual({ kind: 'robot', markdown: '甲', seconds: '' });
-    expect(items[1]).toMatchObject({ kind: 'robot', markdown: '乙', tools: [{ label: 'bash' }] });
+    expect(items[0]).toEqual({ kind: 'robot', markdown: '甲', seconds: '', id: 'm1' });
+    expect(items[1]).toEqual({
+      kind: 'robot',
+      markdown: '乙',
+      seconds: '',
+      id: 'm2',
+      tools: [{ label: 'bash', seconds: 2 }],
+    });
   });
 });
