@@ -1,0 +1,16 @@
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Duration  7.10s (tests 54%, import 29%, transform 17%)
+[verify] web dist built
+[verify] bind chief agent: 200
+[verify] drawer open (screenshot 01)
+[verify] thread: chief-01a12081-b073-7b79-8710-0bfbf455ad12
+[verify] question card visible, status = pending (screenshot 02)
+[verify] card text: 总管提问等你回答缩进Tabs 还是 spaces？TabsSpaces优先级本轮先做哪件事？先修测试先写文档备注有什么要补充的吗？取消提问提交回答
+[verify] while waiting: step status = claimed , activeRun = {"phase":"chief"}
+[verify] answered card text: 总管提问已回答缩进Tabs 还是 spaces？TabsSpaces优先级本轮先做哪件事？先修测试先写文档备注有什么要补充的吗？按优先级来
+[verify] card flipped to answered (screenshots 03/04)
+[verify] steps = 99DMeRwj6PZPF3yPSOLTc:done (screenshot 05)
+[verify] evidence json written
+[verify] assertions: same-step= true same-step-id= true answered= true answers-carry-choices= true
+[verify] PASS

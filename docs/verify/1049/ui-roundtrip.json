@@ -1,0 +1,72 @@
+{
+  "threadId": "chief-01a12081-b073-7b79-8710-0bfbf455ad12",
+  "step": {
+    "id": "99DMeRwj6PZPF3yPSOLTc",
+    "status": "done",
+    "count": 1
+  },
+  "questionRow": {
+    "kind": "ask_user_question",
+    "requestId": "ask-ab12eb22-7b02-4429-834f-26606035ea27",
+    "status": "answered",
+    "questions": [
+      {
+        "header": "缩进",
+        "question": "Tabs 还是 spaces？",
+        "options": [
+          {
+            "label": "Tabs"
+          },
+          {
+            "label": "Spaces",
+            "description": "软缩进"
+          }
+        ]
+      },
+      {
+        "header": "优先级",
+        "question": "本轮先做哪件事？",
+        "options": [
+          {
+            "label": "先修测试"
+          },
+          {
+            "label": "先写文档"
+          }
+        ],
+        "multiSelect": true
+      },
+      {
+        "header": "备注",
+        "question": "有什么要补充的吗？",
+        "options": []
+      }
+    ],
+    "answers": [
+      {
+        "header": "缩进",
+        "choices": [
+          "Spaces"
+        ]
+      },
+      {
+        "header": "优先级",
+        "choices": [
+          "先修测试",
+          "先写文档"
+        ]
+      },
+      {
+        "header": "备注",
+        "text": "按优先级来"
+      }
+    ]
+  },
+  "stubRequests": 2,
+  "whileWaiting": {
+    "stepStatus": "claimed",
+    "activeRun": {
+      "phase": "chief"
+    }
+  }
+}
