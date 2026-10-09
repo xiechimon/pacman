@@ -9,10 +9,9 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Label } from '../components/ui/label.js';
 import { Textarea } from '../components/ui/textarea.js';
 import { useI18n } from '../i18n/provider.js';
-import { ACCEPT_NOTE_LINE } from './accept-dialog.js';
-import { FOCUS_ROW, FOCUS_TEXTAREA } from './review-dialog.js';
 
 interface RejectDialogProps {
   /** #73 retained-mount open flag。 */
@@ -42,39 +41,26 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
       open={open}
       onClose={onClose}
       footer={
-        // #945（正典表 §5.4，ReviewDialog 同款）：foot/actions 别名退役走
-        // utility；取消钮 chief-dlg-ghost → Button outline 档。
-        <div className="flex flex-col px-4 pb-4">
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              className="cursor-pointer active:not-aria-[haspopup]:translate-y-0"
-              onClick={onClose}
-            >
-              {t('取消')}
-            </Button>
-            <Button
-              className="h-7 border-none px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
-              disabled={trimmed === ''}
-              onClick={() => onConfirm?.(trimmed)}
-            >
-              {t('请求修改')}
-            </Button>
-          </div>
-        </div>
+        // #1006 原型（#980 前提④）：registry DialogFooter band + Button
+        // 默认档（取消 outline / 请求修改 default），13px/h-7 冻结几何退役。
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('取消')}
+          </Button>
+          <Button disabled={trimmed === ''} onClick={() => onConfirm?.(trimmed)}>
+            {t('请求修改')}
+          </Button>
+        </>
       }
     >
-      <div className={FOCUS_ROW}>
-        {/* #945（正典表 §5.4）：.dlg-form-label 别名退役——标签律 =
-            --label-size/--label-spacing 定版 token utility。 */}
-        <span className="mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--foreground)">
-          {label}
-        </span>
+      <div className="flex flex-col gap-2">
+        {/* #1006 原型：标签走 registry Label 件（批次 0b 引入），--label-size
+            手写标签律退役（前提④：排版收敛 registry 默认 text-sm/500）。 */}
+        <Label>{label}</Label>
         {/* #945（#851 裸控件账）：裸 textarea 收编 components/ui Textarea；
-            #951：皮肤正本随 overlays.css 清零等值迁 FOCUS_TEXTAREA（与
-            ReviewDialog focus 面同一单源）。 */}
+            #1006 原型：FOCUS_TEXTAREA 中和皮退役，件默认形态生效
+            （field-sizing-content 自增高 + rounded-lg border-input）。 */}
         <Textarea
-          className={FOCUS_TEXTAREA}
           value={feedback}
           onChange={(event) => setFeedback(event.target.value)}
           rows={3}
@@ -82,7 +68,7 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
         />
       </div>
       {rejectReason != null && (
-        <p className={`${ACCEPT_NOTE_LINE} text-(--destructive)`} role="alert">
+        <p className="text-xs leading-4 text-(--destructive)" role="alert">
           {rejectReason}
         </p>
       )}

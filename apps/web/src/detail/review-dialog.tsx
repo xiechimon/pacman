@@ -15,21 +15,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
+import { Label } from '../components/ui/label.js';
 import { Textarea } from '../components/ui/textarea.js';
 import { useI18n } from '../i18n/provider.js';
 import { classifyReviewChoice } from './review-default.js';
 
-/** #951（detail/overlays.css 清零）：关注点/打回反馈 textarea 皮律（原
- *  .review-focus-input，dlg-form-input 几何的 textarea 形态：80 最小高 +
- *  12 垫 / card-border 描边方角 / surface 底 / 14/20 primary 墨 / resize
- *  vertical）等值迁 utility；review 与 reject 两消费面共用单源。件底座差额
- *  中和（#945 律）：field-sizing 回 fixed（rows=3 律）、过渡/ring 清零、
- *  占位墨回 UA 值、:focus 缝色对齐老 --focus-ring 律、dark 底并回 surface。 */
-export const FOCUS_TEXTAREA =
-  'min-h-[80px] resize-y rounded-none border-(--border) bg-(--card) p-3 text-sm leading-5 text-(--foreground) field-sizing-fixed transition-none placeholder:text-[color:revert] focus:border-(--focus-ring) focus-visible:border-(--focus-ring) focus-visible:ring-0 dark:bg-(--card)';
-
-/** #951：标签 + 控件纵向行（原 .review-focus-row，6 gap）。 */
-export const FOCUS_ROW = 'flex flex-col gap-1.5';
+// #1006 原型（#980 前提④）：FOCUS_TEXTAREA / FOCUS_ROW 手写皮律退役——
+// Textarea / Input / Label 走 registry 件默认形态（rounded-lg border-input、
+// field-sizing-content、text-sm/500 标签），中和串（field-sizing-fixed /
+// ring 清零 / UA 占位墨回退）随皮肤一起消失。
 
 /** AI 审核选择器行最小投影（live = members 读面投影 + 厂商槽 + 模型槽；
  * fixture = canon 单默认行）。 */
@@ -121,87 +115,66 @@ export function ReviewDialog({
       onClose={onClose}
       width={560}
       footer={
-        // #945（正典表 §5.4）：.dlg-form-foot/.dlg-form-actions 别名退役，
-        // 容器律走 utility（foot = flex-col px-4 pb-4，actions = 右对齐
-        // gap-2）；取消钮 .chief-dlg-ghost → Button outline 档（§5.4 正典
-        // 迁移位：旧 card-border 描边 + surface 底 ≈ outline 档
-        // border-border/bg-background，#915 翻值后自动对齐新色板）。
-        <div className="flex flex-col px-4 pb-4">
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              className="cursor-pointer active:not-aria-[haspopup]:translate-y-0"
-              onClick={onClose}
-            >
-              {t('取消')}
-            </Button>
-            {/* 开始审核 = default（老 primary/compact h28 px12 @13px 几何逐值
-                utilities，XMON-24 原样）；review-start 别名随 #951 退役
-                （其规则在 overlays.css 本就是空壳，几何全在这串 utility）。 */}
-            <Button
-              className="h-7 border-none px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
-              onClick={submit}
-              disabled={selected === ''}
-            >
-              {t('开始审核')}
-            </Button>
-          </div>
-        </div>
+        // #1006 原型（#980 前提④）：registry DialogFooter band + Button
+        // 默认档（取消 outline / 开始审核 default），h-7/13px 冻结几何退役。
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('取消')}
+          </Button>
+          <Button onClick={submit} disabled={selected === ''}>
+            {t('开始审核')}
+          </Button>
+        </>
       }
     >
-      {/* #951（overlays.css 清零）：review 面律等值迁 utility——body 12 gap
-          16 垫；搜索行 36 高 card-border 描边方角 surface 底 12 横垫。 */}
-      <div className="flex flex-col gap-3 p-4">
-        <div className="flex h-9 items-center rounded-none border border-(--border) bg-(--card) px-3">
-          {/* XMON-24：搜索框切 registry Input；#951：.review-search-input
-              per-face 皮律（flex1/无边框/无底/14px primary 墨/outline none）
-              等值迁 utility。老面是 UA 裸 input：1px 2px 内边距、normal 行高、
-              UA 占位灰——utilities 逐条还原（placeholder 用 revert 落回 UA
-              值，focus ring 清零；dark 底并回 none）。 */}
-          <Input
-            className="h-auto flex-1 rounded-none border-none bg-transparent px-[2px] py-px text-sm leading-normal text-(--foreground) md:leading-normal placeholder:text-[color:revert] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('搜索 Agent…')}
-          />
-        </div>
+      {/* #1006 原型：body 纵向栈只留 layout 位（间距走 DialogContent 的
+          registry gap-4 与本栈 gap-3），16 垫随壳 p-4 退役。 */}
+      <div className="flex flex-col gap-3">
+        {/* XMON-24：搜索框 = registry Input 默认形态（h-8 rounded-lg
+            border-input），外包描边行 + 中和串（无边框/无底/UA 占位墨）退役。 */}
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t('搜索 Agent…')}
+          aria-label={t('搜索 Agent…')}
+        />
         <div
-          className="flex max-h-[200px] flex-col gap-2.5 overflow-y-auto"
+          className="flex max-h-[200px] flex-col gap-1 overflow-y-auto"
           role="listbox"
           aria-label={t('选择审核 Agent')}
         >
           {rows.length === 0 ? (
-            <div className="p-4 text-center text-[13px] text-(--text-tertiary)">
+            <div className="p-4 text-center text-sm text-(--text-tertiary)">
               {t('没有匹配的 Agent')}
             </div>
           ) : (
             rows.map((row) => {
               const isSelected = row.id === selected;
               return (
-                // XMON-24：agent 行钮切 shadcn ghost；#951：.review-agent-row
-                // per-face 律等值迁 utility——64 高 / 12 gap / 16 横垫 /
-                // card-border 描边 8 圆角 / surface 漆底灭 hover 底（含 dark
-                // 档），[data-on] 选中档 --spot-soft（r8 §2.5 实测，spot 14%
-                // mix）同压 hover；utilities 清 justify（w 撑满行内容靠左）、
-                // 字重与 active 位移。role/aria-selected/data-on 直通。
+                // #1006 原型（#980 前提②④）：agent 行钮 = ghost 底座默认
+                // 形态（hover:bg-muted 生效，不再漆底恒压）；64 高 / card-border
+                // 描边 / 8 圆角 per-face 皮肤退役，只留 layout 位（撑满行、
+                // 内容靠左、两行文本栈）。选中态 = data-on + --spot-soft
+                // （运行语义的状态色，token 层承载——前提④合法通道；
+                // r8 §2.5 spot 14% mix 契约不变）。role/aria-selected 直通。
                 <Button
                   variant="ghost"
                   key={row.id}
-                  className="h-16 cursor-pointer justify-start gap-3 rounded-[8px] border border-(--border) bg-(--card) px-4 text-left text-sm text-(--foreground) font-normal hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) dark:hover:text-(--foreground) data-[on=true]:bg-(--spot-soft) data-[on=true]:hover:bg-(--spot-soft) active:not-aria-[haspopup]:translate-y-0"
+                  className="h-auto w-full justify-start gap-3 p-2 text-left font-normal data-[on=true]:bg-(--spot-soft)"
                   data-on={isSelected}
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => setSelected(row.id)}
                 >
                   <span
-                    className="grid size-9 flex-none place-items-center rounded-full border border-(--border) bg-(--secondary) text-sm text-(--text-secondary)"
+                    className="grid size-9 flex-none place-items-center rounded-full bg-(--secondary) text-sm text-(--text-secondary)"
                     aria-hidden="true"
                   >
                     {row.name.charAt(0).toUpperCase()}
                   </span>
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="text-sm text-(--foreground)">{row.name}</span>
-                    <span className="text-[length:12px] text-(--text-tertiary)">
+                    <span className="text-xs text-(--text-tertiary)">
                       {row.provider === null ? row.model : `${row.provider} · ${row.model}`}
                     </span>
                   </span>
@@ -212,17 +185,16 @@ export function ReviewDialog({
         </div>
         {/* 独立性提示行（#509）：同源与无法判定两档共用本容器（两档只差文案，
             不做红黄分色）。左缘 amber 竖条与 chat-review-finding--suggestion
-            同色，读作「留意」而非「出错」；#951 律等值迁 utility（3px
-            badge-attention 左条 / 6 圆角 / surface-secondary 底 / 10+12 垫）。 */}
+            同色，读作「留意」而非「出错」——状态色走 token 层。 */}
         {notice === null ? null : (
           <div
-            className="flex flex-col gap-1 rounded-[6px] border-l-[3px] border-(--badge-attention) bg-(--secondary) px-3 py-2.5"
+            className="flex flex-col gap-1 rounded-lg border-l-[3px] border-(--badge-attention) bg-(--secondary) px-3 py-2.5"
             role="status"
           >
-            <span className="text-[13px] font-semibold text-(--foreground)">
+            <span className="text-sm font-semibold text-(--foreground)">
               {notice === 'same-vendor' ? t('本次审核与产出同源') : t('无法判定审核独立性')}
             </span>
-            <span className="text-[length:12px] leading-[1.5] text-(--text-secondary)">
+            <span className="text-xs leading-[1.5] text-(--text-secondary)">
               {notice === 'same-vendor'
                 ? t('审核人与产出该方案的 Agent 来自同一模型厂商，不构成独立复核。')
                 : t(
@@ -231,17 +203,11 @@ export function ReviewDialog({
             </span>
           </div>
         )}
-        <div className={FOCUS_ROW}>
-          {/* #945（正典表 §5.4）：.dlg-form-label 别名退役——标签律 =
-              --label-size/--label-spacing 定版 token utility。 */}
-          <span className="mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--foreground)">
-            {t('希望 Agent 审核时重点关注什么？（可选）')}
-          </span>
-          {/* #945（#851 裸控件账）：裸 textarea 收编 components/ui
-              Textarea；#951：皮肤正本随 overlays.css 清零等值迁
-              FOCUS_TEXTAREA utility（几何零漂移，中和律见常量头注）。 */}
+        <div className="flex flex-col gap-2">
+          {/* #1006 原型：标签走 registry Label 件（批次 0b 引入），--label-size
+              手写标签律退役。 */}
+          <Label>{t('希望 Agent 审核时重点关注什么？（可选）')}</Label>
           <Textarea
-            className={FOCUS_TEXTAREA}
             value={focus}
             onChange={(event) => setFocus(event.target.value)}
             rows={3}

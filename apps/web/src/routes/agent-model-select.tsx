@@ -16,10 +16,15 @@
 // 回显；与总管压缩模型选择器同源，不各写一份）。一级分组 =
 // 该投影的 provider 位去重保序。
 //
-// 壳 = components/ui/select.tsx（XMON-75）。本件只剩「值怎么投影成行」与两级
-// 级联：换一级清二级（modelId 只在 provider 内有意义，跨 provider 带过去是脏
-// 值）；一级为内置 (pi)（= null，本仓 BYOK 无内置模型目录）时二级无候选，走
-// Select 的 disabled 门（时序门，非 #222 死钮）。
+// 壳 = components/ui/select.tsx registry compound 族（#1010 回源，#982 判决：
+// XMON-75 手写 options 单体件退役；几何/皮肤归 registry 默认，ADR 0012 D1，
+// 触发钮盒形/菜单锚边/封顶常量全退役——Base UI Positioner 自带碰撞翻转与
+// --available-height 封顶，旧 absolute 壳的锚边覆写失去存在理由）。本件只剩
+// 「值怎么投影成行」与两级级联：换一级清二级（modelId 只在 provider 内有
+// 意义，跨 provider 带过去是脏值）；一级为内置 (pi)（= null，本仓 BYOK 无
+// 内置模型目录）时二级无候选，走 Select Root 的 disabled 门（时序门，非
+// #222 死钮）。「内置 (pi)」清空行 = Base UI 的 null item（value=null 是
+// 一等选中值，ItemIndicator/回显都认它）。
 //
 // 与 chief/chief-model-select.tsx 的关系不变：两者是同一投影上的两个面——总管
 // 那个带「默认（与 Chief 相同）」行与 compactionModel 语义（可空槽 = 继承
@@ -31,57 +36,25 @@
 // pacman 是本地 BYOK，没有这个数据源，不编造；provider 位升去一级后二级行内
 // 也不再重复徽标。
 //
-// 几何正本（#952，agent-detail.css 退役）：触发钮皮肤与菜单锚边/封顶是本文件
-// 的 AGENT_/DLG_AGENT_ SELECT_* utility 常量（原 `.agent-*-select` /
-// `.dlg-agent-*-select` 与 `.ui-select-menu.<prefix>-menu` 复合覆盖的等值迁移），
-// 经 Select 的 triggerClassName/menuClassName 位注入；e2e 句柄仍走 prefix：
-// 概览 tab = `agent-model` / `agent-runtime`，创建弹窗 = `dlg-agent-model` /
-// `dlg-agent-runtime`。
+// e2e 句柄（prefix，零规则类）：触发钮 `${prefix}-select`、弹层
+// `${prefix}-menu`（= role=listbox 的 Popup 本体）、行 `${prefix}-row`。
+// 旧 `${prefix}-wrap|shell|row-name|row-meta|check` 随手写壳退役——Root 不
+// 落 DOM、退场桥归 Base UI 动效、行内名/勾归 SelectItem 结构。弹层经
+// Portal 挂 body（不再嵌在触发钮 wrap 里），locator 一律页面级取。
+// triggerClassName 只承载布局位（弹窗面的 w-full 撑行宽）；皮肤/几何位按
+// D1 不存在。
 
+import { cn } from 'cn';
 import { modelEchoLabel, providerEchoLabel } from '../components/model-select-core.js';
-import { Select, type SelectOption } from '../components/ui/select.js';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-
-/** 概览 tab 触发钮（原 .agent-model-select / .agent-runtime-select /
- *  .agent-skill-select 三选择器同值）：32 高带框盒形（card-border 描边 +
- *  surface 底 + 13px 字 + 6 gap + 10px 横垫）。ghost 底座七通道中和
- *  （spec/22 §5.0）：本钮是带框盒形，hover/aria-expanded 回 surface 皮肤
- *  而非透明（RES_SORT_TRIGGER_CLS 同律），无按下位移。 */
-// #1007 实审复核（2026-10-08 用户点名）：触发钮圆角回 registry 默认几何
-// （ADR 0012 D1：button/select trigger 上游 rounded-lg，快照 ui-upstream-
-// snapshots.json 实测）——rounded-none 方角是病灶不是正典；其余盒形/中和
-// 皮肤随 #1010 select 重建一并退役。
-export const AGENT_SELECT_TRIGGER_CLS =
-  'h-8 cursor-pointer gap-1.5 rounded-lg border border-(--border) bg-(--card) px-2.5 text-[13px] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
-
-/** 创建弹窗触发钮（原 .dlg-agent-model-select / .dlg-agent-runtime-select）：
- *  36 高、撑满行宽、文案贴左值贴右（space-between）、12px 横垫；皮肤与中和
- *  同概览档。 */
-export const DLG_AGENT_SELECT_TRIGGER_CLS =
-  'h-9 w-full cursor-pointer justify-between gap-1.5 rounded-lg border border-(--border) bg-(--card) px-3 text-[13px] text-(--foreground) hover:bg-(--card) hover:text-(--foreground) dark:hover:bg-(--card) aria-expanded:bg-(--card) aria-expanded:text-(--foreground) active:not-aria-[haspopup]:translate-y-0';
-
-/** 概览 tab 菜单锚边（原 `.ui-select-menu.agent-*-menu { left:auto; right:0 }`）：
- *  触发钮在模板行的值槽位（行右缘），贴右缘向下展开——锚错边菜单就往**外**长，
- *  越过 `.res-col` 的横向裁切被切掉一截（#486/#494 前车）。 */
-export const AGENT_SELECT_MENU_CLS = 'left-auto right-0';
-
-/** 创建弹窗菜单锚位（原 `.ui-select-menu.dlg-agent-*-menu`）：模型槽是表单最后
- *  一个字段，下方紧贴底栏——向下展开必被压住（实测只剩首行露出来），故向上
- *  展开：底边贴触发钮上缘（4px 锚距），横向仍左锚（触发钮撑满行宽，右锚会往
- *  左冒出行左缘；左锚冒的是弹窗体自己的 16px 内垫）。封顶 192：菜单的
- *  containing block（触发钮 wrap）在 dialog-body 这个 overflow-y:auto 滚动盒里，
- *  触发钮上缘到 body 上缘实测 200~202px，192 留 ≥8px 余量整块落在盒内，超出的
- *  行交给菜单自滚（XMON-39：44 行候选时 300 壳档顶进裁剪带，前几行既画不出来
- *  也点不中）。改这条前先量触发钮上缘与 body 上缘之差，封顶值不得越过去——
- *  agent-create-model.spec 的几何断言钉着它。 */
-export const DLG_AGENT_SELECT_MENU_CLS = 'top-auto bottom-[calc(100%+4px)] max-h-[192px]';
-
-/** 运行时/skill 菜单最小宽（原 `.ui-select-menu.agent-runtime-menu` /
- *  `.agent-skill-menu` / `.dlg-agent-runtime-menu` 的 180）：候选都是短标识
- *  （r3-gw / Claude Code / agent-reach），180 够装；模型菜单吃壳默认 220
- *  （模型名长度随 provider 自定，比触发钮宽才装得下）。 */
-export const AGENT_SELECT_MENU_NARROW_CLS = 'min-w-[180px]';
 
 /** 内置 (pi) 的显示词（provider null/'pi' 的读回形）：一级选择器的清空行与
  *  触发钮回读同词，与 #499 只读行时期的运行时档文案逐字一致（原 agent-detail
@@ -111,10 +84,8 @@ interface AgentRuntimeSelectProps {
   onPick?: (provider: string | null) => void;
   /** 类名前缀——两个消费点的 e2e 各自钉自己的钩子（零规则句柄类）。 */
   prefix: string;
-  /** 触发钮皮肤位（AGENT_/DLG_AGENT_ SELECT_TRIGGER_CLS，消费面选档）。 */
+  /** 触发钮布局位（仅宽度类，如弹窗面的 w-full；皮肤/几何归 registry 默认）。 */
   triggerClassName?: string;
-  /** 菜单几何位（锚边/封顶/最小宽，消费面拼档）。 */
-  menuClassName?: string;
 }
 
 /** 一级：运行时/服务商。行 = provider 分组名（custom provider 的 label /
@@ -125,31 +96,30 @@ export function AgentRuntimeSelect({
   onPick,
   prefix,
   triggerClassName,
-  menuClassName,
 }: AgentRuntimeSelectProps) {
   const { t } = useI18n();
   const groups = providerGroups(options);
-  const rows: SelectOption[] = groups.map((group) => ({
-    value: group.provider,
-    label: group.providerLabel,
-  }));
   // 值回显：分组命中 → 分组名；未命中（provider 已被改名/删除）→ 裸串兜底，
   // 不空白不崩（律单源 model-select-core，二级同律）。
   const unset = t(BUILTIN_RUNTIME_LABEL);
   const label = providerEchoLabel(value, groups, unset);
 
   return (
-    <Select
-      prefix={prefix}
-      value={value}
-      options={rows}
-      label={label}
-      unsetLabel={unset}
-      menuLabel={t('运行时')}
-      triggerClassName={triggerClassName}
-      menuClassName={menuClassName}
-      onPick={(next) => onPick?.(next)}
-    />
+    <Select value={value} onValueChange={(next) => onPick?.(next as string | null)}>
+      <SelectTrigger className={cn(`${prefix}-select`, triggerClassName)}>
+        <SelectValue>{label}</SelectValue>
+      </SelectTrigger>
+      <SelectContent aria-label={t('运行时')} className={`${prefix}-menu`}>
+        <SelectItem className={`${prefix}-row`} value={null}>
+          {unset}
+        </SelectItem>
+        {groups.map((group) => (
+          <SelectItem key={group.provider} className={`${prefix}-row`} value={group.provider}>
+            {group.providerLabel}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -162,10 +132,8 @@ interface AgentModelSelectProps {
   onPick?: (modelId: string | null) => void;
   /** 类名前缀——同 AgentRuntimeSelect。 */
   prefix: string;
-  /** 触发钮皮肤位——同 AgentRuntimeSelect。 */
+  /** 触发钮布局位——同 AgentRuntimeSelect。 */
   triggerClassName?: string;
-  /** 菜单几何位——同 AgentRuntimeSelect。 */
-  menuClassName?: string;
 }
 
 /** 二级：当前运行时/服务商名下的具体模型。 */
@@ -176,12 +144,9 @@ export function AgentModelSelect({
   onPick,
   prefix,
   triggerClassName,
-  menuClassName,
 }: AgentModelSelectProps) {
   const { t } = useI18n();
-  const rows: SelectOption[] = options
-    .filter((row) => row.provider === provider)
-    .map((row) => ({ value: row.modelId, label: row.modelName }));
+  const rows = options.filter((row) => row.provider === provider);
   // 值回显：选项命中 → 模型名；未命中（模型已被改名/删除）→ 裸串兜底，
   // 不空白不崩（律单源 model-select-core，chief 选择器同律）。
   const unset = t('未设置模型');
@@ -189,16 +154,23 @@ export function AgentModelSelect({
 
   return (
     <Select
-      prefix={prefix}
       value={modelId}
-      options={rows}
-      label={label}
-      unsetLabel={unset}
-      menuLabel={t('模型')}
       disabled={provider === null}
-      triggerClassName={triggerClassName}
-      menuClassName={menuClassName}
-      onPick={(next) => onPick?.(next)}
-    />
+      onValueChange={(next) => onPick?.(next as string | null)}
+    >
+      <SelectTrigger className={cn(`${prefix}-select`, triggerClassName)}>
+        <SelectValue>{label}</SelectValue>
+      </SelectTrigger>
+      <SelectContent aria-label={t('模型')} className={`${prefix}-menu`}>
+        <SelectItem className={`${prefix}-row`} value={null}>
+          {unset}
+        </SelectItem>
+        {rows.map((row) => (
+          <SelectItem key={row.modelId} className={`${prefix}-row`} value={row.modelId}>
+            {row.modelName}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

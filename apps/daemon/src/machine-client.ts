@@ -55,6 +55,15 @@ export class MachineApiError extends Error {
   }
 }
 
+/** 终稿回传（upload-urls → PUT）失败的瞬态判定（#1028）：404 = server 重启后
+ * 旧预签名 URL 失效（重取即愈）、5xx / 网络 = 瞬时不可达——都值得重取 URL
+ * 重传。其余 4xx（400/401/403/409…）= 语义拒绝（#1027 拒绝腿等），重试永不
+ * 成功，直接上抛走 journal 残留。 */
+export function isTransientUploadError(err: unknown): boolean {
+  if (err instanceof MachineApiError) return err.status === 404 || err.status >= 500;
+  return true; // 非协议错误（fetch 网络面）= 瞬态
+}
+
 export interface MachineClientOpts {
   serverUrl: string;
   /** 机器 token（machine.json）；enroll 时缺省。 */

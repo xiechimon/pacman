@@ -137,11 +137,42 @@ test('project files pane: no export button, static branch chip, wired 文件|历
 
 // —— 4. schedules 空态 ————————————————————————————————————————————————————
 
-test('schedules empty state drops the 查看文档 button, keeps 新建定时', async ({ page }) => {
+test('schedules empty state drops the 查看文档 button; 新建定时 really opens and saves (#149, #1037)', async ({
+  page,
+}) => {
   await page.goto('/app/schedules?scenario=11');
   await expect(page.locator('.sched-empty')).toBeVisible();
   await expect(page.locator('.sched-empty-docs')).toHaveCount(0);
-  await expect(page.locator('.sched-empty-new')).toBeVisible();
+  const emptyNew = page.locator('.sched-empty-new');
+  await expect(emptyNew).toBeVisible();
+  // #1037: 可见不是判据——点下去才算。旧守卫只断言 visible，一个
+  // onClick=undefined 的哑钮照样绿。fixture 面禁止哑按钮：点 = 冻结表单
+  // 打开；保存 = 会话覆面落卡（deletions.ts 覆面同律，重载还原）。
+  await emptyNew.click();
+  const dialog = page.getByRole('dialog', { name: '新建定时' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '保存' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('.sched-card')).toHaveCount(1);
+  await expect(page.locator('.sched-empty')).toHaveCount(0);
+});
+
+test('schedules fixture face: topbar 新建 opens the dialog, freq tabs respond, save lands a card (#1037)', async ({
+  page,
+}) => {
+  await page.goto('/app/schedules?scenario=11');
+  await page.locator('.page-new-action').click();
+  const dialog = page.getByRole('dialog', { name: '新建定时' });
+  await expect(dialog).toBeVisible();
+  // 频率 tabs 在冻结面同样是真 tabs：点 每周 选中即跟（旧态 = 受控 value
+  // 无 onValueChange，点击不动的死面）。
+  await dialog.getByRole('tab', { name: '每周' }).click();
+  await expect(dialog.locator('.sched-form-freq-tab[aria-selected="true"]')).toHaveText('每周');
+  await dialog.getByRole('button', { name: '保存' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('.sched-card')).toHaveCount(1);
+  // 卡面带上了刚选的频率词——保存不是静默吞掉表单态。
+  await expect(page.locator('.sched-card')).toContainText('每周运行');
 });
 
 // —— 6. doc-pane 变更▾ 型选（#306 校准：行点击 = 选中即关）——————————————————

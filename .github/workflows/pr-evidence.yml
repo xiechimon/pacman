@@ -9,6 +9,11 @@ name: pr-evidence
 # types are only opened/synchronize/reopened, and the body is editable, so
 # `edited` must be listed explicitly. Putting `types:` on ci.yml would
 # re-trigger the whole pipeline on every body edit; here only this job runs.
+#
+# Third-party actions are pinned to full commit SHAs with trailing version
+# comments (#1076): a floating tag can be re-pointed upstream, which would
+# make the third-party code this gate runs variable. The version comment is
+# the anchor Dependabot parses on upgrade — keep it.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
@@ -19,7 +24,7 @@ jobs:
   pr-evidence:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Check PR body evidence (sections + links embedded + reachable)
         env:

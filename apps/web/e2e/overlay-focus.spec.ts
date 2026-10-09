@@ -77,12 +77,17 @@ test.describe('#15 focus ring收编', () => {
       expectVisibleRing(info!);
     }
 
-    // schedules topbar + 新建 (fixture face: the click is inert, the button
-    // keeps focus — the key press must not surface the UA ring either)
+    // schedules topbar 新建 (#1037: fixture face wired — the click opens the
+    // frozen dialog, Esc closes it and focus returns to the opener per the
+    // DialogShell #389 contract; the UA-ring ban rides the returned focus).
     await page.goto('/app/schedules?scenario=11');
     const pageNew = page.locator('.page-new-action');
     await pageNew.click();
+    const schedDialog = page.getByRole('dialog', { name: '新建定时' });
+    await expect(schedDialog).toBeVisible();
     await page.keyboard.press('Escape');
+    await expect(schedDialog).toBeHidden();
+    await expect(pageNew).toBeFocused();
     await page.waitForTimeout(250); // 同上：过渡落定后读数
     const info2 = await focusedOutline(page);
     expect(info2).not.toBeNull();
@@ -113,10 +118,12 @@ test.describe('#15 focus ring收编', () => {
 });
 
 // #1007（wave 1 L4）重钉：新建定时弹层从 FloatingShell 全屏族迁 registry
-// Dialog 直组（#983 居中 fixed 模态族判决）——scrim 载体 = DialogOverlay
-// （data-slot=dialog-overlay），入场 = registry fade-in（duration-100），
-// 关闭四路（Esc/背板/X/取消）语义保持；X 钮 aria-label=t('关闭')（消费点
-// 自携 DialogClose，registry 内建钮 sr-only 文案是英文硬编码）。
+// Dialog（#983 居中 fixed 模态族判决）；#1037 收编进 DialogShell 零皮肤
+// 适配层（家族律容器：封顶 + body 滚动 + footer 钉底 + #389 焦点回还）——
+// scrim 载体 = DialogOverlay（data-slot=dialog-overlay），入场 = registry
+// fade-in（duration-100），关闭四路（Esc/背板/X/取消）语义保持；X 钮
+// aria-label=t('关闭')（DialogShell 适配层自携，registry 内建钮 sr-only
+// 文案是英文硬编码）。
 test.describe('#10 schedules 新建定时弹层 = registry Dialog 全屏族（fade-in）', () => {
   const overlay = (page: Page) => page.locator('[data-slot="dialog-overlay"]');
 

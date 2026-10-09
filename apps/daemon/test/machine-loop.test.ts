@@ -26,10 +26,11 @@ import { describe, expect, test } from 'vitest';
 import { PI_CAPABILITIES } from '../src/backend/pi.js';
 import type { ClaudeCodeAuthProbe } from '../src/claude-code-auth.js';
 import { loadDaemonConfig } from '../src/config.js';
+import { StepJournal, type StepJournalEntry } from '../src/journal.js';
 import { type DaemonLogger, formatLine } from '../src/log.js';
 import type { MachineApi } from '../src/machine-client.js';
 import { nextBackoffMs, runMachine } from '../src/machine-loop.js';
-import { ensureStateDirs, saveMachineJson, statePaths } from '../src/state.js';
+import { ensureStateDirs, type StatePaths, saveMachineJson, statePaths } from '../src/state.js';
 
 function tmpHome(): string {
   return mkdtempSync(join(tmpdir(), 'pacman-loop-'));
@@ -271,6 +272,8 @@ async function boot(opts: {
   withMachineJson?: boolean;
   /** 预置 machine.json（既有注册启动路径）：serverUrl 可指向旧 server。 */
   preEnrolled?: { serverUrl: string };
+  /** #1026：runMachine 起动前预置 journal 条目（recover 快路径派发面）。 */
+  seedJournal?: (paths: StatePaths) => void;
 }) {
   const home = tmpHome();
   const { logger, lines } = captureLogger();
@@ -285,6 +288,7 @@ async function boot(opts: {
     {},
   );
   const paths = statePaths(home, config.workspacesDir);
+  opts.seedJournal?.(paths);
   if (opts.preEnrolled) {
     ensureStateDirs(paths);
     saveMachineJson(paths, {
@@ -622,6 +626,72 @@ describe('recover 对账（02 §5.4 步 journal 恢复）', () => {
       body: { status: 'failed', errorMessage: 'daemon journal lost across restart' },
     });
     expect(lines.some((l) => l.includes('[recover] 1 pending step(s) found'))).toBe(true);
+    await handle.stop();
+    await handle.done;
+  });
+
+  // #1026：PUT 成功 / done 失败的残留（state=awaiting-upload + 终稿快照）→
+  // recover 走快路径补报，不开新 agent 轮（对照：快照缺失仍走整步重跑）。
+  /** s1 步 journal 预置（快路径两腿共用形状；patch 追加终稿快照与否分流）。 */
+  function seedS1Journal(
+    paths: StatePaths,
+    patch: Partial<{
+      state: StepJournalEntry['state'];
+      planContent: string;
+      doneBody: MachineDoneBody;
+    }>,
+  ): void {
+    const journal = new StepJournal(paths.outboxDir);
+    journal.claim({
+      stepId: 's1',
+      buildId: 'conv-1',
+      kind: 'plan',
+      conversationId: 'conv-1',
+      sessionAction: 'new',
+      sessionId: 'pi-sess-1',
+      prompt: '写方案',
+      claimed: CLAIMED,
+    });
+    journal.update('s1', patch);
+  }
+
+  test('awaiting-upload 残留含终稿快照 → recover 快路径补报（不开 agent 会话）', async () => {
+    const api = new FakeMachineApi();
+    api.recoverSteps = [
+      { id: 's1', buildId: 'conv-1', kind: 'plan', machineId: 'm1', createdAt: 1 },
+    ];
+    const { handle, lines } = await boot({
+      api,
+      seedJournal: (paths) =>
+        seedS1Journal(paths, {
+          state: 'awaiting-upload',
+          planContent: '# 方案',
+          doneBody: { status: 'success', sessionId: 'pi-sess-1' },
+        }),
+    });
+    await waitFor(() => api.doneBodies.length === 1);
+    expect(api.doneBodies[0]).toMatchObject({
+      stepId: 's1',
+      body: { status: 'success', sessionId: 'pi-sess-1' },
+    });
+    // 快路径行在位；agent 会话不开（无 new/continue session 行）。
+    expect(lines.some((l) => l.includes('awaiting upload — replaying final report'))).toBe(true);
+    expect(lines.some((l) => l.includes('new session conv-1'))).toBe(false);
+    expect(lines.some((l) => l.includes('continue session conv-1'))).toBe(false);
+    await handle.stop();
+    await handle.done;
+  });
+
+  test('awaiting-upload 残留但终稿快照缺失（快照前崩溃）→ 整步重跑原路径', async () => {
+    const api = new FakeMachineApi();
+    api.recoverSteps = [
+      { id: 's1', buildId: 'conv-1', kind: 'plan', machineId: 'm1', createdAt: 1 },
+    ];
+    const { handle, lines } = await boot({
+      api,
+      seedJournal: (paths) => seedS1Journal(paths, { state: 'awaiting-upload' }), // 无 doneBody/planContent
+    });
+    await waitFor(() => lines.some((l) => l.includes('continue session conv-1')));
     await handle.stop();
     await handle.done;
   });

@@ -7,7 +7,7 @@
 // 壳与几何不收编、归各面：chief 两个 flat 面各带自己的类名组（skin 参数），
 // 节点结构与收敛前逐一同构——dialog 面多一层 col 列容器（r5 108 形态），
 // popover 面 name/provider 直挂行下；agent 两面继续走 components/ui/select.tsx
-// （XMON-75）原语，只消费本文件的回显兜底律。明确不收敛壳：chief 面直接换
+// registry compound 族（#1010 回源），只消费本文件的回显兜底律。明确不收敛壳：chief 面直接换
 // AgentRuntimeSelect 已被票面否决——两级级联与 r5 108 的 flat+副题+搜索+
 // 继承默认行不同构，强行统一壳是产品决策不是代码决策。
 //

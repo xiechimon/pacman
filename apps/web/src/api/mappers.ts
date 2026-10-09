@@ -1139,6 +1139,9 @@ function collectChiefStream(
         items.push({
           kind: 'tool',
           label: pillOf(call),
+          // #1009 A1 行 id 贯通：toolcall 行是独立 message，m.id 直投
+          // （React key + MessageScroller messageId 锚；视图侧投影，wire 零触碰）。
+          id: m.id,
           ...(call.startedAt !== undefined ? { startedAt: call.startedAt } : {}),
           ...(call.startedAt !== undefined && call.endedAt !== undefined
             ? { seconds: Math.max(0, Math.round((call.endedAt - call.startedAt) / 1000)) }
@@ -1153,7 +1156,8 @@ function collectChiefStream(
     if (rawText === '') {
       // #955：思考段行——无正文的 assistant 行若是 thinking 块，单列一行。
       const thinking = m.role === 'assistant' ? thinkingOfContent(m.content) : null;
-      if (thinking !== null) items.push({ kind: 'thinking', text: thinking });
+      // #1009 A1 行 id 贯通（tool 行同注）：thinking 行源 message 独立成行。
+      if (thinking !== null) items.push({ kind: 'thinking', text: thinking, id: m.id });
       continue;
     }
     if (m.role === 'user') {
@@ -1183,6 +1187,8 @@ function collectChiefStream(
       kind: 'robot',
       markdown: rawText,
       seconds: '',
+      // #1009 A1 行 id 贯通（tool 行同注）：定稿 robot 行 = 源 message 本尊。
+      id: m.id,
       ...(pendingTools.length > 0 ? { tools: pendingTools } : {}),
     });
     pendingTools = [];

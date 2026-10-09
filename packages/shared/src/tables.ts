@@ -17,7 +17,9 @@ export const DB_TABLES = [
   'stop_pending', // M7 #308：停止钮中断请求单槽（steer_pending 同形，自有功能）
   'message', // transcript 消息/工具行，经 upload-urls 回传落库（02 §1.3）
   'plan', // build facet：版本 v1/v2 + 四段卡（02 §4.2）
-  'document_diff', // `documents/{id}/diff` 端点源（02 §4.2）
+  // document_diff 已退役（#1029 死 schema）：diff 端点自 plan 行现算
+  // （services/documents.ts structuredPatch），从未有行写入，drop migration
+  // 摘除表位；wire 形状 documentDiffSchema（端点响应）保留在 records/。
   'schedule', // 02 §6.2 形状；kind 枚举含 [推断] 词
   'notification', // 02 §9.1 三事件矩阵（r5 §7.2 改判）
   'agent', // 含 6 工具开关/secrets/skills/mcpServers 关联（02 §6.2）
