@@ -232,6 +232,26 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   await client.presence({ cliVersion: DAEMON_VERSION, claudeCode: claudeReport() });
   logger.raw(`Online (machineId=${machineId}); polling ${config.serverUrl}`);
 
+  // #1108 本地并发闸：GET me 读本机 maxConcurrent——server claim 闸的客户端
+  // 镜像（护混版本：新 daemon 对旧 server，字段缺席按 1 串行；旧 daemon 对
+  // 新 server 本就串行不触闸）。随 presence 节拍刷新（30s）：上调 ≤30s 生
+  // 效，下调由 server 闸即刻拦住本地旧值多发的一次 claim。读失败保留旧值
+  // （闸宁可保守）。
+  let localCap = 1;
+  const refreshCap = async (): Promise<void> => {
+    try {
+      const me = await client.me();
+      if (typeof me.maxConcurrent === 'number' && me.maxConcurrent >= 1) {
+        localCap = me.maxConcurrent;
+      }
+    } catch (err) {
+      logger.machine(
+        `me failed (keeping cap ${localCap}): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
+  await refreshCap();
+
   // 闲置防睡（darwin caffeinate -i；平台命令表 spawn，01 §4.3）。
   let caffeinate: ChildProcess | undefined;
   if (opts.idleSleepPrevention !== false && process.platform === 'darwin') {
@@ -445,6 +465,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
 
   // —— presence 心跳（并行失败不退出，r3 §1.5）——
   const presenceTimer = setInterval(() => {
+    void refreshCap(); // #1108 并发上限刷新骑同一节拍（失败留旧值）。
     client
       .presence({ cliVersion: DAEMON_VERSION, claudeCode: claudeReport() })
       .catch((err: unknown) => {
@@ -479,10 +500,22 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     };
   }
 
+  // —— claim 主循环（#1108 起并行：claim 到即发射，不 await——runStep 之间
+  // 以 inFlight 集 + localCap 自限；server 闸（tryClaim 数 claimed ≥
+  // maxConcurrent）是同一上限的权威侧。runStep 自身失败面已走 done failed
+  // 闭环，发射处 catch 是 unhandled-rejection 防御位。优雅停止契约不变：
+  // 循环退出后等在飞步全部收尾，done 才 resolve（r3 §1.5 SIGTERM 序列）。——
+  const inFlight = new Map<string, Promise<void>>();
   const done = (async () => {
     const backoffBase = opts.claimBackoffBaseMs ?? 1_000;
     let backoff = backoffBase;
     while (!stopping) {
+      // 本地闸：在飞数达上限 → 等任一步收尾释放空位（不发起必空手的
+      // 长轮询；上限变化经 refreshCap 在下一轮生效）。
+      if (inFlight.size > 0 && inFlight.size >= localCap) {
+        await Promise.race(inFlight.values());
+        continue;
+      }
       let step: ClaimedStep | null = null;
       try {
         // 客户端护栏 = server hold + 余量；stop 时 claimCtrl 中断挂起请求。
@@ -501,8 +534,23 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       }
       if (!step || stopping) continue;
       logger.raw(`claim step=${step.step.id}`);
-      await runStep(stepDeps(), step, { running: 1 });
+      const stepId = step.step.id;
+      const launched = runStep(stepDeps(), step, { running: inFlight.size + 1 })
+        .catch((err: unknown) => {
+          // runStep 契约上不抛（失败面内部消化走 done failed）；此 catch 是
+          // 契约破口时的进程级防御——记行不静默吞。
+          logger.step(
+            `runStep crashed (step may need recover): ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        })
+        .finally(() => {
+          inFlight.delete(stepId);
+        });
+      inFlight.set(stepId, launched);
     }
+    await Promise.allSettled([...inFlight.values()]);
   })();
 
   async function stop(cause?: string): Promise<void> {

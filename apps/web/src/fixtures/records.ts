@@ -393,6 +393,12 @@ export interface MachineRow {
   chiefHost?: boolean;
   chiefRunning?: boolean;
   chiefWaiting?: boolean;
+  /** #1108 并发上限（行内并发控件与 `执行中 n/N` 读标注的数据源；契约
+   *  单源 = shared machineRecordSchema.maxConcurrent）。absent = 老服务
+   *  器/存量 fixture——控件退场（回到无并发面），呈现零漂移。 */
+  maxConcurrent?: number;
+  /** #1108 该机 claimed 步数（全 kind；`执行中 n/N` 的 n）。absent 同上。 */
+  runningSteps?: number;
 }
 
 /** The six resource surfaces' row sets (issue #69). */

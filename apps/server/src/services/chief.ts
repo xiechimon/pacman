@@ -70,6 +70,7 @@ import type { MachineWakeHub } from './machines.js';
 import { notifyChiefMessage } from './notifications.js';
 import { claudeCodeModelSource } from './providers.js';
 import { scanLocalSkills } from './skills.js';
+import { stepQueueProjector } from './step-queue.js';
 
 export interface ChiefDeps {
   db: Db;
@@ -345,7 +346,12 @@ export function chiefToolDefHashes(): Record<string, string> {
   return out;
 }
 
-export function toChiefThreadRecord(row: ThreadRow): ChiefThread {
+/** turnQueue 注入位（#1108）：线程记录的排队投影由调用方计算（team 域
+ *  投影器一次构造按行取，单线程路径单独取），record 映射保持纯函数。 */
+export function toChiefThreadRecord(
+  row: ThreadRow,
+  turnQueue?: ChiefThread['turnQueue'],
+): ChiefThread {
   return {
     id: row.id,
     chiefId: row.chiefId,
@@ -361,18 +367,26 @@ export function toChiefThreadRecord(row: ThreadRow): ChiefThread {
     toolDefHashes: row.toolDefHashes,
     toolResultHashes: row.toolResultHashes,
     activeRun: row.activeRun,
+    ...(turnQueue !== undefined ? { turnQueue } : {}),
   };
 }
 
 export function listChiefThreads(deps: ChiefDeps, teamId: string): ChiefThread[] {
   const row = ensureChief(deps, teamId);
+  // 排队投影（#1108）：team 域一次构造，线程行按 pending 回合步取位次与
+  // 等待对象（turnQueue = null = 回合不在飞或已被认领——web 面靠它区分
+  // 「排队中」与「处理中」）。
+  const projector = stepQueueProjector(deps.db, teamId);
   return deps.db
     .select()
     .from(chiefThread)
     .where(eq(chiefThread.chiefId, row.id))
     .orderBy(desc(chiefThread.updatedAt))
     .all()
-    .map(toChiefThreadRecord);
+    .map((r) => {
+      const pending = projector.pendingChiefOf(r.id);
+      return toChiefThreadRecord(r, pending === null ? null : projector.project(pending));
+    });
 }
 
 export function getChiefThread(deps: { db: Db }, threadId: string): ThreadRow | undefined {
@@ -484,7 +498,18 @@ export function sendChiefMessage(
   deps.db.update(chiefThread).set({ updatedAt: now }).where(eq(chiefThread.id, threadRow.id)).run();
 
   enqueueChiefStep(deps, threadRow.id, { prompt: body.content, trigger: 'user' });
-  return { thread: toChiefThreadRecord(threadRow), message, modelFallback };
+  // 发送响应的线程记录带刚入队回合的排队投影（#1108）：首屏即显「排队中」，
+  // 不等 threads 查询失效重取。
+  const projector = stepQueueProjector(deps.db, teamId);
+  const pendingTurn = projector.pendingChiefOf(threadRow.id);
+  return {
+    thread: toChiefThreadRecord(
+      threadRow,
+      pendingTurn === null ? null : projector.project(pendingTurn),
+    ),
+    message,
+    modelFallback,
+  };
 }
 
 /** chief 步入队（step 队列复用 [设计]：buildId = conv id = thread id，无 build
@@ -576,7 +601,16 @@ export function rewindChiefThread(
   enqueueChiefStep(deps, threadId, { prompt: content, trigger: 'user' });
   const fresh = getChiefThread(deps, threadId);
   if (!fresh) throw new Error('chief thread missing after rewind');
-  return { deletedCount: doomed.length, thread: toChiefThreadRecord(fresh) };
+  // 同 sendChiefMessage：响应带刚入队回合的排队投影（#1108）。
+  const projector = stepQueueProjector(deps.db, teamId);
+  const pendingTurn = projector.pendingChiefOf(threadId);
+  return {
+    deletedCount: doomed.length,
+    thread: toChiefThreadRecord(
+      fresh,
+      pendingTurn === null ? null : projector.project(pendingTurn),
+    ),
+  };
 }
 
 // —— watch/wake 主动回路（r5 §3.5）—————————————————————————————————————————

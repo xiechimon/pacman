@@ -9,13 +9,13 @@
 - `mach-facade-gone` 「Pacman 托管机器」facade 行已除（负向；现状残留 = 前端渲染的固定装饰行，非库内数据）。
 - `mach-marks` 本机行内 per-runtime 品牌 mark：`[data-runtime="pi"|"claude-code"]` 容器内 `svg`（官方 mark）；文字名不上屏（#887 图标独形）——可读名 = 容器 `aria-label` / `title`，容器文本为空（负向）；启用态由 `data-enabled="true"|"false"` 承载 = `enabledRuntimes.includes(runtime)`（#503 read-only 展示，非控件）。
 - `mach-marks-consistent` mark 亮度分态与 `GET /api/teams/:id/machines` 的 `enabledRuntimes` 一致，且与 SQLite `machine.enabledRuntimes`（JSON 列）同集。
-- `mach-shell-switch-single` 行内**恰一个**交互控件 = shell 开关（`[role="switch"]`，`aria-label` = 远程 shell；每行一个，含接入机行）；零 `button`、per-runtime 位零 `switch`（#503 的死控件仍负向）。判据不是「行内不许有控件」而是「不许有死控件」。
+- `mach-shell-switch-single` 行内交互控件 = shell 开关（`[role="switch"]`，`aria-label` = 远程 shell；每行一个，含接入机行）+ #1108 起的并发选择器（行内唯一 `button`，见 machine-concurrency.md）；per-runtime 位零 `switch`、除并发钮外零 `button`（#503 的死控件仍负向）。判据不是「行内不许有控件」而是「不许有死控件」。
 - `mach-shell-consistent` 开关 `aria-checked` 与 `GET /api/teams/:id/machines` 记录的 `shellEnabled` 一致（幂等：期望值从 API 态推导）。
 - `mach-shell-write-api` 真点击 → `PATCH /api/machines/{id}` 只带 `{shellEnabled}`（单字段，连带发 `enabledRuntimes` 会全量替换该列）→ API 回读为新值。
 - `mach-shell-write-db` SQLite `SELECT shellEnabled FROM machine WHERE id=?` 与 API 同值（写入真落库，不只是内存投影）。
 - `mach-shell-persist-reload` 拨动后 reload，开关回显新值（读侧投影通）。
 - `mach-shell-restore` 收尾拨回初值（栈状态复原，重跑不假红）。
-- `mach-subline-shell-hint-only` 副行只承载 shell 开关说明（文案载体 = getByText 整句 `已授权「远程 shell」的 Agent 可在该机器上执行命令。`；#503 的 id 尾巴与并发上限仍负向）。
+- `mach-subline-shell-hint-only` 副行只承载 shell 开关说明（文案载体 = getByText 整句 `已授权「远程 shell」的 Agent 可在该机器上执行命令。`；#503 的 id 尾巴与 `· max` 只读死显示仍负向——#1108 的并发活控件与「执行中 n/N」读标注在行内右段，见 machine-concurrency.md）。
 - `mach-shell-error` PATCH 失败 → 开关回滚 + `[role="alert"]` 出现 `保存失败，请重试。`（XMON-80 同律的可见反馈面；e2e 打桩覆盖，probe 不打桩故不在此列）。
 - `mach-kind-column` machine 表三列（A9 + XMON-108 migration）：`kind`（默认 `'remote'`，本机行 `'local'`）+ `enabledRuntimes`（JSON，默认 `[]` = 全关）+ `shellEnabled`（bool，默认 0）——列名 camelCase（与既有列同形），是下文 SQLite 断言的可观测真值。
 - `mach-persist` reload 后 mark 亮度分态与 API 仍一致。
@@ -25,7 +25,7 @@
 ## How to get to it (user POV)
 
 - 看板侧栏 资源 → 机器（`/app/resources/machines`）。
-- 本机行 = 列表首行；中段 mark 只读展示本机启用哪些 runtime，行右缘是「远程 shell」标签 + 开关（唯一可点处，点击即写库）。
+- 本机行 = 列表首行；中段 mark 只读展示本机启用哪些 runtime，行右缘是「远程 shell」标签 + 开关与「执行中 n/N」读标注 +「并发 N」选择器（两个活控件，点击即写库）。
 - 添加 LAN/VPS 机器：「添加机器」钮 → dialog 给可复制 CLI 命令（在目标机器上跑）。
 
 ## Driving it with verify-pacman

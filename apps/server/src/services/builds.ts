@@ -68,6 +68,7 @@ import { hasRepoBinding, readBuildChanges } from './git.js';
 import { openGithubToken } from './github-connection.js';
 import type { MachineWakeHub } from './machines.js';
 import { assertPhaseTransition, canTransitionPhase } from './phase.js';
+import { stepQueueProjector } from './step-queue.js';
 import { getTodo, setTodoPhase } from './todos.js';
 // #902：transcript 行写入单源提出（todos 面同用，避免 todos→builds 依赖环）。
 import { insertGateAnnouncement, insertMessageRow } from './transcript.js';
@@ -329,21 +330,46 @@ export function getBuild(deps: BuildDeps, id: string): BuildRecord | null {
 // 不漂移）。
 
 export function listSteps(deps: BuildDeps, buildId: string): StepJournalRow[] {
-  return deps.db
+  const rows = deps.db
     .select()
     .from(step)
     .where(eq(step.buildId, buildId))
     .orderBy(asc(step.createdAt))
-    .all()
-    .map((r) => ({
-      id: r.id,
-      buildId: r.buildId,
-      kind: r.kind,
-      machineId: r.machineId,
-      createdAt: r.createdAt,
-      status: r.status,
-      checkpointCommit: r.checkpointCommit,
-    }));
+    .all();
+  // 排队投影（#1108）：pending 行挂 queue（位次 + 等待对象）——详情页
+  // transcript 的「排队中」行数据源。build 域投影器一次构造（steps 行集
+  // 共用）；build/todo 行缺失（防御位）= pending 行无投影，呈现回落既有
+  // 标签。
+  const buildRow = deps.db.select().from(build).where(eq(build.id, buildId)).get();
+  const pendingIds = rows.filter((r) => r.status === 'pending').map((r) => r.id);
+  let queueById: Map<string, StepJournalRow['queue']> | null = null;
+  if (pendingIds.length > 0 && buildRow !== undefined) {
+    const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+    if (todoRow !== undefined) {
+      const projector = stepQueueProjector(deps.db, todoRow.teamId);
+      queueById = new Map(
+        rows.map((r) => {
+          if (r.status !== 'pending') return [r.id, undefined];
+          const projected = projector.project({
+            id: r.id,
+            createdAt: r.createdAt,
+            pinnedMachineId: buildRow.pinnedMachineId,
+          });
+          return [r.id, projected ?? undefined];
+        }),
+      );
+    }
+  }
+  return rows.map((r) => ({
+    id: r.id,
+    buildId: r.buildId,
+    kind: r.kind,
+    machineId: r.machineId,
+    createdAt: r.createdAt,
+    status: r.status,
+    checkpointCommit: r.checkpointCommit,
+    ...(queueById?.get(r.id) !== undefined ? { queue: queueById.get(r.id) } : {}),
+  }));
 }
 
 /** 开始/重跑：POST /api/projects/{id}/builds body {todoIds[], assignment,

@@ -204,6 +204,26 @@ export const chiefThreadSchema = z.object({
   toolDefHashes: z.record(z.string(), z.string()),
   toolResultHashes: z.record(z.string(), z.string()),
   activeRun: activeRunSchema,
+  /** 回合排队投影（#1108 [设计]，加法契约 optional）：活动回合的步还在
+   *  pending（未被任何机器认领）时由 server 派生——抽屉在飞存在行据此从
+   *  `处理中...` 切到 `排队中...` + 位次 + 等待对象。缺席 = 回合不在飞或
+   *  已被认领（老 server / fixture 面同形退化，呈现回落既有标签）。形 =
+   *  stepJournalRowSchema.queue 同源（records/step.ts StepQueueInfo——
+   *  位次与等待对象只有一套口径）。 */
+  turnQueue: z
+    .object({
+      position: z.number().int().min(1),
+      waitingFor: z
+        .object({
+          machineId: recordId,
+          name: z.string(),
+          running: z.number().int(),
+          capacity: z.number().int(),
+        })
+        .nullable(),
+    })
+    .nullable()
+    .optional(),
 });
 export type ChiefThread = z.infer<typeof chiefThreadSchema>;
 

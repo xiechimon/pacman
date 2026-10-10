@@ -9,10 +9,11 @@
 // #503: per-runtime 开关摘除，改官方品牌 mark（启用 = 品牌原色，未启用 =
 // 35% 透明，read-only）。enabledRuntimes 字段与 PATCH /api/machines/{id}
 // 原样保留——那是死控件（PR #507：「该字段全仓只写不读」），摘除是对的。
-// XMON-113：行内接回**唯一一个活控件**——机器层 shell 闸
-// （machine.shellEnabled，消费方 = claim 组装 localTools 双闸 + 每命令预检，
-// XMON-108 R1）。行内控件面自此 = 这一个开关，死钮纪律（删除 / chevron /
-// per-runtime 开关）原样由 e2e 负向把守。
+// XMON-113：行内接回机器层 shell 闸（machine.shellEnabled，消费方 = claim
+// 组装 localTools 双闸 + 每命令预检，XMON-108 R1）。#1108 起行内活控件 =
+// 两个：shell 闸 + 并发上限选择器（machine.maxConcurrent，消费方 = server
+// claim 闸 + daemon 本地闸）——两者都有真实消费链，死钮纪律（删除 /
+// chevron / per-runtime 开关）原样由 e2e 负向把守。
 // #895 三态读标注（spec 21 A8，全读态零控件）：「总管主机」徽标（谁是默认
 // 主力机）、「总管回合进行中」（该机正在执行 chief 步）、「总管等待机器」
 // （被钉的 pending 回合等该机上线/开闸）。live 数据 = GET /chief 封套
@@ -30,12 +31,13 @@ import { useLiveData } from '../api/provider.js';
 import { ClaudeMark, PiMark } from '../components/brand-marks.js';
 import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { Switch } from '../components/ui/switch.js';
 import { TEAM_NAME } from '../fixtures/fixtures.js';
 import type { MachineRow } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { Monitor, ServerThin } from '../icons/index.js';
+import { Check, ChevronDown, Monitor, ServerThin } from '../icons/index.js';
 import { CreateMachineDialog } from './create-machine-dialog.js';
 import {
   GroupCard,
@@ -71,6 +73,82 @@ const RUNTIME_MARKS: Record<MachineRuntime, typeof PiMark> = {
  * 齐开预检才放行（XMON-108 R1 双闸）。工具名经 {tool} 插值走 shared
  * AGENT_TOOL_SHELL 单源——两层开关共用同一个词，词变了不会只改一处。 */
 const MACHINE_SHELL_HINT = '已授权「{tool}」的 Agent 可在该机器上执行命令。';
+
+/** #1108 并发档位候选（UI 面 1..8——单机同刻 8 个 agent 会话已是重负载；
+ * PATCH 值域 1..16 更宽，API 设的 9..16 动态并入选项，控件不谎报现值）。 */
+const CONCURRENCY_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+
+/** #1108 并发上限选择器（机器行第二个活控件，形态沿 chief-machine-select
+ * 的 popover listbox 正典：Button ghost 触发 + Check 选中行）。值 =
+ * machine.maxConcurrent；live 选定 = PATCH /api/machines/{id}；fixture 面
+ * 本地草稿（shell 开关同律——scenario 无 API，开关也是活的）。 */
+function MachineConcurrencySelect({
+  machine,
+  value,
+  onPick,
+}: {
+  machine: MachineRow;
+  value: number;
+  onPick: (n: number) => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  // 现值超出 UI 档位（API 设的 9..16）→ 并入选项行，不谎报。
+  const options = CONCURRENCY_OPTIONS.includes(value)
+    ? CONCURRENCY_OPTIONS
+    : [...CONCURRENCY_OPTIONS, value].sort((a, b) => a - b);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            variant="ghost"
+            // aria-label = e2e 一级载体（shell 开关同律，strict-mode 独立命名）。
+            aria-label={t('并发上限')}
+            data-machine-id={machine.id}
+            data-testid="machine-concurrency"
+            className="h-7 cursor-pointer gap-1.5 rounded-md border border-input bg-transparent px-2 text-xs leading-4 font-normal text-(--text-secondary) hover:bg-(--surface-hover) active:not-aria-[haspopup]:translate-y-0 dark:bg-input/30"
+          />
+        }
+      >
+        <span className="text-(--text-tertiary)">{t('并发')}</span>
+        <span className="tabular-nums">{value}</span>
+        <ChevronDown width={11} height={11} className="flex-none text-(--text-tertiary)" />
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        side="bottom"
+        sideOffset={8}
+        aria-label={t('并发上限')}
+        className="min-w-[120px] rounded-lg bg-(--popover) p-1 shadow-(--chief-shadow)"
+      >
+        <div role="listbox" aria-label={t('并发上限')} data-testid="machine-concurrency-options">
+          {options.map((n) => (
+            <Button
+              key={n}
+              variant="ghost"
+              role="option"
+              aria-selected={n === value}
+              data-testid="machine-concurrency-option"
+              className="h-[30px] w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-2 text-left text-[13px] font-normal text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 aria-[current=true]:bg-(--secondary) aria-[selected=true]:bg-(--secondary)"
+              onClick={() => {
+                setOpen(false);
+                onPick(n);
+              }}
+            >
+              <span className="tabular-nums">{n}</span>
+              {n === value && (
+                <span className="ml-auto inline-flex flex-none text-(--text-tertiary)">
+                  <Check width={14} height={14} />
+                </span>
+              )}
+            </Button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function MachinesPage() {
   const { t } = useI18n();
@@ -124,11 +202,28 @@ export function MachinesPage() {
     }
     mutations.patchMachine.mutate({ id: machine.id, body: { shellEnabled: on } });
   };
+  // #1108 并发上限：与 shell 开关同一 mutation/草稿两态律。字段缺席（老
+  // server / 存量 fixture）= 控件与读标注整组退场（maxConcurrent undefined
+  // 判据），行回到 shell 单控件面。
+  const [capDraft, setCapDraft] = useState<Record<string, number>>({});
+  const capOn = (machine: MachineRow): number =>
+    capDraft[rowKey(machine)] ?? machine.maxConcurrent ?? 1;
+  const pickCap = (machine: MachineRow, n: number): void => {
+    if (!live || machine.id == null) {
+      setCapDraft((prev) => ({ ...prev, [rowKey(machine)]: n }));
+      return;
+    }
+    mutations.patchMachine.mutate({ id: machine.id, body: { maxConcurrent: n } });
+  };
   // 保存失败的显式反馈（XMON-80/P2 同律）：本面无 toast，失败只可能来自
-  // shell 开关这条写（页面唯一 mutation），文案是固定句、不透传 server 原文。
+  // shell 开关 / 并发选择这两条写（页面仅有的 mutation），文案是固定句、
+  // 不透传 server 原文。
   const shellSaveFailed =
     mutations.patchMachine.isError &&
     mutations.patchMachine.variables?.body.shellEnabled !== undefined;
+  const capSaveFailed =
+    mutations.patchMachine.isError &&
+    mutations.patchMachine.variables?.body.maxConcurrent !== undefined;
 
   return (
     // r7 06: the machines topbar carries no `+ 新建` — the dashed 添加机器
@@ -141,7 +236,7 @@ export function MachinesPage() {
       hideNew
       fixture={fixture}
     >
-      {shellSaveFailed && (
+      {(shellSaveFailed || capSaveFailed) && (
         <p className="mt-0 mb-2 text-xs leading-4 text-(--destructive)" role="alert">
           {t('保存失败，请重试。')}
         </p>
@@ -254,6 +349,31 @@ export function MachinesPage() {
                   onCheckedChange={(on) => toggleShell(machine, on)}
                 />
               </span>
+              {/* #1108 并发面（读标注 + 上限选择器）：字段缺席 = 整组退场。
+                  读标注 = 该机 claimed 步数 / 上限（`执行中 n/N`——全 kind 计
+                  数，与 server 闸 / 排队投影同源同数）；数据随 machine_presence
+                  / step SSE 失效重取刷新（machines 查询联动）。与 shell 簇同
+                  ml-5 间距：两组控件视觉同档。 */}
+              {machine.maxConcurrent !== undefined && (
+                <span className="ml-5 flex flex-none items-center gap-2.5">
+                  {machine.runningSteps !== undefined && (
+                    <span
+                      className="text-xs leading-4 whitespace-nowrap tabular-nums text-(--text-tertiary)"
+                      data-machine-running={machine.runningSteps}
+                    >
+                      {t('执行中 {n}/{cap}', {
+                        n: machine.runningSteps,
+                        cap: capOn(machine),
+                      })}
+                    </span>
+                  )}
+                  <MachineConcurrencySelect
+                    machine={machine}
+                    value={capOn(machine)}
+                    onPick={(n) => pickCap(machine, n)}
+                  />
+                </span>
+              )}
             </RowGrow>
           );
         })}

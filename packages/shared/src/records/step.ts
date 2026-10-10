@@ -52,8 +52,34 @@ export type StepStatus = z.infer<typeof stepStatusSchema>;
 export const stepJournalRowSchema = stepRecordSchema.extend({
   status: stepStatusSchema,
   checkpointCommit: recordId.nullable(),
+  /** 排队投影（#1108）：pending 步的「在排队、位次、等谁」——server 读侧
+   *  派生（steps 查询按行计算），SSE step 事件不带（事件只报状态流转，
+   *  队列细节由查询重取承载）。claimed/done 等非 pending 行缺席 = 不在
+   *  排队。optional 加法契约：老 server / fixture 面缺席 = 排队呈现退
+   *  化（回落既有 `处理中...` 标签），零回归。 */
+  queue: z
+    .object({
+      /** 团队 FIFO 位次（1-based；钉选步只数该机可见集——钉同机或未钉）。 */
+      position: z.number().int().min(1),
+      /** 等待对象：钉选机器（含其 running/capacity 快照）；null = 未钉
+       *  （等待任何在线机器）。 */
+      waitingFor: z
+        .object({
+          machineId: recordId,
+          name: z.string(),
+          running: z.number().int(),
+          capacity: z.number().int(),
+        })
+        .nullable(),
+    })
+    .optional(),
 });
 export type StepJournalRow = z.infer<typeof stepJournalRowSchema>;
+
+/** 排队投影条目（stepJournalRowSchema.queue 的独立名，chief 线程投影
+ *  （records/chief.ts turnQueue）复用同形——步在哪个读面，位次与等待对象
+ *  只有一套口径）。 */
+export type StepQueueInfo = NonNullable<StepJournalRow['queue']>;
 
 /** POST /api/builds/{id}/steps body——确认回路（02 §4.2，r5 §4 实走改判）：
  * 驳回 = {action:"revision", side:"plan", feedback, clientMessageId} →

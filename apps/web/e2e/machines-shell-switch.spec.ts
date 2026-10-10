@@ -43,9 +43,12 @@ interface StubMachine {
   kind: 'local' | 'remote';
   enabledRuntimes: string[];
   shellEnabled: boolean;
+  /** #1108 并发面（缺省不带 = 老 server 形——控件退场面由 machines-local 钉）。 */
+  maxConcurrent?: number;
+  runningSteps?: number;
 }
 
-/** machineRecordSchema 形状（XMON-108 起含 shellEnabled）。 */
+/** machineRecordSchema 形状（XMON-108 起含 shellEnabled；#1108 起可带并发位）。 */
 function machine(over: Partial<StubMachine> & { id: string; name: string }): StubMachine {
   return {
     teamId: 'team-1',
@@ -81,9 +84,18 @@ async function stubStack(page: Page, rows: StubMachine[]) {
   await page.route('**/api/machines/*', (route) => {
     const id = new URL(route.request().url()).pathname.split('/').pop();
     state.patches.push(route.request().postDataJSON());
-    const body = route.request().postDataJSON() as { shellEnabled?: boolean };
+    const body = route.request().postDataJSON() as {
+      shellEnabled?: boolean;
+      maxConcurrent?: number;
+    };
     state.rows = state.rows.map((r) =>
-      r.id === id && body.shellEnabled !== undefined ? { ...r, shellEnabled: body.shellEnabled } : r,
+      r.id === id
+        ? {
+            ...r,
+            ...(body.shellEnabled !== undefined ? { shellEnabled: body.shellEnabled } : {}),
+            ...(body.maxConcurrent !== undefined ? { maxConcurrent: body.maxConcurrent } : {}),
+          }
+        : r,
     );
     return route.fulfill({ json: state.rows.find((r) => r.id === id) });
   });
@@ -189,4 +201,42 @@ test('保存成功后不留错误行', async ({ page }) => {
   await page.goto('/app/resources/machines');
   await page.locator(`${SWITCH}[data-machine-id="m-local"]`).click();
   await expect(page.locator(ERROR)).toHaveCount(0);
+});
+// —— #1108 并发上限控件（PATCH 单字段 + 读标注投影 + 老形态退场）——————————
+// 失败方式（先于实现固化，shell 开关八条同族）：
+//   C1 写入字段错——PATCH body 不是单字段 {maxConcurrent}（连带发其它字段 =
+//   覆盖替换面，#503 律）。
+//   C2 读标注不渲染 / 渲染错数——`执行中 {n}/{cap}` 必须来自记录真值。
+//   C3 老形态（无 maxConcurrent 字段）→ 控件与读标注整组退场（fixture 混版本零漂移）。
+//   C4 刷新不持久——选 4 → reload → 回 4（读侧投影）。
+
+test('C1+C2+C4：并发选择器——读标注真值、PATCH 单字段、刷新持久', async ({ page }) => {
+  const state = await stubStack(page, [
+    { ...LOCAL, maxConcurrent: 2, runningSteps: 1 },
+  ]);
+  await page.goto('/app/resources/machines');
+  // C2：读标注 = 记录真值（running 1 / cap 2）。
+  const readout = page.locator('[data-machine-running="1"]');
+  await expect(readout).toHaveText('执行中 1/2');
+  // 触发钮显示当前上限；打开选 4。
+  const trigger = page.locator('button[aria-label="并发上限"]');
+  await expect(trigger).toContainText('并发');
+  await expect(trigger).toContainText('2');
+  await trigger.click();
+  await page.getByRole('option', { name: '4' }).click();
+  // C1：PATCH 只带 maxConcurrent 单字段。
+  await expect.poll(() => state.patches.length).toBe(1);
+  expect(state.patches[0]).toEqual({ maxConcurrent: 4 });
+  // C4：刷新后读侧真值一致。
+  await page.reload();
+  await expect(page.locator('button[aria-label="并发上限"]')).toContainText('4');
+});
+
+test('C3：老 server 形（无 maxConcurrent 字段）→ 控件与读标注整组退场', async ({ page }) => {
+  await stubStack(page, [LOCAL]);
+  await page.goto('/app/resources/machines');
+  await expect(page.locator('button[aria-label="并发上限"]')).toHaveCount(0);
+  await expect(page.locator('[data-machine-running]')).toHaveCount(0);
+  // shell 开关不受影响（行回到单控件面）。
+  await expect(page.locator(`${SWITCH}[data-machine-id="m-local"]`)).toHaveCount(1);
 });
