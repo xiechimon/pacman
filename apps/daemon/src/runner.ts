@@ -121,6 +121,10 @@ export interface RunStepOptions {
   resume?: { sessionId: string | null; prompt: string | null };
   /** 已认领的运行数（canon 行 `(n running)` 的 n）。 */
   running?: number;
+  /** #1148 步级 env 注入（worker 步端口基座 PACMAN_PORT_BASE；machine-loop
+   * 按槽位构造）——透传 SessionOpts.env（backend 注入 agent 进程命令环境）。
+   * chief 步不携带（不占槽）。 */
+  env?: Record<string, string>;
   /** 零进展 auto_retry 预算覆盖（#708 测试注入；缺省 = RETRY_STORM_MAX）。 */
   retryStormMax?: number;
   /** 流超时三臂覆盖（测试注入毫秒级；缺省 = 02 §5.6 r3 三值）。 */
@@ -730,6 +734,8 @@ export async function runStep(
     // 只读回合（#511）：审核者不下发 edit/write——写入在工具面即被拒，且它
     // 对检出造成的任何写入在收尾被丢弃（见下「审核步收尾」）。
     ...(isReview ? { readOnly: true } : {}),
+    // #1148 步级 env（端口基座）：machine-loop 按槽位构造，跨缝透传 backend。
+    ...(opts.env !== undefined ? { env: opts.env } : {}),
   };
 
   // continue 解析键：journal 快照（recover 面）优先，其次 claim 载荷携带的

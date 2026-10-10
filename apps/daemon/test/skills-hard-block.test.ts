@@ -297,6 +297,20 @@ describe('buildClaudeSdkOptions（spec 14 §裁决后的范围 1/2：settingSour
     expect('settings' in opts).toBe(false);
   });
 
+  test('#1148：env 注入 = process.env 展开 + per-step 覆盖（SDK env 整替语义）；缺省不发 env 键', () => {
+    // 缺省（无 per-step env）：不设 env 键（subprocess 继承 process.env，现行为）。
+    expect('env' in buildClaudeSdkOptions(baseParts())).toBe(false);
+    // 注入：SDK env REPLACES（不合并）→ 必须展开 process.env 保 PATH/HOME 等
+    // 继承位，per-step 值（PACMAN_PORT_BASE）最后覆盖。
+    const opts = buildClaudeSdkOptions({
+      ...baseParts(),
+      env: { PACMAN_PORT_BASE: '20100' },
+    });
+    expect(opts.env).toEqual({ ...process.env, PACMAN_PORT_BASE: '20100' });
+    expect(opts.env?.PACMAN_PORT_BASE).toBe('20100');
+    expect(opts.env?.PATH).toBe(process.env.PATH);
+  });
+
   test('既有面不回归：bypass / disallowedTools / partial / model / cwd / sessionId', () => {
     const opts = buildClaudeSdkOptions(baseParts());
     expect(opts.permissionMode).toBe('bypassPermissions');

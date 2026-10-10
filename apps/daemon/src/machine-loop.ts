@@ -63,6 +63,9 @@ export interface MachineLoopOpts {
   claimBackoffBaseMs?: number;
   /** 代理探测 env 面（默认 process.env；测试注入 {} 关闭）。 */
   proxyEnv?: NodeJS.ProcessEnv;
+  /** #1148 cap 解析 env 源（PACMAN_DAEMON_MAX_CONCURRENT；默认 process.env，
+   * proxyEnv 同律——测试注入隔离）。 */
+  capEnv?: NodeJS.ProcessEnv;
   heartbeatIntervalMs?: number;
   /** 闲置防睡（darwin caffeinate；linux systemd-inhibit [推断] 可缺省，
    * 01 §4.3）。测试关闭。 */
@@ -86,6 +89,43 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** 指数退避封顶 30s（r3 §1.5「断网 claim 指数退避封顶 30s」）。 */
 export function nextBackoffMs(current: number, cap = CLAIM_BACKOFF_CAP_MS): number {
   return Math.min(current * 2, cap);
+}
+
+// —— #1148 并发面三个常量单源（本模块 = 分配与解析的唯一落点）————————————
+
+/** #1148 env 兜底旋钮名：daemon worker 并发上限的 env 覆盖位（对齐 Multica
+ * `MULTICA_DAEMON_MAX_CONCURRENT_TASKS` 的覆盖关系——env 是操作员对这台
+ * daemon 的显式意志，DB machine 行是 server 侧团队配置）。取值序（钉死）：
+ * env > DB（me.maxConcurrent）> 默认 1。值域：正整数；非法/非正值忽略
+ * （回落下一级，宁保守不误伤）。 */
+export const DAEMON_MAX_CONCURRENT_ENV = 'PACMAN_DAEMON_MAX_CONCURRENT';
+
+/** #1148 本地闸取值序 env > DB > 默认（纯函数单源；机器循环 + 单测共用）。 */
+export function resolveLocalCap(
+  env: NodeJS.ProcessEnv,
+  meMaxConcurrent: number | undefined,
+): number {
+  const raw = env[DAEMON_MAX_CONCURRENT_ENV];
+  if (raw !== undefined) {
+    const parsed = Number(raw);
+    if (Number.isInteger(parsed) && parsed >= 1) return parsed;
+  }
+  return typeof meMaxConcurrent === 'number' && meMaxConcurrent >= 1 ? meMaxConcurrent : 1;
+}
+
+/** #1148 per-worker 步端口基座 env 名：按槽位分段的端口基段下发给 worker 步
+ * 的命令环境（项目 dev server 自愿消费——pacman 仓自身的 PACMAN_DEV_WEB_PORT
+ * / E2E_PORT 纪律直接受益）。chief 步不携带（不占槽自然无段）。 */
+export const PORT_BASE_ENV = 'PACMAN_PORT_BASE';
+
+/** 首段基座（槽 1 → 20000；槽 2 → 20100；槽 N → 20000 + (N-1)×100）。 */
+export const PORT_BASE_FLOOR = 20_000;
+/** 每槽步进（一段 = 100 个端口的私有区）。 */
+export const PORT_BASE_STRIDE = 100;
+
+/** 槽位 → 端口基座（#1148 段公式单源；槽从 1 起，见 workerSlots 注释）。 */
+export function portBaseForSlot(slot: number): number {
+  return PORT_BASE_FLOOR + (slot - 1) * PORT_BASE_STRIDE;
 }
 
 export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> {
@@ -237,13 +277,20 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   // 新 server 本就串行不触闸）。随 presence 节拍刷新（30s）：上调 ≤30s 生
   // 效，下调由 server 闸即刻拦住本地旧值多发的一次 claim。读失败保留旧值
   // （闸宁可保守）。
+  // #1148 两处增量：① 取值序 env > DB > 默认（resolveLocalCap 单源，
+  // PACMAN_DAEMON_MAX_CONCURRENT 覆盖 DB 值）；② serverGates 标记（me
+  // 携 maxConcurrent = #1108+ server，worker 容量闸权威在 server 侧）——
+  // 本地 park 面收窄到「server 无闸」的混版本保护（见 claim 主循环注释）。
   let localCap = 1;
+  let serverGates = false;
+  const capEnv = opts.capEnv ?? process.env;
   const refreshCap = async (): Promise<void> => {
     try {
       const me = await client.me();
-      if (typeof me.maxConcurrent === 'number' && me.maxConcurrent >= 1) {
-        localCap = me.maxConcurrent;
-      }
+      // 每拍按当次响应重判（server 降级回无闸形 → local park 随即恢复保护）；
+      // me 失败才保留旧值（catch 分支）。
+      serverGates = typeof me.maxConcurrent === 'number' && me.maxConcurrent >= 1;
+      localCap = resolveLocalCap(capEnv, me.maxConcurrent);
     } catch (err) {
       logger.machine(
         `me failed (keeping cap ${localCap}): ${err instanceof Error ? err.message : String(err)}`,
@@ -278,6 +325,24 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   // 停止请求旗标（M7 #308）：deliverStop 拉取-确认后置位，runStep 收尾判
   // stopped 消费；声明位纪律同 sessionHandles。
   const stopRequests = new Map<string, StopRequest>();
+  // #1148 在飞 chief 步 id 集（本地闸不计数；与 inFlight 同进同出）。声明位
+  // 纪律同 sessionHandles——recover 块的消费面（workerEnv）在其下方。
+  const inFlightChief = new Set<string>();
+  // #1148 worker 槽位登记：stepId → 槽（1 起最小空闲整数；发射处同步分配、
+  // 收尾释放——单线程事件循环内无竞态，并发在飞步恒不同槽）。recover 续跑
+  // 步同领槽（主循环与恢复面同律）。
+  const workerSlots = new Map<string, number>();
+  const assignWorkerSlot = (stepId: string): number => {
+    const used = new Set(workerSlots.values());
+    let slot = 1;
+    while (used.has(slot)) slot += 1;
+    workerSlots.set(stepId, slot);
+    return slot;
+  };
+  /** worker 步的步级 env（#1148 端口基座）。分配即登记槽位（finally 释放）。 */
+  const workerEnv = (stepId: string): Record<string, string> => ({
+    [PORT_BASE_ENV]: String(portBaseForSlot(assignWorkerSlot(stepId))),
+  });
 
   // 孤儿 worktree 回收（r3 §1.4 cleanupOrphanWorktrees(ttlMs = 7*24h)）：
   // 上线一次 + 每日节奏 [设计]（观测仅函数名，节奏未采）。活步 = journal
@@ -350,6 +415,8 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
         await runStep(stepDeps(), claimed, {
           resume: { sessionId: entry.sessionId, prompt: entry.prompt },
           running: 1,
+          // #1148 端口基座：续跑 worker 步照领槽（恢复面与主循环同律）。
+          ...(claimed.step.kind === 'chief' ? {} : { env: workerEnv(stepRecord.id) }),
         });
       } else {
         logger.recover(`step ${stepRecord.id} has no local journal — reporting failed`);
@@ -500,27 +567,42 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     };
   }
 
-  // —— claim 主循环（#1108 起并行：claim 到即发射，不 await——runStep 之间
-  // 以 inFlight 集 + localCap 自限；server 闸（tryClaim 数 claimed ≥
-  // maxConcurrent）是同一上限的权威侧。runStep 自身失败面已走 done failed
-  // 闭环，发射处 catch 是 unhandled-rejection 防御位。优雅停止契约不变：
-  // 循环退出后等在飞步全部收尾，done 才 resolve（r3 §1.5 SIGTERM 序列）。——
+  // —— claim 主循环（#1108 起并行：claim 到即发射，不 await——server 闸
+  // （tryClaim 数非 chief claimed ≥ 闸值）是同一上限的权威侧。#1148 增量：
+  // ① chief 步不占槽：本地闸只数在飞 worker（inFlightChief 集排除）；且
+  //   park 面收窄——serverGates（#1108+ server）时 worker 容量过滤全在
+  //   server 闸（claim body maxWorkers 自报 + DB 行），本地不 park（挂起
+  //   claim 恒可收 chief，满载 worker 不饿死 chief）；仅 pre-#1108 server
+  //   （me 无 maxConcurrent、无闸）保留本地 park 护混版本（chief 在飞不
+  //   计数；其 pending 等收尾 = 现状保守形）。
+  // ② 端口基座：worker 步领槽（1 起最小空闲整数，收尾释放即重用），
+  //   PACMAN_PORT_BASE = 段公式（portBaseForSlot）随 RunStepOptions.env 注
+  //   入 agent 命令环境；并发在飞步恒不同槽（串槽 = 票面失败方式 2）。
+  // runStep 自身失败面已走 done failed 闭环，发射处 catch 是
+  // unhandled-rejection 防御位。优雅停止契约不变：循环退出后等在飞步全部
+  // 收尾，done 才 resolve（r3 §1.5 SIGTERM 序列）。——
   const inFlight = new Map<string, Promise<void>>();
   const done = (async () => {
     const backoffBase = opts.claimBackoffBaseMs ?? 1_000;
     let backoff = backoffBase;
     while (!stopping) {
-      // 本地闸：在飞数达上限 → 等任一步收尾释放空位（不发起必空手的
-      // 长轮询；上限变化经 refreshCap 在下一轮生效）。
-      if (inFlight.size > 0 && inFlight.size >= localCap) {
+      // 本地闸（#1148 收窄）：pre-#1108 server（无 worker 闸）且在飞 worker
+      // 数达上限 → 等任一步收尾释放空位；serverGates 时容量过滤在 server
+      // 侧（body 自报 + DB），本地不 park——挂起 claim 恒可收 chief。
+      // 上限变化经 refreshCap 在下一轮生效。
+      const workersInFlight = inFlight.size - inFlightChief.size;
+      if (!serverGates && workersInFlight > 0 && workersInFlight >= localCap) {
         await Promise.race(inFlight.values());
         continue;
       }
       let step: ClaimedStep | null = null;
       try {
         // 客户端护栏 = server hold + 余量；stop 时 claimCtrl 中断挂起请求。
+        // #1148：maxWorkers 自报 effective cap——server worker 闸取
+        // min(DB, 自报)（env > DB 的 server 落点；老 server 剥离该位零碍）。
         step = await client.claim(
           AbortSignal.any([claimCtrl.signal, AbortSignal.timeout(claimTimeoutMs)]),
+          { maxWorkers: localCap },
         );
         backoff = backoffBase; // 成功即重置（指数退避仅断网面，r3 §1.5）
       } catch (err) {
@@ -535,7 +617,12 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       if (!step || stopping) continue;
       logger.raw(`claim step=${step.step.id}`);
       const stepId = step.step.id;
-      const launched = runStep(stepDeps(), step, { running: inFlight.size + 1 })
+      if (step.step.kind === 'chief') inFlightChief.add(stepId);
+      const stepEnv = step.step.kind === 'chief' ? undefined : workerEnv(stepId);
+      const launched = runStep(stepDeps(), step, {
+        running: inFlight.size + 1,
+        ...(stepEnv !== undefined ? { env: stepEnv } : {}),
+      })
         .catch((err: unknown) => {
           // runStep 契约上不抛（失败面内部消化走 done failed）；此 catch 是
           // 契约破口时的进程级防御——记行不静默吞。
@@ -547,6 +634,8 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
         })
         .finally(() => {
           inFlight.delete(stepId);
+          inFlightChief.delete(stepId);
+          workerSlots.delete(stepId);
         });
       inFlight.set(stepId, launched);
     }

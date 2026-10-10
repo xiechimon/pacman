@@ -771,6 +771,9 @@ export interface ClaudeSdkOptionParts {
   skillDenyRules?: string[];
   /** #1050：可执行文件绝对路径（探测结果单源）。缺席 = 不发键，SDK 自解析。 */
   executablePath?: string;
+  /** #1148 步级 env（SessionOpts.env 透传；worker 步端口基座）。缺席 = 不发
+   * env 键（subprocess 继承 process.env，现行为）。 */
+  env?: Record<string, string>;
   abortController: AbortController;
 }
 
@@ -800,6 +803,9 @@ export function buildClaudeSdkOptions(parts: ClaudeSdkOptionParts): Options {
     ...(parts.executablePath !== undefined
       ? { pathToClaudeCodeExecutable: parts.executablePath }
       : {}),
+    // #1148：SDK env 是**整替**语义（不与 process.env 合并）——必须先展开
+    // process.env 保 PATH/HOME/ANTHROPIC_* 等继承位，per-step 值最后覆盖。
+    ...(parts.env !== undefined ? { env: { ...process.env, ...parts.env } } : {}),
     abortController: parts.abortController,
   };
 }
@@ -918,6 +924,8 @@ export class ClaudeCodeBackend implements AgentBackend {
       ...(this.opts.executablePath !== undefined
         ? { executablePath: this.opts.executablePath }
         : {}),
+      // #1148 步级 env（worker 步端口基座）→ SDK 子进程环境（整替 + 展开）。
+      ...(opts.env !== undefined ? { env: opts.env } : {}),
       abortController: abort,
     });
     const state = createClaudeMapState({

@@ -9,6 +9,7 @@ import {
   type MachineAskBody,
   type MachineAskResponse,
   type MachineAttachmentResponse,
+  type MachineClaimBody,
   type MachineDoneBody,
   type MachineEnrollResponse,
   type MachineRecord,
@@ -86,7 +87,10 @@ export interface MachineApi {
   me(): Promise<MachineRecord>;
   presence(body: { cliVersion?: string; claudeCode?: ClaudeCodeReport }): Promise<void>;
   recover(): Promise<MachineRecoverResponse>;
-  claim(signal?: AbortSignal): Promise<ClaimedStep | null>;
+  /** claim 长轮询（server hold ~75s，r3 §1.5）；调用方给 signal 控制中断。
+   * body = #1148 maxWorkers 自报（调用方传 effective cap）；缺省 = 空 body
+   * （老 server / 测试桩兼容面）。 */
+  claim(signal?: AbortSignal, body?: MachineClaimBody): Promise<ClaimedStep | null>;
   heartbeat(stepId: string): Promise<void>;
   tool(stepId: string, call: ToolCallRecord): Promise<void>;
   /** live transcript 文本增量（machineToolBodySchema 第三形 [设计]，M5 live
@@ -287,13 +291,15 @@ export class MachineClient implements MachineApi {
     });
   }
 
-  /** claim 长轮询（server hold ~75s，r3 §1.5）；调用方给 signal 控制中断。 */
-  async claim(signal?: AbortSignal): Promise<ClaimedStep | null> {
+  /** claim 长轮询（server hold ~75s，r3 §1.5）；调用方给 signal 控制中断。
+   * #1148：body 携 maxWorkers（worker 并发上限自报，server 闸取 min）；缺
+   * 省 = 空 body（老 server 形）。 */
+  async claim(signal?: AbortSignal, body?: MachineClaimBody): Promise<ClaimedStep | null> {
     const res = await this.request<{ step: ClaimedStep | null }>(
       'POST',
       '/api/machine/tasks/claim',
       {
-        body: {},
+        body: body ?? {},
         signal,
         parse: (raw) => machineClaimResponseSchema.parse(raw) as { step: ClaimedStep | null },
       },

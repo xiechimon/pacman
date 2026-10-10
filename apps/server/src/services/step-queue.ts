@@ -23,7 +23,7 @@
 // 不在位次里扣。
 
 import type { StepQueueInfo } from '@pacman/shared';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { build, chiefThread, machine, step, todo } from '../db/schema.js';
 
@@ -65,7 +65,8 @@ export function stepQueueProjector(db: Db, teamId: string) {
   );
 
   // 该机 claimed 步数 / machine 行（waitingFor 快照；按需缓存——调用方行集
-  // 分布稀，n 次查询封顶 n 个被等待机器）。
+  // 分布稀，n 次查询封顶 n 个被等待机器）。#1148：只数非 chief 步（chief 不
+  // 占并发槽；口径与 machineRunningCount 同源——machines.ts 的容量闸同数）。
   const claimedCountCache = new Map<string, number>();
   const claimedCount = (machineId: string): number => {
     const hit = claimedCountCache.get(machineId);
@@ -73,7 +74,7 @@ export function stepQueueProjector(db: Db, teamId: string) {
     const n = db
       .select({ id: step.id })
       .from(step)
-      .where(and(eq(step.machineId, machineId), eq(step.status, 'claimed')))
+      .where(and(eq(step.machineId, machineId), eq(step.status, 'claimed'), ne(step.kind, 'chief')))
       .all().length;
     claimedCountCache.set(machineId, n);
     return n;
