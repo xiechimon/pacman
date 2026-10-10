@@ -280,4 +280,18 @@ describe('scheduler tick 接线（#861 步永久 claimed 的最后残余入口�
     expect(stepRowOf(w).status).toBe('claimed');
     scheduler.stop();
   });
+
+  test('手动 tick 的合成未来时刻不翻健康机器（m5 定时轮驱动约定）：机器扫锚真实时钟', () => {
+    // #1146 CI 首轮实锤：m5-web-e2e 定时轮腿用 `scheduler.tick(nextRunAt + 60s)`
+    // 确定性触发定时（schedules 同口径的既有驱动约定）。拿合成 now 判陈旧，
+    // 30s 新鲜的 lastSeenAt 会被看成超 150s → 健康机器被误翻 offline → 轮
+    // 永不推进。机器活性是 presence 数据的墙钟属性——扫掠不消费 tick 的 now。
+    const w = makeWorld({ machineOnline: true, lastSeenAtAgo: 30_000 });
+    const scheduler = createScheduler(w.s.svc, { tickMs: 60_000 });
+
+    scheduler.tick(w.base + 300_000); // 合成未来时刻（+5min）
+
+    expect(machineRowOf(w).online).toBe(true);
+    scheduler.stop();
+  });
 });

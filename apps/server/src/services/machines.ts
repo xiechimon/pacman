@@ -683,7 +683,8 @@ export const MACHINE_STALE_OFFLINE_MS = 150_000;
 /** 陈旧扫掠：在线且 lastSeenAt 超 MACHINE_STALE_OFFLINE_MS 未更新的机器 →
  * markOffline（与 SSE abort 同一漏斗，事件面/幂等共享）。scheduler tick 驱动
  * （与三个步扫尾同拍，先于它们跑——同 tick 翻 offline，步的离线判据立即可
- * 见）。纪律（票 #1136 风险面）：
+ * 见；调度侧不传 tick 的合成 now——见 scheduler.ts 的钟面注释）。纪律（票
+ * #1136 风险面）：
  * - **只翻 online、不动步**：钉选宽限/释放/扫尾（#862/#864/#881 的
  *   「有界等待」家族）以 machine.online 为前提、各有自己的判据与宽限，本
  *   sweep 只负责让前提为真，不越权释放。
@@ -696,7 +697,10 @@ export const MACHINE_STALE_OFFLINE_MS = 150_000;
  *   sweep 是 online 翻转的第二真值源，#861「步永久 claimed」的最后残余
  *   入口。多实例同库各自扫：markOffline 幂等（再读再判），重复事件对 UI
  *   无害（同态幂等）。 */
-export function sweepStaleMachines(deps: Pick<MachineDeps, 'db' | 'hub'>, now: number): void {
+export function sweepStaleMachines(
+  deps: Pick<MachineDeps, 'db' | 'hub'>,
+  now: number = nowMs(),
+): void {
   const { db } = deps;
   const stale = db
     .select({ id: machine.id })
