@@ -93,6 +93,11 @@ credentials.enc
 .claude/hillclimb/**/progress.txt
 .codegraph/
 
+# Tool-local state (design bridge, diagram/scratch tooling) — machine-local, never committed
+.agent-native/
+.archify/
+.commandcode/
+
 # playwright MCP session dir
 .playwright-mcp/
 
