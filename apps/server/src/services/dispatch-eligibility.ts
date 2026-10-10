@@ -37,8 +37,9 @@ export function runtimeGatePasses(
  *    列；测试已钉此口径，apps/server/test/review.test.ts）；
  *  - 其它步类：assignment 双槽按步类取（02 §4.2/r5 §5）——规划步 → plan 槽；
  *    执行/合并步 → build 槽（合并轮复用执行轮会话，同 Agent）。
- *  无 Agent（槽空 / review meta 无 agentId）= null：claim 面跳过该候选，
- *  sweep 面无从计算 runtime（无人可领的另一族缝，不进闸挡判）。 */
+ *  无 Agent（槽空 / 槽指向已删 Agent / review meta 无 agentId）= null：claim
+ *  面按失败收尾该步（#1104 B：applyStepFailure 落 build.errorMessage + todo
+ *  → failed 终态，不再静默跳过候选）；sweep 面无从计算 runtime（不进闸挡判）。 */
 export function agentForStep(
   db: Db,
   todoRow: typeof todo.$inferSelect,
@@ -58,4 +59,24 @@ export function agentForStep(
   const agentId = slot?.agentId ?? null;
   if (!agentId) return null;
   return db.select().from(agent).where(eq(agent.id, agentId)).get() ?? null;
+}
+
+/** #1104 B 无主步失败文案（agentForStep 返 null 的三族分类）：assignment 槽
+ * 空 / 槽指向已删 Agent / review meta 缺 agentId。与 agentForStep 同文件同
+ * 槽位映射（kind → plan/build 槽只此一处），各族点名各自的补法，落
+ * build.errorMessage（看板失败终态可见），claim 面失败收尾时消费。 */
+export function unassignedStepReason(
+  todoRow: typeof todo.$inferSelect,
+  kind: StepKind,
+  prompt: string | null,
+): string {
+  if (kind === 'review') {
+    return 'review 步无 Agent：审核 prompt meta 未携带 agentId，无人可领。';
+  }
+  const slot = kind === 'plan' ? todoRow.assignment?.plan : todoRow.assignment?.build;
+  const slotName = kind === 'plan' ? 'plan' : 'build';
+  if (slot?.agentId == null) {
+    return `${slotName} 步无指派 Agent：assignment 的 ${slotName} 槽为空，无人可领。指派 Agent 后重新运行任务。`;
+  }
+  return `${slotName} 步指派的 Agent 不存在（agentId ${slot.agentId} 已删除或不在本团队），无人可领。改派 Agent 后重新运行任务。`;
 }

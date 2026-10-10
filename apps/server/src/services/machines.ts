@@ -87,6 +87,7 @@ import {
   applyStepFailure,
   applyStoppedStep,
   completeStep,
+  failStepWithEvents,
   NotFoundError,
   toBuildRecord,
 } from './builds.js';
@@ -116,6 +117,7 @@ import {
   agentForStep as agentForStepEligibility,
   runtimeGatePasses,
   stepRuntimeFor,
+  unassignedStepReason,
 } from './dispatch-eligibility.js';
 import { SESSION_WEDGE_GRACE_MS, stepActivityAt } from './dispatch-timeouts.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
@@ -926,8 +928,23 @@ function tryClaim(
 
   for (const cand of workerCands) {
     const agentRow = agentForStep(deps, cand.todoRow, cand.stepRow.kind, cand.stepRow.prompt);
-    // 未指派 Agent = 不可执行（Agent 可空是 UI 语义，派发需模型位 [设计]）。
-    if (!agentRow?.modelId) continue;
+    // #1104 B：无 Agent（assignment 槽空 / 槽指向已删 Agent / review meta 缺
+    // agentId）= 永无人可领——按失败收尾（step failed + build.errorMessage 落
+    // 根因 + todo → failed 终态 + 事件面，与失联扫尾同一漏斗
+    // builds.failStepWithEvents），不再静默跳过。chief 入口的无主派发已由
+    // run_builds 400 打回（#1104 A）；此处收 scheduler/REST 等入口漏进来的
+    // 无主步。失败只作用于本候选：同批更晚的合法候选照常认领（无队头阻塞）。
+    if (agentRow === null) {
+      failStepWithEvents(
+        deps,
+        cand.stepRow,
+        unassignedStepReason(cand.todoRow, cand.stepRow.kind, cand.stepRow.prompt),
+      );
+      continue;
+    }
+    // Agent 在但无模型位 = 不可领（Agent 可空是 UI 语义，派发需模型位
+    // [设计]）。补模型后该步可恢复，不按失败收口——#1104 只收「无 Agent」族。
+    if (!agentRow.modelId) continue;
     // #682 enabledRuntimes 真闸：机器未开步所需 runtime = 不可领（步留
     // pending 给能跑的机器——机器开 pi、步跑 claude-code agent = 不投给该机）。
     if (!runtimeGatePasses(machineRow, agentRow.provider)) continue;

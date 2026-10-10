@@ -477,7 +477,7 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
     // 「多问一次」）。dispatchReason 把判定理由落进 transcript（回执可
     // 审计、用户可就地一句话推翻）。直修只跳过方案确认——审阅闸恒在。
     description:
-      'Start builds for todos: assignment picks the executing agent per responsibility fit; withPlan is your per-dispatch judgment (omit = plan first) — state the reason via dispatchReason; the review gate applies either way.',
+      'Start builds for todos: assignment picks the executing agent per responsibility fit; withPlan is your per-dispatch judgment (omit = plan first) — state the reason via dispatchReason; the review gate applies either way. Assignment must set at least one slot (plan and/or build agentId) — an empty assignment is rejected.',
     parameters: obj(
       {
         todoIds: idArr('Todo ids to start.'),
