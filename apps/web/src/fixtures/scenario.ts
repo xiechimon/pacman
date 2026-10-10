@@ -50,6 +50,7 @@ import {
   compareMenuV2,
   detailBuilding,
   detailConfirm,
+  detailDiffWordStress,
   detailDone,
   detailFailed12,
   detailFailed15Set,
@@ -215,6 +216,11 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // loading-dev Atom) + the static 执行中... label row;
       // spinner-live.spec rides it.
       'spinner-quiescent': detailSpinnerQuiescent(),
+      // #1101 named scenario (no capture, chief-threads-long precedent):
+      // review 面 + diff 压力变更集——单词级 del/add 对、不等长 run、marker
+      // 隔开的对、超长行与超限对；diff-word-highlight.spec 钉词级高亮与
+      // 横向滚动下的底色宽度契约。
+      'diff-word-stress': detailDiffWordStress(),
       // frozen right-pane views (issue #68 captures, re-homed by #366):
       // 30/31/32 sit on the review surface with diff + tool rows expanded,
       // exactly as the captures froze them — the former token/branch/

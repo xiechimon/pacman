@@ -28,7 +28,7 @@
 import type { DiffFileContent } from '@pacman/shared';
 import { cn } from 'cn';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useBuildChangeFile } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
@@ -59,6 +59,7 @@ import {
 } from '../icons/index.js';
 import { type DocTypeLabel, PaneTypeSelect } from '../overlays/plan-dropdown.js';
 import { Segments } from './segments.js';
+import { computeHunkWordDiff } from './word-diff.js';
 
 interface DocPaneProps {
   /** plan: 方案 header + markdown; changes: diff surface (review/done/
@@ -120,6 +121,14 @@ const DIFF_KIND_SKIN: Record<string, string> = {
   marker: 'bg-transparent text-(--text-tertiary)',
   context: '',
 };
+// #1101 词级层：配对 del/add 行内变化的词骑更深/更饱和的底。token 明暗双
+// 模定义在 shadcn.css（fg 对比度与可区分度实测读数 docs/verify/1101/
+// contrast.txt）。状态载体走 data-word（#945 裁定：状态归数据，不新增
+// 结构类名）。
+const WORD_SKIN: Record<string, string> = {
+  add: 'bg-(--diff-add-word-bg)',
+  del: 'bg-(--diff-del-word-bg)',
+};
 
 /** 全文视图状态（#225，镜像 #202 deriveFileView 五态）：hidden = hunk 面；
  *  loading/error 仅 fetch 面可达（changes 面 live）；binary = 不可预览态
@@ -170,6 +179,12 @@ function DiffFileBlock({
   const fetchLive = live && buildId != null;
   const fullQ = useBuildChangeFile(buildId, showFull ? file.path : null, fetchLive);
   const full = deriveFullFileView(fetchLive, showFull, file.fullContent ?? null, fullQ);
+  // #1101 词级配对是渲染层纯计算（word-diff.ts 头部注释 = 配对规则正本）。
+  // memo 挂 hunks 身份：showFull 翻转等本地态重渲不重算；cap 兜住最坏成本。
+  const wordDiffs = useMemo(
+    () => file.hunks.map((hunk) => computeHunkWordDiff(hunk.lines)),
+    [file.hunks],
+  );
   return (
     <div>
       {/* 文件行骑 surface-secondary（r7 27 双模）：chevron + 路径 + 👁 +
@@ -195,34 +210,62 @@ function DiffFileBlock({
       {expanded && (
         <div>
           {full.kind === 'hidden' &&
-            file.hunks.map((hunk) => (
-              <div key={hunk.header}>
-                <div className="diff-hunk-head border-y border-(--border) bg-(--secondary) pl-[53px] font-mono text-[11px] leading-[22px] text-(--text-tertiary)">
-                  {hunk.header}
-                </div>
-                {hunk.lines.map((line, i) => (
-                  // fixture order is stable; lines carry no ids
-                  <div
-                    key={i}
-                    className={`diff-line--${line.kind} ${DIFF_LINE} ${
-                      DIFF_KIND_SKIN[line.kind] ?? ''
-                    }`}
-                    data-kind={line.kind}
-                  >
-                    <span data-no="old" className={`${DIFF_NO} w-[18px]`}>
-                      {line.oldNo ?? ''}
-                    </span>
-                    <span data-no="new" className={`${DIFF_NO} w-[19px]`}>
-                      {line.newNo ?? ''}
-                    </span>
-                    <span className="w-[11px] flex-none text-center text-(--diff-add-fg)">
-                      {line.kind === 'add' ? '+' : line.kind === 'del' ? '-' : ''}
-                    </span>
-                    <span className="pl-1.5 whitespace-pre">{line.text}</span>
+            file.hunks.map((hunk, hi) => {
+              const wordDiff = wordDiffs[hi];
+              return (
+                <div key={hunk.header}>
+                  <div className="diff-hunk-head border-y border-(--border) bg-(--secondary) pl-[53px] font-mono text-[11px] leading-[22px] text-(--text-tertiary)">
+                    {hunk.header}
                   </div>
-                ))}
-              </div>
-            ))}
+                  {hunk.lines.map((line, i) => {
+                    const segs = wordDiff?.segments.get(i);
+                    const isCapped = wordDiff?.capped.has(i) === true;
+                    return (
+                      // fixture order is stable; lines carry no ids
+                      <div
+                        key={i}
+                        className={`diff-line--${line.kind} ${DIFF_LINE} ${
+                          DIFF_KIND_SKIN[line.kind] ?? ''
+                        }`}
+                        data-kind={line.kind}
+                        // #1101 超限对退整行高亮，且不静默：capped 载体 +
+                        // hover 说明（word-diff.ts 的 cap 常量是判据正本）。
+                        data-word={isCapped ? 'capped' : undefined}
+                        title={isCapped ? t('行过长，已退回整行高亮') : undefined}
+                      >
+                        <span data-no="old" className={`${DIFF_NO} w-[18px]`}>
+                          {line.oldNo ?? ''}
+                        </span>
+                        <span data-no="new" className={`${DIFF_NO} w-[19px]`}>
+                          {line.newNo ?? ''}
+                        </span>
+                        <span className="w-[11px] flex-none text-center text-(--diff-add-fg)">
+                          {line.kind === 'add' ? '+' : line.kind === 'del' ? '-' : ''}
+                        </span>
+                        <span className="pl-1.5 whitespace-pre">
+                          {segs == null
+                            ? line.text
+                            : segs.map((seg, si) =>
+                                seg.changed ? (
+                                  // segment order is stable; fragments carry no ids
+                                  <span
+                                    key={si}
+                                    data-word={line.kind}
+                                    className={WORD_SKIN[line.kind]}
+                                  >
+                                    {seg.text}
+                                  </span>
+                                ) : (
+                                  seg.text
+                                ),
+                              )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           {full.kind === 'text' && (
             <div data-testid="diff-full">
               {full.content
@@ -516,14 +559,24 @@ export function DocPane({
         </header>
         {hasData ? (
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {files.map((file) => (
-              <DiffFileBlock
-                key={file.path}
-                file={file}
-                expanded={expanded}
-                buildId={mode === 'changes' ? (buildId ?? null) : null}
-              />
-            ))}
+            {/* #1101 症状①（GitHub 形态，保留横向滚动）：行盒是 block 级
+                flex，宽 = 容器宽，而 whitespace-pre 的长行溢出行盒——底色
+                只画到视口宽，右滚即裸底。内层 w-max min-w-full 把「一行宽」
+                抬成「整个文件栈最宽行的宽」：所有块级行盒（diff 行/hunk 头/
+                文件行/全文行）自然撑满滚动宽，底色跟到最右端；内容不溢出
+                时 min-w-full 与原布局逐像素等价。表格布局（display:table）
+                是票面另一候选——弃用理由：要重写每行的 flex 行盒与 17/22px
+                钉死几何，波及全部既有 e2e 载体，成本与风险都高于单盒方案。 */}
+            <div className="w-max min-w-full">
+              {files.map((file) => (
+                <DiffFileBlock
+                  key={file.path}
+                  file={file}
+                  expanded={expanded}
+                  buildId={mode === 'changes' ? (buildId ?? null) : null}
+                />
+              ))}
+            </div>
           </div>
         ) : (
           // changes-empty 占位（r7 38）：整 pane 居中、头上无 band——
