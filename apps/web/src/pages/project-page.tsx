@@ -31,7 +31,7 @@ import { mapCommits, mapDiffFiles, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
 import { Badge } from '../components/ui/badge.js';
-import { Button, buttonVariants } from '../components/ui/button.js';
+import { Button } from '../components/ui/button.js';
 import { Card } from '../components/ui/card.js';
 import {
   DropdownMenu,
@@ -1028,14 +1028,16 @@ export function ProjectPage() {
           // 场景）。形态 = todos.dev 项目页实测（ego-browser 2026-10-10）：
           // topbar 右缘动作区齿轮（28×28 命中 / 16px lucide settings 形）→
           // 设置路由；search 随行保 fixture scenario（team-page 设置链同律）。
-          // registry ghost icon-sm 件（buttonVariants + Link），零手写 per-face。
-          <Link
-            className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
-            to={{ pathname: `/app/project/${id}/settings`, search }}
+          // registry ghost icon-sm 钮经 render prop 落 router Link（dhead 返回
+          // 钮同款 #1006 形态，锚语义保留）；零手写 per-face。
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            render={<Link to={{ pathname: `/app/project/${id}/settings`, search }} />}
             aria-label={t('设置')}
           >
             <Settings />
-          </Link>
+          </Button>
         )
       }
     >
