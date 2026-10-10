@@ -69,7 +69,7 @@ const SKIN = {
     headBtn:
       "h-6 -my-0.5 cursor-pointer rounded-none justify-start border-none bg-transparent py-0.5 text-left text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto",
     spinner:
-      'flex-none text-(--card-button) animate-[spinner-breathe_1800ms_var(--ease-standard)_infinite] motion-reduce:animate-none',
+      'flex-none text-(--card-button) animate-[spinner-breathe_3600ms_var(--ease-standard)_infinite] motion-reduce:animate-none',
     secs: 'tabular-nums',
     /** #910 二级载体：live 行是无 role 结构位；spinner 是库件封闭 props
      *  （loading-dev SpinnerProps 无 data-* 透传），spec 按 row scope +
@@ -87,7 +87,7 @@ const SKIN = {
     headBtn:
       "-my-[1.5px] h-auto cursor-pointer rounded-none justify-start border-none bg-transparent py-[1.5px] text-left text-sm leading-normal font-normal hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto",
     spinner:
-      'flex-none animate-[spinner-breathe_1800ms_var(--ease-standard)_infinite] text-(--card-button) motion-reduce:animate-none',
+      'flex-none animate-[spinner-breathe_3600ms_var(--ease-standard)_infinite] text-(--card-button) motion-reduce:animate-none',
     secs: 'tabular-nums',
     label: 'truncate text-(--text-tertiary)',
   },
@@ -139,7 +139,7 @@ export function LiveRow({
   const skin = SKIN[variant];
   const body = (
     <>
-      <Atom size={16} duration={900} className={skin.spinner} />
+      <Atom size={16} duration={1800} className={skin.spinner} />
       {shown != null && <span className={skin.secs}>{shown}s</span>}
       {disclosure != null &&
         (expanded ? (

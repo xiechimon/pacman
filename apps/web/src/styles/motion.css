@@ -19,7 +19,7 @@
        reset——tab pill 的 150ms transition 滑动与 spinner 面走各自文件的
        reduced-motion 处理，不在此列）。
      - spinner-breathe 共享 keyframes（#821：在飞 loading 的呼吸脉冲——
-       opacity + scale 双通道，1.8s = Atom 900ms 自旋周期的两倍，避开拍频；
+       opacity + scale 双通道，3.6s = Atom 1800ms 自旋周期的两倍，避开拍频；
        颜色与 reduced-motion 静止态走各自文件的 spinner 类，不在此列）。 */
 
 /* r1 §4.3 convention: the whole site degrades motion under
@@ -162,7 +162,7 @@ body[data-board-dragging] {
 
 /* #821 in-flight spinner breathe: the shared pulse for the loading-dev Atom
    roots (.chief-spinner in chief.css, .chat-spinner in detail.css). Opacity +
-   scale only (compositor lanes, no layout); 1800ms is twice the Atom 900ms
+   scale only (compositor lanes, no layout); 3600ms is twice the Atom 1800ms
    spin period so the pulse never beats against the orbits; ease rides the
    --ease-standard token. The animation lives on the library root while the
    spins run one level down (.ld-atom-spin), so the two never override each
