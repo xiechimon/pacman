@@ -470,6 +470,12 @@ export const machine = sqliteTable('machine', {
    * tryClaim 数本机 claimed 步）+ daemon 本地闸（GET me 读数）+ 机器页
    * `执行中 n/N` 读标注与 PATCH 写位。 */
   maxConcurrent: integer('maxConcurrent').notNull().default(3),
+  /** 最近一次 presence 心跳时刻（#1136）：markPresence 每拍覆写，陈旧判定
+   * （sweepStaleMachines）的第二真值源——online 的第一翻转源 SSE abort
+   * 抓不住静默死机（无 FIN）。NULL = 从未走过新 markPresence（升级前
+   * 存量行）：无数据不判，下一拍 presence（≤30s）补齐，绝不当场翻
+   * offline。 */
+  lastSeenAt: epochMs('lastSeenAt'),
 });
 
 // —— shell_command（XMON-108 R1 机器 shell 审计）：预检/回写两写端点的
