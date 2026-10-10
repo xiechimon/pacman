@@ -190,6 +190,13 @@ export const claimedStepSchema = z.object({
        * 约束）。无版本墙：纯增可选字段，旧 daemon 忽略 = 现行为全量直通，
        * 不存在 MCP slug 断约那种混发形状失败模式。 */
       skills: z.array(z.string()).optional(),
+      /** #1106 派发技能注入选择（worker 步恒携带含空数组）：本步任务 brief
+       * 实际注入的技能 id 集（= 服务端按任务文本对授予集规则选出的子集；
+       * [] = 已计算零命中——零注入不是故障；缺省 = 旧 server 未做选择，
+       * 目录注入回落 agent.skills 白名单全量）。ids ⊆ skills（授权上限
+       * 不变——denied 判定仍吃 skills，本字段只收窄目录注入面）。纯增
+       * 可选字段：旧 daemon 忽略 = 现行为，无版本墙。 */
+      injectedSkills: z.array(z.string()).optional(),
       /** 权限开关已开集（XMON-77）：词表 = AGENT_TOOL_SWITCHES 六档（XMON-84
        * 用户拍板 B 恢复全六档），执法落点 = daemon 收尾闸（merge fail-fast +
        * push 软拒）与 server requestMerge 闸——只消费 合并分支/推送分支 两

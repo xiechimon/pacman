@@ -1033,6 +1033,7 @@ export function failAbandonedChiefSteps(
       createdAt: row.createdAt,
       status: 'failed',
       checkpointCommit: row.checkpointCommit,
+      skillInjection: row.skillInjection ?? null,
     });
   }
 }

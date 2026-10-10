@@ -1,0 +1,14 @@
+[
+  {
+    "id": "JbSZyKK3A13X43O0a6h5n",
+    "buildId": "01a12396-895b-7a9d-ba54-81272753b4c3",
+    "kind": "build",
+    "machineId": "ECaq7BrkGqXPfnhDPcD9a",
+    "createdAt": 1791598430555,
+    "status": "claimed",
+    "checkpointCommit": null,
+    "skillInjection": {
+      "hits": []
+    }
+  }
+]

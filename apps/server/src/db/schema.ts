@@ -15,6 +15,7 @@ import type {
   ProviderApi,
   ProviderCompat,
   ProviderModel,
+  SkillInjectionRecord,
   StepKind,
   TodoSourceKind,
   TriggerSource,
@@ -185,6 +186,13 @@ export const step = sqliteTable('step', {
    * 裁定「只复用分支、上下文真空」——分支继续、会话全新）；后续步照常续接
    * 本轮新开的会话。 */
   freshSession: bool('freshSession').notNull().default(false),
+  /** [内部] #1106 派发技能注入选择：worker 步 claim 时服务端对「任务文本 ×
+   * 授予技能目录」的规则选择结果（每条命中含规则与原因，形状单源 =
+   * shared skillInjectionSchema）。null = 未计算（chief 步 / 旧数据）；
+   * hits=[] = 已计算零命中（零注入不是故障）。ids 经 claim 载荷
+   * agent.injectedSkills 透传 daemon 收窄目录注入；本列 = 任务详情面的
+   * 回查正本（「本任务注入了哪些技能、为何选中」）。 */
+  skillInjection: json<SkillInjectionRecord>('skillInjection'),
   createdAt: epochMs('createdAt').notNull(),
 });
 

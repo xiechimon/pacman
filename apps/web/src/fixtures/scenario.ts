@@ -93,6 +93,8 @@ import {
   schedulesFormDaily,
   schedulesFormOnce,
   schedulesList,
+  skillInject,
+  skillInjectZero,
   skillsRouting,
   teamGrid,
   teamOrgChart,
@@ -204,6 +206,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // routing rows (read + blocked) in the thread column and the 技能
       // summary section row in the pane type select
       'skills-routing': skillsRouting,
+      // #1106 named scenario（skills-routing 先例）：注入回查行正例 + 零命中对照
+      'skill-inject': skillInject,
+      'skill-inject-zero': skillInjectZero,
       // #443 named scenario (no capture, notify-banner precedent): scenario
       // 16's planning surface + chiefUnread 3 — the unread-gated detail FAB
       // face (badge pass-through pin; the shell-consistency detail row and

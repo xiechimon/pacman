@@ -3137,6 +3137,69 @@ export const skillsRouting: FixtureSet = {
   },
 };
 
+/** #1106 named scenario（无 capture，skills-routing 先例）：派发技能注入
+ *  回查行（详情面持久一份）的渲染钉扎——live 面由 mapTranscript 从
+ *  step.skillInjection 派生（unit：injected-skills-row.test.ts + live 探针
+ *  docs/verify/1106/）；fixture 捕获面无 step 数据源，行以冻结 view item
+ *  直供本场景钉渲染缝（行形/原因随行/零命中占位）。 */
+const SKILL_INJECT_TRANSCRIPT: TranscriptItem[] = [
+  { kind: 'run', at: '13:35', machine: 'xmonsMac-3574' },
+  {
+    kind: 'injected-skills',
+    skills: [
+      {
+        id: 'better-typography',
+        reason: '任务文本与技能同域「前端界面」（任务命中「字号」，技能描述命中「ui」）',
+      },
+      { id: 'tdd', reason: '任务文本显式点名「tdd」' },
+    ],
+  },
+  {
+    kind: 'user',
+    text: '修复看板卡片的字号过小与换行溢出',
+    seq: 9,
+    title: '字号与换行修复',
+  },
+  {
+    kind: 'robot',
+    paragraphs: [[{ text: '已修复字号与换行。' }]],
+    footer: { seconds: 12 },
+  },
+];
+
+/** 零命中对照面：已计算零命中的行 = 「未注入技能」占位（配置事实可见，
+ *  不是行缺席——与 skills-routing 的零噪声对照（27 场景）语义相反）。 */
+const SKILL_INJECT_ZERO_TRANSCRIPT: TranscriptItem[] = [
+  { kind: 'run', at: '13:35', machine: 'xmonsMac-3574' },
+  { kind: 'injected-skills', skills: [] },
+  {
+    kind: 'user',
+    text: '把首页轮播图换成静态图',
+    seq: 10,
+    title: '轮播图静态化',
+  },
+];
+
+export const skillInject: FixtureSet = {
+  todos: [probeTodo('review', r7(13, 37))],
+  now: r7(13, 40),
+  detail: {
+    transcript: SKILL_INJECT_TRANSCRIPT,
+    doc: DOC_V2,
+    changes: probeChanges(true),
+  },
+};
+
+export const skillInjectZero: FixtureSet = {
+  todos: [probeTodo('review', r7(13, 37))],
+  now: r7(13, 40),
+  detail: {
+    transcript: SKILL_INJECT_ZERO_TRANSCRIPT,
+    doc: DOC_V2,
+    changes: probeChanges(true),
+  },
+};
+
 /** r8 63: version dropdown open on the v2 surface. */
 export const versionMenuV2: FixtureSet = withDetail(detailV2(r8(23, 54)), {
   versionMenu: 'versions',

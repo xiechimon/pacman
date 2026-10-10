@@ -511,6 +511,22 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
       ...(machineName !== null ? { machine: machineName } : {}),
       ...(cancelled ? { cancelled: true } : {}),
     });
+    // #1106 注入选择回查行（票面验收 4）：本 build 各步 claim 落库的
+    // step.skillInjection 汇总——技能 id 首见序、reason 取首见条目。任一步
+    // 有记录（含 hits=[]，已计算零命中）即产行；全部 null（chief 面 / 旧
+    // server）不产行零噪声。
+    if (steps.some((s) => s.skillInjection != null)) {
+      const seen = new Map<string, string>();
+      for (const s of steps) {
+        for (const hit of s.skillInjection?.hits ?? []) {
+          if (!seen.has(hit.id)) seen.set(hit.id, hit.reason);
+        }
+      }
+      head.push({
+        kind: 'injected-skills',
+        skills: [...seen].map(([id, reason]) => ({ id, reason })),
+      });
+    }
   }
 
   // #634: host 工具结果回声（pi 的 tool-result 消息以 role=system 文本块落库）
