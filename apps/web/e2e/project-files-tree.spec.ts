@@ -18,7 +18,9 @@ import { expect, type Page, test } from '@playwright/test';
 //   W6 切目录加载期闪空态 — tree 请求在途时演加载态，落定后才判空；
 //   W7 文件行零回归 — 点 blob 行选中态（aria-current）与查看器内容照旧；
 //   W8 tree 读失败被演成空目录 — 读失败是诚实态单列（「文件树读取失败。」），
-//      空文案只留给真空目录（code-review #1097 spec 轴抓的状态机洞）。
+//      空文案只留给真空目录（code-review #1097 spec 轴抓的状态机洞）；
+//   W9 展示序漂移 — 文件夹组置顶、组内字母序（用户 2026-10-10 反馈；桩顶层
+//      故意乱序，DOM 行序必须收敛到 apps/docs/README.md/zebra.md）。
 
 const PROJECT_ID = 'proj-1097';
 const PROJ = `/app/project/${PROJECT_ID}`;
@@ -56,8 +58,10 @@ const tree = (path: string): WireEntry => ({
 });
 
 /** 目录 path → 该层 entries（server lsTree 同形：name 裸名、path 全路径）。 */
+// 顶层故意乱序供 W9 钉展示序（文件夹组置顶 + 组内字母序）；git 树序本身
+// 按「名 + /」排子树，与文件管理器直觉不同，排序是 web 显示层职责。
 const DIRS: Record<string, WireEntry[]> = {
-  '': [blob('README.md'), tree('docs'), tree('apps')],
+  '': [blob('zebra.md'), tree('docs'), blob('README.md'), tree('apps')],
   docs: [blob('docs/README.md'), blob('docs/setup.md'), tree('docs/guide')],
   'docs/guide': [blob('docs/guide/deep.md')],
   apps: [],
@@ -215,6 +219,14 @@ test('W6 切目录加载期演加载态，落定后才判空', async ({ page }) 
   await expect(page.getByText('此目录为空。')).toHaveCount(0);
   // 落定 = 空态
   await expect(page.getByText('此目录为空。')).toBeVisible({ timeout: 5_000 });
+});
+
+test('W9 展示序：文件夹组置顶，组内字母序', async ({ page }) => {
+  await stubWorld(page);
+  await page.goto(PROJ);
+  await expect(fileRow(page, 'README.md')).toBeVisible();
+  const names = (await page.locator('.prj-file-row').allTextContents()).map((s) => s.trim());
+  expect(names).toEqual(['apps', 'docs', 'README.md', 'zebra.md']);
 });
 
 test('W8 tree 读失败 → 诚实态文案，不演空目录', async ({ page }) => {

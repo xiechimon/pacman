@@ -717,9 +717,17 @@ export function ProjectPage() {
   const treeError = live && treeQ.isError && !isLocalRepo;
   // #1097 行数据单源：live = tree 载荷 entries 原样（type/path 终于被消费）；
   // fixture = string 文件退化顶层 blob 行（无目录，path=name）。
-  const fileRows: FileTreeRow[] = live
-    ? (treeQ.data?.entries ?? []).map((e) => ({ name: e.name, path: e.path, type: e.type }))
-    : (project?.files ?? []).map((f) => ({ name: f, path: f, type: 'blob' as const }));
+  // 展示序（用户 2026-10-10 反馈）：文件夹组置顶、组内各自字母序——git 树序
+  // 把子树按「名 + /」排（docs 与 docs.md 交错），不是文件管理器直觉；排序是
+  // 显示层关注点，wire 保持 git 真值不动。
+  const fileRows: FileTreeRow[] = useMemo(() => {
+    const rows = live
+      ? (treeQ.data?.entries ?? []).map((e) => ({ name: e.name, path: e.path, type: e.type }))
+      : (project?.files ?? []).map((f) => ({ name: f, path: f, type: 'blob' as const }));
+    return rows.sort((a, b) =>
+      a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'tree' ? -1 : 1,
+    );
+  }, [live, treeQ.data, project]);
   // 文件查看器选中态(#202):存 (projectId, path) 对——路由切换项目时
   // 组件不重挂载,旧项目选中不串场。live 读面点击触发 = 天然惰性;非托管
   // 形态 tree 同族 404 无行可点,误点落「文件加载失败」诚实态,不做
