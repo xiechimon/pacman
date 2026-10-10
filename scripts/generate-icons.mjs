@@ -147,6 +147,16 @@ const EXTRA_ICONS = [
     trace: 'a 1:1 trace of the r5 100 bitmap example glyph (lucide folder shape)',
   },
   {
+    // #1097 project files-pane folder rows（目录下钻）：与 ChiefFolder 同一
+    // lucide folder 字形，走 #249 别名通道发第二个语义名——chief 面继续用
+    // ChiefFolder，项目文件面不借 Chief* 名。
+    name: 'Folder',
+    size: [14, 14],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>',
+    contexts: ['project files pane folder row (#1097)'],
+    trace: 'same lucide folder shape as the r5 100 trace (ChiefFolder alias, #249 path)',
+  },
+  {
     name: 'ChiefUserSolid',
     size: [24, 24],
     svg: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="8" r="4"></circle><path d="M4 19c0-3.5 3.6-5.5 8-5.5s8 2 8 5.5v1.5H4Z"></path></svg>',

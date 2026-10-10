@@ -377,3 +377,147 @@ describe('body 双名兼容：kind（spec 12 契约）与 repoKind（既有 wire
     expect(hit?.repoKind).toBe('local');
   });
 });
+
+// —— tree 路由 path 参数透传（#1097）：readTree/lsTree 早就支持子目录，
+// 路由层从未把 `path` query 接出去 → 前端永远只见顶层、点目录必落
+// 「文件加载失败」。失败方式先列（仓测试纪律，本 describe 即场景清单）：
+//   P1 tree?path=docs → 只回 docs 单层，entries 的 path 全带 docs/ 前缀、
+//      name 是裸名，且 path 回显 'docs'——不再混回顶层条目；
+//   P2 深层嵌套（≥3 层）逐层可下钻：path=docs/guide 回其单层；
+//   P3 无 path / path 空串 → 顶层 + path 回显 ''（既有行为零回归）；
+//   P4 同名文件（根 README.md vs docs/README.md）在 file 读面各自回各自
+//      真值——「选中键用完整路径不串」的服务端半边；
+//   P5 path 指向不存在的目录 → 200 + 空 entries（git ls-tree 语义，
+//      web 侧据此演空目录态，不 500）。
+describe('tree 路由 path 参数透传（#1097）', () => {
+  // 与 #1030 读面同款隔离：防用户 git 配置干扰提交；提交身份固定 env。
+  const GIT_ENV = {
+    GIT_CONFIG_GLOBAL: '/dev/null',
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_AUTHOR_NAME: 'tree-path-probe',
+    GIT_AUTHOR_EMAIL: 'probe@localhost',
+    GIT_COMMITTER_NAME: 'tree-path-probe',
+    GIT_COMMITTER_EMAIL: 'probe@localhost',
+  };
+
+  interface TreeReply {
+    ref: string;
+    commit: string;
+    path: string;
+    entries: { name: string; path: string; type: string; size: number | null }[];
+  }
+
+  /** 嵌套仓：README.md + docs/README.md + docs/guide/deep.md（同名跨目录 +
+   *  3 层深嵌套，一把 fixture 盖住 P1/P2/P4）。 */
+  async function makeNestedRepo(): Promise<string> {
+    const dir = tempDir('pacman-tree-path-');
+    expect((await runGit(['init', '-b', 'trunk', dir], { env: GIT_ENV })).code).toBe(0);
+    mkdirSync(join(dir, 'docs', 'guide'), { recursive: true });
+    writeFileSync(join(dir, 'README.md'), '# root readme\n');
+    writeFileSync(join(dir, 'docs', 'README.md'), '# docs readme\n');
+    writeFileSync(join(dir, 'docs', 'guide', 'deep.md'), 'deep content\n');
+    for (const args of [
+      ['add', '.'],
+      ['commit', '-m', 'init nested probe'],
+    ] as string[][]) {
+      expect((await runGit(args, { cwd: dir, env: GIT_ENV })).code, args.join(' ')).toBe(0);
+    }
+    return dir;
+  }
+
+  async function makeNestedProject(): Promise<string> {
+    const repo = await makeNestedRepo();
+    const r = await postCreate({ name: 'p-tree-path', kind: 'local', localPath: repo });
+    expect(r.status).toBe(201);
+    return String(r.body.id);
+  }
+
+  test('P1 tree?path=docs → docs 单层 + path 回显，不混顶层条目', async () => {
+    const id = await makeNestedProject();
+    const res = await req(s.app, 'GET', `/api/projects/${id}/tree?path=docs`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TreeReply;
+    expect(body.path).toBe('docs');
+    expect(body.entries).toContainEqual({
+      name: 'README.md',
+      path: 'docs/README.md',
+      type: 'blob',
+      size: Buffer.byteLength('# docs readme\n'),
+    });
+    expect(body.entries).toContainEqual({
+      name: 'guide',
+      path: 'docs/guide',
+      type: 'tree',
+      size: null,
+    });
+    expect(body.entries.map((e) => e.path)).not.toContain('README.md');
+    expect(body.entries).toHaveLength(2);
+  });
+
+  test('P2 深层嵌套：path=docs/guide 回其单层（3 层可下钻）', async () => {
+    const id = await makeNestedProject();
+    const res = await req(
+      s.app,
+      'GET',
+      `/api/projects/${id}/tree?path=${encodeURIComponent('docs/guide')}`,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TreeReply;
+    expect(body.path).toBe('docs/guide');
+    expect(body.entries).toEqual([
+      {
+        name: 'deep.md',
+        path: 'docs/guide/deep.md',
+        type: 'blob',
+        size: Buffer.byteLength('deep content\n'),
+      },
+    ]);
+  });
+
+  test('P3 无 path / 空 path → 顶层 + path 回显空串（零回归）', async () => {
+    const id = await makeNestedProject();
+    for (const qs of ['', '?path=']) {
+      const res = await req(s.app, 'GET', `/api/projects/${id}/tree${qs}`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as TreeReply;
+      expect(body.path).toBe('');
+      expect(body.entries).toContainEqual({
+        name: 'README.md',
+        path: 'README.md',
+        type: 'blob',
+        size: Buffer.byteLength('# root readme\n'),
+      });
+      expect(body.entries).toContainEqual({
+        name: 'docs',
+        path: 'docs',
+        type: 'tree',
+        size: null,
+      });
+    }
+  });
+
+  test('P4 同名文件跨目录：file?path= 各回各的真值', async () => {
+    const id = await makeNestedProject();
+    const root = (await (
+      await req(s.app, 'GET', `/api/projects/${id}/file?path=README.md`)
+    ).json()) as { content: string };
+    expect(root.content).toBe('# root readme\n');
+    const nested = (await (
+      await req(
+        s.app,
+        'GET',
+        `/api/projects/${id}/file?path=${encodeURIComponent('docs/README.md')}`,
+      )
+    ).json()) as { content: string };
+    expect(nested.content).toBe('# docs readme\n');
+  });
+
+  test('P5 path 指向不存在目录 → 200 + 空 entries（web 空目录态的数据源）', async () => {
+    const id = await makeNestedProject();
+    const res = await req(s.app, 'GET', `/api/projects/${id}/tree?path=nope`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TreeReply;
+    expect(body.path).toBe('nope');
+    expect(body.entries).toEqual([]);
+  });
+});

@@ -288,6 +288,10 @@ export const EN: Record<string, string> = {
   文件: 'Files',
   历史: 'History',
   '尚无提交历史。': 'No commits yet.',
+  // #1097 files-pane folder drill-down
+  目录导航: 'Directory navigation',
+  根目录: 'Root',
+  '此目录为空。': 'This folder is empty.',
   '搜索任务…': 'Search todos…',
   搜索任务: 'Search todos',
   筛选: 'Filter',

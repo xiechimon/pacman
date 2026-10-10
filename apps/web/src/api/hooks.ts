@@ -41,6 +41,7 @@ import type {
   ProjectFileResponse,
   ProjectFilesResponse,
   ProjectRecord,
+  ProjectTreeResponse,
   ProviderPreset,
   ProviderRecord,
   ScheduleRecord,
@@ -516,18 +517,25 @@ export const useNotifications = (teamId: string | undefined, enabled: boolean) =
     enabled: enabled && teamId !== undefined,
   });
 
-export const useProjectTree = (projectId: string | undefined, ref: string | undefined) =>
+/** 单层树读面。path = 子目录下钻（#1097）：缺省/空串 = 顶层；path 进
+ *  queryKey——目录切换即换键，React Query 自然分缓存（在途态见
+ *  project-page 的加载/空态分支）。 */
+export const useProjectTree = (
+  projectId: string | undefined,
+  ref: string | undefined,
+  path: string | undefined,
+) =>
   useQuery({
-    queryKey: ['tree', projectId, ref],
-    queryFn: () =>
-      api.get<{
-        ref: string;
-        commit: string;
-        path: string;
-        entries: { name: string; type: string }[];
-      }>(
-        `/api/projects/${projectId}/tree${ref !== undefined ? `?ref=${encodeURIComponent(ref)}` : ''}`,
-      ),
+    queryKey: ['tree', projectId, ref, path],
+    queryFn: () => {
+      const qs = new URLSearchParams();
+      if (ref !== undefined) qs.set('ref', ref);
+      if (path !== undefined && path !== '') qs.set('path', path);
+      const query = qs.toString();
+      return api.get<ProjectTreeResponse>(
+        `/api/projects/${projectId}/tree${query !== '' ? `?${query}` : ''}`,
+      );
+    },
     enabled: projectId !== undefined,
   });
 
