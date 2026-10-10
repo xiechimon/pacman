@@ -211,7 +211,7 @@ function ensureLocalSkills() {
 }
 
 /** 团队库三技能：haiku-helper（两腿白名单内）+ haiku-local / secret-local。
- *  后两者同时进团队库是因为 agent.skills 的白名单引用在 server 侧按团队库
+ *  后两者同时进团队库是因为 agent.skillsAllowlist 的授权引用在 server 侧按团队库
  *  现扫过滤（死引用静默脱落）——deny 腿要白名单含 haiku-local，它就必须是
  *  团队库已知 id；secret-local 进库但无人白名单 → 永不分发，拒侧仍靠本机
  *  目录那份（同名冲突团队条目胜，本机 loser 不进拒绝集，读取照放行）。 */
@@ -337,7 +337,7 @@ async function phaseBehavior() {
     displayName: `route-real-919-${Date.now()}`,
     provider: 'claude-code',
     modelId: MODEL,
-    skills: ['haiku-helper'],
+    skillsAllowlist: ['haiku-helper'],
   });
   // hosted = 项目创建即 init bare repo + 种子 main（提交面断言与变更面截图
   // 都要 git 真值；缺省 manual 形态无仓库，产物进不了任何提交）。
@@ -531,7 +531,7 @@ async function phaseDenyUi() {
       displayName: `route-stub-919-${Date.now()}`,
       provider: 'stub-gw-919',
       modelId: 'stub-model',
-      skills: ['haiku-helper', 'haiku-local'],
+      skillsAllowlist: ['haiku-helper', 'haiku-local'],
     });
     const projRes = await jfetch('POST', '/api/projects', {
       body: { name: `probe-919-deny-${Date.now()}`, repoKind: 'hosted' },

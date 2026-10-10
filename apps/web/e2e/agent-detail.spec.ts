@@ -365,7 +365,8 @@ const LIVE_AGENT = {
   thinkingLevel: null,
   tools: [],
   secrets: [],
-  skills: [],
+  defaultSkill: null,
+  skillsAllowlist: null,
   mcpServers: [],
 };
 
@@ -422,6 +423,93 @@ test('权限 tab：保存成功不出错误行', async ({ page }) => {
   await page.locator('.agent-tab').nth(2).click();
   await page.locator('.agent-tool-switch').first().click();
   await expect(page.locator('.agent-perm-error')).toHaveCount(0);
+});
+
+// —— #1169 授权技能（权限 tab）+ 默认 skill（概览）——
+// 失败方式（先于实现固化）：
+// 1. 「不限制」（null）被序列化成省键（undefined = 不动）→ 开关关不掉，
+//    或关掉后回不来——显式 null 与省键必须两态。
+// 2. 「勾空」（[] = 显式全拒）被写成 null → 两概念塌回一个。
+// 3. defaultSkill 单值进了数组位（旧 skills[0] 形复活）或带上了授权面键。
+test('授权技能：不限制 ↔ 勾空互转发显式 null/[]；勾选只进数组槽', async ({ page }) => {
+  await stubLiveBoot(page);
+  const patches: Record<string, unknown>[] = [];
+  let agent: typeof LIVE_AGENT = { ...LIVE_AGENT };
+  await page.route('**/api/skills**', (route) =>
+    route.fulfill({
+      json: [
+        { id: 'skill-a', teamId: 'team-1', name: 'skill-a', description: null },
+        { id: 'skill-b', teamId: 'team-1', name: 'skill-b', description: null },
+      ],
+    }),
+  );
+  await page.route('**/api/teams/team-1/agents/agent-1', (route) => {
+    const req = route.request();
+    if (req.method() === 'PATCH') {
+      const body = req.postDataJSON() as Record<string, unknown>;
+      patches.push(body);
+      agent = { ...agent, ...body } as typeof LIVE_AGENT;
+      return route.fulfill({ json: agent });
+    }
+    return route.fulfill({ json: agent });
+  });
+
+  await page.goto('/app/resources/agents/agent-1');
+  await page.locator('.agent-tab').nth(2).click();
+  // 不限制（null）态：主开关开、逐技能行不渲染（全量已可读，逐项开关无语义）。
+  const master = page.locator('.agent-allowlist-switch');
+  await expect(master).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.agent-allowlist-row')).toHaveCount(0);
+  // 关「不限制」= 显式 []（勾空全拒——不是 null 的伪装）。
+  await master.click();
+  expect(patches.at(-1)).toEqual({ skillsAllowlist: [] });
+  await expect(master).toHaveAttribute('aria-checked', 'false');
+  await expect(page.locator('.agent-allowlist-row')).toHaveCount(2);
+  // 逐技能勾选：单值只进数组槽（不重排、不重复）。
+  await page.locator('.agent-allowlist-skill-switch').first().click();
+  expect(patches.at(-1)).toEqual({ skillsAllowlist: ['skill-a'] });
+  // 重开「不限制」= 显式 null（省键 = 不动，两态不塌缩——序列化坑主钉位）。
+  await master.click();
+  expect(patches.at(-1)).toEqual({ skillsAllowlist: null });
+  await expect(page.locator('.agent-allowlist-row')).toHaveCount(0);
+});
+
+test('默认 skill：单值 Select 只写 defaultSkill 槽，不带授权面键（两控件互不影响）', async ({ page }) => {
+  await stubLiveBoot(page);
+  const patches: Record<string, unknown>[] = [];
+  let agent: typeof LIVE_AGENT = { ...LIVE_AGENT };
+  await page.route('**/api/skills**', (route) =>
+    route.fulfill({
+      json: [
+        { id: 'skill-a', teamId: 'team-1', name: 'skill-a', description: null },
+      ],
+    }),
+  );
+  await page.route('**/api/teams/team-1/agents/agent-1', (route) => {
+    const req = route.request();
+    if (req.method() === 'PATCH') {
+      const body = req.postDataJSON() as Record<string, unknown>;
+      patches.push(body);
+      agent = { ...agent, ...body } as typeof LIVE_AGENT;
+      return route.fulfill({ json: agent });
+    }
+    return route.fulfill({ json: agent });
+  });
+
+  await page.goto('/app/resources/agents/agent-1');
+  // 概览「默认 skill」行：单值槽（清空行「未设置」= null）。句柄类定位
+  // （.agent-skill-select）——页上另有运行时/模型两个 combobox，getByRole
+  // 会撞 strict mode。
+  const select = page.locator('.agent-skill-select');
+  await expect(select).toContainText('未设置');
+  await select.click();
+  await page.getByRole('option', { name: 'skill-a' }).click();
+  expect(patches.at(-1)).toEqual({ defaultSkill: 'skill-a' });
+  await expect(select).toContainText('skill-a');
+  // 清空回 null（显式 null——单值槽不是数组位）。
+  await select.click();
+  await page.getByRole('option', { name: '未设置' }).click();
+  expect(patches.at(-1)).toEqual({ defaultSkill: null });
 });
 
 test('未知 agent id 不白屏，走回退呈现', async ({ page }) => {
@@ -620,11 +708,11 @@ test('记忆 tab：记忆行住在模板卡里', async ({ page }) => {
   await expect(card.locator('.profile-row.agent-memory-row')).toHaveCount(3);
 });
 
-test('权限 tab：三组开关各自住在模板卡里', async ({ page }) => {
+test('权限 tab：四组开关各自住在模板卡里（#1169 起新增授权技能段）', async ({ page }) => {
   const detail = await openDetail(page);
   await detail.locator('.agent-tab').nth(2).click();
   const cards = detail.locator('.agent-perms .profile-card');
-  await expect(cards).toHaveCount(3); // 工具 / 密钥 / MCP 服务器
+  await expect(cards).toHaveCount(4); // 工具 / 授权技能(#1169) / 密钥 / MCP 服务器
   // 六档工具开关全在工具组的卡里（不靠散行的 .agent-perm-row 撑）
   await expect(cards.first().locator('.profile-row')).toHaveCount(6);
   await expect(cards.first().locator('.agent-tool-switch')).toHaveCount(6);
@@ -643,9 +731,9 @@ test('记忆/权限卡：首行不吃卡的上圆角与描边（无方角外溢�
   await assertTopCorner(memoryFirst);
 
   await detail.locator('.agent-tab').nth(2).click();
-  // 3 张权限卡：工具 / 密钥（零密钥时空态也是模板行）/ MCP 服务器
+  // 4 张权限卡：工具 / 授权技能(#1169) / 密钥（零密钥时空态也是模板行）/ MCP 服务器
   const permFirst = detail.locator('.agent-perms .profile-card > .profile-row:first-child');
-  await expect(permFirst).toHaveCount(3);
+  await expect(permFirst).toHaveCount(4);
   await assertTopCorner(permFirst);
 });
 

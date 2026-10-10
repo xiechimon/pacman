@@ -156,11 +156,11 @@ beforeAll(async () => {
     claimHoldMs: 1_000,
     agentDescription: '你是集成测试 Agent：按指令使用工具，然后简短汇报。',
   });
-  // agent.skills 白名单勾选（#372）：worker 步只有授权 slug 进 catalog——
-  // demo-skill 勾选、extra-skill 不勾（空勾选 = 不注入任何 skill）。
+  // agent.skillsAllowlist 授权勾选（#372→#1169 正名）：worker 步只有授权
+  // slug 进 catalog——demo-skill 勾选、extra-skill 不勾。
   server.db
     .update(agentTable)
-    .set({ skills: ['demo-skill'] })
+    .set({ skillsAllowlist: ['demo-skill'] })
     .where(eq(agentTable.id, AGENT_ID))
     .run();
   home = mkdtempSync(join(tmpdir(), 'pacman-it-skills-home-'));

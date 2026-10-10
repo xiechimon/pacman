@@ -1883,7 +1883,8 @@ const AGENT_R3_BUILDER: AgentRecord = {
   thinkingLevel: null,
   tools: [],
   secrets: [],
-  skills: [],
+  defaultSkill: null,
+  skillsAllowlist: null,
   mcpServers: [],
 };
 

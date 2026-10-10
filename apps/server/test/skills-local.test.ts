@@ -347,56 +347,122 @@ describe('skills REST 面（现扫换源）', () => {
 
 // —— A agent 面（skills[] 校验 = 现扫存在性，未知 id 静默跳过）———————————————————
 
-describe('agent.skills 现扫校验（未知 id 容忍）', () => {
+describe('agent.skillsAllowlist / defaultSkill 现扫校验（#1169 拆字段）', () => {
+  // 失败方式（先于实现固化）：
+  // A1 POST 携未知 id 未滤除 → 死引用入库（现扫存在性同 filterKnownSkillIds 律）。
+  // A2 显式 null（不限制）被读成全拒 / 或被「缺省不动」吞掉 → UI 的「不限制」
+  //    开关写不回库（undefined = 不动 与 null = 清空 的序列化坑，两键必须
+  //    各自成槽——PATCH 不带 = 不动，带 null = 清成不限制）。
+  // A3 defaultSkill 单值进了数组位 / 或数组进了单值位 → 携带与授权两概念
+  //    又焊回一个槽（本票拆的就是这个）。
+  // A4 非空白名单零回归：勾选子集原样（过滤只作用于未知 id，不重排不丢项）。
+
   function setup() {
     const skillsDir = makeRoot();
     addSkill(skillsDir, 'deploy', { name: 'deploy' });
+    addSkill(skillsDir, 'review', { name: 'review' });
     const s = bootServer({ skillsDir });
     return { s, skillsDir };
   }
 
-  async function createAgent(s: TestServer, skills: string[]): Promise<string[]> {
+  async function createAgent(
+    s: TestServer,
+    body: Record<string, unknown>,
+  ): Promise<{ id: string; row: Record<string, unknown> }> {
     const res = await req(s.app, 'POST', `/api/teams/${s.team.id}/agents`, {
       displayName: 'a1',
-      skills,
+      ...body,
     });
     expect(res.status).toBe(201);
     const { id } = (await res.json()) as { id: string };
-    const got = await req(s.app, 'GET', `/api/teams/${s.team.id}/agents/${id}`);
-    return ((await got.json()) as { skills: string[] }).skills;
+    const got = await req(s.app, `GET`, `/api/teams/${s.team.id}/agents/${id}`);
+    const row = (await got.json()) as Record<string, unknown>;
+    return { id, row };
   }
 
-  test('A1：POST 携未知 id = 静默滤除，只存现扫已知 id（201 不报错）', async () => {
+  test('A1：POST skillsAllowlist 携未知 id = 静默滤除；缺省 = null（不限制，不再是 []）', async () => {
     const { s } = setup();
     try {
-      expect(await createAgent(s, ['deploy', 'ghost'])).toEqual(['deploy']);
+      expect((await createAgent(s, { skillsAllowlist: ['deploy', 'ghost'] })).row).toMatchObject({
+        skillsAllowlist: ['deploy'],
+        defaultSkill: null,
+      });
+      // 创建缺省（两字段都不带）= null/null：出生即不限制（#1169 主修位）。
+      expect((await createAgent(s, {})).row).toMatchObject({
+        skillsAllowlist: null,
+        defaultSkill: null,
+      });
     } finally {
       s.dispose();
     }
   });
 
-  test('A2/A3：PATCH 同律；全未知 = []；目录删除后旧引用随下次写入滤除', async () => {
-    const { s, skillsDir } = setup();
+  test('A2：PATCH 带 null = 显式清成不限制；不带字段 = 列不动（undefined 与 null 两态不得塌缩）', async () => {
+    const { s } = setup();
     try {
-      const created = await req(s.app, 'POST', `/api/teams/${s.team.id}/agents`, {
-        displayName: 'patchee',
-        skills: ['deploy'],
+      const { id, row } = await createAgent(s, { skillsAllowlist: ['deploy'] });
+      expect(row).toMatchObject({ skillsAllowlist: ['deploy'] });
+      // 显式 null → 清成不限制（UI「不限制」开关的写回路径）。
+      const cleared = await req(s.app, 'PATCH', `/api/teams/${s.team.id}/agents/${id}`, {
+        skillsAllowlist: null,
       });
-      const agentId = ((await created.json()) as { id: string }).id;
-      expect(agentId).toBeTruthy();
-      // 目录删除 → PATCH 携带死引用 = 静默滤除（A3 全未知 = []）
-      rmSync(join(skillsDir, 'deploy'), { recursive: true, force: true });
-      const patched = await req(s.app, 'PATCH', `/api/teams/${s.team.id}/agents/${agentId}`, {
-        skills: ['deploy', 'ghost'],
-      });
-      expect(patched.status).toBe(200);
-      expect(((await patched.json()) as { skills: string[] }).skills).toEqual([]);
-      // PATCH 不带 skills 字段 = 列不动（槽级 merge 既有律）
-      addSkill(skillsDir, 'review', { name: 'review' });
-      const other = await req(s.app, 'PATCH', `/api/teams/${s.team.id}/agents/${agentId}`, {
+      expect(cleared.status).toBe(200);
+      expect(((await cleared.json()) as Record<string, unknown>).skillsAllowlist).toBeNull();
+      // 不带字段 = 不动（undefined ≠ null：序列化只发显式 null）。
+      const untouched = await req(s.app, 'PATCH', `/api/teams/${s.team.id}/agents/${id}`, {
         displayName: 'renamed',
       });
-      expect(((await other.json()) as { skills: string[] }).skills).toEqual([]);
+      expect(((await untouched.json()) as Record<string, unknown>).skillsAllowlist).toBeNull();
+      // 从 null 再勾回子集（两态互转）。
+      const restricted = await req(s.app, 'PATCH', `/api/teams/${s.team.id}/agents/${id}`, {
+        skillsAllowlist: ['review'],
+      });
+      expect(((await restricted.json()) as Record<string, unknown>).skillsAllowlist).toEqual([
+        'review',
+      ]);
+    } finally {
+      s.dispose();
+    }
+  });
+
+  test('A3：defaultSkill 单值槽——string/null 过，数组（含单元素）拒；未知 id 滤成 null', async () => {
+    const { s } = setup();
+    try {
+      const set = await createAgent(s, { defaultSkill: 'deploy' });
+      expect(set.row).toMatchObject({ defaultSkill: 'deploy', skillsAllowlist: null });
+      const unknown = await createAgent(s, { defaultSkill: 'ghost' });
+      expect(unknown.row).toMatchObject({ defaultSkill: null });
+      const cleared = await req(s.app, 'PATCH', `/api/teams/${s.team.id}/agents/${unknown.id}`, {
+        defaultSkill: 'review',
+      });
+      expect(((await cleared.json()) as Record<string, unknown>).defaultSkill).toBe('review');
+      const nullBack = await req(s.app, 'PATCH', `/api/teams/${s.team.id}/agents/${unknown.id}`, {
+        defaultSkill: null,
+      });
+      expect(((await nullBack.json()) as Record<string, unknown>).defaultSkill).toBeNull();
+      // 数组（含单元素）进单值槽 = 400（不是静默取 [0]）。
+      const arr = await req(s.app, 'POST', `/api/teams/${s.team.id}/agents`, {
+        displayName: 'arr',
+        defaultSkill: ['deploy'],
+      });
+      expect(arr.status).toBe(400);
+    } finally {
+      s.dispose();
+    }
+  });
+
+  test('A4：非空白名单零回归——勾选子集原样（过滤只吃未知 id，不重排不丢项）', async () => {
+    const { s, skillsDir } = setup();
+    try {
+      const { id } = await createAgent(s, { skillsAllowlist: ['review', 'deploy'] });
+      // 目录删除 → PATCH 携带死引用 = 静默滤除（既有 A3 容忍律）。
+      rmSync(join(skillsDir, 'deploy'), { recursive: true, force: true });
+      const patched = await req(s.app, 'PATCH', `/api/teams/${s.team.id}/agents/${id}`, {
+        skillsAllowlist: ['deploy', 'review', 'ghost'],
+      });
+      expect(((await patched.json()) as Record<string, unknown>).skillsAllowlist).toEqual([
+        'review',
+      ]);
     } finally {
       s.dispose();
     }

@@ -59,7 +59,8 @@ function agentMember(tools: string[]) {
       thinkingLevel: null,
       tools,
       secrets: [],
-      skills: [],
+      defaultSkill: null,
+      skillsAllowlist: null,
       mcpServers: [],
     },
   };

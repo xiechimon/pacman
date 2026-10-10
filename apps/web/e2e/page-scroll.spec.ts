@@ -113,7 +113,8 @@ const AGENT_ACTOR = {
   thinkingLevel: null,
   tools: [],
   secrets: [],
-  skills: [],
+  defaultSkill: null,
+  skillsAllowlist: null,
   mcpServers: [],
 };
 

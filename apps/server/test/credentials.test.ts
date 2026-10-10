@@ -55,7 +55,8 @@ async function withAgentStack(opts: { secretsGranted?: boolean; withPlan?: boole
       modelId: 'claude-sonnet-5',
       tools: [],
       secrets: opts.secretsGranted === false ? [] : [secret.id], // 授权集 [推断] = secret id
-      skills: [],
+      defaultSkill: null,
+      skillsAllowlist: null,
       mcpServers: [],
     })
     .run();

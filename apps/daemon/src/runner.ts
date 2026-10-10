@@ -682,6 +682,14 @@ export async function runStep(
   // McpEndpoint 映射 SDK 原生 config——T1 期的 runtimeDrop 降级（worker/review
   // runtime 步丢三面 + 降级行）至此退役。pi 步零变化：三面透传本就是 pi 的
   // 既有行为。
+  // #1169 defaultSkill → #1116 注入绑定序首位：injectedSkills 在位时把
+  // defaultSkill 提到集首并去重（不在集内也补进——携带语义不因选择算法零
+  // 命中而丢失）；injectedSkills 缺省（旧 server）不造集（回落 allowlist
+  // 全量，defaultSkill 在其内）。chief 步 claim 不带这两字段，恒走缺省。
+  const injectedForSession =
+    agent.injectedSkills === undefined || agent.defaultSkill == null
+      ? agent.injectedSkills
+      : [agent.defaultSkill, ...agent.injectedSkills.filter((id) => id !== agent.defaultSkill)];
   const sessionOpts: SessionOpts = {
     provider,
     modelId: agent.modelId,
@@ -711,19 +719,20 @@ export async function runStep(
         }
       : {}),
     ...(mcpEndpoints.length > 0 ? { mcpServers: mcpEndpoints } : {}),
-    // skills 白名单（#372）：worker/review 步 = claim 携带的 agent.skills 勾选
-    // slug（[] 也传——[] = 不注入任何 skill，与 MCP 空勾选同律）；chief 步不传
-    // （undefined = 全量 catalog，chief 是信任面）；旧 server 未携带 = 缺省
-    // 直通（零回归）。过滤落点 = backend catalog 构建（backend/pi.ts）。
-    ...(isChief || agent.skills === undefined ? {} : { skillsAllowlist: agent.skills }),
-    // #1106 派发技能注入选择：claim 载荷 agent.injectedSkills（server 按任务
-    // 文本对授予集规则选出，ids ⊆ skills）。在位（含 []）= 目录注入按本集
-    // 收窄（backend catalog 构建，同 skillsAllowlist 落点）；[] = 已计算零命中
-    // （零注入不是故障）。chief 步不携带；旧 server 未携带 = 缺省回落白名单
-    // 全量（零回归）。deny 面（#917）不受本字段影响——仍吃 skillsAllowlist。
-    ...(isChief || agent.injectedSkills === undefined
-      ? {}
-      : { injectedSkills: agent.injectedSkills }),
+    // 授权白名单（#372→#1169 拆字段正名）：worker/review 步 = claim 载荷
+    // agent.skillsAllowlist——数组（含 [] = 显式全拒，deny 规则吃它）原样透传；
+    // **null（不限制）与缺省（旧 server 未携带）都不传**（backend 面全量直通
+    // ——null 被误读成全拒即本票主修位，两态不在此塌缩）；chief 步不传
+    // （信任面全量 catalog）。过滤落点 = backend catalog 构建（backend/pi.ts）。
+    ...(isChief || agent.skillsAllowlist == null ? {} : { skillsAllowlist: agent.skillsAllowlist }),
+    // #1106 派发技能注入选择 + #1169 defaultSkill 绑定序首位：claim 载荷
+    // agent.injectedSkills（server 按任务文本对授予集规则选出，ids ⊆
+    // skillsAllowlist）在位（含 []）= 目录注入按本集收窄；defaultSkill 非空
+    // 时排本集首位并去重（自动携带语义——#1116 注入排序面，不让位给 id 字典
+    // 序）；[] = 已计算零命中（零注入不是故障）。chief 步不携带；旧 server
+    // 未携带 injectedSkills = 不造集（目录注入回落 allowlist 全量，零回归）。
+    // deny 面（#917）不受重排影响——授权上限只看 skillsAllowlist。
+    ...(isChief || injectedForSession === undefined ? {} : { injectedSkills: injectedForSession }),
     // 团队技能物化目录（XMON-112 S2）：backend 把它排在本机 skillsDir 之前
     // 扫描（同名冲突团队条目胜，pi first-wins）；null = 纯本机（零回归）。
     ...(teamSkillsDir !== null ? { teamSkillsDir } : {}),
