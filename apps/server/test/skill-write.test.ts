@@ -3,7 +3,7 @@
 // 写路径 + skill_audit 审计行：REST（member 执行者）、worker relay（agent 行
 // tools 开关执法，requestMerge 403 同形）、chief relay（免开关，leader 拍板）。
 // machine-wire GET /api/machine/skills/{stepId} = S2 daemon 物化消费契约
-// （per-step 凭证 + agent.skills 白名单交集 + 字节闸）。
+// （per-step 凭证 + agent.skillsAllowlist 白名单交集 + 按需拉；null = 全量，#1169）。
 //
 // 失败方式先行枚举（仓规：先列失败方式再写实现）——
 // V 校验面（create/update 共用闸，全 400 可读文本）：V1 files 无 SKILL.md /
@@ -27,7 +27,7 @@
 //   公开 wire 构造不出来，与记忆三件套 409 同处境，不单测。）
 // K chief relay：K1 create_skill 免开关可用 + 审计行 / K2 update_skill 同律 /
 //   K3 未知 skillId → 404。
-// M machine-wire（#920 清单 + 按需拉）：M1 白名单技能清单（agent.skills ∩
+// M machine-wire（#920 清单 + 按需拉）：M1 白名单技能清单（agent.skillsAllowlist ∩
 //   现扫；每文件 path/sizeBytes/sha256，selection=whitelist）/ M2 白名单外
 //   技能不列 / M3 非本步凭证（他机 token）→ 404 / M4 未知 stepId → 404 /
 //   M5 超限文件不再让整包失败（分发面无字节闸：真实 size 入清单、字节完整
@@ -504,7 +504,8 @@ describe('worker relay 技能写词（POST /api/machine/tool/{stepId}）', () =>
         provider: 'p',
         modelId: 'm',
         tools: opts.tools,
-        skills: [],
+        defaultSkill: null,
+        skillsAllowlist: null,
       })
       .run();
     const projectId = await postProject(s.app);
@@ -639,7 +640,8 @@ describe('chief relay 技能写词（免开关，actor = 绑定 agent）', () =>
         provider: 'p',
         modelId: 'm',
         tools: [], // chief 免开关：tools 空 也必须可用
-        skills: [],
+        defaultSkill: null,
+        skillsAllowlist: null,
       })
       .run();
     const ctx: ChiefToolCtx = {
@@ -740,7 +742,9 @@ describe('chief relay 技能写词（免开关，actor = 绑定 agent）', () =>
 // 同前缀 /file；S2 daemon 消费契约）———————————————————————————————————————
 
 describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{stepId}[/file]）', () => {
-  async function claimWorld(opts: { skills?: string[]; root?: string } = {}) {
+  async function claimWorld(
+    opts: { defaultSkill?: string | null; skillsAllowlist?: string[] | null; root?: string } = {},
+  ) {
     const skillsDir = opts.root ?? makeRoot();
     if (opts.root === undefined) {
       for (const name of ['alpha', 'beta']) {
@@ -765,7 +769,8 @@ describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{st
         provider: 'p',
         modelId: 'm',
         tools: [],
-        skills: opts.skills ?? [],
+        defaultSkill: opts.defaultSkill ?? null,
+        skillsAllowlist: opts.skillsAllowlist ?? null,
       })
       .run();
     const projectId = await postProject(s.app);
@@ -805,7 +810,7 @@ describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{st
   }
 
   test('M1/M2：白名单交集出清单（dirName + 逐文件 path/sizeBytes/sha256）；白名单外不列', async () => {
-    const { s, token, step, skillsDir } = await claimWorld({ skills: ['alpha', 'ghost'] });
+    const { s, token, step, skillsDir } = await claimWorld({ skillsAllowlist: ['alpha', 'ghost'] });
     try {
       const res = await pkg(s.app, token, step.step.id);
       expect(res.status).toBe(200);
@@ -827,7 +832,7 @@ describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{st
   });
 
   test('M3/M4/M10：非本步凭证（他机 token）→ 404；未知 stepId → 404（清单与 file 双面）', async () => {
-    const { s, token, step } = await claimWorld({ skills: ['alpha'] });
+    const { s, token, step } = await claimWorld({ skillsAllowlist: ['alpha'] });
     try {
       // 同 apiKey 重注册会复用 machineId（r3 §1.2），他机须另发一把 key。
       const key2 = await issueApiKey(s);
@@ -858,7 +863,7 @@ describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{st
     writeFileSync(join(fatRoot, 'fat', 'SKILL.md'), skillMd('fat', '大'));
     const big = Buffer.from('x'.repeat(MAX_SKILL_FILE_BYTES + 1), 'utf8');
     writeFileSync(join(fatRoot, 'fat', 'big.txt'), big);
-    const fatWorld = await claimWorld({ skills: ['fat'], root: fatRoot });
+    const fatWorld = await claimWorld({ skillsAllowlist: ['fat'], root: fatRoot });
     try {
       const res = await pkg(fatWorld.s.app, fatWorld.token, fatWorld.step.step.id);
       expect(res.status).toBe(200);
@@ -887,7 +892,7 @@ describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{st
     for (let i = 0; i < 5; i++) {
       writeFileSync(join(heavyRoot, 'heavy', `p${i}.txt`), 'x'.repeat(450_000));
     }
-    const heavyWorld = await claimWorld({ skills: ['heavy'], root: heavyRoot });
+    const heavyWorld = await claimWorld({ skillsAllowlist: ['heavy'], root: heavyRoot });
     try {
       const totalOnDisk = 5 * 450_000;
       expect(totalOnDisk).toBeGreaterThan(MAX_SKILL_TOTAL_BYTES);
@@ -925,7 +930,9 @@ describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{st
         provider: 'p',
         modelId: 'stub-model',
         tools: [],
-        skills: [], // chief 即使行上白名单为空也拿全量（信任面）
+        // chief 即使行上白名单为空也拿全量（信任面）；#1169 两槽 null 形。
+        defaultSkill: null,
+        skillsAllowlist: null,
       })
       .run();
     await call(s.app, 'PATCH', `/api/teams/${s.team.id}/chief`, {
@@ -952,13 +959,28 @@ describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{st
     }
   });
 
-  test('M7：白名单空集 = 空清单不炸（selection=whitelist + skills: []）', async () => {
-    const { s, token, step } = await claimWorld({ skills: [] });
+  test('M7：显式勾空（skillsAllowlist: []）= 空清单不炸（selection=whitelist）', async () => {
+    const { s, token, step } = await claimWorld({ skillsAllowlist: [] });
     try {
       const res = await pkg(s.app, token, step.step.id);
       expect(res.status).toBe(200);
       const body = machineSkillsManifestResponseSchema.parse(await res.json());
       expect(body).toEqual({ selection: 'whitelist', skills: [] });
+    } finally {
+      s.dispose();
+    }
+  });
+
+  test('M8（#1169）：worker 步 skillsAllowlist=null（不限制）→ selection=all 全量清单', async () => {
+    // 失败方式：null 被读成空交集（selection=whitelist + 空清单）→ 不限制
+    // agent 的技能面塌缩成全拒（daemon 物化面）。
+    const { s, token, step } = await claimWorld({ skillsAllowlist: null });
+    try {
+      const res = await pkg(s.app, token, step.step.id);
+      expect(res.status).toBe(200);
+      const body = machineSkillsManifestResponseSchema.parse(await res.json());
+      expect(body.selection).toBe('all');
+      expect(body.skills.map((sk) => sk.id)).toEqual(['alpha', 'beta']);
     } finally {
       s.dispose();
     }
@@ -971,7 +993,7 @@ describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{st
     const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff, 0xfe]);
     mkdirSync(join(root, 'bin', 'assets'));
     writeFileSync(join(root, 'bin', 'assets', 'logo.png'), png);
-    const { s, token, step } = await claimWorld({ skills: ['bin'], root });
+    const { s, token, step } = await claimWorld({ skillsAllowlist: ['bin'], root });
     try {
       const res = await fileGet(s.app, token, step.step.id, 'bin', 'assets/logo.png');
       expect(res.status).toBe(200);
@@ -1001,7 +1023,7 @@ describe('machine-wire 技能清单与按需拉取（GET /api/machine/skills/{st
     writeFileSync(join(root, 'alpha', 'refs', 'inner.md'), 'inner\n');
     writeFileSync(join(root, 'outside-secret.txt'), 'server 侧技能根外的秘密\n');
     symlinkSync(join(root, 'outside-secret.txt'), join(root, 'alpha', 'leak.txt'));
-    const { s, token, step } = await claimWorld({ skills: ['alpha'], root });
+    const { s, token, step } = await claimWorld({ skillsAllowlist: ['alpha'], root });
     const stepId = step.step.id;
     try {
       const cases: [string, string][] = [

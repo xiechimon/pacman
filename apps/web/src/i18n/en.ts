@@ -826,6 +826,12 @@ export const EN: Record<string, string> = {
     'Which machine runs chief turns by default. With Auto, any online machine can claim a turn, sticking to the one that holds the session.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
   团队密钥: 'Team secrets',
+  // #1169 授权技能段（权限 tab）：不限制（null）与限制后全不勾（[] = 显式
+  // 全拒）两态互转；逐技能勾选行只在限制态渲染。
+  授权技能: 'Skill access',
+  不限制: 'Unrestricted',
+  '该 Agent 执行任务时可读取的团队技能范围。开启「不限制」= 全量可读；关闭后仅勾选的技能可读，未勾选一律拒绝——「不限制」与全不勾是两种状态，可随时互转。':
+    'Which team skills this Agent may read. Unrestricted reads everything; once restricted, only the checked skills are readable and every unchecked one is denied. Unrestricted and nothing-checked are two different states, switchable either way.',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()
   // 消费、不作字面量出现——i18n-coverage COMPUTED_KEYS 登记。
   '远程 shell': 'Remote shell',

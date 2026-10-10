@@ -156,7 +156,9 @@ export function agentRecordOfRow(row: typeof agent.$inferSelect): AgentRecord {
     thinkingLevel: row.thinkingLevel,
     tools: row.tools,
     secrets: row.secrets,
-    skills: row.skills,
+    // #1169：defaultSkill（携带）/ skillsAllowlist（授权，null = 不限制）两槽投影。
+    defaultSkill: row.defaultSkill,
+    skillsAllowlist: row.skillsAllowlist,
     mcpServers: row.mcpServers,
   };
 }

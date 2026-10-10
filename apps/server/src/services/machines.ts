@@ -195,7 +195,7 @@ function publishStepStatus(deps: MachineDeps, stepId: string): void {
  * chief 步不经本面（信任面全量 catalog，#372）。 */
 function workerSkillInjection(
   deps: MachineDeps,
-  agentRow: { skills: readonly string[] },
+  agentRow: { defaultSkill: string | null; skillsAllowlist: readonly string[] | null },
   todoRow: { title: string; spec: string },
 ): SkillInjectionRecord {
   // 候选基 = 授予集正本（票面「目录 = 用户为项目授予的技能集」）：授予集跨
@@ -204,8 +204,15 @@ function workerSkillInjection(
   // 天然弱），描述侧信息以现扫为上限；daemon 收窄按 ids 求交，本机没有的
   // 授予 id 自然不进目录（正本 = 选择记录，落面 = 机器事实）。零命中照旧
   // 零注入——授予边界不变，本函数不编造未授予条目。
+  // #1169：skillsAllowlist=null（不限制）→ 候选基 = 全量现扫（不是零候选——
+  // null 不再被读成全拒）；defaultSkill 不进选择规则（携带语义在 daemon 侧
+  // 排注入绑定序首位，#1116 面），此处无它的失败方式。
   const scanned = new Map(scanLocalSkills(deps.skillsDir).map((s) => [s.id, s]));
-  const candidates = [...new Set(agentRow.skills)].map((id) => {
+  const granted =
+    agentRow.skillsAllowlist === null
+      ? [...scanned.keys()]
+      : [...new Set(agentRow.skillsAllowlist)];
+  const candidates = granted.map((id) => {
     const s = scanned.get(id);
     return s === undefined
       ? { id, name: id, description: null }
@@ -1230,13 +1237,15 @@ function tryClaim(
           .from(agentMemory)
           .where(eq(agentMemory.agentId, agentRow.id))
           .all(),
-        // skills catalog 白名单（#372）：勾选 slug 原样透传（过滤权在 daemon
-        // catalog 构建）。worker 步恒携带——含空数组（[] = 不注入任何 skill，
-        // least-privilege；缺省 = 全量直通是 chief 面语义，两态不得混淆）。
-        skills: [...agentRow.skills],
-        // #1106 派发技能注入选择（ids ⊆ skills，授权上限不变——#917 硬挡
-        // 判定仍吃 skills 全量）：本步 brief 实际注入的技能集；[] = 已计算
-        // 零命中（零注入不是故障，不保底全量）。daemon 侧目录注入按本集
+        // #1169 拆字段透传（原 skills 单字段两义分家）：defaultSkill（携带，
+        // 单值——daemon 据此排 #1116 注入绑定序首位）+ skillsAllowlist（授权；
+        // null = 不限制，[] = 显式全拒，worker 步恒携带 null 或数组，chief 步
+        // 不携带——两态不得在 claim 面塌缩）。
+        defaultSkill: agentRow.defaultSkill,
+        skillsAllowlist: agentRow.skillsAllowlist === null ? null : [...agentRow.skillsAllowlist],
+        // #1106 派发技能注入选择（ids ⊆ skillsAllowlist，授权上限不变——#917
+        // 硬挡判定仍吃 allowlist 全量）：本步 brief 实际注入的技能集；[] = 已
+        // 计算零命中（零注入不是故障，不保底全量）。daemon 侧目录注入按本集
         // 收窄，未进集的授予技能仍可被读取（授予语义不因选择收窄）。
         injectedSkills: skillInjection.hits.map((h) => h.id),
         // 权限开关已开集（XMON-77）：原样透传（执法权在 daemon 收尾闸——只认
@@ -1603,20 +1612,30 @@ export function machineAttachmentDownload(
 
 /** 按步技能选择面（清单与文件下发共用单源，#920）：chief 步 = 信任面全量
  * 现扫（#372 同律，不受白名单约束）；worker 步 = agentForStep 解析 Agent 的
- * skills 白名单 ∩ 现扫（死引用静默脱落，filterKnownSkillIds 同律）。 */
+ * skillsAllowlist 白名单 ∩ 现扫（死引用静默脱落，filterKnownSkillIds 同律）；
+ * **null = 不限制 → 全量现扫**（#1169：selection 报 'all'，不再是空交集——
+ * 「不限制」与「勾空全拒」两态由此分流）。 */
 function skillsSelection(
   deps: MachineDeps,
   row: ReturnType<typeof ownedStep>,
-): { isChief: boolean; wanted: LocalSkill[] } {
+): { isChief: boolean; unrestricted: boolean; wanted: LocalSkill[] } {
   const scanned = scanLocalSkills(deps.skillsDir);
-  if (row.kind === 'chief') return { isChief: true, wanted: scanned };
+  if (row.kind === 'chief') return { isChief: true, unrestricted: true, wanted: scanned };
   const buildRow = deps.db.select().from(build).where(eq(build.id, row.buildId)).get();
   if (!buildRow) throw new NotFoundError(`build ${row.buildId}`);
   const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
   if (!todoRow) throw new NotFoundError(`todo ${buildRow.todoId}`);
   const agentRow = agentForStep(deps, todoRow, row.kind, row.prompt);
-  const whitelist = new Set(agentRow?.skills ?? []);
-  return { isChief: false, wanted: scanned.filter((s) => whitelist.has(s.id)) };
+  // #1169：null/未设（agentRow 缺位的兜底含 null）= 不限制 → 'all'；
+  // 数组（含 []）= 白名单交集 → 'whitelist'（空清单如实空）。
+  const allowlist = agentRow?.skillsAllowlist ?? null;
+  if (allowlist === null) return { isChief: false, unrestricted: true, wanted: scanned };
+  const whitelist = new Set(allowlist);
+  return {
+    isChief: false,
+    unrestricted: false,
+    wanted: scanned.filter((s) => whitelist.has(s.id)),
+  };
 }
 
 /** GET /api/machine/skills/{stepId}（XMON-109 S1 端点，#920 改「清单 +
@@ -1632,7 +1651,7 @@ export function machineSkillsManifest(
   stepId: string,
 ): MachineSkillsManifestResponse {
   const row = ownedStep(deps, machineId, stepId); // 非本步凭证/未知步 = 404
-  const { isChief, wanted } = skillsSelection(deps, row);
+  const { isChief, unrestricted, wanted } = skillsSelection(deps, row);
   const skills: MachineSkillsManifestResponse['skills'] = [];
   for (const skill of wanted) {
     const dir = join(deps.skillsDir, skill.dirName);
@@ -1654,7 +1673,9 @@ export function machineSkillsManifest(
       files,
     });
   }
-  return { selection: isChief ? 'all' : 'whitelist', skills };
+  // #1169：不限制 worker（skillsAllowlist=null）与 chief 同报 'all'——全量
+  // 出包语义；白名单（含空 []）报 'whitelist'（daemon 据此区分点名语境）。
+  return { selection: isChief || unrestricted ? 'all' : 'whitelist', skills };
 }
 
 /** GET /api/machine/skills/{stepId}/file?dirName=&path=（#920 按需拉取面，

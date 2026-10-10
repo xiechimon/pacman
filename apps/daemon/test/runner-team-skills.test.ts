@@ -102,7 +102,9 @@ function claimedBuildStep(): ClaimedStep {
       modelId: 'stub-model',
       thinkingLevel: null,
       tools: [],
-      skills: ['deploy-demo'],
+      // #1169：白名单槽正名（worker 步授权面）。
+      defaultSkill: null,
+      skillsAllowlist: ['deploy-demo'],
     },
   };
 }

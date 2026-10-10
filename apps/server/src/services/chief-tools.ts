@@ -264,7 +264,10 @@ export async function executeChiefTool(
           // 授权集投影（XMON-77）：分派面对权限态可见——合并派给未授权
           // Agent 会在 requestMerge 403，看得见才能挑对（REST PATCH 才是写面）。
           tools: a.tools,
-          skills: a.skills,
+          // #1169：defaultSkill（携带）/ skillsAllowlist（授权，null = 不限制）
+          // 两槽同名投影，分派面同见。
+          defaultSkill: a.defaultSkill,
+          skillsAllowlist: a.skillsAllowlist,
           mcpServers: a.mcpServers,
         })),
       );
@@ -546,7 +549,10 @@ export async function executeChiefTool(
           // Agent 同样要能推工作分支交付；收权限走 update_agent/REST PATCH。
           tools: [...AGENT_TOOL_DEFAULTS],
           secrets: [],
-          skills: [],
+          // #1169：技能两字段缺省 null——defaultSkill 不携带 + skillsAllowlist
+          // 不限制（旧 skills:[] 的「出生即全拒」不再缺省）。
+          defaultSkill: null,
+          skillsAllowlist: null,
           mcpServers: [],
         })
         .run();

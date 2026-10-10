@@ -13,6 +13,7 @@ daemon 每次创建 agent 会话前扫描 `PACMAN_SKILLS_DIR`(缺省 `~/.agents/
 - `skills-log` `[skills] <type>: <msg>` 行族落 daemon.log(type ∈ loaded / collision / invalid-frontmatter / missing-skill-md / cap / invalid / catalog / deny / denied-read / team / team-manifest-empty / team-skills-failed / filtered)。
 - `skills-facts-faces`(#918 落地,#919 seam 4 验收) 活行披露行(live 态)+ 持久汇总行(读/挡两列);fixture e2e 钉持久面与零事件对照。
 - `skills-routing-behavior`(#919 主判据) 票面零技能词的真派发,lane 自己命中技能——产物 marker + transcript 读取行 + daemon.log 目录行 + 详情页汇总行截图四面取证。
+- `skills-allowlist-split`(#1169) agent 技能两字段分家——`defaultSkill`(携带,单值,详情页概览 Select)+ `skillsAllowlist`(授权,null=不限制、[]=显式全拒,详情页权限 tab 勾选清单+两态互转开关);存量 `[]` 行迁移为 null(解除「新建 agent 出生即全拒」);deny 机制(#917)原样。验证 = `drive-1169-skills-split.mjs` live 探针(api 相位零 daemon 钉 REST 读写面/claim 载荷/清单 selection 三面 + behavior 相位真模型腿钉不限制 agent 读 SKILL.md 零 deny)+ 迁移回填 unit(agent-skills-split-backfill.test.ts)+ 详情页 e2e(agent-detail.spec.ts 两控件互不影响)。
 
 ## How to get to it (user POV)
 

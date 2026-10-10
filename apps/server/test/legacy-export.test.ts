@@ -168,14 +168,18 @@ function tableExists(dbPath: string, table: string): boolean {
   }
 }
 
-function agentColumn(dbPath: string, agentId: string, column: 'skills' | 'mcpServers'): string {
+function agentColumn(
+  dbPath: string,
+  agentId: string,
+  column: 'defaultSkill' | 'skillsAllowlist' | 'mcpServers',
+): string | null {
   const sqlite = new Database(dbPath, { readonly: true });
   try {
     const row = sqlite.prepare(`SELECT ${column} FROM agent WHERE id = ?`).get(agentId) as Record<
       string,
-      string
+      string | null
     >;
-    return row[column] ?? '';
+    return row[column] ?? null;
   } finally {
     sqlite.close();
   }
@@ -190,14 +194,18 @@ function exportFiles(homeDir: string): string[] {
 // —— 用例 ————————————————————————————————————————————————————————————————————
 
 describe('legacy-export 迁移护栏（skill + mcp_server 表退役）', () => {
-  test('L1/L5：旧库两表有行 → 导出落盘内容齐、agent 两列清空、两表消失', () => {
+  test('L1/L5：旧库两表有行 → 导出落盘内容齐、mcpServers 清空 + skills 列迁移退役、两表消失', () => {
     const { dbPath } = buildLegacyDb({ skillRows: 2, mcpRows: 1 });
     const home = temp('pacman-legacy-home-');
     const { db, close } = openDbWithHandle(dbPath, { legacyExportDir: home });
     try {
       expect(tableExists(dbPath, 'skill')).toBe(false);
       expect(tableExists(dbPath, 'mcp_server')).toBe(false);
-      expect(agentColumn(dbPath, 'ag-1', 'skills')).toBe('[]');
+      // #1169：skills 列由 0034 读取迁移后 DROP；0013 已把旧值清成 '[]'，按票面
+      // 条文 [] → skillsAllowlist NULL（不限制）、defaultSkill null。mcpServers
+      // 清空（#368）不受影响。
+      expect(agentColumn(dbPath, 'ag-1', 'skillsAllowlist')).toBeNull();
+      expect(agentColumn(dbPath, 'ag-1', 'defaultSkill')).toBeNull();
       expect(agentColumn(dbPath, 'ag-1', 'mcpServers')).toBe('[]');
       const files = exportFiles(home);
       expect(files).toHaveLength(1);
@@ -267,7 +275,11 @@ describe('legacy-export 迁移护栏（skill + mcp_server 表退役）', () => {
     try {
       expect(tableExists(dbPath, 'skill')).toBe(false);
       expect(tableExists(dbPath, 'mcp_server')).toBe(false);
-      expect(agentColumn(dbPath, 'ag-1', 'skills')).toBe('[]');
+      // #1169：skills 列由 0034 读取迁移后 DROP；0013 已把旧值清成 '[]'，按票面
+      // 条文 [] → skillsAllowlist NULL（不限制）、defaultSkill null。mcpServers
+      // 清空（#368）不受影响。
+      expect(agentColumn(dbPath, 'ag-1', 'skillsAllowlist')).toBeNull();
+      expect(agentColumn(dbPath, 'ag-1', 'defaultSkill')).toBeNull();
       expect(agentColumn(dbPath, 'ag-1', 'mcpServers')).toBe('[]');
     } finally {
       close();

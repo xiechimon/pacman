@@ -110,7 +110,8 @@ export function seedAgent(id: string, description: string, modelId = 'stub-model
       thinkingLevel: null,
       tools: [],
       secrets: [],
-      skills: [],
+      defaultSkill: null,
+      skillsAllowlist: null,
       mcpServers: [],
     })
     .run();
