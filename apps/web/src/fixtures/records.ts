@@ -535,6 +535,12 @@ export type TranscriptItem =
    *  技能名（首见序），denied = 被挡下的（同名 denied 粘滞，两列互斥）。
    *  两列全空 = 不产本条目（无技能命中的任务零噪声）。 */
   | { kind: 'skills'; read: string[]; denied: string[] }
+  /** #1106 注入选择回查行（票面验收 4「选择过程在任务详情面可查」）：本
+   *  build 各步 claim 落库的 skillInjection 汇总——技能 id 首见序，reason =
+   *  服务端规则命中的原因原文（含规则与关键词）。skills = [] = 已计算零
+   *  命中（零注入是可查事实，不是故障）。任一步有记录即产本行（live 派生
+   *  面；fixture 捕获面无 step 数据源，恒不出现）。 */
+  | { kind: 'injected-skills'; skills: { id: string; reason: string }[] }
   /** Collapsed plan card: `方案 · v1` row, clamped preview, action row
    *  `完成 Ns` (r7 17). `seconds` absent renders the bare `完成`
    *  (reused-plan card, r8 76). The r8 captures' trailing `›` is gone:

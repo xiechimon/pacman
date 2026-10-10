@@ -54,6 +54,24 @@ function collect(
   return { catalog, logs };
 }
 
+/** #1106 注入选择形 collect：injectedSkills 在位 = 目录注入按本集收窄。 */
+function collectInjected(
+  skillsDir: string,
+  injectedSkills: string[],
+  opts: { allowlist?: string[]; teamSkillsDir?: string } = {},
+): { catalog: string; logs: string[] } {
+  const logs: string[] = [];
+  const catalog = buildSkillsCatalog({
+    skillsDir,
+    cwd: tmpdir(),
+    injectedSkills,
+    ...(opts.allowlist !== undefined ? { allowlist: opts.allowlist } : {}),
+    ...(opts.teamSkillsDir !== undefined ? { teamSkillsDir: opts.teamSkillsDir } : {}),
+    log: (msg) => logs.push(msg),
+  });
+  return { catalog, logs };
+}
+
 describe('buildSkillsCatalog 输入五态（spec 14 Testing Decisions）', () => {
   test('env 指向不存在目录 = 空 catalog 不炸 + missing-skill-md 诊断透传', () => {
     const { catalog, logs } = collect(join(fixtureRoot('gone'), 'no-such-dir'));
@@ -345,5 +363,93 @@ describe('团队技能目录合并（XMON-112 S2）', () => {
     expect(catalog).toContain('<name>team-a</name>');
     expect(catalog).not.toContain('<name>team-b</name>');
     expect(logs).toContain('filtered: team-b not in agent allowlist');
+  });
+});
+
+// —— #1106 派发技能注入选择：目录注入收窄（失败方式先固化）—————————————
+// injectedSkills（claim 载荷 agent.injectedSkills，server 按任务文本选出）在位
+// = 目录按本集收窄且 description 全文不截断；缺省 = 旧 server 形回落
+// allowlist（含 200 字截断）。deny 面（collectDeniedSkillDirs）不因选择收窄
+// ——授权语义仍吃 allowlist 全量（本文件同款断言见 skills-hard-block.test.ts）。
+
+describe('注入选择收窄（#1106：injectedSkills = 目录注入执行面）', () => {
+  /** 三技能公共 fixture（alpha/beta/gamma）。 */
+  function threeSkillRoot(tag: string): string {
+    const root = fixtureRoot(tag);
+    writeSkill(root, 'alpha', { name: 'alpha', description: 'A 技能。' });
+    writeSkill(root, 'beta', { name: 'beta', description: 'B 技能。' });
+    writeSkill(root, 'gamma', { name: 'gamma', description: 'C 技能。' });
+    return root;
+  }
+
+  test('选择集只含部分 → 目录只出选中条目（允许集全量不影响注入面）', () => {
+    const root = threeSkillRoot('inj-part');
+    const { catalog, logs } = collectInjected(root, ['beta'], {
+      allowlist: ['alpha', 'beta', 'gamma'],
+    });
+    expect(catalog).toContain('<name>beta</name>');
+    expect(catalog).not.toContain('<name>alpha</name>');
+    expect(catalog).not.toContain('<name>gamma</name>');
+    expect(logs).toContain('filtered: alpha not in injected selection');
+    expect(logs).toContain('filtered: gamma not in injected selection');
+  });
+
+  test('空选择集 = 已计算零命中 → 空 catalog（零注入不是故障，不保底全量）', () => {
+    const root = threeSkillRoot('inj-empty');
+    const { catalog, logs } = collectInjected(root, [], { allowlist: ['alpha'] });
+    expect(catalog).toBe('');
+    expect(logs).toContain('catalog: entries=0 chars=0');
+  });
+
+  test('选择集 ids ⊆ allowlist 的运行时防御：名单外 id 也不入目录（不越授权）', () => {
+    const root = threeSkillRoot('inj-beyond');
+    // server 保证 ⊆；本断言钉运行时防御——选择字段携带了越权 id 也不生效。
+    const { catalog } = collectInjected(root, ['alpha', 'gamma'], { allowlist: ['alpha'] });
+    expect(catalog).toContain('<name>alpha</name>');
+    expect(catalog).not.toContain('<name>gamma</name>');
+  });
+
+  test('选中条目 description 超 200 字 = 全文不截断（选择已控噪声，预算闸让位）', () => {
+    const root = fixtureRoot('inj-full-desc');
+    const long = 'x'.repeat(SKILL_DESCRIPTION_CAP + 50);
+    writeSkill(root, 'long-desc', { name: 'long-desc', description: long });
+    const { catalog, logs } = collectInjected(root, ['long-desc'], { allowlist: ['long-desc'] });
+    expect(catalog).toContain(`<description>${long}</description>`);
+    expect(logs.some((l) => l.startsWith('cap: description truncated for long-desc'))).toBe(false);
+    // 对照：缺省（旧 server 形）仍截断——回归红线。
+    const legacy = collect(root, ['long-desc']);
+    expect(legacy.catalog).toContain(`${'x'.repeat(SKILL_DESCRIPTION_CAP)}…`);
+  });
+
+  test('选择集含未知 id（目录已删/未物化）= 静默跳过不炸（#367 容忍语义）', () => {
+    const root = threeSkillRoot('inj-ghost');
+    const { catalog, logs } = collectInjected(root, ['beta', 'ghost-slug'], {
+      allowlist: ['alpha', 'beta', 'ghost-slug'],
+    });
+    expect(catalog).toContain('<name>beta</name>');
+    expect(catalog).not.toContain('ghost-slug');
+    expect(logs.some((l) => l.includes('ghost-slug'))).toBe(false);
+  });
+
+  test('injectedSkills 缺省 = 旧 server 形：allowlist 全量 + 200 字闸（零回归金样）', () => {
+    const root = threeSkillRoot('inj-absent');
+    const { catalog, logs } = collect(root, ['alpha', 'beta']);
+    expect(catalog).toContain('<name>alpha</name>');
+    expect(catalog).toContain('<name>beta</name>');
+    expect(catalog).not.toContain('<name>gamma</name>');
+    expect(logs).toContain('filtered: gamma not in agent allowlist');
+  });
+
+  test('注入选择与团队目录合并面共存：选择只收窄注入，合并/first-wins 不变', () => {
+    const local = fixtureRoot('inj-tm-local');
+    const team = fixtureRoot('inj-tm-team');
+    writeSkill(team, 'team-vip', { name: 'team-vip', description: '团队技能。' });
+    writeSkill(local, 'local-only', { name: 'local-only', description: '本机技能。' });
+    const { catalog } = collectInjected(local, ['team-vip'], {
+      allowlist: ['team-vip', 'local-only'],
+      teamSkillsDir: team,
+    });
+    expect(catalog).toContain('<name>team-vip</name>');
+    expect(catalog).not.toContain('<name>local-only</name>');
   });
 });

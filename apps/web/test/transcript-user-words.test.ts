@@ -211,6 +211,7 @@ describe('mapTranscript 合成 prompt 过滤（#612）', () => {
       createdAt: NOW - 20_000,
       status: 'done',
       checkpointCommit: null,
+      skillInjection: null,
     };
     const items = render({
       messages: [msg('user', buildTaskPromptText(TITLE, SPEC), NOW - 50_000)],

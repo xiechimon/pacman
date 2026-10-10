@@ -37,6 +37,7 @@ import {
   AGENT_TOOL_SKILL_CREATE,
   AGENT_TOOL_SKILL_UPDATE,
   AGENT_TOOL_TAG,
+  buildTaskPromptText,
   CHANGES_DIFF_MAX_BYTES,
   CHIEF_REMOTE_TOOLS,
   CHIEF_TURN_ERROR_KIND,
@@ -51,6 +52,8 @@ import {
   LOCAL_TOOL_REMOTE_SHELL,
   MCP_MIN_CLI_VERSION,
   machineRecordSchema,
+  type SkillInjectionRecord,
+  selectSkillsForTask,
   suggestSkillsForMessage,
   updateSkillToolParamsSchema,
   WORKER_REMOTE_TOOLS,
@@ -180,7 +183,36 @@ function publishStepStatus(deps: MachineDeps, stepId: string): void {
     createdAt: row.createdAt,
     status: row.status,
     checkpointCommit: row.checkpointCommit,
+    skillInjection: row.skillInjection ?? null,
   });
+}
+
+/** #1106 worker 步的派发技能注入选择：授予集内按任务文本（title+spec，
+ * daemon buildTaskPromptText 同源单源）做规则选择。hits=[] = 已计算零命中
+ * （零注入不是故障，不保底全量）；扫描失败容错律（scanLocalSkills 空集）
+ * → 描述侧信息缺失，授予 id 照旧参与点名，不炸派发。选择结果随 claim 原子
+ * 落 step 行（详情面回查正本），ids 经 claim 载荷 agent.injectedSkills 透传。
+ * chief 步不经本面（信任面全量 catalog，#372）。 */
+function workerSkillInjection(
+  deps: MachineDeps,
+  agentRow: { skills: readonly string[] },
+  todoRow: { title: string; spec: string },
+): SkillInjectionRecord {
+  // 候选基 = 授予集正本（票面「目录 = 用户为项目授予的技能集」）：授予集跨
+  // server 团队库与 daemon 本机库两分布面，server 现扫只覆盖前者——未扫到的
+  // 授予 id（本机库技能）以 id/名参与点名规则（domain 规则只有 id 文本信号，
+  // 天然弱），描述侧信息以现扫为上限；daemon 收窄按 ids 求交，本机没有的
+  // 授予 id 自然不进目录（正本 = 选择记录，落面 = 机器事实）。零命中照旧
+  // 零注入——授予边界不变，本函数不编造未授予条目。
+  const scanned = new Map(scanLocalSkills(deps.skillsDir).map((s) => [s.id, s]));
+  const candidates = [...new Set(agentRow.skills)].map((id) => {
+    const s = scanned.get(id);
+    return s === undefined
+      ? { id, name: id, description: null }
+      : { id: s.id, name: s.name, description: s.description };
+  });
+  const hits = selectSkillsForTask(buildTaskPromptText(todoRow.title, todoRow.spec), candidates);
+  return { hits };
 }
 
 // —— wake 通道（claim 长轮询等待者 + SSE stream 订阅者，按 team 分组）—————————
@@ -1035,11 +1067,22 @@ function tryClaim(
         }
       }
     }
+    // #1106 派发技能注入选择（worker 步；claim = brief 的组装投递位——与
+    // #823 chief 路由同位）：先于原子领取计算（纯函数无副作用，领取竞态
+    // 失败至多白算一次扫描），随同一次 claim 写落 step 行——持久记录与
+    // claim 载荷因此不可能漂移（「注入了什么」的正本 = 本列）。
+    const skillInjection = workerSkillInjection(deps, agentRow, cand.todoRow);
     // 原子领取：仅当仍 pending 时置 claimed（单进程 better-sqlite3 同步写）。
     const claimedAt = nowMs();
     const res = db
       .update(step)
-      .set({ status: 'claimed', machineId, claimedAt, lastHeartbeatAt: claimedAt })
+      .set({
+        status: 'claimed',
+        machineId,
+        claimedAt,
+        lastHeartbeatAt: claimedAt,
+        skillInjection,
+      })
       .where(and(eq(step.id, cand.stepRow.id), eq(step.status, 'pending')))
       .run();
     if (res.changes === 0) continue;
@@ -1123,6 +1166,11 @@ function tryClaim(
         // catalog 构建）。worker 步恒携带——含空数组（[] = 不注入任何 skill，
         // least-privilege；缺省 = 全量直通是 chief 面语义，两态不得混淆）。
         skills: [...agentRow.skills],
+        // #1106 派发技能注入选择（ids ⊆ skills，授权上限不变——#917 硬挡
+        // 判定仍吃 skills 全量）：本步 brief 实际注入的技能集；[] = 已计算
+        // 零命中（零注入不是故障，不保底全量）。daemon 侧目录注入按本集
+        // 收窄，未进集的授予技能仍可被读取（授予语义不因选择收窄）。
+        injectedSkills: skillInjection.hits.map((h) => h.id),
         // 权限开关已开集（XMON-77）：原样透传（执法权在 daemon 收尾闸——只认
         // 已知档，存量残值自然无效）。恒携带含空数组（[] = 全关 = 不推不并；
         // 缺省保留给老 server 形 fail-open，两态不得混淆）。
