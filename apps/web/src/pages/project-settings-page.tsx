@@ -144,7 +144,13 @@ export function ProjectSettingsPage() {
         <Card className="mt-4 gap-1.5 p-4">
           <div className="text-sm font-medium">{t('删除项目')}</div>
           <div className="text-sm text-muted-foreground">
-            {t('将永久删除所有任务与执行记录，此操作不可恢复。')}
+            {/* #1174：确认文案写清级联带走什么（票面要求）。列举项 = server
+                services/projects.ts 清图序的 truthful 投影（任务/构建历史/
+                定时/标签/托管仓库磁盘面）；票面点名的「技能授权面」不在列
+                ——技能不入库、无项目级授权（spec 13 #367），文案不撒谎。 */}
+            {t(
+              '删除项目将级联删除其下所有任务、构建历史、定时任务、标签与托管仓库文件，此操作不可恢复。',
+            )}
           </div>
           <Button
             variant="destructive"
