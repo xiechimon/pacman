@@ -161,6 +161,28 @@ const EXAMPLE_ICONS = {
   bars: BarChart3,
 } as const;
 
+/** 草稿持久化键（#1056，Multica 对齐面）：composer 草稿跨整页刷新回显——
+ *  D6 常驻契约（最小化/路由切换/SPA 导航全保）是内存面的保，整页刷新原本
+ *  即丢；Multica 的草稿随键写穿存储（packages/core/chat/store.ts
+ *  setInputDraft，onUpdate 每键落盘），同律。单槽纯文本、只保活动线程的
+ *  composer 现文（不按线程 id 分键）：本窗会话内草稿就是单槽跨线程切换持
+ *  续（wire 态从不随切换换槽），按线程分键会改写这条已验行为；Multica 的
+ *  新聊草稿同哲学——身份是「未创建的会话」单槽而非按发送目标分键
+ *  （store.ts DRAFT_NEW_SESSION 注，MUL-4864）。空稿删键不留残
+ *  （store.ts writeDrafts 的 removeItem 同律）；发送成功清稿即清键，被拒
+ *  保留（#631 契约，持久化是加载面不是发送面）。品牌前缀纪律照
+ *  pacman.chief-open 先例（use-chief-surface.ts）。fixture 面永不读写
+ *  （采集确定性——scenario 的 chief.draft 是捕获形草稿唯一来源）。 */
+export const CHIEF_DRAFT_STORAGE_KEY = 'pacman.chief-draft';
+
+function readStoredChiefDraft(): string {
+  try {
+    return localStorage.getItem(CHIEF_DRAFT_STORAGE_KEY) ?? '';
+  } catch {
+    return ''; // 隐私模式等 Storage 不可用——回落空稿（chief-open 读面同兜底）
+  }
+}
+
 interface DrawerProps {
   /** 常驻窗的开态旗（ADR 0013 D6）：关闭 = 最小化——Base UI keepMounted
    *  把窗以 hidden 停驻在 DOM，草稿/滚动/线程态全保；退场动画 outlives
@@ -385,17 +407,36 @@ function ChiefDrawerInner({
       else next.add(i);
       return next;
     });
+  // #1056 草稿持久化：live 面草稿从 wire 内部态提为本层受控态（wire 的
+  // controlled mode，todo-detail-page liveDraft 同配方），存储读写骑这份
+  // 态——初值 = 存储回显（挂载即恢复，整页刷新不丢稿；持久化开态的加载
+  // 不抢焦点律不破，初值不经任何 focus 路径），写回 = 每键写穿（Multica
+  // setInputDraft 同律），空稿删键。fixture 面初值恒空 + effect 不跑 =
+  // 零读写（采集确定性，static 面的 chief.draft 展示不经这份态）。
+  const [liveDraft, setLiveDraft] = useState(() => (live ? readStoredChiefDraft() : ''));
+  useEffect(() => {
+    if (!live) return;
+    try {
+      if (liveDraft === '') localStorage.removeItem(CHIEF_DRAFT_STORAGE_KEY);
+      else localStorage.setItem(CHIEF_DRAFT_STORAGE_KEY, liveDraft);
+    } catch {
+      // Storage 不可用（隐私模式）——持久化静默降级，会话内行为不变
+      //（chief-open 持久化写面同兜底，use-chief-surface.ts）
+    }
+  }, [live, liveDraft]);
   // #625：输入逻辑层单源——draft / 发送（异步被拒保留 draft，#631 契约）/
   // 提及 / 附件 wire 住 overlay/composer-wire 的 useComposerWire，detail
   // composer 消费同一 hook；本文件只剩抽屉皮肤（节点、几何、占位双态）。
-  // live 面 = 内部态草稿（editable）；fixture 面 = 静态只读回显（static
-  // mode，无 setter）。#732（#146 隐藏裁决翻案）：live 面把数据源两件都传
-  // 进去——mentionGroups（五源 live 投影；fixture 面查询静默 → 空组）与
-  // onAttachment（逐文件 grant + upload 委托）；fixture 面两件皆缺省 →
-  // inline 永不开、picker 零计数、粘贴/选件链全惰。
+  // live 面 = 受控态草稿（editable，#1056 持久化上提，见 liveDraft）；
+  // fixture 面 = 静态只读回显（static mode，无 setter）。#732（#146 隐藏
+  // 裁决翻案）：live 面把数据源两件都传进去——mentionGroups（五源 live
+  // 投影；fixture 面查询静默 → 空组）与 onAttachment（逐文件 grant +
+  // upload 委托）；fixture 面两件皆缺省 → inline 永不开、picker 零计数、
+  // 粘贴/选件链全惰。
   const wire = useComposerWire({
     editable: onSend != null,
-    draft: onSend != null ? undefined : (chief.draft ?? ''),
+    draft: onSend != null ? liveDraft : (chief.draft ?? ''),
+    onDraftChange: onSend != null ? setLiveDraft : undefined,
     // #873：读者自己发出去的那条必须看得见——跳最新端与详情面同一规则
     // （A1 起机制 = useMessageScroller().scrollToEnd，语义 = 旧
     // requestFollow 的「读者自己的发送恒赢」律），四个分流出口之外的通用
