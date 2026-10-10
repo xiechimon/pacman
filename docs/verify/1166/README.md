@@ -41,9 +41,14 @@ retry 重按成奇偶同 toggle 把面板按回关，新写法每轮先查可见
 两路径零退役类选择器（`grep -nE '\.[a-z].*(keys-|search-)' scripts/drive.mjs`
 仅命中新增注释文字与截图文件名，无选择器命中）。
 
-修复前基线（origin/main 未迁移的探针）：`before/api-key-stale-selector-result.json`
-— `probe 异常:page.waitForSelector: Timeout 15000ms exceeded ... waiting for
-locator('.keys-empty')`（`okscreenshot` 见 `before/api-key-stale-selector-99-error.png`）。
+修复前基线（origin/main 未迁移的探针，`before/`）：
+
+- api-key — `before/api-key-stale-selector-result.json`：
+  `probe 异常:page.waitForSelector: Timeout 15000ms exceeded ... waiting for
+  locator('.keys-empty')`（截图 `before/api-key-stale-selector-99-error.png`）
+- search — `before/search-stale-selector-result.json`：
+  `probe 异常:⌘K 未打开搜索面板(6 次重按后)`（`.search-panel` locator 永不匹配，
+  retry 耗尽；截图 `before/search-stale-selector-99-error.png`）
 
 ## 复跑配方
 
