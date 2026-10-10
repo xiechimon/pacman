@@ -45,11 +45,31 @@ grabbed a same-band shape two columns over and invented an overflow. Both are
 the same failure this whole file exists to prevent — a confident answer from a
 state that was never actually checked.
 
+A second, independent check lives here since #1107: every `.drawio.svg` handed
+to this script must ship its editable `.drawio` source next to it (same name
+minus the `.svg` suffix). This is the drawio skill's artifact contract — an
+export and its source are delivered as a pair — and three diagrams had reached
+main as exports only, with the source recoverable solely by unescaping the
+`content` attribute the exporter embeds.
+
+What this second check judges is EDITABILITY, not quality, and the distinction
+is the point. Quality cannot be machine-judged here: five candidate quality
+metrics were tried against this repo's diagram corpus and all five failed for
+lack of variance — the corpus is homogeneous (same author, same skill, same
+template vocabulary), so no metric separated the good diagrams from the bad.
+Editability is the one axis that is deterministic: the source either ships or
+it does not. Two of the three source-less diagrams are good diagrams; the gate
+does not care, and neither should its output be read as a verdict on them.
+
+The text-fit check above is untouched by this addition; it stays calibrated
+4/4 against the diagrams listed earlier.
+
 Usage:
   python3 check-diagram-text-fit.py <file.drawio.svg|file.drawio> [--json]
   python3 check-diagram-text-fit.py 'docs/verify/**/*.drawio'   # globs ok
 
-Exit 0 when every label fits, 1 when any overflows, 3 on a read error.
+Exit 0 when every label fits and every source ships, 1 when any overflows or
+any source is missing, 3 on a read error.
 """
 import argparse
 import glob
@@ -189,6 +209,21 @@ def check_svg(svg):
     return findings
 
 
+def missing_source(path):
+    """Editability gate (#1107): an export must ship its editable source.
+
+    The drawio skill delivers a pair — `<name>.drawio` plus the
+    `<name>.drawio.svg` export — and the export alone is not editable: the
+    source survives inside it only as an escaped `content` attribute. Returns
+    the expected source path when it is absent, else None. Applies to exports
+    only; a `.drawio` input IS its own source.
+    """
+    if not path.endswith('.drawio.svg'):
+        return None
+    src = path[:-len('.svg')]
+    return None if os.path.exists(src) else src
+
+
 def to_svg(path):
     if path.endswith('.svg'):
         with open(path, encoding='utf-8') as fh:
@@ -215,8 +250,10 @@ def main():
     args = ap.parse_args()
     results, bad, errors = {}, 0, 0
     for p in expand(args.files):
+        src = missing_source(p)
+        found = [{'missing_source': src}] if src else []
         try:
-            found = check_svg(to_svg(p))
+            found += check_svg(to_svg(p))
         except Exception as e:
             print(f'check-diagram-text-fit: {p}: {e}', file=sys.stderr)
             errors += 1
@@ -231,8 +268,13 @@ def main():
             if not found:
                 print(f'OK   {p}')
             for x in found:
-                print(f'FAIL {p}: needs {x["need_h"]}px in a {x["box_h"]}px box '
-                      f'({x["lines"]} lines @ {x["font_size"]}px): {x["text"]!r}')
+                if 'missing_source' in x:
+                    print(f'FAIL {p}: no editable source — {x["missing_source"]} '
+                          f'does not exist (the drawio skill ships the export '
+                          f'and its .drawio source as a pair)')
+                else:
+                    print(f'FAIL {p}: needs {x["need_h"]}px in a {x["box_h"]}px box '
+                          f'({x["lines"]} lines @ {x["font_size"]}px): {x["text"]!r}')
     # A read error outranks findings: an input that could not be checked must
     # not exit 1, which reads as "checked and overflowing" to a caller that
     # only distinguishes zero from nonzero.
