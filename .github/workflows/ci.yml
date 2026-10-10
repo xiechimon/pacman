@@ -289,3 +289,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/issue-label-gate.mjs
+
+  # feature-map 陈旧闸（#1160，advisory）：verify-pacman feature map
+  # （.claude/skills/verify-pacman/features/*.md）引用的仓内路径 / .类名 /
+  # [data-*] 选择子 / CSS 声明形，必须能在当前树命中。avatars.md 陈旧的
+  # 「Root 走 display:contents」条目掩护了 #1156（头像被裁本该被 map 拦住）
+  # ——map 过期靠人记忆维护必漏，过期可见是机器活。
+  # 存量陈旧冻结在 scripts/feature-map-staleness-baseline.json，只对新增红；
+  # baseline 条目转绿反过来红、要求删除。
+  # 故意不进分支保护 required contexts（同 dead-class-gate 口径）：红灯可见
+  # 但不拦合并，跑干净一段时间后再由用户决定是否收紧。
+  # 纯 node stdlib、只读仓内文件，无需 node_modules。
+  feature-map-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Feature map staleness gate (#1160)
+        run: node scripts/feature-map-staleness-gate.mjs
