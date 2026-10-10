@@ -153,6 +153,8 @@ export const EN: Record<string, string> = {
   全部收起: 'Collapse all',
   显示完整文件: 'Show full file',
   显示差异: 'Show diff',
+  // #1101: capped fallback tooltip on oversized diff rows (word-diff.ts)
+  '行过长，已退回整行高亮': 'Line too long — whole-line highlight only',
   '完成 {elapsed}': 'Done in {elapsed}',
   运行在: 'Running on',
   上: '', // tail of 运行在 <machine> 上 — the en template needs no tail

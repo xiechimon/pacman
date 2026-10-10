@@ -188,6 +188,11 @@
   --chip-failed-fg: #ffabb7;
   --fail-fg: #ffb091;
   --diff-del-bg: #48242a;
+  /* #1101 词级高亮层：配对 del/add 行内变化的词骑更深/更饱和的底，与整行
+     底色可区分（word-vs-row 实测 1.62/1.53），fg(--text-secondary) 对比度
+     实测 5.10/5.64 过 AA——读数见 docs/verify/1101/contrast.txt */
+  --diff-add-word-bg: #1f5c33;
+  --diff-del-word-bg: #77363f;
   /* resource surfaces (r7 06–10, #69)：tile-orange 橙系是状态语义，与 spot
      各表一意（tile-indigo 判死退役——0 消费，§3.2） */
   --tile-orange-bg: #422b0d;
@@ -302,6 +307,10 @@
   --chip-failed-fg: #6b1f31;
   --fail-fg: #823a1c;
   --diff-del-bg: #ffdce0;
+  /* #1101 词级高亮层（暗侧同律）：word-vs-row 实测 1.37/1.42 可区分，
+     fg 对比度实测 7.59/7.07 过 AA——读数见 docs/verify/1101/contrast.txt */
+  --diff-add-word-bg: #7ddc96;
+  --diff-del-word-bg: #ffaab6;
   --tile-orange-bg: #ffe5c8;
   --tile-orange-fg: #825100;
   --tile-hero-bg: #ffd099;

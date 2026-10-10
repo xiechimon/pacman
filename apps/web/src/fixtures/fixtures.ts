@@ -959,6 +959,92 @@ export function detailReview(opts: {
   };
 }
 
+/** #1101 diff-pane stress changeset (named scenario, no capture —
+ *  chief-threads-long precedent). One file, three hunks, pinning the five
+ *  shapes the word-level highlight + horizontal-scroll fixes must handle:
+ *  a one-word del/add pair (word highlight), an uneven del run against a
+ *  shorter add run (minimum pairing, the surplus del stays whole-line),
+ *  a marker row separating a del/add pair (r8 72 adjacency shape — pairing
+ *  must see through markers), long rows (the horizontal-scroll bg face) and
+ *  an oversized pair beyond the word-diff cap (the loud fallback face). */
+const STRESS_MEGA_ARGS = Array.from({ length: 120 }, (_, i) => `field${i}: "value${i}"`).join(', ');
+
+function stressChanges(): ChangesContent {
+  const longDel =
+    'renderDashboard({ title: "Quarterly Revenue Overview", region: "apac", quarter: "Q3", limit: 100, offset: 0, sort: "createdAt", filter: { active: true } });';
+  const longAdd = longDel.replace('limit: 100', 'limit: 200');
+  const cappedDel = `const mega = { ${STRESS_MEGA_ARGS} };`;
+  const cappedAdd = cappedDel.replace('field7: "value7"', 'field7: "VALUE7"');
+  const lines = [
+    { kind: 'context' as const, text: 'import { retry } from "./retry.js";', oldNo: 1, newNo: 1 },
+    { kind: 'del' as const, text: 'const timeoutMs = 3000; // retry window', oldNo: 2 },
+    { kind: 'add' as const, text: 'const timeoutMs = 5000; // retry window', newNo: 2 },
+    { kind: 'context' as const, text: 'const attempts = 3;', oldNo: 3, newNo: 3 },
+    { kind: 'context' as const, text: 'const jitter = 0.2;', oldNo: 4, newNo: 4 },
+    {
+      kind: 'context' as const,
+      text: 'export { timeoutMs, attempts, jitter };',
+      oldNo: 5,
+      newNo: 5,
+    },
+  ];
+  return {
+    expanded: true,
+    files: [
+      {
+        path: 'src/pipeline/config.ts',
+        added: 4,
+        removed: 5,
+        hunks: [
+          { header: '@@ -1,5 +1,5 @@', lines },
+          {
+            header: '@@ -20,4 +20,3 @@',
+            lines: [
+              { kind: 'del', text: 'keepAlpha = true;', oldNo: 20 },
+              { kind: 'del', text: 'keepBeta = true;', oldNo: 21 },
+              { kind: 'add', text: 'keepAlpha = false;', newNo: 20 },
+              { kind: 'context', text: 'keepGamma = true;', oldNo: 22, newNo: 21 },
+              { kind: 'context', text: 'keepDelta = true;', oldNo: 23, newNo: 22 },
+            ],
+          },
+          {
+            header: '@@ -40,3 +40,3 @@',
+            lines: [
+              { kind: 'del', text: longDel, oldNo: 40 },
+              { kind: 'marker', text: 'No newline at end of file' },
+              { kind: 'add', text: longAdd, newNo: 40 },
+              { kind: 'del', text: cappedDel, oldNo: 41 },
+              { kind: 'add', text: cappedAdd, newNo: 41 },
+              { kind: 'context', text: 'export default pipeline;', oldNo: 42, newNo: 42 },
+            ],
+          },
+        ],
+        // #225 full-file slot: the long rows ride here too so the 显示完整文件
+        // face exercises the same horizontal-scroll width contract.
+        fullContent: [
+          '// src/pipeline/config.ts',
+          longAdd,
+          cappedAdd,
+          'export default pipeline',
+          '',
+        ].join('\n'),
+      },
+    ],
+  };
+}
+
+/** #1101 review surface carrying the stress changeset above. */
+export function detailDiffWordStress(): FixtureSet {
+  return {
+    todos: [probeTodo('review', r7(13, 37))],
+    now: r7(13, 40),
+    detail: {
+      transcript: [...PROBE_BUILD_OPEN, PROBE_BUILD_RESULT],
+      changes: stressChanges(),
+    },
+  };
+}
+
 /** Detail done state (r7 36/36d): review surface + merge round. */
 export function detailDone(): FixtureSet {
   return {
