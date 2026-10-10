@@ -37,8 +37,9 @@ export function runtimeGatePasses(
  *    列；测试已钉此口径，apps/server/test/review.test.ts）；
  *  - 其它步类：assignment 双槽按步类取（02 §4.2/r5 §5）——规划步 → plan 槽；
  *    执行/合并步 → build 槽（合并轮复用执行轮会话，同 Agent）。
- *  无 Agent（槽空 / review meta 无 agentId）= null：claim 面跳过该候选，
- *  sweep 面无从计算 runtime（无人可领的另一族缝，不进闸挡判）。 */
+ *  无 Agent（槽空 / 槽指向已删 Agent / review meta 无 agentId）= null：claim
+ *  面按失败收尾该步（#1104 B：applyStepFailure 落 build.errorMessage + todo
+ *  → failed 终态，不再静默跳过候选）；sweep 面无从计算 runtime（不进闸挡判）。 */
 export function agentForStep(
   db: Db,
   todoRow: typeof todo.$inferSelect,

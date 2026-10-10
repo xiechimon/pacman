@@ -713,6 +713,16 @@ export async function executeChiefTool(
         plan: assignmentIn?.plan?.agentId ? { agentId: assignmentIn.plan.agentId } : null,
         build: assignmentIn?.build?.agentId ? { agentId: assignmentIn.build.agentId } : null,
       };
+      // #1104 A：两槽全空（含整参缺失）= 无主 build——步无人可领，只能静默
+      // 卡死在 pending。400 打回（requireTeamAgent/machineId 同律：错当场折进
+      // 工具结果 `run_builds rejected: …`，chief 下一轮自行补人重派；单槽
+      // 非空放行，留给该步的 claim 面失败收尾兜底）。
+      if (assignment.plan === null && assignment.build === null) {
+        throw new HttpError(
+          400,
+          'assignment 整参缺失或两槽全空：无指派 Agent 的 build 无人可领。请传 assignment 指派 Agent（至少一个槽非空），例如 {"assignment":{"build":{"agentId":"<agentId>"}}}，然后重试 run_builds。',
+        );
+      }
       for (const slot of [assignment.plan, assignment.build]) {
         if (slot !== null) requireTeamAgent(db, slot.agentId, ctx.teamId);
       }

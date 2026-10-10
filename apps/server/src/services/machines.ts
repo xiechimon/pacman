@@ -687,6 +687,25 @@ function agentForStep(
   return agentForStepEligibility(deps.db, todoRow, kind, prompt);
 }
 
+/** #1104 B 无主步失败文案（单源判据 = agentForStep 返 null 的三族）：assignment
+ * 槽空 / 槽指向已删 Agent / review meta 缺 agentId。各族点名各自的补法，落
+ * build.errorMessage（看板失败终态可见），claim 面失败收尾时消费。 */
+function unassignedStepReason(
+  todoRow: typeof todo.$inferSelect,
+  kind: StepRecord['kind'],
+  prompt: string | null,
+): string {
+  if (kind === 'review') {
+    return 'review 步无 Agent：审核 prompt meta 未携带 agentId，无人可领。';
+  }
+  const slot = kind === 'plan' ? todoRow.assignment?.plan : todoRow.assignment?.build;
+  const slotName = kind === 'plan' ? 'plan' : 'build';
+  if (slot?.agentId == null) {
+    return `${slotName} 步无指派 Agent：assignment 的 ${slotName} 槽为空，无人可领。指派 Agent 后重新运行任务。`;
+  }
+  return `${slotName} 步指派的 Agent 不存在（agentId ${slot.agentId} 已删除或不在本团队），无人可领。改派 Agent 后重新运行任务。`;
+}
+
 /** chief 步 claim 载荷组装（remoteTools 51 词表全量 + chief 块 + 会话续轮判定）。
  * 无 todo/project 语境：chief「探测仓库」经 docs relay（server 端裸库读，A4
  * 黑盒逼近 r5 §3.1 的 worktree `git show`），故不下发 repo/git 载荷——避免死
@@ -917,8 +936,26 @@ function tryClaim(
 
   for (const cand of workerCands) {
     const agentRow = agentForStep(deps, cand.todoRow, cand.stepRow.kind, cand.stepRow.prompt);
-    // 未指派 Agent = 不可执行（Agent 可空是 UI 语义，派发需模型位 [设计]）。
-    if (!agentRow?.modelId) continue;
+    // #1104 B：无 Agent（assignment 槽空 / 槽指向已删 Agent / review meta 缺
+    // agentId）= 永无人可领——按失败收尾（step failed + build.errorMessage 落
+    // 根因 + todo → failed 终态，与机器报失败/失联扫尾同一漏斗
+    // builds.applyStepFailure），不再静默跳过。chief 入口的无主派发已由
+    // run_builds 400 打回（#1104 A）；此处收 scheduler/REST 等入口漏进来的
+    // 无主步。失败只作用于本候选：同批更晚的合法候选照常认领（无队头阻塞）。
+    if (agentRow === null) {
+      applyStepFailure(
+        deps,
+        cand.stepRow,
+        unassignedStepReason(cand.todoRow, cand.stepRow.kind, cand.stepRow.prompt),
+      );
+      const failedBuild = db.select().from(build).where(eq(build.id, cand.stepRow.buildId)).get();
+      if (failedBuild) deps.hub.publishBuildDoc(cand.todoRow.teamId, toBuildRecord(failedBuild));
+      publishStepStatus(deps, cand.stepRow.id);
+      continue;
+    }
+    // Agent 在但无模型位 = 不可领（Agent 可空是 UI 语义，派发需模型位
+    // [设计]）。补模型后该步可恢复，不按失败收口——#1104 只收「无 Agent」族。
+    if (!agentRow.modelId) continue;
     // #682 enabledRuntimes 真闸：机器未开步所需 runtime = 不可领（步留
     // pending 给能跑的机器——机器开 pi、步跑 claude-code agent = 不投给该机）。
     if (!runtimeGatePasses(machineRow, agentRow.provider)) continue;

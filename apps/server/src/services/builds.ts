@@ -922,9 +922,11 @@ export const BUILD_ABANDONED_STEP_MS = 120_000;
  * 钉选机在线且闸开的 pending 步（合法排队，含 #682 钉选在线机器的等待语义
  * ——步等它认领，别机不抢）；在线机器上曾有心跳后停更的 claimed 步（执行/
  * 推送通道部分存活的歧义态，等 presence 过期走 ②）。chief 步不在本面
- * （chief.ts 扫尾）。已知缝（另行登记，不属「有界等待」两缝）：未指派
- * Agent 的步（无 modelId = 无人可领，runtime 无从判）与未钉选但全团无人开
- * 该 runtime 的步（无唯一责任人可点名）仍是无期 pending。
+ * （chief.ts 扫尾）。已知缝（另行登记，不属「有界等待」两缝）：Agent 在但
+ * 无模型位的步（无 modelId = 无人可领，runtime 判据单源在此无从计算）与未
+ * 钉选但全团无人开该 runtime 的步（无唯一责任人可点名）仍是无期 pending。
+ * 无 Agent 的步已由 #1104 收口：claim 面当场失败收尾（machines.ts tryClaim），
+ * 本 sweep 不重复判（机器全灭时 ① 的零在线兜底仍覆盖其可见性）。
  * 释放语义：status → pending + machineId 清空（认领原子位复位，他机/同机可
  * 重领）；pinnedMachineId 保留（钉选过滤重算，钉选机才能接）；claimedAt/
  * lastHeartbeatAt 保留作死亡时刻审计（重领即覆写）；createdAt 不动（FIFO
@@ -970,8 +972,8 @@ export function sweepAbandonedBuildSteps(deps: BuildDeps, now: number = nowMs())
       }
       // ④b #881：钉选机在线但 runtime 闸挡（#864 登记缝的收口）。判据与 ④ 同
       // 宽限同漏斗（同一套「有界等待」机制），agent 解析与闸判单源 = claim 面
-      // 的 dispatch-eligibility 原语；未指派 Agent = runtime 无从判，不进本判
-      // （无人可领的另一族缝，另行登记）。
+      // 的 dispatch-eligibility 原语；无 Agent 的步不进本判（#1104 起 claim 面
+      // 已按失败收尾，不留无期 pending）。
       if (
         reason === null &&
         pinnedId !== null &&
