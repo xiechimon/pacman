@@ -6,8 +6,8 @@ import { expect, type Page, test } from '@playwright/test';
 // the whole topbar, so it must not own the hit-test over the back chevron
 // or the right-side actions). Real-click navigation per family:
 // .secondary-back is a client-side Link (carries the scenario search
-// home); .res-back/.res-new are plain anchors (full-document navigation,
-// no search carry-over).
+// home); .res-back/.res-new are client-side Links since #1157 (in-SPA
+// navigation, still no search carry-over — backHref targets are unchanged).
 
 /** The element must own the hit-test at its own center — the title band
  *  (or anything else) may not sit above it. Same law as the
@@ -53,7 +53,8 @@ test('team right-slot action owns its hit area (设置 slot under the same band)
 
 // resources family (r7 06–10, one shared fixture set): the band law covers
 // the back chevron and, where present, the 新建 action (machines/mcp hide
-// it). #944/#910 载体：.res-back → aria-label 一级；.res-new →
+// it). The no-reload mechanism itself is pinned in resource-back-spa.spec.ts
+// (#1157). #944/#910 载体：.res-back → aria-label 一级；.res-new →
 // resource-new testid（hit-test 探针按 CSS 选择器认领元素，role 定位表达
 // 不了——二级载体的正当位）；every route's back really navigates.
 for (const [route, scenario, backTo] of [
