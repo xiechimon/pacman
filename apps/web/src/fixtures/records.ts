@@ -11,6 +11,7 @@
 import {
   type AgentRecord,
   type AgentTask,
+  type DocumentDiffFile,
   type GithubRepoSummary,
   type MemoryRecord,
   type ModelSource,
@@ -202,6 +203,11 @@ export interface ProjectCommitRow {
   authorName: string;
   /** Author instant, epoch ms (relativeTime renders against the clock). */
   at: number;
+  /** #1102 提交详情面 fixture 供肉：该提交相对第一父的文件级 diff（wire 形
+   *  DocumentDiffFile，与 live 载荷同契约——两面都经 mapDiffFiles 进同一渲染
+   *  面）。live 走 GET commits/{sha}；fixture 无 server 由本槽直出，缺席键 =
+   *  files:[]（fileContents 缺席键纪律同款，fixture 行都要带肉防死钮）。 */
+  files?: DocumentDiffFile[];
 }
 
 /** Repo surface of a project route (r2 07e/24 file tree + 24c settings

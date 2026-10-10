@@ -160,16 +160,23 @@ function deriveFullFileView(
     : { kind: 'text', content: file.data.content };
 }
 
-function DiffFileBlock({
+/** 单文件 diff 块（r7 27/27b 捕获形）：文件行 + 展开的 hunk 面 + #1101
+ *  词级高亮。#1102 起跨面复用（项目页提交详情面 import）——渲染单源不另写
+ *  一套；复用面传 allowFullFile=false 摘掉「显示完整文件」钮（全文读面只有
+ *  build changes/file 与 fullContent 槽两个数据源，提交详情面都没有）。 */
+export function DiffFileBlock({
   file,
   expanded,
   buildId,
+  allowFullFile = true,
 }: {
   file: DiffFile;
   expanded: boolean;
   /** #225/#244 全文读面柄：changes 面 live = buildId（经 changes/file 端点取）；
    *  null = fullContent 槽（fixture 任意面 / plan-diff 面，机制见文件头）。 */
   buildId: string | null;
+  /** #1102：false = 不渲染「显示完整文件」钮（无全文数据源的消费面）。 */
+  allowFullFile?: boolean;
 }) {
   const { t } = useI18n();
   const { live } = useLiveData();
@@ -297,15 +304,18 @@ function DiffFileBlock({
           )}
           {/* #1006 原型（#980 前提④）：27px 满宽漆面条（surface-secondary
               恒压 hover）退役——ghost 档默认形态，满宽/左对齐是 layout 位，
-              hover:bg-muted 反馈生效。 */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={() => setShowFull((v) => !v)}
-          >
-            <UnfoldVertical width={12} height={12} />
-            {showFull ? t('显示差异') : t('显示完整文件')}
-          </Button>
+              hover:bg-muted 反馈生效。allowFullFile=false（#1102 提交详情面）
+              = 无全文数据源，钮整个不渲染（不留按下即「二进制」谎报的死钮）。 */}
+          {allowFullFile && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => setShowFull((v) => !v)}
+            >
+              <UnfoldVertical width={12} height={12} />
+              {showFull ? t('显示差异') : t('显示完整文件')}
+            </Button>
+          )}
         </div>
       )}
     </div>

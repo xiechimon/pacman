@@ -295,6 +295,11 @@ export const EN: Record<string, string> = {
   根目录: 'Root',
   '此目录为空。': 'This folder is empty.',
   '文件树读取失败。': 'Failed to read the file tree.',
+  // #1102 commit detail pane
+  请选择一个提交查看: 'Select a commit to view',
+  提交详情加载失败: 'Failed to load the commit details',
+  '该提交没有可显示的改动。': 'This commit has no changes to display.',
+  关闭提交详情: 'Close commit details',
   '搜索任务…': 'Search todos…',
   搜索任务: 'Search todos',
   筛选: 'Filter',

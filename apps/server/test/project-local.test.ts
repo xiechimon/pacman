@@ -159,6 +159,9 @@ describe('expandHomePath（`~` 展开单源；homeDir 测试注入）', () => {
 //   F4 repoKind=local 而 localPath 列空（行完整性破）→ 404 显式红，
 //      无 reason（缺物必红，不静默空）
 //   F5 闸不泛化：github 形态仍 404（git-hosting.test.ts 既有钉，不复制）
+//   F6 提交详情面（#1102）：根提交（无父）→ 相对空树全文件新增，不崩不空
+//      404；目录消失 → 与列表面同闸同形 404 + reason（S2/S4，
+//      readCommitDetail 头注失败清单）
 describe('local 项目读面——Files tab 开闸（#1030）', () => {
   // 与 git-hosting.test.ts 同款隔离：防用户 git 配置（gpgsign / credential）
   // 干扰提交与判定；提交身份固定 env。
@@ -284,6 +287,51 @@ describe('local 项目读面——Files tab 开闸（#1030）', () => {
     const body = (await res.json()) as { error?: string; reason?: string };
     expect(String(body.error)).toContain('local repo');
     expect(body.reason).toBeUndefined();
+  });
+
+  test('F6 提交详情：根提交 = 相对空树全文件新增；目录消失 = 同闸 reason', async () => {
+    const repo = await makeLocalRepo(); // 单根提交（README.md），无父
+    const id = await createLocalProject(repo);
+    const list = (await (await req(s.app, 'GET', `/api/projects/${id}/commits`)).json()) as {
+      commits: { sha: string; message: string; authorName: string; at: number }[];
+    };
+    const root = list.commits[0]!;
+
+    // S4 根提交（无父）：全文件新增的定义态，不是 500 也不是空集
+    const res = await req(s.app, 'GET', `/api/projects/${id}/commits/${root.sha}`);
+    expect(res.status).toBe(200);
+    const detail = (await res.json()) as {
+      sha: string;
+      shortSha: string;
+      message: string;
+      authorName: string;
+      at: number;
+      files: {
+        path: string;
+        additions: number;
+        deletions: number;
+        hunks: { header: string; lines: string[] }[];
+      }[];
+    };
+    // S7 元信息与列表行同源一致
+    expect(detail.sha).toBe(root.sha);
+    expect(detail.message).toBe('init local probe');
+    expect(detail.authorName).toBe('local-read-probe');
+    expect(detail.at).toBe(root.at);
+    expect(detail.sha.startsWith(detail.shortSha)).toBe(true);
+    expect(detail.files).toHaveLength(1);
+    expect(detail.files[0]?.path).toBe('README.md');
+    expect(detail.files[0]?.additions).toBe(1);
+    expect(detail.files[0]?.deletions).toBe(0);
+    expect(detail.files[0]?.hunks[0]?.lines).toContain('+# local-read-probe');
+
+    // S2 目录消失 → 404 + reason not_found（列表面同闸同形，不 500）
+    rmSync(repo, { recursive: true, force: true });
+    const gone = await req(s.app, 'GET', `/api/projects/${id}/commits/${root.sha}`);
+    expect(gone.status).toBe(404);
+    expect(((await gone.json()) as { reason?: LocalErrorReason }).reason).toBe<LocalErrorReason>(
+      'not_found',
+    );
   });
 });
 

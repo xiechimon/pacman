@@ -40,6 +40,7 @@ import type {
   PatchMachineBody,
   PatchUserBody,
   PlanRow,
+  ProjectCommitDetailResponse,
   ProjectFileResponse,
   ProjectFilesResponse,
   ProjectRecord,
@@ -591,6 +592,23 @@ export const useProjectCommits = (projectId: string | undefined, enabled: boolea
         }[];
       }>(`/api/projects/${projectId}/commits`),
     enabled: enabled && projectId !== undefined,
+  });
+
+/** 提交详情读面（#1102 历史行点击 → 该提交 diff；[推断] 端点，wire.test
+ *  INFERRED_ROUTES 登记）。sha 进 queryKey——切换提交即换键，React Query
+ *  自然分缓存，来回切换不串数据（tree 面 path 键同款纪律）。 */
+export const useProjectCommitDetail = (
+  projectId: string | undefined,
+  sha: string | undefined,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ['commit-detail', projectId, sha],
+    queryFn: () =>
+      api.get<ProjectCommitDetailResponse>(
+        `/api/projects/${projectId}/commits/${encodeURIComponent(sha ?? '')}`,
+      ),
+    enabled: enabled && projectId !== undefined && sha !== undefined,
   });
 
 // —— 变更（mutation 后失效重取 = S8 canon）———————————————————————————————
