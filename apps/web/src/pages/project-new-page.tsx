@@ -793,6 +793,15 @@ export function ProjectNewPage() {
             {pickHint}
           </div>
         )}
+        {/* #1152（ADR 0016）localPath 单机器形态常驻标注：仓真值在这台机器的
+            文件系统上，机器损坏进度随机器走——选中 local 即呈现，不随编辑撤。
+            无 role=status：那是给动态升降提示的活区域（pickHint 占用且 e2e 钉
+            了它唯一），常驻静态描述不应进活区域。 */}
+        {repoSel === 'local' && (
+          <div className="mt-2 text-xs leading-4 text-muted-foreground">
+            {t('单机器形态：这台机器损坏时进度随机器走。需要在任意机器上续跑，请用 GitHub 接入。')}
+          </div>
+        )}
         {/* 提交钮：default 件默认形态（40 高手写几何与 .55 禁用淡化退役，
             禁用降档 = 件默认 opacity-50）。 */}
         <Button

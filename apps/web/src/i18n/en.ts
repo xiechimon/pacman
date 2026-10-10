@@ -363,6 +363,10 @@ export const EN: Record<string, string> = {
   无法打开系统文件夹对话框: 'Cannot open the system folder dialog',
   // #441 应用内目录浏览器（ADR 0003 D6 remote/headless 兜底）。
   浏览本地文件夹: 'Browse local folders',
+  // #1152（ADR 0016）localPath 单机器形态常驻标注：真值在该机文件系统，
+  // 不享受换机续跑；可丢性只属 githubRepo 形态。
+  '单机器形态：这台机器损坏时进度随机器走。需要在任意机器上续跑，请用 GitHub 接入。':
+    'Single-machine: progress dies with this machine. Use GitHub to resume from any machine.',
   显示隐藏文件: 'Show hidden files',
   没有子目录: 'No subfolders',
   子目录均已隐藏: 'All subfolders are hidden',

@@ -12,6 +12,7 @@ import { expect, type Page, test } from '@playwright/test';
 //    错误行），输入面仍可用，编辑路径即撤提示（陈旧提示不残留律）
 // 5. 在飞期按钮 disabled + 双击单发（web busy 态与 server 单飞 D7 双保险）
 // 6. pick 结果覆盖对话框期间的手改路径（S11 最后动作赢，失败方式清单见 #440）
+// 7. local 选态常驻「单机器形态」标注（#1152 / ADR 0016），不占 status 活区域
 //
 // 原生真路径（探测两态 / 对话框回填 / 取消退出码）走 verify-pacman 人工面。
 
@@ -146,4 +147,17 @@ test('pick 结果覆盖对话框期间的手改路径（最后动作赢）', asy
   // 对话框在飞期间手改输入（busy 只锁按钮不锁输入面）。
   await input.fill('/manual/edit');
   await expect(input).toHaveValue('/a/b');
+});
+
+// 7. local 选态常驻「单机器形态」标注（#1152 / ADR 0016）；它是静态描述，
+//    不进 role=status 活区域（pickHint 的钉子面，本 spec 断言它唯一）。
+test('local 选态常驻单机器形态标注，且不占 status 活区域', async ({ page }) => {
+  await stubBoot(page);
+  await page.goto(NEW_PROJECT_LIVE);
+  await expect(page.getByText(/单机器形态/)).toHaveCount(0);
+  await openLocalFace(page);
+  await expect(page.getByText(/单机器形态：这台机器损坏时进度随机器走/)).toBeVisible();
+  // 标注不是动态提示：status 活区域保持为空（回归钉——曾以 role=status 实现，
+  // 撞「取消 = 无提示行」与「提示行唯一」两条既有断言）。
+  await expect(page.getByRole('status')).toHaveCount(0);
 });
