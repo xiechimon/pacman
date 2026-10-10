@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="pacman-lane">
+  <diagram id="probe-carrier-1166" name="probe carrier migration">
+    <mxGraphModel grid="0" page="0" pageWidth="1180" pageHeight="430">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="a_key" value="api-key 探针&lt;br/&gt;等 .keys-empty 等退役类名" style="rounded=1;html=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="20" y="86" width="360" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="a_search" value="search 探针&lt;br/&gt;等 .search-panel 等退役类名" style="rounded=1;html=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="400" y="86" width="360" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="a_result" value="结果&lt;br/&gt;waitForSelector 超时，FAIL" style="rounded=1;html=1;whiteSpace=wrap;fillColor=#f8d7da;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="780" y="86" width="360" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="b_key" value="api-key 探针&lt;br/&gt;keys-empty testid / dialog+button role" style="rounded=1;html=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="20" y="266" width="360" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="b_search" value="search 探针&lt;br/&gt;dialog「搜索」 / textbox / data-row-kind" style="rounded=1;html=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="400" y="266" width="360" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="b_result" value="结果&lt;br/&gt;api-key 6/6 PASS，search 2/2 PASS" style="rounded=1;html=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="780" y="266" width="360" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="title" value="#1166 drive.mjs api-key + search 探针：per-face 类退役 → 语义载体" style="text;html=1;fontSize=15;align=left;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="16" width="1140" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="a_hdr" value="改前（origin/main 探针）" style="text;html=1;fontSize=13;align=left;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="56" width="500" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="b_hdr" value="改后（本票探针）" style="text;html=1;fontSize=13;align=left;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="236" width="500" height="22" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
