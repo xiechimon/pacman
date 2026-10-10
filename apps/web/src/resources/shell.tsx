@@ -11,6 +11,7 @@
 // 吞掉 back / 新建 的点击。
 import { cn } from 'cn';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
 import { AppSidebar } from '../board/app-sidebar.js';
 import type { SidebarSelected } from '../board/sidebar.js';
 import { Button, buttonVariants } from '../components/ui/button.js';
@@ -25,7 +26,8 @@ import { ChevronLeft, Plus } from '../icons/index.js';
 const RES_NEW_CLS = 'ml-auto mr-[21px]';
 
 /** `+ 新建` 的 SPA 链接形态（newHref 分支）：link 档同配方经 buttonVariants
- *  复用，裸 <a>（链接不在 #851 裸控件账内；focus 环走 #388 全局 :where(a) 律）。 */
+ *  复用。载体是 react-router Link（渲染仍是 <a>，链接不在 #851 裸控件账内；
+ *  focus 环走 #388 全局 :where(a) 律）——#1157：裸 <a href> 会整页导航。 */
 const RES_NEW_ANCHOR_CLS = cn(buttonVariants({ variant: 'link' }), RES_NEW_CLS);
 
 interface ResourceShellProps {
@@ -66,10 +68,10 @@ export function ResourceShell({
   // （#133）的探针要在 elementFromPoint 后按 CSS 选择器认领元素，role 定位
   // 表达不了；行为面（点击开弹窗）一律走 getByRole('button', {name:'新建'})。
   const newAction = hideNew ? null : newHref != null ? (
-    <a className={RES_NEW_ANCHOR_CLS} href={newHref} data-testid="resource-new">
+    <Link className={RES_NEW_ANCHOR_CLS} to={newHref} data-testid="resource-new">
       <Plus width={13} height={13} />
       {t('新建')}
-    </a>
+    </Link>
   ) : (
     <Button variant="link" className={RES_NEW_CLS} onClick={onNew} data-testid="resource-new">
       <Plus width={13} height={13} />
@@ -92,13 +94,16 @@ export function ResourceShell({
             data-testid="resource-topbar"
             className="relative flex h-11 flex-none items-center border-b border-(--border)"
           >
-            <a
+            {/* #1157：返回键走 react-router Link——裸 <a href> 是浏览器整页
+                导航（丢内存态、重跑 boot、重拉全部数据）。目标值不变，只换
+                承载；钉机制的断言在 e2e/resource-back-spa.spec.ts。 */}
+            <Link
               className="absolute top-2 left-3 flex size-7 items-center justify-center text-(--text-tertiary)"
-              href={backHref}
+              to={backHref}
               aria-label={t('返回')}
             >
               <ChevronLeft width={16} height={16} />
-            </a>
+            </Link>
             <h1 className="pointer-events-none absolute inset-x-0 text-center text-base leading-[22px] font-medium text-(--foreground)">
               {t(title)}
             </h1>
