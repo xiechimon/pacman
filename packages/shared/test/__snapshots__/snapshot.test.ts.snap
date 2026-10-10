@@ -10,6 +10,12 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
         {
           "additionalProperties": false,
           "properties": {
+            "defaultSkill": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
             "description": {
               "type": [
                 "string",
@@ -59,11 +65,18 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
                 "null",
               ],
             },
-            "skills": {
-              "items": {
-                "type": "string",
-              },
-              "type": "array",
+            "skillsAllowlist": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+                {
+                  "type": "null",
+                },
+              ],
             },
             "thinkingLevel": {
               "type": [
@@ -364,6 +377,12 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
                 {
                   "additionalProperties": false,
                   "properties": {
+                    "defaultSkill": {
+                      "type": [
+                        "string",
+                        "null",
+                      ],
+                    },
                     "description": {
                       "type": [
                         "string",
@@ -413,11 +432,18 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
                         "null",
                       ],
                     },
-                    "skills": {
-                      "items": {
-                        "type": "string",
-                      },
-                      "type": "array",
+                    "skillsAllowlist": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "type": "string",
+                          },
+                          "type": "array",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
                     },
                     "thinkingLevel": {
                       "type": [
@@ -4487,6 +4513,12 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > agent > ag
         "null",
       ],
     },
+    "defaultSkill": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
     "description": {
       "type": [
         "string",
@@ -4523,11 +4555,18 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > agent > ag
       },
       "type": "array",
     },
-    "skills": {
-      "items": {
-        "type": "string",
-      },
-      "type": "array",
+    "skillsAllowlist": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        {
+          "type": "null",
+        },
+      ],
     },
     "status": {
       "enum": [
@@ -4559,7 +4598,8 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > agent > ag
     "thinkingLevel",
     "tools",
     "secrets",
-    "skills",
+    "defaultSkill",
+    "skillsAllowlist",
     "mcpServers",
   ],
   "type": "object",
