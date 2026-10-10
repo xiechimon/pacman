@@ -13,7 +13,7 @@ import {
   type LocalErrorReason,
   type ProjectFileResponse,
 } from '@pacman/shared';
-import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client.js';
 import {
@@ -55,7 +55,9 @@ import { useI18n } from '../i18n/provider.js';
 import {
   ArrowUpDown,
   ChevronDown,
+  ChevronRight,
   FileTab,
+  Folder,
   Funnel,
   GitCommit,
   Grid2x2,
@@ -80,9 +82,27 @@ import { PageShell } from './shell.js';
 const FILE_ROW_CLS = 'w-full cursor-pointer justify-start gap-2 px-1.5 font-normal';
 const FILE_ROW_ACTIVE_CLS = 'bg-muted hover:bg-muted dark:hover:bg-muted';
 
+/** #1097 Files 面行数据 = wire entry（name/path/type）原样投影。fixture 面
+ *  string 文件退化为顶层 blob 行（path=name，形态零漂移）；live 面直接吃
+ *  projectTreeResponseSchema 的 entries（type/path 字段契约里一直有，本票
+ *  起两端才真正消费）。 */
+export interface FileTreeRow {
+  name: string;
+  path: string;
+  type: 'blob' | 'tree';
+}
+
+/** 面包屑钮（#1097 导航）：ghost 小钮 + mono 段名；当前段不可点，载体
+ *  aria-current=location（路径回显 = 载荷 path 同源值，见 ProjectPage）。 */
+const CRUMB_BTN_CLS = 'h-6 cursor-pointer px-1 font-mono text-xs font-normal';
+
 function FilesPane({
   branch,
-  files,
+  entries,
+  treeLoading,
+  treeError,
+  dirPath,
+  onNavigateDir,
   seg,
   onSeg,
   commits,
@@ -91,14 +111,22 @@ function FilesPane({
   onSelectFile,
 }: {
   branch: string;
-  files: string[];
+  entries: FileTreeRow[];
+  /** 当前目录的 tree 请求在途且无缓存数据（加载态优先于空态，防空闪）。 */
+  treeLoading: boolean;
+  /** tree 读失败（非 local 降级面）：诚实态单列——读失败不得演成空目录
+   *  （code-review #1097 spec 轴：空文案会把读错说成仓空）。 */
+  treeError: boolean;
+  /** 当前子目录（'' = 顶层）；面包屑段即其 '/' 切分。 */
+  dirPath: string;
+  onNavigateDir: (path: string) => void;
   seg: 'files' | 'history';
   onSeg: (seg: 'files' | 'history') => void;
   commits: ProjectCommitRow[];
   now: number;
-  /** #202 查看器选中文件;null = 未选。 */
+  /** #202 查看器选中文件（#1097 起 = 完整路径，同名跨目录不串）;null = 未选。 */
   selectedFile: string | null;
-  onSelectFile: (name: string) => void;
+  onSelectFile: (path: string) => void;
 }) {
   const { t } = useI18n();
   return (
@@ -137,19 +165,98 @@ function FilesPane({
       </Tabs>
       {seg === 'files' ? (
         <div className="mt-3">
-          {files.map((f) => (
-            // 行钮 = ghost 件默认形态；选中态载体 = aria-current（#910 裁定 3）。
-            <Button
-              key={f}
-              variant="ghost"
-              aria-current={selectedFile === f ? 'true' : undefined}
-              className={`prj-file-row ${FILE_ROW_CLS}${selectedFile === f ? ` ${FILE_ROW_ACTIVE_CLS}` : ''}`}
-              onClick={() => onSelectFile(f)}
+          {/* 面包屑（#1097）：仅子目录内渲染——顶层零视觉漂移（既有捕获面
+              不动）。段名来自 dirPath 切分；服务端载荷的 path 回显与其恒等
+              （server vitest P1-P3 钉住），显示走状态是为了切目录即时反馈。 */}
+          {dirPath !== '' ? (
+            <nav
+              aria-label={t('目录导航')}
+              className="mb-1 flex flex-wrap items-center gap-x-0.5 px-1.5 text-muted-foreground"
             >
-              <FileTab className="size-3.5 text-muted-foreground" />
-              <span className="font-mono text-xs text-muted-foreground">{f}</span>
-            </Button>
-          ))}
+              <Button variant="ghost" className={CRUMB_BTN_CLS} onClick={() => onNavigateDir('')}>
+                {t('根目录')}
+              </Button>
+              {dirPath
+                .split('/')
+                .filter(Boolean)
+                .map((name, i, segs) => {
+                  const prefix = segs.slice(0, i + 1).join('/');
+                  const isCurrent = i === segs.length - 1;
+                  return (
+                    <Fragment key={prefix}>
+                      <ChevronRight
+                        width={12}
+                        height={12}
+                        aria-hidden="true"
+                        className="flex-none"
+                      />
+                      {isCurrent ? (
+                        <span
+                          aria-current="location"
+                          className="px-1 font-mono text-xs text-foreground"
+                        >
+                          {name}
+                        </span>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          className={CRUMB_BTN_CLS}
+                          onClick={() => onNavigateDir(prefix)}
+                        >
+                          {name}
+                        </Button>
+                      )}
+                    </Fragment>
+                  );
+                })}
+            </nav>
+          ) : null}
+          {treeLoading ? (
+            <div className="px-1 py-6 text-center text-xs text-muted-foreground">
+              {t('加载中…')}
+            </div>
+          ) : treeError ? (
+            <div className="px-1 py-6 text-center text-xs text-muted-foreground">
+              {t('文件树读取失败。')}
+            </div>
+          ) : entries.length === 0 ? (
+            // 空目录定义态（#1097 验收）：git 不跟踪空目录，服务端对空/不存在
+            // 目录同回 entries=[]（server vitest P5）——web 一律演空态文案。
+            <div className="px-1 py-6 text-center text-xs text-muted-foreground">
+              {t('此目录为空。')}
+            </div>
+          ) : (
+            entries.map((e) =>
+              e.type === 'tree' ? (
+                // 目录行（#1097）：Folder 字形区分（非仅颜色）+ 点击下钻；
+                // data-tree-entry = 跨域定位载体（e2e W1-W7）。
+                <Button
+                  key={e.path}
+                  variant="ghost"
+                  data-tree-entry="folder"
+                  className={`prj-file-row ${FILE_ROW_CLS}`}
+                  onClick={() => onNavigateDir(e.path)}
+                >
+                  <Folder className="size-3.5 text-muted-foreground" />
+                  <span className="font-mono text-xs text-muted-foreground">{e.name}</span>
+                </Button>
+              ) : (
+                // 文件行 = 既有形态零回归；键与选中比较都用完整 path（#1097：
+                // 同名文件跨目录不串）。选中态载体 = aria-current（#910 裁定 3）。
+                <Button
+                  key={e.path}
+                  variant="ghost"
+                  data-tree-entry="file"
+                  aria-current={selectedFile === e.path ? 'true' : undefined}
+                  className={`prj-file-row ${FILE_ROW_CLS}${selectedFile === e.path ? ` ${FILE_ROW_ACTIVE_CLS}` : ''}`}
+                  onClick={() => onSelectFile(e.path)}
+                >
+                  <FileTab className="size-3.5 text-muted-foreground" />
+                  <span className="font-mono text-xs text-muted-foreground">{e.name}</span>
+                </Button>
+              ),
+            )
+          )}
         </div>
       ) : commits.length === 0 ? (
         <div className="mt-3 px-1 py-6 text-center text-xs text-muted-foreground">
@@ -556,10 +663,27 @@ export function ProjectPage() {
   const wireProject = live ? (projectsQ.data ?? []).find((p) => p.id === id) : undefined;
   const hostedRepo = live && wireProject?.repoKind === 'hosted';
   const localRepo = live && wireProject?.repoKind === 'local';
+  // #1097 子目录下钻位：与 fileSel 同律按 (projectId, path) 键——路由切项目
+  // 组件不重挂载，旧项目的目录位不得串场。'' = 顶层。
+  const [dirSel, setDirSel] = useState<{ projectId: string; path: string }>({
+    projectId: '',
+    path: '',
+  });
+  const dirPath = dirSel.projectId === id ? dirSel.path : '';
+  const navigateDir = useCallback((path: string) => setDirSel({ projectId: id ?? '', path }), [id]);
   const treeQ = useProjectTree(
     live && (hostedRepo || localRepo) ? id : undefined,
     hostedRepo ? 'main' : undefined,
+    dirPath === '' ? undefined : dirPath,
   );
+  // 加载态判据（e2e W6）：live 可读形态下当前目录键尚无数据 = 在途（含
+  // projects 未落定、tree query 还没启用的窗口）——空态只在数据真落后判定，
+  // 防「切目录瞬间闪空」。fixture 面 query 恒 disabled，不演加载。
+  const treeLoading =
+    live &&
+    !treeQ.isError &&
+    treeQ.data === undefined &&
+    (projectsQ.isLoading || hostedRepo || localRepo);
   // 历史读面惰性：仅 live + 文件 tab + 历史 seg + 可读形态（hosted/local）才发
   // （GitHub 接入无本地存储面 = tree/file 同族 404，不发无谓请求）。
   const commitsQ = useProjectCommits(
@@ -573,7 +697,9 @@ export function ProjectPage() {
           // 分支 chip = 实读 ref 回显（hosted='main'、local='HEAD'——tree 载荷
           // 自带回显，不猜）；tree 未回时退 'main'（hosted 语义不变）。
           branch: treeQ.data?.ref ?? 'main',
-          files: (treeQ.data?.entries ?? []).map((e) => e.name),
+          // live 行数据不走本字段——fileRows 直取 treeQ entries（#1097 起
+          // type/path 全量消费）；files 仅 fixture 形态供数。
+          files: [],
           repoName: wireProject.repoName ?? wireProject.githubRepo ?? '',
           hosted: wireProject.repoKind === 'hosted',
           ...(wireProject.repoKind !== undefined ? { repoKind: wireProject.repoKind } : {}),
@@ -586,6 +712,22 @@ export function ProjectPage() {
   // 禁用」的 out-of-scope）：server 端目录解析已分叉（requireRepoReadDir），
   // web 按形态发请求。不可达降级见下方 treeQ.isError 分支。
   const isLocalRepo = project?.repoKind === 'local';
+  // tree 读失败的诚实态（hosted 等非 local 降级面）：local 形态的 isError 走
+  // 上方「本地仓库当前无法读取。」降级分支，不进 FilesPane。
+  const treeError = live && treeQ.isError && !isLocalRepo;
+  // #1097 行数据单源：live = tree 载荷 entries 原样（type/path 终于被消费）；
+  // fixture = string 文件退化顶层 blob 行（无目录，path=name）。
+  // 展示序（用户 2026-10-10 反馈）：文件夹组置顶、组内各自字母序——git 树序
+  // 把子树按「名 + /」排（docs 与 docs.md 交错），不是文件管理器直觉；排序是
+  // 显示层关注点，wire 保持 git 真值不动。
+  const fileRows: FileTreeRow[] = useMemo(() => {
+    const rows = live
+      ? (treeQ.data?.entries ?? []).map((e) => ({ name: e.name, path: e.path, type: e.type }))
+      : (project?.files ?? []).map((f) => ({ name: f, path: f, type: 'blob' as const }));
+    return rows.sort((a, b) =>
+      a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'tree' ? -1 : 1,
+    );
+  }, [live, treeQ.data, project]);
   // 文件查看器选中态(#202):存 (projectId, path) 对——路由切换项目时
   // 组件不重挂载,旧项目选中不串场。live 读面点击触发 = 天然惰性;非托管
   // 形态 tree 同族 404 无行可点,误点落「文件加载失败」诚实态,不做
@@ -708,13 +850,17 @@ export function ProjectPage() {
         <div className="prj-files flex min-h-0 flex-1">
           <FilesPane
             branch={project?.branch ?? 'main'}
-            files={project?.files ?? []}
+            entries={fileRows}
+            treeLoading={treeLoading}
+            treeError={treeError}
+            dirPath={dirPath}
+            onNavigateDir={navigateDir}
             seg={seg}
             onSeg={setSeg}
             commits={live ? mapCommits(commitsQ.data?.commits ?? []) : (project?.commits ?? [])}
             now={live ? Date.now() : fixture.now}
             selectedFile={selectedFile}
-            onSelectFile={(name) => setFileSel({ projectId: id ?? '', path: name })}
+            onSelectFile={(path) => setFileSel({ projectId: id ?? '', path })}
           />
           {fileView.kind === 'text' ? (
             <div className="block min-w-0 flex-1 overflow-auto px-4 py-3 text-[13px] text-muted-foreground">

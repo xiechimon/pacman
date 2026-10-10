@@ -29,6 +29,7 @@ export { Eye } from './Eye.js';
 export { FileCheck } from './FileCheck.js';
 export { FileTab } from './FileTab.js';
 export { FileText } from './FileText.js';
+export { Folder } from './Folder.js';
 export { Funnel } from './Funnel.js';
 export { GitBranch } from './GitBranch.js';
 export { GitCommit } from './GitCommit.js';

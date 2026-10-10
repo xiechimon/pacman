@@ -563,9 +563,11 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
 
   // —— repo 文件浏览面（02 §3：读裸库 ref 树与单文件，server 端实现，无检出
   // 要求；服务 `Tasks | Files` 分段开关，r1 §461。响应形状 [推断]）———————————
+  // path query = 子目录下钻（#1097）：readTree/lsTree 原生支持（含
+  // isSafeRepoPath 守卫），路由层透传即可；缺省/空串 = 顶层（既有语义）。
   app.get('/api/projects/:id/tree', async (c) => {
     const row = requireProject(ctx, c.req.param('id'));
-    return c.json(await readTree(ctx, row.id, c.req.query('ref')));
+    return c.json(await readTree(ctx, row.id, c.req.query('ref'), c.req.query('path')));
   });
 
   app.get('/api/projects/:id/file', async (c) => {
