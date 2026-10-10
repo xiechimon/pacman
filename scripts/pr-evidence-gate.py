@@ -79,6 +79,14 @@ def is_media_host_image(url):
 
 
 REQUIRED_SECTIONS = ('Upstream', 'Verified')
+# The full body contract a lane must satisfy (#1110). The gate only
+# *requires* the two sections above; the rest are named here so a failing
+# lane is pointed at the canonical template instead of guessing a shape --
+# the global show-me /pr skill ships a different three-section template and
+# fails this gate (four lanes in one day hand-rewrote the body).
+TEMPLATE_PATH = '.github/PULL_REQUEST_TEMPLATE.md'
+TEMPLATE_SECTIONS = ('What', 'Verified', 'Upstream', 'Risk', 'Acceptance',
+                     'Issues')
 H2 = re.compile(r'^##[ \t]+(.+?)[ \t]*$', re.M)
 HTML_COMMENT = re.compile(r'<!--.*?-->', re.S)
 FENCE = re.compile(r'^ {0,3}(?:```|~~~)')
@@ -195,13 +203,22 @@ def main():
     verdicts = section_verdicts(body)
     answered = sum(1 for v in verdicts.values() if v == 'answered')
     print(f"pr-evidence: sections: {answered}/{len(REQUIRED_SECTIONS)} answered")
+    section_failed = False
     for name in REQUIRED_SECTIONS:
         if verdicts[name] == 'missing':
             failures.append(name)
+            section_failed = True
             print(f"FAIL missing-section: {name}")
         elif verdicts[name] == 'empty':
             failures.append(name)
+            section_failed = True
             print(f"FAIL empty-section: {name}")
+    if section_failed:
+        print(f"pr-evidence: the body contract is {TEMPLATE_PATH} "
+              f"({' / '.join(TEMPLATE_SECTIONS)}).")
+        print("pr-evidence: the global show-me /pr template "
+              "(Summary/Evidence/Merge Danger) does not satisfy this gate; "
+              "use the repo skill .claude/skills/pr-pacman/SKILL.md.")
 
     links = find_links(body)
 
