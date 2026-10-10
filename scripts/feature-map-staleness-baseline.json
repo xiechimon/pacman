@@ -351,6 +351,27 @@
       "kind": "class",
       "symbol": ".new-task-tag-add",
       "line": 25
+    },
+    {
+      "file": "chief-dispatch-judgment.md",
+      "kind": "path",
+      "symbol": "apps/server/test/chief.test.ts",
+      "line": 12,
+      "note": "main d3d0faff（#1162）按场景拆掉 chief.test.ts → chief-dispatch.test.ts 等；map 行未随票更新，属存量债。"
+    },
+    {
+      "file": "chief-segments.md",
+      "kind": "path",
+      "symbol": "apps/daemon/test/machine-loop.test.ts",
+      "line": 45,
+      "note": "main d3d0faff（#1162）拆为 machine-{boot,claim,steer,stop,…}.test.ts；map 行未随票更新，属存量债。"
+    },
+    {
+      "file": "machine-concurrency.md",
+      "kind": "path",
+      "symbol": "test/machine-loop.test.ts",
+      "line": 63,
+      "note": "同 #1162 拆分（daemon 侧 machine-loop.test.ts 退役）；map 行未随票更新，属存量债。"
     }
   ]
 }
