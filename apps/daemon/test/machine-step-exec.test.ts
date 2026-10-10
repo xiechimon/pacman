@@ -93,32 +93,43 @@ describe('步执行全链（02 §5.7 生命周期行 + journal 端点词表）',
     await handle.done;
   });
 
-  test('skillsAllowlist 透传（#372）：worker 步 = agent.skills（含 []）；chief 步不传', async () => {
-    // worker 步：勾选 slug 原样进 SessionOpts.skillsAllowlist；空勾选传 []
-    // （[] = 不注入任何 skill，缺省才是全量——两态不得混淆）。
-    for (const skills of [['alpha', 'beta'], []] as string[][]) {
+  test('skillsAllowlist 透传（#372→#1169）：worker 数组原样传；null（不限制）不传；chief 步不传', async () => {
+    // 失败方式（先于实现固化）：
+    // 1. null 被误读成全拒 → SessionOpts 收到 []，不限制 agent 整库被拒（#1169 主修位）。
+    // 2. 数组被过滤/吞掉 → deny 闸（#917 吃 allowlist）失去名单。
+    // 3. chief 步误传 → 信任面被绑定 Agent 勾选约束。
+    // worker 步：数组白名单原样进 SessionOpts.skillsAllowlist（含 [] = 显式全拒）。
+    for (const skillsAllowlist of [['alpha', 'beta'], []] as string[][]) {
       const api = new FakeMachineApi();
       const { backend, created } = fakeBackend([{ type: 'done', usage: [] }]);
       const { handle } = await boot({ api, backend });
       await waitFor(() => api.parked !== null);
       api.parked?.({
         ...CLAIMED,
-        agent: { ...CLAIMED.agent!, skills },
+        agent: { ...CLAIMED.agent!, skillsAllowlist },
       });
       await waitFor(() => api.doneBodies.length === 1);
       const opts = created[0]?.opts as { skillsAllowlist?: string[] };
-      expect(opts.skillsAllowlist).toEqual(skills);
+      expect(opts.skillsAllowlist).toEqual(skillsAllowlist);
       await handle.stop();
       await handle.done;
     }
 
-    // worker 步 claim 未携带 skills（旧 server）= 缺省不传（全量直通，零回归）。
-    {
+    // null（不限制）与缺省（旧 server 未携带）都不传——SessionOpts 无 allowlist =
+    // 全量直通；[] 与 null 两态不得在这里塌缩。
+    for (const agent of [null, undefined]) {
       const api = new FakeMachineApi();
       const { backend, created } = fakeBackend([{ type: 'done', usage: [] }]);
       const { handle } = await boot({ api, backend });
       await waitFor(() => api.parked !== null);
-      api.parked?.(CLAIMED);
+      if (agent === null) {
+        api.parked?.({
+          ...CLAIMED,
+          agent: { ...CLAIMED.agent!, skillsAllowlist: null, defaultSkill: null },
+        });
+      } else {
+        api.parked?.(CLAIMED);
+      }
       await waitFor(() => api.doneBodies.length === 1);
       const opts = created[0]?.opts as { skillsAllowlist?: string[] };
       expect(opts.skillsAllowlist).toBeUndefined();
@@ -126,7 +137,7 @@ describe('步执行全链（02 §5.7 生命周期行 + journal 端点词表）',
       await handle.done;
     }
 
-    // chief 步：绑定 Agent 即使带 skills 也不传——chief 是信任面，全量 catalog。
+    // chief 步：绑定 Agent 即使带 allowlist 也不传——chief 是信任面，全量 catalog。
     {
       const api = new FakeMachineApi();
       const { backend, created } = fakeBackend([{ type: 'done', usage: [] }]);
@@ -136,12 +147,83 @@ describe('步执行全链（02 §5.7 生命周期行 + journal 端点词表）',
         ...CLAIMED,
         step: { ...CLAIMED.step, kind: 'chief' as const },
         conversationId: 'chief-t1',
-        agent: { ...CLAIMED.agent!, skills: ['alpha'] },
+        agent: { ...CLAIMED.agent!, skillsAllowlist: ['alpha'], defaultSkill: 'alpha' },
         chief: { threadId: 't1', systemPrompt: '总管 charter', trigger: 'user' as const },
       });
       await waitFor(() => api.doneBodies.length === 1);
       const opts = created[0]?.opts as { skillsAllowlist?: string[] };
       expect(opts.skillsAllowlist).toBeUndefined();
+      await handle.stop();
+      await handle.done;
+    }
+  });
+
+  test('defaultSkill（#1169）排进 #1116 注入绑定序首位（选择集收窄面）', async () => {
+    // 失败方式（先于实现固化）：
+    // 1. defaultSkill 非空但没排首位 → 携带语义让位给 id 字典序。
+    // 2. 排序时没去重 → [default, default, ...] 重复条目进注入面。
+    // 3. injectedSkills 缺省（旧 server）时编造集 → 违背「目录注入回落全量」
+    //    的既有律（defaultSkill 只在 injectedSkills 在位时重排，不造集）。
+    const api = new FakeMachineApi();
+    const { backend, created } = fakeBackend([{ type: 'done', usage: [] }]);
+    const { handle } = await boot({ api, backend });
+    await waitFor(() => api.parked !== null);
+    api.parked?.({
+      ...CLAIMED,
+      agent: {
+        ...CLAIMED.agent!,
+        skillsAllowlist: ['alpha', 'beta'],
+        defaultSkill: 'beta',
+        injectedSkills: ['alpha', 'beta'],
+      },
+    });
+    await waitFor(() => api.doneBodies.length === 1);
+    const opts = created[0]?.opts as { injectedSkills?: string[] };
+    // 首位 = defaultSkill；余集保序去重；allowlist 不因排序收窄。
+    expect(opts.injectedSkills).toEqual(['beta', 'alpha']);
+    await handle.stop();
+    await handle.done;
+
+    // defaultSkill 缺省（null/未携带）= 注入集原样（id 字典序不动）。
+    {
+      const api = new FakeMachineApi();
+      const { backend, created } = fakeBackend([{ type: 'done', usage: [] }]);
+      const { handle } = await boot({ api, backend });
+      await waitFor(() => api.parked !== null);
+      api.parked?.({
+        ...CLAIMED,
+        agent: {
+          ...CLAIMED.agent!,
+          skillsAllowlist: ['alpha', 'beta'],
+          defaultSkill: null,
+          injectedSkills: ['alpha', 'beta'],
+        },
+      });
+      await waitFor(() => api.doneBodies.length === 1);
+      const opts = created[0]?.opts as { injectedSkills?: string[] };
+      expect(opts.injectedSkills).toEqual(['alpha', 'beta']);
+      await handle.stop();
+      await handle.done;
+    }
+
+    // injectedSkills 缺省（旧 server）+ defaultSkill 在位 = 不造集（回落 allowlist
+    // 全量注入，defaultSkill 在其内——排序只在集在位时起效）。
+    {
+      const api = new FakeMachineApi();
+      const { backend, created } = fakeBackend([{ type: 'done', usage: [] }]);
+      const { handle } = await boot({ api, backend });
+      await waitFor(() => api.parked !== null);
+      api.parked?.({
+        ...CLAIMED,
+        agent: {
+          ...CLAIMED.agent!,
+          skillsAllowlist: ['alpha', 'beta'],
+          defaultSkill: 'beta',
+        },
+      });
+      await waitFor(() => api.doneBodies.length === 1);
+      const opts = created[0]?.opts as { injectedSkills?: string[] };
+      expect(opts.injectedSkills).toBeUndefined();
       await handle.stop();
       await handle.done;
     }

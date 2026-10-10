@@ -60,23 +60,30 @@ describe('分派 + 单 todo 直派 + 双 Agent assignment（r5 §3.3/§3.4/§5�
 
   // XMON-77 权限闭环读面：chief 分派要能看到每个 Agent 的授权集（合并步
   // 派给无「合并分支/推送分支」的 Agent 会在 requestMerge 403——提前可见才
-  // 能挑对 Agent）。失败方式：投影缺 tools/skills/mcpServers 任一 → 分派面
-  // 对权限态盲选。
-  test('agents 投影携带授权集 tools/skills/mcpServers（XMON-77 分派面权限可见）', async () => {
+  // 能挑对 Agent）。失败方式：投影缺 tools/skillsAllowlist/mcpServers 任一 →
+  // 分派面对权限态盲选。
+  test('agents 投影携带授权集 tools/skillsAllowlist/mcpServers（XMON-77 分派面权限可见）', async () => {
     H.s.db
       .update(agentTable)
-      .set({ tools: ['合并分支', '推送分支'], skills: ['slug-a'], mcpServers: ['mcp-1'] })
+      .set({
+        tools: ['合并分支', '推送分支'],
+        defaultSkill: 'slug-a',
+        skillsAllowlist: ['slug-a'],
+        mcpServers: ['mcp-1'],
+      })
       .where(eq(agentTable.id, AGENT_ID))
       .run();
     const agents = (await relay('agents', {})) as {
       id: string;
       tools: string[];
-      skills: string[];
+      defaultSkill: string | null;
+      skillsAllowlist: string[] | null;
       mcpServers: string[];
     }[];
     const me = agents.find((a) => a.id === AGENT_ID)!;
     expect(me.tools).toEqual(['合并分支', '推送分支']);
-    expect(me.skills).toEqual(['slug-a']);
+    expect(me.defaultSkill).toBe('slug-a');
+    expect(me.skillsAllowlist).toEqual(['slug-a']);
     expect(me.mcpServers).toEqual(['mcp-1']);
     // 未勾选的邻 Agent = 空集（least-privilege 可分辨，不是缺字段）。
     const other = agents.find((a) => a.id === AGENT2_ID)!;

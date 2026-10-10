@@ -647,10 +647,24 @@ describe('步骤 journal 全链（02 §5.4 词表 + §4.2 主时序机器侧）'
   });
 });
 
-describe('claim 载荷：agent.skills 白名单透传（#372）', () => {
-  async function claimWithSkills(skills: string[]): Promise<ClaimedStep | null> {
+describe('claim 载荷：agent.skillsAllowlist 授权 + defaultSkill 携带（#1169 拆字段）', () => {
+  // 失败方式（先于实现固化）：
+  // 1. null 与 [] 两态塌缩 → 「不限制」被读成「全拒」，新建 agent 出生即残废
+  //    （本票主修位）——载荷必须把 null 与 [] 各自原样送达。
+  // 2. 数组被过滤/重排 → 过滤权在 daemon catalog 构建，claim 面原样透传。
+  // 3. chief 步误携带 → 信任面全量直通（daemon isChief 双保险）。
+  // 4. defaultSkill 不随 claim 下发 → daemon 注入绑定序无从排首位（#1116 面）。
+
+  async function claimWith(opts: {
+    defaultSkill?: string | null;
+    skillsAllowlist?: string[] | null;
+  }): Promise<ClaimedStep | null> {
     const w = await setupWorld({ claimHoldMs: 200 });
-    w.s.db.update(agentTable).set({ skills }).where(eq(agentTable.id, AGENT_ID)).run();
+    w.s.db
+      .update(agentTable)
+      .set({ ...opts })
+      .where(eq(agentTable.id, AGENT_ID))
+      .run();
     await w.startBuild(false);
     const { body } = await w.claim();
     const step = body.step ? claimedStepSchema.parse(body.step) : null;
@@ -658,26 +672,32 @@ describe('claim 载荷：agent.skills 白名单透传（#372）', () => {
     return step;
   }
 
-  test('勾选 slug 原样携带（worker 步，不过滤——过滤权在 daemon catalog 构建）', async () => {
-    const step = await claimWithSkills(['alpha', 'ghost']);
+  test('勾选子集原样携带（worker 步，不过滤不重排——过滤权在 daemon catalog 构建）', async () => {
+    const step = await claimWith({ defaultSkill: 'alpha', skillsAllowlist: ['alpha', 'ghost'] });
     expect(step).not.toBeNull();
-    expect(step!.agent?.skills).toEqual(['alpha', 'ghost']);
+    expect(step!.agent?.skillsAllowlist).toEqual(['alpha', 'ghost']);
+    expect(step!.agent?.defaultSkill).toBe('alpha');
   });
 
-  test('空勾选 = 携带 []（与 mcpServers 缺省不携带不同律——skills 缺省是 chief 面全量语义）', async () => {
-    const step = await claimWithSkills([]);
-    expect(step).not.toBeNull();
-    expect(step!.agent?.skills).toEqual([]);
+  test('null（不限制）与 []（显式全拒）各自原样携带——两态不得塌缩', async () => {
+    const unrestricted = await claimWith({ defaultSkill: null, skillsAllowlist: null });
+    expect(unrestricted).not.toBeNull();
+    expect(unrestricted!.agent?.skillsAllowlist).toBeNull();
+    expect(unrestricted!.agent?.defaultSkill).toBeNull();
+    const denyAll = await claimWith({ skillsAllowlist: [] });
+    expect(denyAll).not.toBeNull();
+    expect(denyAll!.agent?.skillsAllowlist).toEqual([]);
   });
 
-  test('从未勾选的 agent 行（列默认 []）= 携带 []（least-privilege：无授权即无 skills）', async () => {
+  test('从未设置的 agent 行（列缺省）= 携带 null（不限制——创建缺省即本票默认，不再是 [] 全拒）', async () => {
     const w = await setupWorld({ claimHoldMs: 200 });
     await w.startBuild(false);
     const { body } = await w.claim();
     const step = body.step ? claimedStepSchema.parse(body.step) : null;
     expect(step).not.toBeNull();
-    // schema 列默认 '[]'：从未勾选 = 空数组 = 不注入任何 skill。
-    expect(step!.agent?.skills).toEqual([]);
+    // 列缺省 NULL：新建 agent 出生即不限制（#1169 主修位）。
+    expect(step!.agent?.skillsAllowlist).toBeNull();
+    expect(step!.agent?.defaultSkill).toBeNull();
     w.s.dispose();
   });
 });
