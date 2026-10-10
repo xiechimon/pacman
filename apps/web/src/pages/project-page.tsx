@@ -100,6 +100,7 @@ function FilesPane({
   branch,
   entries,
   treeLoading,
+  treeError,
   dirPath,
   onNavigateDir,
   seg,
@@ -113,6 +114,9 @@ function FilesPane({
   entries: FileTreeRow[];
   /** 当前目录的 tree 请求在途且无缓存数据（加载态优先于空态，防空闪）。 */
   treeLoading: boolean;
+  /** tree 读失败（非 local 降级面）：诚实态单列——读失败不得演成空目录
+   *  （code-review #1097 spec 轴：空文案会把读错说成仓空）。 */
+  treeError: boolean;
   /** 当前子目录（'' = 顶层）；面包屑段即其 '/' 切分。 */
   dirPath: string;
   onNavigateDir: (path: string) => void;
@@ -210,6 +214,10 @@ function FilesPane({
           {treeLoading ? (
             <div className="px-1 py-6 text-center text-xs text-muted-foreground">
               {t('加载中…')}
+            </div>
+          ) : treeError ? (
+            <div className="px-1 py-6 text-center text-xs text-muted-foreground">
+              {t('文件树读取失败。')}
             </div>
           ) : entries.length === 0 ? (
             // 空目录定义态（#1097 验收）：git 不跟踪空目录，服务端对空/不存在
@@ -704,6 +712,9 @@ export function ProjectPage() {
   // 禁用」的 out-of-scope）：server 端目录解析已分叉（requireRepoReadDir），
   // web 按形态发请求。不可达降级见下方 treeQ.isError 分支。
   const isLocalRepo = project?.repoKind === 'local';
+  // tree 读失败的诚实态（hosted 等非 local 降级面）：local 形态的 isError 走
+  // 上方「本地仓库当前无法读取。」降级分支，不进 FilesPane。
+  const treeError = live && treeQ.isError && !isLocalRepo;
   // #1097 行数据单源：live = tree 载荷 entries 原样（type/path 终于被消费）；
   // fixture = string 文件退化顶层 blob 行（无目录，path=name）。
   const fileRows: FileTreeRow[] = live
@@ -833,6 +844,7 @@ export function ProjectPage() {
             branch={project?.branch ?? 'main'}
             entries={fileRows}
             treeLoading={treeLoading}
+            treeError={treeError}
             dirPath={dirPath}
             onNavigateDir={navigateDir}
             seg={seg}

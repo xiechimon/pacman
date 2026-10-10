@@ -16,7 +16,9 @@ import { expect, type Page, test } from '@playwright/test';
 //      按完整路径分流，回到根目录后根行不得顶替选中态；
 //   W5 空目录未定义 — entries=[] 必须演空态文案，不是白屏也不是永久加载；
 //   W6 切目录加载期闪空态 — tree 请求在途时演加载态，落定后才判空；
-//   W7 文件行零回归 — 点 blob 行选中态（aria-current）与查看器内容照旧。
+//   W7 文件行零回归 — 点 blob 行选中态（aria-current）与查看器内容照旧；
+//   W8 tree 读失败被演成空目录 — 读失败是诚实态单列（「文件树读取失败。」），
+//      空文案只留给真空目录（code-review #1097 spec 轴抓的状态机洞）。
 
 const PROJECT_ID = 'proj-1097';
 const PROJ = `/app/project/${PROJECT_ID}`;
@@ -74,8 +76,8 @@ interface Wire {
 }
 
 /** 启动面打桩 + tree/file 读面。treeDelayMs > 0 时 tree 响应延迟落定
- *  （W6 加载态钉扎用）。 */
-async function stubWorld(page: Page, treeDelayMs = 0): Promise<Wire> {
+ *  （W6 加载态钉扎用）；treeStatus ≠ 200 时 tree 读面恒该状态（W8 诚实态）。 */
+async function stubWorld(page: Page, treeDelayMs = 0, treeStatus = 200): Promise<Wire> {
   const wire: Wire = { treeUrls: [], fileUrls: [] };
   await page.route('**/api/**', (route, request) => {
     if (request.method() !== 'GET') return route.fallback();
@@ -89,6 +91,9 @@ async function stubWorld(page: Page, treeDelayMs = 0): Promise<Wire> {
     wire.treeUrls.push(url.search);
     const path = url.searchParams.get('path') ?? '';
     if (treeDelayMs > 0) await new Promise((r) => setTimeout(r, treeDelayMs));
+    if (treeStatus !== 200) {
+      return route.fulfill({ status: treeStatus, json: { error: 'e2e stub: tree read failed' } });
+    }
     return route.fulfill({
       json: {
         ref: 'main',
@@ -210,6 +215,13 @@ test('W6 切目录加载期演加载态，落定后才判空', async ({ page }) 
   await expect(page.getByText('此目录为空。')).toHaveCount(0);
   // 落定 = 空态
   await expect(page.getByText('此目录为空。')).toBeVisible({ timeout: 5_000 });
+});
+
+test('W8 tree 读失败 → 诚实态文案，不演空目录', async ({ page }) => {
+  await stubWorld(page, 0, 500);
+  await page.goto(PROJ);
+  await expect(page.getByText('文件树读取失败。')).toBeVisible();
+  await expect(page.getByText('此目录为空。')).toHaveCount(0);
 });
 
 test('W7 文件行零回归：点 blob → 选中态 + 查看器内容', async ({ page }) => {
