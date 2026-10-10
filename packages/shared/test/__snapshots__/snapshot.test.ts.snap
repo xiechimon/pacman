@@ -2601,6 +2601,56 @@ exports[`body/封套 schema 快照 > conversationStreamEvent > conversationStrea
                 "null",
               ],
             },
+            "queue": {
+              "additionalProperties": false,
+              "properties": {
+                "position": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                "waitingFor": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "capacity": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer",
+                        },
+                        "machineId": {
+                          "type": "string",
+                        },
+                        "name": {
+                          "type": "string",
+                        },
+                        "running": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer",
+                        },
+                      },
+                      "required": [
+                        "machineId",
+                        "name",
+                        "running",
+                        "capacity",
+                      ],
+                      "type": "object",
+                    },
+                    {
+                      "type": "null",
+                    },
+                  ],
+                },
+              },
+              "required": [
+                "position",
+                "waitingFor",
+              ],
+              "type": "object",
+            },
             "status": {
               "enum": [
                 "pending",
@@ -3543,6 +3593,56 @@ exports[`body/封套 schema 快照 > stepJournalRow > stepJournalRow.json 1`] = 
         "string",
         "null",
       ],
+    },
+    "queue": {
+      "additionalProperties": false,
+      "properties": {
+        "position": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "waitingFor": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "capacity": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer",
+                },
+                "machineId": {
+                  "type": "string",
+                },
+                "name": {
+                  "type": "string",
+                },
+                "running": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer",
+                },
+              },
+              "required": [
+                "machineId",
+                "name",
+                "running",
+                "capacity",
+              ],
+              "type": "object",
+            },
+            {
+              "type": "null",
+            },
+          ],
+        },
+      },
+      "required": [
+        "position",
+        "waitingFor",
+      ],
+      "type": "object",
     },
     "status": {
       "enum": [
@@ -4861,6 +4961,63 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > chief_thre
       },
       "type": "object",
     },
+    "turnQueue": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "position": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer",
+            },
+            "waitingFor": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "capacity": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer",
+                    },
+                    "machineId": {
+                      "type": "string",
+                    },
+                    "name": {
+                      "type": "string",
+                    },
+                    "running": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer",
+                    },
+                  },
+                  "required": [
+                    "machineId",
+                    "name",
+                    "running",
+                    "capacity",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+          },
+          "required": [
+            "position",
+            "waitingFor",
+          ],
+          "type": "object",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
     "updatedAt": {
       "maximum": 9007199254740991,
       "minimum": -9007199254740991,
@@ -4917,11 +5074,21 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > machine > 
         "null",
       ],
     },
+    "maxConcurrent": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
     "name": {
       "type": "string",
     },
     "online": {
       "type": "boolean",
+    },
+    "runningSteps": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
     },
     "shellEnabled": {
       "type": "boolean",

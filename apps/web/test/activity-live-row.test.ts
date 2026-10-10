@@ -314,3 +314,153 @@ describe('mapChief 活动相位（#905 W7）', () => {
     });
   });
 });
+
+// —— #1108 排队行标签（pending 步「排队中」+ 位次 + 等待对象）———————————
+// 失败方式（先于实现固化）：
+//   Q1 pending + queue（带机器）→ 排队标签 + machine/running/cap/ahead 插值
+//   Q2 pending + queue（未钉）→ 等空闲机器 + ahead
+//   Q3 投影缺席（老 server / fixture）→ 既有标签逐字不变（零回归）
+//   Q4 排队优先于陈旧活动相位（步没在跑，相位是上一步的残留）
+//   Q5 claimed 步 → 处理中（queue 本就不挂 claimed 行）
+//   Q6 chief turnQueue → 存在行同款排队标签；被领走（turnQueue 消失）→ 处理中
+
+describe('mapTranscript 排队投影（#1108 Q1–Q5）', () => {
+  function queuedStep(queue: NonNullable<StepJournalRow['queue']>): StepJournalRow {
+    return { ...step('pending'), queue };
+  }
+
+  test('Q1: pending + queue 带机器 → 排队标签全插值', () => {
+    const items = render({
+      steps: [
+        queuedStep({
+          position: 2,
+          waitingFor: { machineId: 'm1', name: 'xmonsMac', running: 2, capacity: 3 },
+        }),
+      ],
+    });
+    expect(tail(items)).toMatchObject({
+      kind: 'streaming',
+      label: '排队中：等 {machine}（{running}/{cap} 在跑，前面 {ahead} 个）',
+      labelVars: { machine: 'xmonsMac', running: 2, cap: 3, ahead: 1 },
+    });
+  });
+
+  test('Q2: pending + queue 未钉 → 等空闲机器 + ahead', () => {
+    const items = render({
+      steps: [queuedStep({ position: 1, waitingFor: null })],
+    });
+    expect(tail(items)).toMatchObject({
+      kind: 'streaming',
+      label: '排队中：等空闲机器（前面 {ahead} 个）',
+      labelVars: { ahead: 0 },
+    });
+  });
+
+  test('Q3: 投影缺席（老 server）→ 既有标签逐字不变', () => {
+    const firstPlan = step('pending', 'plan');
+    const items = render({ steps: [firstPlan] });
+    expect(tail(items)).toMatchObject({ kind: 'streaming', label: '准备工作区...' });
+    const laterStep = { ...step('pending', 'build') };
+    const items2 = render({ steps: [step('done', 'plan'), laterStep] });
+    expect(tail(items2)).toMatchObject({ kind: 'streaming', label: '处理中...' });
+  });
+
+  test('Q4: 排队优先于陈旧活动相位（步没在跑）', () => {
+    const pending = queuedStep({ position: 1, waitingFor: null });
+    const items = render({
+      steps: [pending],
+      activity: act(pending.id, 'thinking'), // 陈旧相位不得盖排队态
+    });
+    expect(tail(items)).toMatchObject({
+      kind: 'streaming',
+      label: '排队中：等空闲机器（前面 {ahead} 个）',
+    });
+    expect(tail(items)?.signalAt).toBeUndefined();
+  });
+
+  test('Q5: claimed 步 → 处理中（现状锁）', () => {
+    const items = render({ steps: [step('claimed')] });
+    expect(tail(items)).toMatchObject({ kind: 'streaming', label: '处理中...' });
+  });
+});
+
+describe('mapChief 排队投影（#1108 Q6）', () => {
+  // harness 同 W7 块（作用域不跨 describe，本块自持一份）。
+  const ENV_Q = {
+    chief: {
+      id: 'chief-u1-t1',
+      userId: 'u1',
+      teamId: 't1',
+      agent: null,
+      charter: null,
+      lastTurnAt: null,
+      createdAt: 0,
+      tz: null,
+      model: null,
+    },
+    agentActor: null,
+    context: null,
+    watches: [],
+    wakes: [],
+  } as unknown as Parameters<typeof mapChief>[0];
+
+  const THREAD_Q = {
+    id: 'chief-bbb',
+    chiefId: 'chief-u1-t1',
+    userId: 'u1',
+    teamId: 't1',
+    title: '线程乙',
+    createdAt: 2,
+    updatedAt: 2,
+    lastTurnAt: null,
+    session: { runtime: 'pi', id: 's2', openedAt: 2 },
+    pendingSessionResumeAt: null,
+    pinnedMachineId: null,
+    toolDefHashes: {},
+    toolResultHashes: {},
+    activeRun: { phase: 'chief' },
+  } as unknown as import('@pacman/shared').ChiefThread;
+
+  const USER_Q = {
+    id: 'AbCdEfGhIjKlMnOpQrStU',
+    role: 'user',
+    content: '派一下',
+    createdAt: NOW,
+  } as unknown as import('../src/api/mappers.js').MessageRow;
+
+  function chiefOfThread(thread: import('@pacman/shared').ChiefThread) {
+    return mapChief(ENV_Q, {
+      threads: [thread],
+      activeThreadId: 'chief-bbb',
+      messages: [USER_Q],
+    });
+  }
+
+  test('Q6: turnQueue 带机器 → 存在行排队标签；消失 → 处理中', () => {
+    expect(
+      chiefOfThread({
+        ...THREAD_Q,
+        turnQueue: {
+          position: 3,
+          waitingFor: { machineId: 'm1', name: 'xmonsMac', running: 2, capacity: 2 },
+        },
+      }).stream?.at(-1),
+    ).toMatchObject({
+      kind: 'streaming',
+      label: '排队中：等 {machine}（{running}/{cap} 在跑，前面 {ahead} 个）',
+      labelVars: { machine: 'xmonsMac', running: 2, cap: 2, ahead: 2 },
+    });
+    expect(
+      chiefOfThread({ ...THREAD_Q, turnQueue: { position: 1, waitingFor: null } }).stream?.at(-1),
+    ).toMatchObject({
+      kind: 'streaming',
+      label: '排队中：等空闲机器（前面 {ahead} 个）',
+      labelVars: { ahead: 0 },
+    });
+    // 被领取（turnQueue 退场）→ 既有存在行收敛。
+    expect(chiefOfThread({ ...THREAD_Q }).stream?.at(-1)).toMatchObject({
+      kind: 'streaming',
+      label: '处理中...',
+    });
+  });
+});

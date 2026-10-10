@@ -1407,6 +1407,10 @@ const RESOURCES: ResourcesContent = {
       // XMON-113：机器层 shell 闸，fixture canon = 关（与 server migration
       // 回填 false 同态——存量机器默认不给 shell）。
       shellEnabled: false,
+      // #1108：并发面 fixture canon = 历史默认 3 / 空载 0（与 migration 回填
+      // DEFAULT 3 同态）。
+      maxConcurrent: 3,
+      runningSteps: 0,
     },
   ],
   providerSources: [PROVIDER_SOURCE_PI, PROVIDER_SOURCE_CC],

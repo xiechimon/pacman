@@ -149,7 +149,7 @@ import {
   listProjectGithubIssues,
   readSourceIssueEcho,
 } from './services/github-issues.js';
-import { isChiefConversation, toMachineRecord } from './services/machines.js';
+import { isChiefConversation, machineRunningCount, toMachineRecord } from './services/machines.js';
 import { handleMcpRequest } from './services/mcp-face.js';
 import { listMcpServers } from './services/mcp-servers.js';
 import {
@@ -1384,7 +1384,8 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const id = c.req.param('id');
     requireTeam(ctx, id);
     const rows = ctx.db.select().from(machine).where(eq(machine.teamId, id)).all();
-    return c.json(rows.map((r) => toMachineRecord(r)));
+    // #1108 runningSteps 派生随行（机器页「执行中 n/N」数据源）。
+    return c.json(rows.map((r) => toMachineRecord(r, machineRunningCount(ctx.db, r.id))));
   });
 
   // per-runtime 开关写回（spec 11 A8/A9，#357）：enabledRuntimes 全量替换；
@@ -1392,6 +1393,8 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   // XMON-108 R1：shellEnabled 透传——两字段各自缺省 = 不变（单字段 PATCH 不
   // 撞掉另一字段），开关消费面 = claim 组装 + 每调用预检（机器详情页关掉秒级
   // 拒下一条命令，非 claim 期一次闸）。
+  // #1108 maxConcurrent：并发上限写位（值域 1..16 = shared schema 钉，越界
+  // 400）；下调不抢占在飞步——两侧闸只挡新认领，语义 =「跑完这批再收窄」。
   app.patch('/api/machines/:id', async (c) => {
     const id = c.req.param('id');
     const row = ctx.db.select().from(machine).where(eq(machine.id, id)).get();
@@ -1401,6 +1404,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const patch = {
       ...(body.enabledRuntimes !== undefined ? { enabledRuntimes: body.enabledRuntimes } : {}),
       ...(body.shellEnabled !== undefined ? { shellEnabled: body.shellEnabled } : {}),
+      ...(body.maxConcurrent !== undefined ? { maxConcurrent: body.maxConcurrent } : {}),
     };
     // 全字段缺省 = no-op PATCH（空 set 是非法 SQL，且无变更可写）。
     if (Object.keys(patch).length > 0) {
@@ -1408,7 +1412,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     }
     const updated = ctx.db.select().from(machine).where(eq(machine.id, id)).get();
     if (!updated) throw notFound(`machine ${id}`);
-    return c.json(toMachineRecord(updated));
+    return c.json(toMachineRecord(updated, machineRunningCount(ctx.db, id)));
   });
 
   // 能力读面（XMON-16 / #499 B3 裁决 A；[设计] 面，参考产品 wire 未采此端点）：

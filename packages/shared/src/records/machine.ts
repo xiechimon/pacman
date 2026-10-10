@@ -40,16 +40,29 @@ export const machineRecordSchema = z.object({
    * migration 回填）——「机器 shell 权限改动秒级热加载」由每调用预检兑现
    * （POST /api/machine/shell/{stepId} 复读本列，非 claim 期一次闸）。 */
   shellEnabled: z.boolean(),
+  /** 机器并发上限（#1108）：该机同时执行的步数 N——server claim 闸 +
+   * daemon 本地闸双侧消费；超过 N 的步留 pending（排队）。DB NOT NULL
+   * 默认 3（历史值 0000 migration 同数）。optional 形 = 加法契约：老
+   * server 响应缺该字段，消费方回退（daemon 的本地闸按 1 串行，web 不
+   * 渲染并发面）；server 恒发全块。 */
+  maxConcurrent: z.number().int().optional(),
+  /** 该机当前 claimed 步数（#1108 排队可见的机器面读数，`执行中 n/N` 的
+   * n）：读侧派生（listSteps/claim 时点计数），不落库。optional 形同
+   * maxConcurrent——老 server 缺席时机器页不渲染该标注。 */
+  runningSteps: z.number().int().optional(),
 });
 export type MachineRecord = z.infer<typeof machineRecordSchema>;
 
 /** PATCH /api/machines/{id} body（spec 11 数据契约）：enabledRuntimes 全量
  * 替换语义；元素词表钉死 MACHINE_RUNTIMES（词表外 runtime = 400）。
  * XMON-108 R1 起两字段各自可选、缺省 = 不动（undefined ≠ 清空/重置）——
- * 单字段 PATCH（如 R3 机器页只翻 shellEnabled）不再被迫读改写另一字段。 */
+ * 单字段 PATCH（如 R3 机器页只翻 shellEnabled）不再被迫读改写另一字段。
+ * #1108 maxConcurrent：并发上限写位（值域 1..16，越界 400；下调不抢占在
+ * 飞步——两侧闸只挡新认领），缺省 = 不动。 */
 export const patchMachineBodySchema = z.object({
   enabledRuntimes: z.array(z.enum(MACHINE_RUNTIMES)).optional(),
   shellEnabled: z.boolean().optional(),
+  maxConcurrent: z.number().int().min(1).max(16).optional(),
 });
 export type PatchMachineBody = z.infer<typeof patchMachineBodySchema>;
 

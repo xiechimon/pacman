@@ -132,6 +132,9 @@ function makeWorld(opts: WorldOpts = {}): AffinityWorld {
       name: `owner-${suffix}`,
       online: opts.ownerOnline ?? true,
       enabledRuntimes: opts.ownerRuntimes ?? ['pi'],
+      // #1108：ownerBusy 位 = 会话机 claimed 数达上限（忙 = 真满，并行
+      // daemon 有闲位就会来领）。cap=1 时一条 claimed 步即满——忙语义钉死。
+      ...(opts.ownerBusy ? { maxConcurrent: 1 } : {}),
     })
     .run();
   s.db
@@ -179,8 +182,9 @@ function makeWorld(opts: WorldOpts = {}): AffinityWorld {
     })
     .run();
   if (opts.ownerBusy) {
-    // 会话机忙位：另一条 build 的 claimed 步挂 A（claim 主循环与 runStep 串行，
-    // 忙 = 暂不领新步是正常，不是楔住）。
+    // 会话机忙位（#1108 起忙 = claimed 数达 maxConcurrent，cap=1 时一条即满）：
+    // 另一条 build 的 claimed 步挂 A——有闲位的并行 daemon 会来领新步，达上限
+    // 才是「合法等待不误放」，不是楔住。
     s.db
       .insert(stepTable)
       .values({

@@ -456,6 +456,12 @@ export const machine = sqliteTable('machine', {
    * 上报过（旧 daemon），封套缺席该机、不下发假清单。JSON 列（chief.watches
    * 同形）。 */
   claudeCodeReport: json<ClaudeCodeReport | null>('claudeCodeReport'),
+  /** 机器并发上限（#1108）：该机同时执行的步数 N。NOT NULL 默认 3（0000
+   * migration 历史值同数，#503 曾摘列——摘除前提「daemon 串行永不触顶」
+   * 随本列回归并被 daemon 并行循环作废）。消费面 = claim 闸（machines.ts
+   * tryClaim 数本机 claimed 步）+ daemon 本地闸（GET me 读数）+ 机器页
+   * `执行中 n/N` 读标注与 PATCH 写位。 */
+  maxConcurrent: integer('maxConcurrent').notNull().default(3),
 });
 
 // —— shell_command（XMON-108 R1 机器 shell 审计）：预检/回写两写端点的

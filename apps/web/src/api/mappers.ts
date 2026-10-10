@@ -72,6 +72,27 @@ import type {
 import { activityLabel } from './activity.js';
 import type { ApiKeyRow, PlanRow, StepRow } from './hooks.js';
 
+/** #1108 排队行标签（transcript / chief 两面单源）：位次 + 等待对象 →
+ *  label/vars（t() 键 + 插值；queue = server 排队投影真值）。形 =
+ *  shared stepJournalRowSchema.queue / chiefThreadSchema.turnQueue。 */
+function queueLabel(queue: NonNullable<StepRow['queue']>): {
+  label: string;
+  vars: Record<string, string | number>;
+} {
+  const ahead = Math.max(0, queue.position - 1);
+  return queue.waitingFor != null
+    ? {
+        label: '排队中：等 {machine}（{running}/{cap} 在跑，前面 {ahead} 个）',
+        vars: {
+          machine: queue.waitingFor.name,
+          running: queue.waitingFor.running,
+          cap: queue.waitingFor.capacity,
+          ahead,
+        },
+      }
+    : { label: '排队中：等空闲机器（前面 {ahead} 个）', vars: { ahead } };
+}
+
 /** transcript 消息行（GET messages 封套行形，shared transcriptRowSchema）。
  * actor（#902）：过闸宣告行的动作主体 displayName；存量旧行/daemon 上传行 =
  * null/缺省，宣告行呈现回落当前用户名（旧语义不变）。 */
@@ -694,8 +715,14 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     // #905：活动相位接管行标签——stepId 对在跑步过滤（W1 陈旧相位不跨步）；
     // stopping 过渡态优先级更高（停止在途比模型相位更要解释）；无信号 =
     // 既有基础标签原样（fixture 捕获 / 旧 server 零回归）。
+    // #1108 排队位优先于以上全部：步仍 pending（无人认领）且带投影 →
+    // 「排队中」+ 位次 + 等待对象——「处理中」对 pending 是谎（用户实测
+    // 18 分钟静默阻塞）。投影缺席（老 server / fixture）= 既有标签原样，
+    // 零回归。
     const act = activity != null && activity.stepId === running.id ? activity : null;
     const actLabel = act != null && !stopping ? activityLabel(act) : null;
+    const queued =
+      running.status === 'pending' && running.queue != null ? queueLabel(running.queue) : null;
     items.push({
       kind: 'streaming',
       // #873：不在投影期把「已用秒数」算成一个死数——投影只在别的事件驱动
@@ -703,18 +730,28 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
       // 起点，走秒归渲染层的 1s 计时器（live-row 的 useLiveSeconds）。
       startedAt: running.createdAt,
       label:
-        actLabel != null
-          ? actLabel.label
-          : stopping
-            ? '正在停止…' // 停止过渡态（M7 #308，r9 §3.3：中断在途）
-            : running.kind === 'plan' && steps.length === 1 && running.status === 'pending'
-              ? '准备工作区...'
-              : '处理中...',
-      ...(actLabel?.vars !== undefined ? { labelVars: actLabel.vars } : {}),
-      ...(actLabel != null && act != null ? { signalAt: act.at } : {}),
+        queued != null
+          ? queued.label
+          : actLabel != null
+            ? actLabel.label
+            : stopping
+              ? '正在停止…' // 停止过渡态（M7 #308，r9 §3.3：中断在途）
+              : running.kind === 'plan' && steps.length === 1 && running.status === 'pending'
+                ? '准备工作区...'
+                : '处理中...',
+      ...(queued != null
+        ? { labelVars: queued.vars }
+        : actLabel?.vars !== undefined
+          ? { labelVars: actLabel.vars }
+          : {}),
+      // 排队行不挂相位面（signalAt/skills 是执行态信号——步没在跑，相位是
+      // 上一步残留；W1 的 stepId 过滤管跨步，这里管「排队的当前步」）。
+      ...(queued == null && actLabel != null && act != null ? { signalAt: act.at } : {}),
       // #918：本步技能事实清单随 activity 事件进披露面（stepId 过滤已由上面
       // 的 act 判定承担——陈旧步的技能条目不跨步串场）。空/缺省不产字段。
-      ...(act?.skills !== undefined && act.skills.length > 0 ? { skills: act.skills } : {}),
+      ...(queued == null && act?.skills !== undefined && act.skills.length > 0
+        ? { skills: act.skills }
+        : {}),
     });
   } else if (build && todo.phase === 'building' && !steps.some((s) => s.status === 'stopped')) {
     // 静止态 live 线索（#471）：building 的步间隙 / agent 非流式窗口没有
@@ -960,6 +997,10 @@ export function mapMachines(rows: MachineRecord[]): MachineRow[] {
     online: m.online,
     enabledRuntimes: m.enabledRuntimes,
     shellEnabled: m.shellEnabled,
+    // #1108 并发面：字段缺席（老 server）= undefined——控件与读标注退场，
+    // 行回到 shell 闸单控件面（存量 capture 零漂移）。
+    ...(m.maxConcurrent !== undefined ? { maxConcurrent: m.maxConcurrent } : {}),
+    ...(m.runningSteps !== undefined ? { runningSteps: m.runningSteps } : {}),
   }));
 }
 
@@ -1335,16 +1376,33 @@ export function mapChief(
       // #822：本轮尚未归属的工具行挂展开面（tools 缺省 = 本轮暂无工具调用，
       // 面板走 fallback 行；typing 接管后本行缺席，工具归宿回归终稿 robot
       // 行，单时刻无双面）。
-      // #905：活动相位接管存在行标签（详情页同一条 activityLabel 单源）；
-      // 无信号回落「处理中...」原样。
-      const actLabel = opts.activity != null ? activityLabel(opts.activity) : null;
-      chiefStream.push({
-        kind: 'streaming',
-        label: actLabel?.label ?? '处理中...',
-        ...(actLabel?.vars !== undefined ? { labelVars: actLabel.vars } : {}),
-        ...(opts.activity != null ? { signalAt: opts.activity.at } : {}),
-        ...((collected?.trailingTools.length ?? 0) > 0 ? { tools: collected?.trailingTools } : {}),
-      });
+      // #1108 排队位（turnQueue 非空 = 回合在飞但步仍 pending）：标签切
+      // 「排队中」+ 位次 + 等待对象（位次/机器 = server 投影真值，非本地推
+      // 测）。优先于活动相位——步未领走时本无活动信号（防御位：陈旧相位不
+      // 盖排队态）。被领取（step 事件失效 chiefThreads）→ turnQueue 消失，
+      // 回落 #905 活动标签 / 「处理中...」既有收敛。
+      const turnQueue = active?.turnQueue ?? null;
+      if (turnQueue != null) {
+        const queued = queueLabel(turnQueue);
+        chiefStream.push({
+          kind: 'streaming',
+          label: queued.label,
+          labelVars: queued.vars,
+        });
+      } else {
+        // #905：活动相位接管存在行标签（详情页同一条 activityLabel 单源）；
+        // 无信号回落「处理中...」原样。
+        const actLabel = opts.activity != null ? activityLabel(opts.activity) : null;
+        chiefStream.push({
+          kind: 'streaming',
+          label: actLabel?.label ?? '处理中...',
+          ...(actLabel?.vars !== undefined ? { labelVars: actLabel.vars } : {}),
+          ...(opts.activity != null ? { signalAt: opts.activity.at } : {}),
+          ...((collected?.trailingTools.length ?? 0) > 0
+            ? { tools: collected?.trailingTools }
+            : {}),
+        });
+      }
     }
   }
   return {

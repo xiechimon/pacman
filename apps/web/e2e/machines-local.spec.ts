@@ -69,19 +69,28 @@ test('per-runtime 品牌 mark：两个在位 + 亮度分态 = enabledRuntimes ca
 // XMON-113：行内控件面自 #503 的「零控件」改成「恰一个活控件」= 机器层 shell
 // 开关。判据不是「行内不许有控件」，而是「不许有死控件」——#503 摘除的
 // per-runtime 开关全仓只写不读（PR #507），shell 开关有真实消费方（XMON-108
-// R1 双闸 + 每命令预检）。故本条从纯负向改为「恰一个 + 其余仍无」：仍钉死钮
-// （button / 删除 / chevron 归下两条），且 per-runtime 的 switch 不许回来。
-test('行内控件面 = 机器 shell 开关恰一个（XMON-113；其余仍无）', async ({ page }) => {
+// R1 双闸 + 每命令预检）。#1108 起行内活控件 = 两个：shell 开关 + 并发上限
+// 选择器（machine.maxConcurrent，消费方 = server claim 闸 + daemon 本地闸
+// ——「并发上限不许回来」的 #503 负向随用户 2026-10-10 要求数旋钮翻案：
+// 摘除理由是死字段，现在是活控件）。死钮纪律保持：除这两个活控件外无
+// button，per-runtime 的 switch 不许回来。
+test('行内控件面 = shell 开关 + 并发选择器两个（XMON-113 + #1108；死钮仍无）', async ({
+  page,
+}) => {
   await page.goto(MACHINES);
   await expect(page.locator(`${LOCAL_ROW} [role="switch"]`)).toHaveCount(1);
-  await expect(page.locator(`${LOCAL_ROW} button`)).toHaveCount(0);
+  // 并发选择器（Popover 触发钮；aria-label = e2e 一级载体）。
+  await expect(page.locator(`${LOCAL_ROW} button[aria-label="并发上限"]`)).toHaveCount(1);
+  // 死钮纪律：除并发触发钮外零 button（删除 / chevron / 菜单全无）。
+  await expect(page.locator(`${LOCAL_ROW} button`)).toHaveCount(1);
   // per-runtime 位仍是 mark 展示面，不是控件（#503 负向）。
   await expect(page.locator(`${LOCAL_ROW} [data-runtime] [role="switch"]`)).toHaveCount(0);
 });
 
-// 副行仍只承载「这一个控件是什么」：id 尾巴与并发上限行不许回来。文案走
-// {tool} 插值（shared AGENT_TOOL_SHELL 单源），故断言按插值后的成品串钉。
-test('副行只剩 shell 开关说明（#503 的 id 尾巴 / 并发上限不许回来）', async ({ page }) => {
+// 副行仍只承载控件说明：id 尾巴与「· max 3」死显示不许回来（#503 摘的是
+// 只读死字段；#1108 的活控件与读标注在上一条钉——副行文案不受它影响）。
+// 文案走 {tool} 插值（shared AGENT_TOOL_SHELL 单源），故断言按插值后的成品串钉。
+test('副行只剩 shell 开关说明（#503 的 id 尾巴 / · max 死显示不许回来）', async ({ page }) => {
   await page.goto(MACHINES);
   const desc = page.locator(LOCAL_ROW).getByText(
     '已授权「远程 shell」的 Agent 可在该机器上执行命令。',

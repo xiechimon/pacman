@@ -207,17 +207,21 @@ test('doc pane 型选行 click re-selects the current type and closes (#306)', a
 
 // —— 7. machines 行内动作图标（#222 出账）——————————————————————————————
 
-test('machines rows render no inline action buttons (#222 wontfix 出账)', async ({ page }) => {
+test('machines rows carry only live controls, no dead inline buttons (#222 出账 + #1108 收窄)', async ({
+  page,
+}) => {
   await page.goto('/app/resources/machines?scenario=06');
   // 在线机器行在（scenario=06 fixture 含一台 online 机器，行首在线点）。
   // #944/#910 载体：.res-dot → [data-on]；.res-grow → div[data-kind]。
   await expect(page.locator('[data-on]').first()).toBeVisible();
-  // #222:r8 §3.5 原站在线机器行右侧三行内动作图标——机器行自 #503 起零真
-  // 控件（per-runtime 开关摘除，品牌 mark 为 read-only 展示；enabledRuntimes
-  // 仍走 PATCH，但界面无控件面）。行外唯一动作钮 = 添加机器(不在钉内);
-  // 其余动作无依托,不渲染死钮:行内零 button(行尾 chevron 已随 spec 11
-  // A7 无 handler 行收编移除)。
-  await expect(page.locator('div[data-kind] button')).toHaveCount(0);
+  // #222:r8 §3.5 原站在线机器行右侧三行内动作图标——死钮不渲染（行尾
+  // chevron 已随 spec 11 A7 移除）。#1108 起行内唯一 button = 并发上限
+  // 选择器触发钮（Popover listbox 形，aria-label 承载语义；真实写路径
+  // PATCH /api/machines/{id}，有消费链不是死钮——「零 button」钉随死字段
+  // 摘除理由的翻案收窄为「零死钮」）。shell 闸是 switch 不入此数；
+  // resourcesDefault fixture 的机器行 canon 带并发位（max 3），故 = 1。
+  await expect(page.locator('div[data-kind] button')).toHaveCount(1);
+  await expect(page.locator('div[data-kind] button[aria-label="并发上限"]')).toHaveCount(1);
 });
 
 // —— 8. 语音输入钮（#304 C5）——————————————————————————————————————————

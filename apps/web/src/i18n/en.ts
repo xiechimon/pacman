@@ -478,6 +478,14 @@ export const EN: Record<string, string> = {
   '处理中...': 'Working on it...',
   '执行中...': 'Running...',
   '正在停止…': 'Stopping…',
+  // #1108 queue rows (pending steps waiting for a machine) + machines page
+  // concurrency face.
+  '排队中：等 {machine}（{running}/{cap} 在跑，前面 {ahead} 个）':
+    'Queued: waiting for {machine} ({running}/{cap} running, {ahead} ahead)',
+  '排队中：等空闲机器（前面 {ahead} 个）': 'Queued: waiting for a free machine ({ahead} ahead)',
+  '执行中 {n}/{cap}': 'Running {n}/{cap}',
+  并发: 'Concurrency',
+  并发上限: 'Concurrency limit',
   // #905 activity phases (live row labels) + the freshness disclosure line.
   '正在连接模型...': 'Connecting to the model...',
   '模型思考中...': 'Model is thinking...',

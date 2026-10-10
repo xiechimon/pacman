@@ -418,7 +418,17 @@ export function findApiKeyByPlain(db: Db, plain: string) {
 
 /** machine 行 → wire record 投影单源（routes.ts GET/PATCH 与 routes-machine.ts
  * me 双消费；字段增删只改这里 + shared schema）。 */
-export function toMachineRecord(row: typeof machine.$inferSelect) {
+/** #1108 机器记录的 runningSteps 派生：该机 claimed 步数（全 kind——容量
+ *  闸、机器页 `执行中 n/N`、排队 waitingFor 快照三处同源同数）。 */
+export function machineRunningCount(db: Db, machineId: string): number {
+  return db
+    .select({ id: step.id })
+    .from(step)
+    .where(and(eq(step.machineId, machineId), eq(step.status, 'claimed')))
+    .all().length;
+}
+
+export function toMachineRecord(row: typeof machine.$inferSelect, runningSteps?: number) {
   return machineRecordSchema.parse({
     id: row.id,
     name: row.name,
@@ -428,6 +438,10 @@ export function toMachineRecord(row: typeof machine.$inferSelect) {
     kind: row.kind,
     enabledRuntimes: row.enabledRuntimes,
     shellEnabled: row.shellEnabled,
+    // #1108：并发上限（DB 真值）+ 在跑计数（读侧派生，调用方传——缺席 =
+    // 不渲染并发面的读端（如老调用面），maxConcurrent 恒随行）。
+    maxConcurrent: row.maxConcurrent,
+    ...(runningSteps !== undefined ? { runningSteps } : {}),
   });
 }
 
@@ -907,8 +921,13 @@ function tryClaim(
   const { db } = deps;
   const machineRow = db.select().from(machine).where(eq(machine.id, machineId)).get();
   if (!machineRow) return null;
-  // #503：并发门摘除——原判据「本机 claimed 步数 ≥ machine.maxConcurrent」不再
-  // 存在，机器领活不受上限约束。
+  // #1108 并发门回归（maxConcurrent 列随本票复位——#503 摘除的前提「daemon
+  // 串行永不触顶」被 daemon 并行循环作废）：本机 claimed 步数达上限 = 不发步，
+  // 步留 pending（排队——对钉选机可见的步即该机队列，对未钉步它机照领）。
+  // 机器释放空位（finishStep 终态 wake）后下一轮 claim 即领。老 daemon（串行
+  // 循环）恒 1 ≤ N，闸对其永不触发 = 混版本零回归。
+  const running = machineRunningCount(db, machineId);
+  if (running >= machineRow.maxConcurrent) return null;
 
   // chief 步与 worker 步共队列，按 createdAt FIFO 交错（chief 派工先于其产生的
   // worker 步入队，天然领先；跨类型仍按 createdAt 保序 [设计]）。
@@ -986,11 +1005,11 @@ function tryClaim(
     // 亲和：钉选 SQL 过滤下唯有钉选机可见，亲和再挡 = 唯一可见者也被挡死；
     // 且钉选 = 用户显式选择，盖过软偏好。
     // #881 楔住有界（#863 登记的已知缝）：让行不是无限期——步已等过
-    // SESSION_WEDGE_GRACE_MS 且会话机手上没有任何 claimed 步 → 判楔住，
-    // 放行本机（换机 + daemon 注记，与离线换机同一条降级路）。会话机持有
-    // claimed 步 = 忙（claim 主循环与 runStep 串行，忙 = 暂不领新步是正常，
-    // 等它跑完无损续接）→ 让行继续；忙步心跳停更的「部分存活歧义态」归属
-    // 既有 claimed 扫尾政策（等 presence 过期走释放），亲和不越过它抢先换机。
+    // SESSION_WEDGE_GRACE_MS 且会话机未达并发上限（#1108 起有闲位就该来领，
+    // 有闲位仍不领 = 楔住）→ 放行本机（换机 + daemon 注记，与离线换机同一条
+    // 降级路）。会话机 claimed 数达上限 = 忙（真满，等它跑完无损续接）→ 让行
+    // 继续；忙步心跳停更的「部分存活歧义态」归属既有 claimed 扫尾政策（等
+    // presence 过期走释放），亲和不越过它抢先换机。
     // 会话机自己从不受本闸挡（priorRow.machineId === machineId 时闸不进）：
     // 楔住释放后它恢复即仍可无损认领。
     const sessionContinuing =
@@ -1007,12 +1026,10 @@ function tryClaim(
     ) {
       const ownerRow = db.select().from(machine).where(eq(machine.id, priorRow.machineId)).get();
       if (ownerRow?.online && runtimeGatePasses(ownerRow, agentRow.provider)) {
-        const ownerBusy =
-          db
-            .select({ id: step.id })
-            .from(step)
-            .where(and(eq(step.machineId, ownerRow.id), eq(step.status, 'claimed')))
-            .get() !== undefined;
+        // #1108：忙判定从「持有任一 claimed 步」改为「claimed 数达该机上限」——
+        // 并行 daemon 有闲位就会来领（忙 = 真满，等它跑完无损续接）；有闲位仍
+        // 10 分钟不领 = 楔住，放行本机（下方宽限分支，语义不变）。
+        const ownerBusy = machineRunningCount(db, ownerRow.id) >= ownerRow.maxConcurrent;
         if (ownerBusy || nowMs() - stepActivityAt(cand.stepRow) <= SESSION_WEDGE_GRACE_MS) {
           continue;
         }
@@ -1158,6 +1175,28 @@ function ownedStep(deps: MachineDeps, machineId: string, stepId: string) {
   if (!row) throw new NotFoundError(`step ${stepId}`);
   if (row.machineId !== machineId) throw new NotFoundError(`step ${stepId} (not yours)`);
   return row;
+}
+
+/** 步 → 团队（#1108 空位释放 wake 的定向键）：worker 步经 build→todo，
+ * chief 步经 chief_thread；两路都不中（防御位）= null 不 wake。 */
+function stepTeamId(deps: MachineDeps, stepRow: typeof step.$inferSelect): string | null {
+  const { db } = deps;
+  if (isChiefConversation(stepRow.buildId)) {
+    return (
+      db
+        .select({ teamId: chiefThread.teamId })
+        .from(chiefThread)
+        .where(eq(chiefThread.id, stepRow.buildId))
+        .get()?.teamId ?? null
+    );
+  }
+  const todoRow = db
+    .select({ teamId: todo.teamId })
+    .from(build)
+    .innerJoin(todo, eq(build.todoId, todo.id))
+    .where(eq(build.id, stepRow.buildId))
+    .get();
+  return todoRow?.teamId ?? null;
 }
 
 /** 工具调用 live 回传（transcript 工具行数据面，r3 §3.5）；与终稿 transcript
@@ -1920,6 +1959,14 @@ export async function finishStep(
 ): Promise<void> {
   const { db } = deps;
   const stepRow = ownedStep(deps, machineId, stepId);
+  // #1108 空位释放 wake：本机一个 claimed 位即将转终态——唤醒全团队挂起的
+  // claim 长轮询（本机若无在飞空位会立刻领队头 pending 步；它机各多一次
+  // tryClaim，同步读可忽略）。没有它，满载机器的空位要等满 ~75s hold 才
+  // 被下一轮重试发现（enqueue wake 只覆盖新步入队路径）。
+  {
+    const teamId = stepTeamId(deps, stepRow);
+    if (teamId !== null) deps.machineHub.wake(teamId);
+  }
   if (body.sessionId !== undefined) {
     db.update(step).set({ sessionId: body.sessionId }).where(eq(step.id, stepId)).run();
   }

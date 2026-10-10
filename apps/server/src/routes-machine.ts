@@ -51,6 +51,7 @@ import {
   heartbeatStep,
   machineAsk,
   machineAttachmentDownload,
+  machineRunningCount,
   machineSkillFile,
   machineSkillsManifest,
   markOffline,
@@ -236,8 +237,11 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   });
 
   // —— GET /api/machine/me ————————————————————————————————————————————————————
+  // #1108：maxConcurrent 随行（daemon 本地并发闸的数据源——claim 闸在
+  // server，本地闸护混版本：新 daemon 对旧 server 读不到该字段按 1 串行）。
   app.get('/api/machine/me', (c) => {
-    return c.json(toMachineRecord(me(c)));
+    const row = me(c);
+    return c.json(toMachineRecord(row, machineRunningCount(deps.db, row.id)));
   });
 
   // —— POST /api/machine/presence（02 §5.4 心跳）——————————————————————————————
