@@ -1,6 +1,6 @@
 # 头像(dicebear Lorelei,#387)
 
-头像 = dicebear HTTP API 按 displayName 种子生成(style `lorelei`,9.x)——同名恒同像,无需存储。`avatarUrl` 列语义:null = dicebear 生成(默认);非 null = 显式覆盖。加载失败(离线/API 挂)经 `img onError` 回退 #387 前的静态资产(user=`/avatar-user.png`,agent=`/avatar-robot-1.svg`),CSS 定尺寸不裂图。单源组件 = `components/ui/seeded-avatar.tsx`（XMON-14 起落到 shadcn 落点 `components/ui/avatar.tsx` 上；Root 走 `display:contents`，尺寸仍归 per-face 几何正本）。
+头像 = dicebear HTTP API 按 displayName 种子生成(style `lorelei`,9.x)——同名恒同像,无需存储。`avatarUrl` 列语义:null = dicebear 生成(默认);非 null = 显式覆盖。加载失败(离线/API 挂)经 `img onError` 回退 #387 前的静态资产(user=`/avatar-user.png`,agent=`/avatar-robot-1.svg`),CSS 定尺寸不裂图。单源组件 = `components/ui/seeded-avatar.tsx`（XMON-14 建，落到 shadcn 落点 `components/ui/avatar.tsx` 上；#1003 随 #983 判决**弃 contents 根**——上游 after: 发丝环需要真实 containing block，Root 是**定尺盒**：几何落点在 Root，消费点必须显式传 `className="size-N"`，漏传即回落 registry 默认 size-8 被外盒裁图（#1156 的文档面根因——本条曾停在旧 contents 模型）；img 由 registry 件 size-full 随 Root）。
 
 ## Sub-features
 
