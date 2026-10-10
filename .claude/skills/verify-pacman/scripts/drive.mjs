@@ -217,27 +217,42 @@ try {
     // 真用户路径:/app/api-keys 空态点「新建密钥」→ 一次性明文 + 掩码行。
     // 前提:全新库(重验先重跑 launch,按钮只在空态)。
     await page.goto(`${WEB}/app/api-keys`);
-    await page.waitForSelector('.keys-empty', { timeout: 15_000 });
+    // #1166 迁语义载体(spec 22 §5,#950/#910 后类名退役):空态 = keys-empty
+    // testid、新建钮 = 空态 scope 的 role=button 文案一级;弹窗 = DialogShell
+    // role=dialog(可及名 = title),提交钮 = 弹窗 scope 文案一级;一次性明文
+    // = <code> 语义元素;掩码行 = Card 件 data-slot,一次块凭「仅显示一次」
+    // 文案排除。
+    const keysEmpty = page.getByTestId('keys-empty');
+    await keysEmpty.waitFor({ timeout: 15_000 });
     check(true, 'API 密钥页空态就绪');
     await shot(page, '01-keys-empty.png');
 
-    await page.click('.keys-create');
+    await keysEmpty.getByRole('button', { name: '新建密钥' }).click();
     // #287 起「新建密钥」走权限位表单弹窗(api-key-create-dialog.tsx):点
-    // .keys-create 只开弹窗,须再点弹窗内 .apikey-form-create 提交,POST 成功
-    // 响应回明文才渲染 .keys-once-value。表单默认值可直接提交(空名称 + 全不
-    // 选,server createApiKeyBodySchema 接受)。
-    await page.waitForSelector('.apikey-form-create', { timeout: 15_000 });
+    // 「新建密钥」只开弹窗,须再点弹窗内「创建」提交,POST 成功响应回明文才
+    // 渲染一次性明文块。表单默认值可直接提交(空名称 + 全不选,server
+    // createApiKeyBodySchema 接受)。
+    const createDialog = page.getByRole('dialog', { name: '新建密钥' });
+    await createDialog.waitFor({ timeout: 15_000 });
     check(true, '新建密钥弹窗打开(#287 两步流)');
     await shot(page, '02-keys-create-dialog.png');
-    await page.click('.apikey-form-create');
-    await page.waitForSelector('.keys-once-value', { timeout: 15_000 });
-    const plaintext = (await page.locator('.keys-once-value').textContent())?.trim();
+    await createDialog.getByRole('button', { name: '创建' }).click();
+    const onceCode = page.locator('code', { hasText: 'pacman_' });
+    await onceCode.waitFor({ timeout: 15_000 });
+    const plaintext = (await onceCode.textContent())?.trim();
     check(
       plaintext?.startsWith('pacman_') === true,
       `一次性明文形态 pacman_…(${plaintext?.slice(0, 14)}…,仅显示一次)`,
     );
-    const rows = await page.locator('.keys-row').count();
-    check(rows >= 1, `密钥列表出现掩码行(${rows} 行)`);
+    // 掩码行的判别面:列表给明文条目也渲染一张无掩码的行卡,卡总数在
+    // once 态 = 3(一次块 + 真掩码行 + once 空行)。真掩码行 = 文本含
+    // pacman_ 且无 <code> 子孙(一次块是唯一带 code 的卡)。
+    const maskedRows = await page
+      .locator('[data-slot="card"]')
+      .filter({ hasText: 'pacman_' })
+      .filter({ hasNot: page.locator('code') })
+      .count();
+    check(maskedRows === 1, `密钥列表出现掩码行(${maskedRows} 行)`);
     await shot(page, '03-keys-once.png');
 
     const teams = await getJson(`${API}/api/teams`);
@@ -270,7 +285,10 @@ try {
     await postJson(`${API}/api/projects/${proj.id}/todos`, { title, spec: title });
     await gotoBoard();
 
-    const panel = page.locator('.search-panel');
+    // #1166 迁语义载体(spec 22 §5,#949/#910 裁定后类名退役,与
+    // e2e search-focus.spec.ts 同律):面板 = role dialog + 可及名「搜索」,
+    // 输入 = 面板 scope 的 textbox,结果行 = data-row-kind="todo"。
+    const panel = page.getByRole('dialog', { name: '搜索' });
     for (let attempt = 0; attempt < 6; attempt += 1) {
       await page.keyboard.press('Meta+k');
       const opened = await panel
@@ -281,8 +299,10 @@ try {
       if (attempt === 5) throw new Error('⌘K 未打开搜索面板(6 次重按后)');
     }
     check(true, '搜索面板打开(⌘K)');
-    await page.fill('.search-input-row input', title);
-    const row = page.locator('.search-row--todo', { hasText: title });
+    await panel.getByRole('textbox').fill(title);
+    const row = page
+      .getByRole('dialog', { name: '搜索' })
+      .locator('[data-row-kind="todo"]', { hasText: title });
     await row.first().waitFor({ state: 'visible', timeout: 10_000 });
     check(true, `结果行命中「${title}」`);
     await shot(page, '02-search-results.png');
