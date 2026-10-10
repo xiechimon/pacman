@@ -76,13 +76,16 @@ credentials.enc
 # OS
 .DS_Store
 
-# Claude — 本地 agent 状态全忽略。两处例外是项目级产物，随仓走：
-# verify-pacman（验证 harness）与 hillclimb（评测数据：输入集、判分口径、跑分）。
+# Claude — 本地 agent 状态全忽略。三处例外是项目级产物，随仓走：
+# verify-pacman（验证 harness）、pr-pacman（本仓 PR body 契约；名字刻意
+# 不叫 pr——个人级 skill 同名优先级压过项目级，叫 pr 会被全局 /pr 盖掉）
+# 与 hillclimb（评测数据：输入集、判分口径、跑分）。
 # hillclimb 的 trace、report.html、trajectory、progress 是派生/体量面，仍忽略。
 .claude/*
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/verify-pacman/
+!.claude/skills/pr-pacman/
 !.claude/hillclimb/
 .claude/hillclimb/*/baseline/traces/
 .claude/hillclimb/*/report.html
