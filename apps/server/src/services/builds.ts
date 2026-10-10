@@ -896,6 +896,34 @@ export function applyStepFailure(
   }
 }
 
+/** 步失败收尾三件套（#1104 起双消费者）：applyStepFailure（落账，step
+ * failed + build.errorMessage + todo → failed）+ build doc 事件 + 会话流
+ * step 事件。sweep 的无人认领收尾与 claim 面的无主步收尾（machines.ts
+ * tryClaim）共用——「与机器报失败同一漏斗」若两处各写各的事件面，漂移即
+ * 事件缺口，故收口单函数。机器报失败路径（finishStep 的 failed 分支）
+ * 保持 #703 口径原形（只发 step 事件），非本族。 */
+export function failStepWithEvents(
+  deps: BuildDeps,
+  stepRow: typeof step.$inferSelect,
+  reason: string,
+): void {
+  applyStepFailure(deps, stepRow, reason);
+  const failedBuild = deps.db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
+  if (failedBuild) publishBuild(deps, failedBuild);
+  const failedStep = deps.db.select().from(step).where(eq(step.id, stepRow.id)).get();
+  if (failedStep) {
+    deps.convHub?.publishStep(stepRow.buildId, {
+      id: failedStep.id,
+      buildId: failedStep.buildId,
+      kind: failedStep.kind,
+      machineId: failedStep.machineId,
+      createdAt: failedStep.createdAt,
+      status: failedStep.status,
+      checkpointCommit: failedStep.checkpointCommit,
+    });
+  }
+}
+
 // —— #706 build 步失联扫尾 + #862 T1 跨机续跑释放（B-C7；#684 chief 扫尾的同型）——
 
 export const BUILD_ABANDONED_STEP_MS = 120_000;
@@ -1020,21 +1048,7 @@ export function sweepAbandonedBuildSteps(deps: BuildDeps, now: number = nowMs())
       }
     }
     if (reason === null) continue;
-    applyStepFailure(deps, row, reason);
-    const failedBuild = deps.db.select().from(build).where(eq(build.id, row.buildId)).get();
-    if (failedBuild) publishBuild(deps, failedBuild);
-    const failedStep = deps.db.select().from(step).where(eq(step.id, row.id)).get();
-    if (failedStep) {
-      deps.convHub?.publishStep(row.buildId, {
-        id: failedStep.id,
-        buildId: failedStep.buildId,
-        kind: failedStep.kind,
-        machineId: failedStep.machineId,
-        createdAt: failedStep.createdAt,
-        status: failedStep.status,
-        checkpointCommit: failedStep.checkpointCommit,
-      });
-    }
+    failStepWithEvents(deps, row, reason);
   }
 }
 
