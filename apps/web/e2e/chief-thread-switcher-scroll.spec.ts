@@ -80,13 +80,22 @@ test.describe('chief thread switcher long-list scroll (#1094)', () => {
     const geom = await menu(page).evaluate((el) => ({
       clientHeight: el.clientHeight,
       scrollHeight: el.scrollHeight,
-      width: el.getBoundingClientRect().width,
+      // #1113: offsetWidth, not getBoundingClientRect().width. The drawer
+      // window enters with zoom-in-95 (scale 0.95→1 over --dur-overlay,
+      // WINDOW_MOTION_CLS) and the rect is transform-affected: sampled
+      // mid-entry it reads 262×scale(t) — first frame 248.9, and the CI
+      // flakes (261.78 on #1105, 260.34 on main) are late-entry frames
+      // under load. offsetWidth is the layout integer: transform-invariant,
+      // so the exact pin below stays deterministic without a tolerance
+      // that would swallow real width regressions.
+      offsetWidth: el.offsetWidth,
     }));
     // 2 rows × 30px + p-1 (4px × 2) = 68 — the cap must not add chrome
+    // (clientHeight/scrollHeight are layout metrics too — same invariance)
     expect(geom.clientHeight).toBe(68);
     expect(geom.scrollHeight).toBeLessThanOrEqual(geom.clientHeight);
     // width untouched (#1054/#1009 pinned geometry, out of scope here)
-    expect(geom.width).toBe(262);
+    expect(geom.offsetWidth).toBe(262);
   });
 
   test('Tab walks the list to the tail row and scrolls it into view', async ({ page }) => {
