@@ -56,6 +56,7 @@ import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Paperclip, X } from '../icons/index.js';
 import { isEditableTarget, useChordHotkey, useProjectCycleHotkey } from '../overlays/hotkeys.js';
+import { safeLocalStorage } from '../safe-storage.js';
 import {
   createPastedNameCounter,
   filesFromClipboardData,
@@ -142,18 +143,20 @@ export interface MachineOption {
  *  pacman.dirBrowser.lastDir 同律。 */
 export const NEW_TASK_PROJECT_STORAGE_KEY = 'pacman.newTaskProjectId';
 
-/** 读记忆位:隐私模式等抛 = 无记忆(dir-browser W13 同律)。 */
-function readRememberedProject(storage: Storage): string | null {
+/** 读记忆位:隐私模式等抛 = 无记忆(dir-browser W13 同律)。#1091:参数可空——
+ *  调用点必须传 safeLocalStorage():裸 `localStorage` 实参在 Storage 不可用
+ *  环境于求值时就抛 SecurityError,进不了函数体的 try/catch。 */
+function readRememberedProject(storage: Storage | null): string | null {
   try {
-    return storage.getItem(NEW_TASK_PROJECT_STORAGE_KEY);
+    return storage?.getItem(NEW_TASK_PROJECT_STORAGE_KEY) ?? null;
   } catch {
     return null;
   }
 }
 
-function writeRememberedProject(storage: Storage, projectId: string): void {
+function writeRememberedProject(storage: Storage | null, projectId: string): void {
   try {
-    storage.setItem(NEW_TASK_PROJECT_STORAGE_KEY, projectId);
+    storage?.setItem(NEW_TASK_PROJECT_STORAGE_KEY, projectId);
   } catch {
     // 写不进 = 不记住,选择本身不受损(W13 同律)
   }
@@ -172,20 +175,21 @@ function writeRememberedProject(storage: Storage, projectId: string): void {
  *  路由要顶掉它的缺省。 */
 export const NEW_TASK_MACHINE_STORAGE_KEY = 'pacman.newTaskMachineId';
 
-/** 读记忆位:隐私模式等抛 = 无记忆(readRememberedProject 同律)。 */
-function readRememberedMachine(storage: Storage): string | null {
+/** 读记忆位:隐私模式等抛 = 无记忆(readRememberedProject 同律,含 #1091 的
+ *  实参纪律:调用点传 safeLocalStorage())。 */
+function readRememberedMachine(storage: Storage | null): string | null {
   try {
-    return storage.getItem(NEW_TASK_MACHINE_STORAGE_KEY);
+    return storage?.getItem(NEW_TASK_MACHINE_STORAGE_KEY) ?? null;
   } catch {
     return null;
   }
 }
 
 /** 写记忆位:null(选「自动」) = 清。写不进 = 不记住,选择本身不受损(W13 同律)。 */
-function writeRememberedMachine(storage: Storage, machineId: string | null): void {
+function writeRememberedMachine(storage: Storage | null, machineId: string | null): void {
   try {
-    if (machineId === null) storage.removeItem(NEW_TASK_MACHINE_STORAGE_KEY);
-    else storage.setItem(NEW_TASK_MACHINE_STORAGE_KEY, machineId);
+    if (machineId === null) storage?.removeItem(NEW_TASK_MACHINE_STORAGE_KEY);
+    else storage?.setItem(NEW_TASK_MACHINE_STORAGE_KEY, machineId);
   } catch {
     // 写不进 = 不记住,选择本身不受损(W13 同律)
   }
@@ -282,7 +286,7 @@ export function NewTaskDialog({
   // 只是还没加载,按缺省清记忆会误伤真值)。
   const [projectOpen, setProjectOpen] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(() =>
-    rememberProject ? readRememberedProject(localStorage) : null,
+    rememberProject ? readRememberedProject(safeLocalStorage()) : null,
   );
   // #682 机器 chip：popover 开态 + 选中行（null = 自动）。#758 接上 XMON-87
   // 同一套记忆机制：初值 = 上次钉的机器（挂载读一次）。存的值可能不在行集
@@ -292,7 +296,7 @@ export function NewTaskDialog({
   // popover 收另一个（head 同层双 chip，两面同开会让 Esc 分层歧义）。
   const [machineOpen, setMachineOpen] = useState(false);
   const [machineId, setMachineId] = useState<string | null>(() =>
-    readRememberedMachine(localStorage),
+    readRememberedMachine(safeLocalStorage()),
   );
   // #1060 手势消费闸（CI 偶发双关的根因位）：非模态 registry Popover 的外点
   // 自收与 dialog 自己的关闭判定（React 背板 onClick 链、Base UI native
@@ -439,7 +443,7 @@ export function NewTaskDialog({
       setSpec('');
       // #758 重开净面 = 记忆面：reset 目标从恒 null 改为记忆值（选即写，
       // 故通常与当前 state 等值；重读兜住「记忆被并发改动」的边角）。
-      setMachineId(readRememberedMachine(localStorage));
+      setMachineId(readRememberedMachine(safeLocalStorage()));
     }
   }, [open]);
   // retained mount：关闭退场后子树卸载,重开 = 重新挂载。autofocus 挂 ref
@@ -493,7 +497,7 @@ export function NewTaskDialog({
     const next = rows[(index + 1) % rows.length];
     if (next === undefined) return;
     setProjectId(next.id);
-    if (rememberProject) writeRememberedProject(localStorage, next.id);
+    if (rememberProject) writeRememberedProject(safeLocalStorage(), next.id);
   }, [rows, selected?.id, rememberProject]);
   useProjectCycleHotkey(open && !discardOpen && rows.length > 1, cycleProject);
 
@@ -773,7 +777,7 @@ export function NewTaskDialog({
                     aria-selected={row.id === selected?.id}
                     onClick={() => {
                       setProjectId(row.id);
-                      if (rememberProject) writeRememberedProject(localStorage, row.id);
+                      if (rememberProject) writeRememberedProject(safeLocalStorage(), row.id);
                       setProjectOpen(false);
                     }}
                   >
@@ -940,7 +944,7 @@ export function NewTaskDialog({
                     onClick={() => {
                       setMachineId(null);
                       // #758 选「自动」= 清记忆位（写时机与项目 chip 同：选即写）
-                      writeRememberedMachine(localStorage, null);
+                      writeRememberedMachine(safeLocalStorage(), null);
                       setMachineOpen(false);
                     }}
                   >
@@ -969,7 +973,7 @@ export function NewTaskDialog({
                       onClick={() => {
                         setMachineId(row.id);
                         // #758 选即写（项目 chip 同时机）
-                        writeRememberedMachine(localStorage, row.id);
+                        writeRememberedMachine(safeLocalStorage(), row.id);
                         setMachineOpen(false);
                       }}
                     >

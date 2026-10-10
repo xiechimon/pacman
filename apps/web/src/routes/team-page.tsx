@@ -43,6 +43,7 @@ import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js';
+import { safeLocalStorage, safeSetItem } from '../safe-storage.js';
 import { SecondaryShell } from '../secondary/shell.js';
 import { AGENTS_HREF } from './agent-detail-page.js';
 import { CreateAgentDialog } from './create-agent-dialog.js';
@@ -68,8 +69,13 @@ const CREATE_SLOT_CLS = 'h-[76px] border-dashed text-(--text-tertiary)';
 const AGENT_CARD_CLS =
   'flex h-[76px] items-center gap-3 rounded-xl bg-card px-4 text-inherit no-underline ring-1 ring-foreground/10 hover:ring-foreground/25';
 
-function readStoredLayout(storage: Storage): TeamLayout {
-  return storage.getItem(TEAM_LAYOUT_STORAGE_KEY) === 'chart' ? 'chart' : 'grid';
+function readStoredLayout(storage: Storage | null): TeamLayout {
+  // #1091：null / getItem 抛 = 无记忆，回落 grid（本页首渲染路径）。
+  try {
+    return storage?.getItem(TEAM_LAYOUT_STORAGE_KEY) === 'chart' ? 'chart' : 'grid';
+  } catch {
+    return 'grid';
+  }
 }
 
 export function TeamPage() {
@@ -93,10 +99,10 @@ export function TeamPage() {
   const chiefAgentId = live
     ? (chiefQ.data?.chief.agent?.agentId ?? null)
     : (fixture.chief?.agent?.id ?? null);
-  const [layout, setLayout] = useState<TeamLayout>(() => readStoredLayout(localStorage));
+  const [layout, setLayout] = useState<TeamLayout>(() => readStoredLayout(safeLocalStorage()));
   const switchLayout = useCallback((next: TeamLayout) => {
     setLayout(next);
-    localStorage.setItem(TEAM_LAYOUT_STORAGE_KEY, next);
+    safeSetItem(TEAM_LAYOUT_STORAGE_KEY, next);
   }, []);
   // #170: the 创建 Agent slot opens the dialog-family form; live submit =
   // POST agents then close (invalidateAll refetches members → the new

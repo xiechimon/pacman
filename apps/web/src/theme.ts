@@ -9,13 +9,25 @@
 // #129: a visit with no stored choice follows the system preference
 // (matchMedia prefers-color-scheme); a stored value always wins, and the
 // boot-time applyTheme persists the resolved choice.
+// #1091: every storage touch here rides safe-storage.ts — a dead Storage
+// surface (sandbox iframe / ITP / 隐私模式) degrades to the existing
+// no-stored-value path instead of killing the boot.
+
+import { safeLocalStorage } from './safe-storage.js';
 
 export const THEME_STORAGE_KEY = 'pacman-theme'; // mirrored in e2e (theme-toggle / sidebar-visual specs)
 
 export type Theme = 'light' | 'dark';
 
-export function readStoredTheme(storage: Storage): Theme {
-  const stored = storage.getItem(THEME_STORAGE_KEY);
+export function readStoredTheme(storage: Storage | null): Theme {
+  // #1091：storage 为 null（safeLocalStorage 的不可用面）或 getItem 自身抛
+  // （Storage 对象在但被禁读）都并进下面「无存储 = 跟系统」的既有回落路径。
+  let stored: string | null = null;
+  try {
+    stored = storage?.getItem(THEME_STORAGE_KEY) ?? null;
+  } catch {
+    stored = null;
+  }
   if (stored === 'light' || stored === 'dark') return stored;
   // 无存储 = 跟系统；无 matchMedia 的环境（非浏览器测试）保持 dark 默认。
   return typeof window !== 'undefined' &&
@@ -24,7 +36,7 @@ export function readStoredTheme(storage: Storage): Theme {
     : 'dark';
 }
 
-export function applyTheme(theme: Theme, storage: Storage = localStorage): void {
+export function applyTheme(theme: Theme, storage: Storage | null = safeLocalStorage()): void {
   const root = document.documentElement;
   // Theme-switch suppression (base-ui-theme §1.2/F8, better-ui recipe): the
   // .light flip repaints every color/background/border/shadow token at once —
@@ -40,7 +52,12 @@ export function applyTheme(theme: Theme, storage: Storage = localStorage): void 
   void root.offsetHeight;
   root.classList.toggle('light', theme === 'light');
   root.dataset.theme = theme;
-  storage.setItem(THEME_STORAGE_KEY, theme);
+  try {
+    storage?.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // #1091 写不进（Storage 不可用 / 旧 Safari 隐私模式 setItem 抛）= 主题
+    // 只在会话内生效，静默丢（auth.ts writeToken 同律）。
+  }
   // Two frames: the flip paints transition-free in the first, the second
   // lets same-task style reads settle before transitions return.
   requestAnimationFrame(() => {

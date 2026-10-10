@@ -65,6 +65,7 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { LOCALE_NAMES, LOCALES } from '../i18n/locale.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
+import { safeLocalStorage } from '../safe-storage.js';
 import { SecondaryShell } from '../secondary/shell.js';
 
 /* —— #1031 名称行内编辑面配方（account 面几何，与 agent 详情同构）——
@@ -121,7 +122,7 @@ export function AccountPage() {
   // fixture 面权限由 scenario 冻结（可表达 granted/denied/default 三态，不再
   // 硬编 granted）；无 scenario 位时缺省 granted 保 r7 13 基线行的开态。
   const [notifyPref, setNotifyPref] = useState<NotifyPref | null>(() =>
-    readNotifyPref(localStorage),
+    readNotifyPref(safeLocalStorage()),
   );
   const { permission, request } = useNotificationPermission(
     live ? null : (fixture.ui?.notificationPermission ?? 'granted'),
@@ -222,7 +223,7 @@ export function AccountPage() {
             onCheckedChange={(checked) => {
               const next: NotifyPref = checked ? 'on' : 'off';
               setNotifyPref(next);
-              persistNotifyPref(next, localStorage);
+              persistNotifyPref(next, safeLocalStorage());
               if (checked && permission !== 'granted') request();
             }}
           />

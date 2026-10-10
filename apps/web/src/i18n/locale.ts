@@ -22,17 +22,27 @@ export function isLocale(value: unknown): value is Locale {
   return value === 'zh' || value === 'en';
 }
 
-export function readStoredLocale(storage: Pick<Storage, 'getItem'>): Locale {
-  for (const key of LOCALE_STORAGE_KEYS) {
-    const value = storage.getItem(key);
-    if (value != null && KNOWN.includes(value)) return value as Locale;
+export function readStoredLocale(storage: Pick<Storage, 'getItem'> | null): Locale {
+  // #1091：storage 为 null（safeLocalStorage 的不可用面）或 getItem 自身抛，
+  // 都并进下面 DEFAULT_LOCALE 的既有回落路径。
+  try {
+    for (const key of LOCALE_STORAGE_KEYS) {
+      const value = storage?.getItem(key);
+      if (value != null && KNOWN.includes(value)) return value as Locale;
+    }
+  } catch {
+    // fall through to the default
   }
   return DEFAULT_LOCALE;
 }
 
-export function persistLocale(locale: Locale, storage: Pick<Storage, 'setItem'>): void {
+export function persistLocale(locale: Locale, storage: Pick<Storage, 'setItem'> | null): void {
   // the official profile carries both keys with identical values (r2 §1.5)
-  for (const key of LOCALE_STORAGE_KEYS) storage.setItem(key, locale);
+  try {
+    for (const key of LOCALE_STORAGE_KEYS) storage?.setItem(key, locale);
+  } catch {
+    // #1091 写不进 = 不持久，切换只在会话内生效（auth.ts writeToken 同律）
+  }
 }
 
 /** Dropdown order for the account 语言 row. */

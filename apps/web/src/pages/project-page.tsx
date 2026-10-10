@@ -66,6 +66,7 @@ import {
   Search,
 } from '../icons/index.js';
 import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
+import { safeLocalStorage, safeSetItem } from '../safe-storage.js';
 import { GithubIssuesDialog } from './github-issues-dialog.js';
 import { PageShell } from './shell.js';
 
@@ -330,8 +331,13 @@ function deriveFileView(
     : { kind: 'text', content: file.data.content };
 }
 
-function readStoredLayout(storage: Storage): TasksLayout {
-  return storage.getItem(PROJECT_TASKS_LAYOUT_STORAGE_KEY) === 'grid' ? 'grid' : 'list';
+function readStoredLayout(storage: Storage | null): TasksLayout {
+  // #1091：null / getItem 抛 = 无记忆，回落 list（本页首渲染路径）。
+  try {
+    return storage?.getItem(PROJECT_TASKS_LAYOUT_STORAGE_KEY) === 'grid' ? 'grid' : 'list';
+  } catch {
+    return 'list';
+  }
 }
 
 /** 筛选最小集 [推断]（票面：全部/进行中/已完成，核 phase 九值）：已完成
@@ -447,10 +453,10 @@ function TasksPane({
   // #318: 行/卡点击 = 导航任务详情(r2 §2 原站点行开详情);search 随行
   // 携带(fixture 面 scenario 参数不丢,todo-card #58 同律)。
   const { search } = useLocation();
-  const [layout, setLayout] = useState<TasksLayout>(() => readStoredLayout(localStorage));
+  const [layout, setLayout] = useState<TasksLayout>(() => readStoredLayout(safeLocalStorage()));
   const switchLayout = useCallback((next: TasksLayout) => {
     setLayout(next);
-    localStorage.setItem(PROJECT_TASKS_LAYOUT_STORAGE_KEY, next);
+    safeSetItem(PROJECT_TASKS_LAYOUT_STORAGE_KEY, next);
   }, []);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<TaskFilter>('all');
