@@ -6,9 +6,9 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 // the live preview the user picked the Atom indicator. It renders a 16×16
 // square at size 16: one shell circle (0.88px stroke) plus three orbits
 // tilted 0/60/120°, each spinning an inner ring (0.72px stroke) through
-// `ld-atom-rotate`. The duration prop pins the cycle to 900ms — the old
-// reel's period (the library default for atom is 1000ms) — staggered
-// −0.9s/−0.6s/−0.3s across the three spins. The library injects its own
+// `ld-atom-rotate`. The duration prop pins the cycle to 1800ms — slowed from
+// the old reel's 900ms period (2026-10-10, user found 900ms too fast) —
+// staggered −1.8s/−1.2s/−0.6s across the three spins. The library injects its own
 // React-19 precedence stylesheet (rendered as data-href/data-precedence),
 // sets aria-hidden on its root, and freezes under prefers-reduced-motion
 // (animation: none on every part + a static rotate(60deg) settle on the
@@ -22,10 +22,10 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 //   L2 geometry drift: root not a 16px square, shell not a 16px circle,
 //      part counts wrong (1 shell / 3 orbits / 3 spins / 3 rings)
 //   L3 row geometry regression: the 20px row height drifts
-//   L4 animation contract broken: not infinite / period ≠ 0.9s (duration
+//   L4 animation contract broken: not infinite / period ≠ 1.8s (duration
 //      prop) / not running / stagger or tilt spread lost / breathe pulse
 //      missing or off-period (root must carry exactly one spinner-breathe,
-//      1800ms = twice the spin period so the pulse never beats the orbits)
+//      3600ms = twice the spin period so the pulse never beats the orbits)
 //   L5 reduced motion doesn't freeze the spins (or drops the static settle)
 //   L6 spinner root not aria-hidden — the static label is the accessible cue
 //   L7 seconds span missing tabular-nums (width jitter regression)
@@ -52,7 +52,7 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
     await page.goto(`${DETAIL}?scenario=26`);
   });
 
-  test('Atom mounts: stylesheet injected, shell + 3 tilted orbits, staggered 900ms spin', async ({
+  test('Atom mounts: stylesheet injected, shell + 3 tilted orbits, staggered 1800ms spin', async ({
     page,
   }) => {
     const root: Locator = spinner(page);
@@ -85,7 +85,7 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
     expect(spinsAnims).toHaveLength(3); // L1: every spin carries the rotation
     for (const r of spinsAnims) {
       expect(r.playState).toBe('running'); // L4
-      expect(r.timing?.duration).toBe(900); // L4: duration prop = old reel period
+      expect(r.timing?.duration).toBe(1800); // L4: duration prop = spin period
       expect(r.timing?.iterations).toBe(Infinity); // L4
     }
     // L4: the breathe pulse rides the library root (one level above the
@@ -93,12 +93,12 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
     const breathe = rotation.filter((r) => r.name === 'spinner-breathe');
     expect(breathe).toHaveLength(1);
     expect(breathe[0].playState).toBe('running');
-    expect(breathe[0].timing?.duration).toBe(1800);
+    expect(breathe[0].timing?.duration).toBe(3600);
     expect(breathe[0].timing?.iterations).toBe(Infinity);
     const delays = await spins.evaluateAll((els) =>
       els.map((s) => getComputedStyle(s).animationDelay),
     );
-    expect(delays).toEqual(['-0.9s', '-0.6s', '-0.3s']); // L4: stagger
+    expect(delays).toEqual(['-1.8s', '-1.2s', '-0.6s']); // L4: stagger
   });
 
   test('root is a 16px square, shell a 16px circle, row keeps 20px', async ({ page }) => {
