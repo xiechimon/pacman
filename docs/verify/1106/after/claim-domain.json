@@ -1,29 +1,29 @@
 {
   "step": {
-    "id": "TMkeOji7_VdUMFZzhFsNx",
-    "buildId": "01a12396-8946-7a06-b75b-ac1295f9f17c",
+    "id": "VE-pvniM2tn-X1fhLoKqD",
+    "buildId": "01a12465-a5d7-7f49-814a-319aa7e0ca9f",
     "kind": "build",
-    "machineId": "ECaq7BrkGqXPfnhDPcD9a",
-    "createdAt": 1791598430534
+    "machineId": "7qZviVT4XncqIeTav_mk6",
+    "createdAt": 1791612003800
   },
-  "conversationId": "01a12396-8946-7a06-b75b-ac1295f9f17c",
+  "conversationId": "01a12465-a5d7-7f49-814a-319aa7e0ca9f",
   "session": {
     "action": "new",
     "sessionId": null
   },
   "todo": {
-    "id": "u6hQpO_EdDEWl3maM1to8",
+    "id": "Hpk861V3w1y73Qei5tD1d",
     "seqNum": 1,
     "title": "修复看板卡片的字号过小与换行溢出",
     "spec": "修复看板卡片的字号过小与换行溢出"
   },
   "project": {
-    "id": "E7GvWFozAHKBMAdRg5_2e",
-    "name": "probe-1106-1791598430523",
+    "id": "8ELCuCh8UIdjjRyfkmWbq",
+    "name": "probe-1106-1791612003769",
     "repo": null
   },
   "agent": {
-    "id": "JJaCqTMKRgQB-do-ojbww",
+    "id": "OMrfSiUvwCMFlE2K7gAsx",
     "displayName": "probe-1106-builder-1",
     "description": null,
     "provider": "stub-gw",

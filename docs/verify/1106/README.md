@@ -2,8 +2,9 @@
 
 票面：派发管线技能注入（目录粗分发 + description 细触发注入任务 brief）。
 机制：worker 步 claim（= 任务 brief 的组装投递位，#823 chief 路由同位）时，
-服务端对「任务文本（title+spec）× 授予集现扫目录」做规则选择，结果随同一
-次 claim 原子落 step 行（`skillInjection` 列，含每条命中的规则与原因），
+服务端对「任务文本（title+spec）× 授予集」做规则选择（候选基 = 授予集正本，
+server 现扫只联接描述——daemon 本机库的授予技能以 id/名参与点名），结果随
+同一次 claim 原子落 step 行（`skillInjection` 列，含每条命中的规则与原因），
 ids 经 claim 载荷 `agent.injectedSkills` 透传 daemon 收窄目录注入（daemon
 半由 apps/daemon 单测钉住，见下）。
 

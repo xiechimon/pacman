@@ -233,11 +233,15 @@ afterAll(async () => {
 });
 
 describe('spec 14 技能路由行为验收 E2E（#919）', () => {
-  test('全库目录注入 + 远端分发物化 + 白名单硬挡双向 + 原生面关断对照', async () => {
+  test('选中目录注入 + 远端分发物化 + 白名单硬挡双向 + 原生面关断对照', async () => {
     world1 = await seedWorld(
       server.url,
       server.teamId,
-      { title: '技能路由探针', spec: '按目录读取技能并汇报。' },
+      // #1106 起目录注入经选择面：任务文本点名 alpha-skill（团队面，server
+      // 现扫联接描述）与 local-one（本机库——server 只见授予名，点名照选，
+      // 候选基 = 授予集）——未点名条目零注入（beta/gamma 授权在但 description
+      // 不进 brief）。
+      { title: '技能路由探针', spec: '按目录读取 alpha-skill 与 local-one 技能并汇报。' },
       { projectName: 'skills-routing' },
     );
     const started = await api(server.url, 'POST', `/api/projects/${world1.projectId}/builds`, {
@@ -253,15 +257,20 @@ describe('spec 14 技能路由行为验收 E2E（#919）', () => {
     const first = stub.requests[0]!;
     const flat = JSON.stringify(first.messages);
 
-    // F1 目录全量：entries = 白名单 ∩（团队 ∪ 本机）= 4，点名技能全在注入
-    // 面（含目录末位 gamma——截顶先吃尾部），未授权条目不出现。
-    expect(logLines().some((l) => l.startsWith('[skills] catalog: entries=4 '))).toBe(true);
-    expect(logLines().some((l) => l.startsWith('[skills] loaded: 4 skills from'))).toBe(true);
-    for (const name of ALLOWLIST) {
+    // F1 选择收窄（#1106）：entries = 选中 2（alpha-skill 团队面 + local-one
+    // 本机点名）；未点名的已授予 beta/gamma 不进注入面（description 不进
+    // brief = #1106 验收 2），未授权 local-blocked 照旧不出现。
+    expect(logLines().some((l) => l.startsWith('[skills] catalog: entries=2 '))).toBe(true);
+    expect(logLines().some((l) => l.startsWith('[skills] loaded: 2 skills from'))).toBe(true);
+    for (const name of ['alpha-skill', 'local-one']) {
       expect(flat).toContain(`<name>${name}</name>`);
     }
+    expect(flat).not.toContain('<name>beta-skill</name>');
+    expect(flat).not.toContain('<name>gamma-skill</name>');
     expect(flat).not.toContain('local-blocked');
-    // F2 无截顶：全库 4 ≤ cap 50，`cap:` 行不得出现。
+    expect(logLines()).toContain('[skills] filtered: beta-skill not in injected selection');
+    expect(logLines()).toContain('[skills] filtered: gamma-skill not in injected selection');
+    // F2 无截顶：选中 2 ≤ cap 50，`cap:` 行不得出现。
     expect(logLines().some((l) => l.includes('[skills] cap:'))).toBe(false);
     expect(logLines()).toContain('[skills] filtered: local-blocked not in agent allowlist');
 

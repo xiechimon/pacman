@@ -227,6 +227,27 @@ describe('#1106 派发技能注入（worker claim 选择）', () => {
     expect(got?.agent?.injectedSkills).toEqual([]);
     expect(got?.agent?.skills).not.toContain('tdd');
   });
+
+  test('失败方式 7：授予但 server 未扫到（daemon 本机库技能）→ 点名照选（候选基 = 授予集）', async () => {
+    const w = await setupWorld();
+    // local-one 授予但技能根里没有（= daemon 本机库的技能）：server 只见授予
+    // 名——现扫只提供描述侧联接，不是候选边界（候选边界 = 授予集）。
+    w.s.db
+      .update(agentTable)
+      .set({ skills: [...GRANTED, 'local-one'] })
+      .where(eq(agentTable.id, AGENT_ID))
+      .run();
+    const todoId = await createTodo(w.s, w.projectId, '用 local-one 处理本地构建');
+    const buildId = await startBuild(w.s, w.projectId, todoId);
+    expect(buildId).toBeTruthy();
+    const got = await claim(w.s.app, w.token);
+    // 点名命中：未扫到的授予 id 照选（描述侧无料时规则只剩点名/域文本信号），
+    // 落库正本同形；文本无域命中 → 不夹带其它技能。
+    expect(got?.agent?.injectedSkills).toEqual(['local-one']);
+    const hits = stepRow(w.s, got!.step.id).skillInjection?.hits ?? [];
+    expect(hits.map((h) => h.id)).toEqual(['local-one']);
+    expect(hits[0]?.rule).toBe('explicit-mention');
+  });
 });
 
 describe('#1106 chief 步不经选择面（claim 实走）', () => {

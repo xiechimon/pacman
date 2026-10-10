@@ -187,21 +187,30 @@ function publishStepStatus(deps: MachineDeps, stepId: string): void {
   });
 }
 
-/** #1106 worker 步的派发技能注入选择：授予集（agent.skills ∩ 现扫）内按
- * 任务文本（title+spec，daemon buildTaskPromptText 同源单源）做规则选择。
- * hits=[] = 已计算零命中（零注入不是故障，不保底全量）；扫描失败容错律
- * （scanLocalSkills 空集）→ 零命中，不炸派发。选择结果随 claim 原子落
- * step 行（详情面回查正本），ids 经 claim 载荷 agent.injectedSkills 透传。
+/** #1106 worker 步的派发技能注入选择：授予集内按任务文本（title+spec，
+ * daemon buildTaskPromptText 同源单源）做规则选择。hits=[] = 已计算零命中
+ * （零注入不是故障，不保底全量）；扫描失败容错律（scanLocalSkills 空集）
+ * → 描述侧信息缺失，授予 id 照旧参与点名，不炸派发。选择结果随 claim 原子
+ * 落 step 行（详情面回查正本），ids 经 claim 载荷 agent.injectedSkills 透传。
  * chief 步不经本面（信任面全量 catalog，#372）。 */
 function workerSkillInjection(
   deps: MachineDeps,
   agentRow: { skills: readonly string[] },
   todoRow: { title: string; spec: string },
 ): SkillInjectionRecord {
-  const granted = new Set(agentRow.skills);
-  const candidates = scanLocalSkills(deps.skillsDir)
-    .filter((s) => granted.has(s.id))
-    .map((s) => ({ id: s.id, name: s.name, description: s.description }));
+  // 候选基 = 授予集正本（票面「目录 = 用户为项目授予的技能集」）：授予集跨
+  // server 团队库与 daemon 本机库两分布面，server 现扫只覆盖前者——未扫到的
+  // 授予 id（本机库技能）以 id/名参与点名规则（domain 规则只有 id 文本信号，
+  // 天然弱），描述侧信息以现扫为上限；daemon 收窄按 ids 求交，本机没有的
+  // 授予 id 自然不进目录（正本 = 选择记录，落面 = 机器事实）。零命中照旧
+  // 零注入——授予边界不变，本函数不编造未授予条目。
+  const scanned = new Map(scanLocalSkills(deps.skillsDir).map((s) => [s.id, s]));
+  const candidates = [...new Set(agentRow.skills)].map((id) => {
+    const s = scanned.get(id);
+    return s === undefined
+      ? { id, name: id, description: null }
+      : { id: s.id, name: s.name, description: s.description };
+  });
   const hits = selectSkillsForTask(buildTaskPromptText(todoRow.title, todoRow.spec), candidates);
   return { hits };
 }

@@ -226,7 +226,9 @@ describe('spec 14 skills 执行面注入 E2E', () => {
     world = await seedWorld(
       server.url,
       server.teamId,
-      { title: 'skills 注入探针', spec: '读取演示技能并汇报 marker。' },
+      // #1106 起目录注入经选择面：任务文本点名 demo-skill（explicit-mention）
+      // 才进 catalog——连通性链路（catalog→read→落库）走选中通道。
+      { title: 'skills 注入探针', spec: '读取 demo-skill 演示技能并汇报 marker。' },
       { projectName: 'skills-inject' },
     );
     const started = await api(server.url, 'POST', `/api/projects/${world.projectId}/builds`, {
