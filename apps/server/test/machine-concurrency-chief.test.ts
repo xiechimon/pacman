@@ -68,7 +68,7 @@ async function setupWorld(): Promise<World> {
       thinkingLevel: null,
       tools: [],
       secrets: [],
-      skills: [],
+      skillsAllowlist: null,
       mcpServers: [],
     })
     .run();
