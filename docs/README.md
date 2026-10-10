@@ -11,6 +11,7 @@
 | `design/` | 设计参考与对照稿 |
 | `a3/` | todos.dev 对照审计报告（逐页 / 逐面） |
 | `pr-review.md` | PR 评审流程（五步流程 + 六节评分卡） |
+| `ops-db-backup.md` | server DB 备份与恢复（脚本 `scripts/ops/backup-server-db.sh`，调度模板与演练纪律） |
 
 ## 随票产物
 
