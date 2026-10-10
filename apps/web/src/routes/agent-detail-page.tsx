@@ -348,8 +348,11 @@ export function AgentDetailPage() {
               <ProfileHead>
                 <ProfileAvatar>
                   {/* 头像走 SeededAvatar 适配层（种子 / 静态兜底 / 失败换图三律），
-                      profile-avatar 只给 64px 圆盒。 */}
+                      profile-avatar 只给 64px 圆盒。#1156：SeededAvatar 的 Root
+                      是定尺盒、尺寸由消费点显式给——漏传 className 会落到
+                      registry 默认 size-8（32px），在 64px 盒里被裁。 */}
                   <SeededAvatar
+                    className="size-16"
                     name={agent.displayName}
                     src={agent.avatarUrl}
                     fallback="/avatar-robot-1.svg"

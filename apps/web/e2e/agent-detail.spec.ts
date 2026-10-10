@@ -593,7 +593,20 @@ test('概览：六个字段行长在同一张模板卡里，头像头在卡内',
   const detail = await openDetail(page);
   const card = detail.locator('.agent-overview .profile-card');
   await expect(card).toHaveCount(1);
-  await expect(card.locator('.profile-head .profile-avatar img')).toHaveCount(1);
+  const avatarImg = card.locator('.profile-head .profile-avatar img');
+  await expect(avatarImg).toHaveCount(1);
+  // #1156：存在断言对尺寸缺陷是瞎的——SeededAvatar 漏传 className 时回落
+  // registry 默认 size-8（32px），塞进 ProfileAvatar 的 64px 圆盒被裁。这里
+  // 钉 img 的真实几何：64px 是该面唯一 ProfileAvatar 盒的设计值。度量用
+  // offsetWidth/offsetHeight（布局整数、transform 不变）；不用
+  // getBoundingClientRect——它读被 transform 影响的值，进场动画期间会得
+  // 0.95 倍假值（#1113 flake 成因）。
+  const avatarGeom = await avatarImg.evaluate((el) => ({
+    w: el.offsetWidth,
+    h: el.offsetHeight,
+  }));
+  expect(avatarGeom.w).toBe(64);
+  expect(avatarGeom.h).toBe(64);
   await expect(card.locator('.profile-row')).toHaveCount(OVERVIEW_LABELS.length);
   // 行序即字段序。取 `.profile-label-text`（模板自己的 label 类）而非面内
   // 别名：别名在、模板类不在，就是「只挂了句柄没吃模板」——正是要钉的退形。
