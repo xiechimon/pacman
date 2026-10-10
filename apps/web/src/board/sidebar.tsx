@@ -61,6 +61,7 @@ import {
   Search,
   Server,
 } from '../icons/index.js';
+import { safeLocalStorage, safeSetItem } from '../safe-storage.js';
 import { readStoredTheme } from '../theme.js';
 import { ProjectAvatar } from './project-avatar.js';
 
@@ -144,11 +145,16 @@ export const GROUP_STORAGE_KEYS = {
 
 type GroupId = keyof typeof GROUP_STORAGE_KEYS;
 
-function readGroupCollapsed(storage: Storage): Record<GroupId, boolean> {
-  return {
-    project: storage.getItem(GROUP_STORAGE_KEYS.project) === '1',
-    resource: storage.getItem(GROUP_STORAGE_KEYS.resource) === '1',
-  };
+function readGroupCollapsed(storage: Storage | null): Record<GroupId, boolean> {
+  // #1091：null / getItem 抛 = 无记忆，两组回落展开态（首渲染路径）。
+  try {
+    return {
+      project: storage?.getItem(GROUP_STORAGE_KEYS.project) === '1',
+      resource: storage?.getItem(GROUP_STORAGE_KEYS.resource) === '1',
+    };
+  } catch {
+    return { project: false, resource: false };
+  }
 }
 
 /** Group-header aria (r6): the label tracks the collapse in both
@@ -297,7 +303,7 @@ function UserMenuPopover({
         aria-label={t('用户菜单')}
         className="block rounded-none border-none bg-transparent p-0 shadow-none"
       >
-        <UserMenu floating theme={readStoredTheme(localStorage)} />
+        <UserMenu floating theme={readStoredTheme(safeLocalStorage())} />
       </PopoverContent>
     </Popover>
   );
@@ -334,11 +340,13 @@ export function BoardSidebar({
   // #147: the 项目 / 资源 group collapses are real state persisted beside
   // the sidebar collapse key; both sidebar shapes (rail + expanded) read
   // the same pair so a collapse survives the rail toggle and the reload.
-  const [groupCollapsed, setGroupCollapsed] = useState(() => readGroupCollapsed(localStorage));
+  const [groupCollapsed, setGroupCollapsed] = useState(() =>
+    readGroupCollapsed(safeLocalStorage()),
+  );
   const toggleGroup = useCallback((id: GroupId) => {
     setGroupCollapsed((prev) => {
       const next = { ...prev, [id]: !prev[id] };
-      localStorage.setItem(GROUP_STORAGE_KEYS[id], next[id] ? '1' : '0');
+      safeSetItem(GROUP_STORAGE_KEYS[id], next[id] ? '1' : '0');
       return next;
     });
   }, []);

@@ -23,6 +23,7 @@ import { readNotifyPref } from '../board/notify-pref.js';
 import { EN } from '../i18n/en.js';
 import { readStoredLocale } from '../i18n/locale.js';
 import { translate } from '../i18n/translate.js';
+import { safeLocalStorage } from '../safe-storage.js';
 import { activityStore } from './activity.js';
 import { readStoredToken, useAuth } from './auth.js';
 import { invalidateConverged } from './invalidate.js';
@@ -121,8 +122,10 @@ function fireDesktopNotification(record: NotificationRecord): void {
   // #1031 偏好档闸门：帐号页开关关档（pacman.notifyEnabled=0）即使用户已授权
   // 也不弹——「关」是能落地的动作，不只是控件视觉。permission 是能力面、
   // 偏好是意愿面，两层都过才发。
-  if (readNotifyPref(localStorage) === 'off') return;
-  const t = (source: string) => translate(readStoredLocale(localStorage), EN, source);
+  // #1091：获取点走安全缝——通知事件是运行期路径，裸 `localStorage` 实参在
+  // Storage 不可用环境会把 fireDesktopNotification 整个炸掉。
+  if (readNotifyPref(safeLocalStorage()) === 'off') return;
+  const t = (source: string) => translate(readStoredLocale(safeLocalStorage()), EN, source);
   const title =
     record.type === 'plan_ready'
       ? t('方案已就绪')
