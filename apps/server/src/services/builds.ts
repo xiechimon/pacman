@@ -278,7 +278,8 @@ export function applyStoppedStep(deps: BuildDeps, stepId: string): void {
   if (record) deps.hub.publishTodoDoc(record.teamId, record);
 }
 
-function enqueueStep(
+// #1150 起对 services/ci-loop.ts 导出（CI 磨绿环的修复步追加复用同一入队面）。
+export function enqueueStep(
   deps: BuildDeps,
   buildId: string,
   kind: StepRecord['kind'],
@@ -1205,9 +1206,30 @@ export function completeStep(
     return;
   }
   if (stepRow.kind === 'build') {
-    setTodoPhase(deps, todoRow.id, 'review', {
-      hasChanges: outcome.hasChanges ?? true,
-    });
+    // #1150 CI 磨绿环：github 项目 PR 交付（prNumber 在——daemon github 形态
+    // 步收尾回填）的执行步成 → 停在 building（CI 未判绿前不进人工闸；红 = 轮询器
+    // 追加修复步续磨，绿 = 轮询器推进 review，services/ci-loop.ts）。磨绿面 =
+    // github 项目的 PR checks（轮询器同判据）：hosted/local（无 GitHub checks 可磨）
+    // 与 prNumber 缺位的存量形（仅 prUrl，#931 不猜号同律）→ 既有直进 review
+    // 行为逐字节不变。
+    const projRow = deps.db.select().from(project).where(eq(project.id, todoRow.projectId)).get();
+    const deliveredGithubPr =
+      buildRow.prNumber !== null && projRow?.repoKind === 'github' && projRow.githubRepo !== null;
+    if (!deliveredGithubPr) {
+      setTodoPhase(deps, todoRow.id, 'review', {
+        hasChanges: outcome.hasChanges ?? true,
+      });
+      return;
+    }
+    // 相位已被人工推进/关闭（failed/closed——sweep 失联收尾先落、机器复活迟到
+    // done 的竞态窗）→ 不回拽不抛：迟到回报照常收（步 done、PR 在 build 行），
+    // 人从当前相位接手——与 #702 恢复闸哲学一致（恢复是显式人工闸，不是迟到
+    // 回报的副作用）。正常路相位恒 building（claim 前置置位），走同相位幂等。
+    if (todoRow.phase === 'building' || canTransitionPhase(todoRow.phase, 'building')) {
+      setTodoPhase(deps, todoRow.id, 'building', {
+        hasChanges: outcome.hasChanges ?? true,
+      });
+    }
     return;
   }
   if (stepRow.kind === 'review') {

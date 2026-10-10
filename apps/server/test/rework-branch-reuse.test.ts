@@ -471,6 +471,8 @@ describe('#931 失败重启返工回原分支：复用判定（server 面）', (
     await applyBuildStepAction(w.deps, w.buildId, { action: 'confirm' });
     const buildStep = stepsOf(w, w.buildId).find((st) => st.kind === 'build')!;
     completeStep(w.deps, buildStep.id, { hasChanges: true });
+    // #1150 磨绿面 = github 项目（本世界无 repoKind）：PR 字段直插的 hosted 形态
+    // 无 GitHub checks 可磨 → 执行步成仍直进 review（既有行为）。
     expect(todoRowOf(w).phase).toBe('review');
 
     // review 关口人肉打回：仍同一 build、同一 conv。
