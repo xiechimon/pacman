@@ -1,0 +1,20 @@
+{
+  "probe": "api-key",
+  "ok": false,
+  "at": "2026-10-10T12:25:51.087Z",
+  "stack": {
+    "api": "http://127.0.0.1:8791",
+    "web": "http://127.0.0.1:5273",
+    "homeDir": "/home/measure/.pacman-chief/workspaces/01a125c4-6c07-7973-844e-eb39ab01a4f6/.claude/verify-run/home",
+    "root": "/home/measure/.pacman-chief/workspaces/01a125c4-6c07-7973-844e-eb39ab01a4f6/"
+  },
+  "checks": [
+    {
+      "ok": false,
+      "label": "probe 异常:page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator('.keys-empty') to be visible\n"
+    }
+  ],
+  "artifacts": [
+    "99-error.png"
+  ]
+}

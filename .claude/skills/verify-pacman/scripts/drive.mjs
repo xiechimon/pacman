@@ -216,28 +216,34 @@ try {
   if (probe === 'api-key') {
     // 真用户路径:/app/api-keys 空态点「新建密钥」→ 一次性明文 + 掩码行。
     // 前提:全新库(重验先重跑 launch,按钮只在空态)。
+    // 载体(#1166/#950/#910 语义迁移):空态 = data-testid="keys-empty";
+    // 新建密钥钮 = 空态内 role=button;弹窗 = role=dialog + 可及名「新建密钥」
+    // (DialogShell title);提交钮 = 弹窗内 role=button「创建」;一次性明文 =
+    // 明文字形 code 元素(该块在件内无 role/aria/testid 载体,code 是稳定内容
+    // 元素,遵档案同款);掩码行真值 = API masked 字段在列表 DOM 中的渲染。
     await page.goto(`${WEB}/app/api-keys`);
-    await page.waitForSelector('.keys-empty', { timeout: 15_000 });
+    const keysEmpty = page.getByTestId('keys-empty');
+    await keysEmpty.waitFor({ state: 'visible', timeout: 15_000 });
     check(true, 'API 密钥页空态就绪');
     await shot(page, '01-keys-empty.png');
 
-    await page.click('.keys-create');
-    // #287 起「新建密钥」走权限位表单弹窗(api-key-create-dialog.tsx):点
-    // .keys-create 只开弹窗,须再点弹窗内 .apikey-form-create 提交,POST 成功
-    // 响应回明文才渲染 .keys-once-value。表单默认值可直接提交(空名称 + 全不
-    // 选,server createApiKeyBodySchema 接受)。
-    await page.waitForSelector('.apikey-form-create', { timeout: 15_000 });
+    await keysEmpty.getByRole('button', { name: '新建密钥' }).click();
+    // #287 起「新建密钥」走权限位表单弹窗(api-key-create-dialog.tsx):点空态
+    // 钮只开弹窗,须再点弹窗内「创建」提交,POST 成功响应回明文才渲染一次性块。
+    // 表单默认值可直接提交(空名称 + 全不选,server createApiKeyBodySchema 接受)。
+    const dialog = page.getByRole('dialog', { name: '新建密钥' });
+    await dialog.waitFor({ state: 'visible', timeout: 15_000 });
     check(true, '新建密钥弹窗打开(#287 两步流)');
     await shot(page, '02-keys-create-dialog.png');
-    await page.click('.apikey-form-create');
-    await page.waitForSelector('.keys-once-value', { timeout: 15_000 });
-    const plaintext = (await page.locator('.keys-once-value').textContent())?.trim();
+    await dialog.getByRole('button', { name: '创建' }).click();
+    // 一次性明文块 = canon「请立即复制密钥,它仅显示一次。」+ 明文字形 code;
+    // 等块内「复制」钮可见 = 明文已渲染。
+    await page.getByRole('button', { name: '复制' }).waitFor({ state: 'visible', timeout: 15_000 });
+    const plaintext = (await page.locator('code').textContent())?.trim();
     check(
       plaintext?.startsWith('pacman_') === true,
       `一次性明文形态 pacman_…(${plaintext?.slice(0, 14)}…,仅显示一次)`,
     );
-    const rows = await page.locator('.keys-row').count();
-    check(rows >= 1, `密钥列表出现掩码行(${rows} 行)`);
     await shot(page, '03-keys-once.png');
 
     const teams = await getJson(`${API}/api/teams`);
@@ -246,6 +252,9 @@ try {
     const masked = Array.isArray(keys) ? keys[0]?.masked : undefined;
     check(masked?.startsWith('pacman_') === true, `API 掩码行(${masked ?? '缺失'})`);
     extra.apiKeyMasked = masked ?? null;
+
+    const rows = await page.getByText(masked ?? '\u0000none', { exact: true }).count();
+    check(rows >= 1, `密钥列表出现掩码行(${rows} 行)`);
 
     const dbTruth = dbQuery((db) => ({
       row: db.prepare('SELECT id, name, masked, keyHash FROM api_key').get(),
@@ -262,6 +271,9 @@ try {
     // ⌘K 配方照抄 e2e search-focus.spec.ts:热键监听注册在被动 effect,首按
     // 可能早于 hydration,丢键就重按(面板可见即停,不会双 toggle);折叠/
     // 展开两种侧栏态都覆盖(展开态无 .rail-row,别用侧栏行当唯一入口)。
+    // 载体(#1166/#949/#910 语义迁移):面板 = role=dialog + 可及名「搜索」;
+    // 输入 = 面板 scope 的 textbox;todo 结果行 = [data-row-kind="todo"]
+    // (旧 .search-panel / .search-input-row input / .search-row--todo 类退役)。
     const title = `搜索目标 ${Date.now() % 100000}`;
     const proj = await postJson(`${API}/api/projects`, {
       name: '搜索验证',
@@ -270,19 +282,24 @@ try {
     await postJson(`${API}/api/projects/${proj.id}/todos`, { title, spec: title });
     await gotoBoard();
 
-    const panel = page.locator('.search-panel');
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      await page.keyboard.press('Meta+k');
-      const opened = await panel
-        .waitFor({ state: 'visible', timeout: 1000 })
-        .then(() => true)
+    const panel = page.getByRole('dialog', { name: '搜索' });
+    let opened = false;
+    for (let attempt = 0; attempt < 6 && !opened; attempt += 1) {
+      // 先看后按:上一步若已慢开(冷编译),本轮不重按,避免奇偶同 toggle 把面板按回关。
+      opened = await panel
+        .isVisible()
         .catch(() => false);
       if (opened) break;
-      if (attempt === 5) throw new Error('⌘K 未打开搜索面板(6 次重按后)');
+      await page.keyboard.press('Meta+k');
+      opened = await panel
+        .waitFor({ state: 'visible', timeout: 2500 })
+        .then(() => true)
+        .catch(() => false);
     }
+    if (!opened) throw new Error('⌘K 未打开搜索面板(6 次重按后)');
     check(true, '搜索面板打开(⌘K)');
-    await page.fill('.search-input-row input', title);
-    const row = page.locator('.search-row--todo', { hasText: title });
+    await panel.getByRole('textbox').fill(title);
+    const row = panel.locator('[data-row-kind="todo"]', { hasText: title });
     await row.first().waitFor({ state: 'visible', timeout: 10_000 });
     check(true, `结果行命中「${title}」`);
     await shot(page, '02-search-results.png');

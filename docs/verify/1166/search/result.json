@@ -1,0 +1,25 @@
+{
+  "probe": "search",
+  "ok": true,
+  "at": "2026-10-10T12:29:54.512Z",
+  "stack": {
+    "api": "http://127.0.0.1:8791",
+    "web": "http://127.0.0.1:5273",
+    "homeDir": "/home/measure/.pacman-chief/workspaces/01a125c4-6c07-7973-844e-eb39ab01a4f6/.claude/verify-run/home",
+    "root": "/home/measure/.pacman-chief/workspaces/01a125c4-6c07-7973-844e-eb39ab01a4f6/"
+  },
+  "checks": [
+    {
+      "ok": true,
+      "label": "搜索面板打开(⌘K)"
+    },
+    {
+      "ok": true,
+      "label": "结果行命中「搜索目标 94595」"
+    }
+  ],
+  "artifacts": [
+    "02-search-results.png"
+  ],
+  "searchTarget": "搜索目标 94595"
+}
