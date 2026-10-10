@@ -1,8 +1,9 @@
-// skills 执行面注入（spec 14 / #371）：buildSkillsCatalog 输入五态 + cap 双闸
+// skills 执行面注入（spec 14 / #371）：buildSkillsCatalog 输入五态 + 字节预算
 // + appendSkillsCatalog 追加语义 + `[skills]` 日志行族。失败方式清单（票 #371
 // 验收映射）：目录缺 / 目录空 / 目录无 SKILL.md / frontmatter 缺 name / name
-// 碰撞 / catalog 超 cap / description 超长 / systemPrompt 被覆盖而非追加 /
-// `[skills]` 前缀行不落盘。
+// 碰撞 / systemPrompt 被覆盖而非追加 / `[skills]` 前缀行不落盘；#1116 起 cap
+// 双闸（50 条盲切 + 200 字描述截断）换轨为字节预算 + 绑定优先序——失败方式
+// 清单见「catalog 字节预算」与「团队镜像去重降噪」两 describe 头注。
 
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,8 +13,7 @@ import { describe, expect, test } from 'vitest';
 import {
   appendSkillsCatalog,
   buildSkillsCatalog,
-  SKILL_DESCRIPTION_CAP,
-  SKILLS_CATALOG_CAP,
+  SKILLS_CATALOG_BUDGET_BYTES,
 } from '../src/backend/pi.js';
 import { createDaemonLogger, isLogPrefix } from '../src/log.js';
 
@@ -42,6 +42,7 @@ function collect(
   skillsDir: string,
   allowlist?: string[],
   teamSkillsDir?: string,
+  budgetBytes?: number,
 ): { catalog: string; logs: string[] } {
   const logs: string[] = [];
   const catalog = buildSkillsCatalog({
@@ -49,6 +50,7 @@ function collect(
     cwd: tmpdir(),
     ...(allowlist !== undefined ? { allowlist } : {}),
     ...(teamSkillsDir !== undefined ? { teamSkillsDir } : {}),
+    ...(budgetBytes !== undefined ? { budgetBytes } : {}),
     log: (msg) => logs.push(msg),
   });
   return { catalog, logs };
@@ -83,7 +85,7 @@ describe('buildSkillsCatalog 输入五态（spec 14 Testing Decisions）', () =>
   test('目录存在但空 = 空 catalog，无诊断（#917：catalog 观测行恒落）', () => {
     const { catalog, logs } = collect(fixtureRoot('empty'));
     expect(catalog).toBe('');
-    expect(logs).toEqual(['catalog: entries=0 chars=0']);
+    expect(logs).toEqual(['catalog: entries=0 chars=0 bytes=0']);
   });
 
   test('目录含子目录但无 SKILL.md = 空 catalog（pi 递归扫描无命中）', () => {
@@ -136,37 +138,141 @@ describe('buildSkillsCatalog 输入五态（spec 14 Testing Decisions）', () =>
   });
 });
 
-describe('catalog cap 双闸（#371：catalog 不能无限增长）', () => {
-  test(`skills > ${SKILLS_CATALOG_CAP} = 截顶 + cap 日志`, () => {
-    const root = fixtureRoot('cap-total');
-    const total = SKILLS_CATALOG_CAP + 1;
-    for (let i = 0; i < total; i++) {
+// —— #1116 字节预算 + 绑定优先序（2026-10-10 用户裁决：口径 (b) 字节预算 +
+// (c) 按 agent 绑定，不再用「机器范围全集 + 50 条盲切」）—————————————
+// 失败方式清单（先于实现固化）：
+// 1. 真库被静默砍半：99 技能 → 只有 50 进目录（旧 50 条闸）→ 预算内必须全量。
+// 2. 超预算截顶静默：日志不点名丢谁、目录里无任何信号 → budget: 行点名 +
+//    目录尾 <omitted_skills> 段（agent 自己也看得见）。
+// 3. 盲切不看优先序：丢弃按扫描序盲切 → 绑定序（allowlist/injected 顺序）
+//    = 优先序，从尾部（最低优先）丢。
+// 4. 字节口径按 .length 计：CJK 描述 3× 低估 → 预算必须按 UTF-8 字节计。
+// 5. description 被截半：路由凭据砍半掉触发率 → 不再截断（预算闸让位）。
+// 6. 边界：预算连表头+首条都装不下 = 全丢，信号仍在（不静默）。
+
+describe('catalog 字节预算（#1116：绑定集全量可见 + 超限非静默截顶）', () => {
+  test(`99 技能库全量进目录（默认预算 ${SKILLS_CATALOG_BUDGET_BYTES}B 内零截顶）——票面验收场景`, () => {
+    const root = fixtureRoot('budget-99');
+    for (let i = 0; i < 99; i++) {
       writeSkill(root, `skill-${String(i).padStart(2, '0')}`, {
         name: `skill-${String(i).padStart(2, '0')}`,
-        description: `批量技能 ${i}。`,
+        description: `演示技能 ${i}：路由用描述。`,
       });
     }
     const { catalog, logs } = collect(root);
-    expect(catalog.split('<skill>').length - 1).toBe(SKILLS_CATALOG_CAP);
-    expect(logs).toContain(`cap: total=${total} truncated=${SKILLS_CATALOG_CAP}`);
+    expect(catalog.split('<skill>').length - 1).toBe(99);
+    expect(logs.some((l) => l.startsWith('budget:'))).toBe(false);
+    expect(logs.some((l) => /^catalog: entries=99 chars=\d+ bytes=\d+$/.test(l))).toBe(true);
   });
 
-  test(`description > ${SKILL_DESCRIPTION_CAP} 字符 = 截断 + … + cap 日志`, () => {
-    const root = fixtureRoot('cap-desc');
-    const long = 'x'.repeat(SKILL_DESCRIPTION_CAP + 50);
+  test('超预算 = 按优先序尾部丢弃 + budget 日志点名 + 目录尾 <omitted_skills> 段（非静默）', () => {
+    const root = fixtureRoot('budget-over');
+    for (let i = 0; i < 6; i++) {
+      writeSkill(root, `skill-${i}`, {
+        name: `skill-${i}`,
+        description: `技能 ${i} 的路由描述，占一些字节。`,
+      });
+    }
+    // 全量字节 - 1 = 必超预算至少 1 条；丢弃只发生在尾部。
+    const full = collect(root);
+    const fullBytes = Buffer.byteLength(full.catalog, 'utf8');
+    const { catalog, logs } = collect(root, undefined, undefined, fullBytes - 1);
+    const budgetLine = logs.find((l) => l.startsWith('budget:'));
+    expect(budgetLine).toBeDefined();
+    expect(budgetLine).toMatch(/^budget: total=\d+ budget=\d+ dropped=\d+: /);
+    // 目录条数 < 6：确有丢弃发生。
+    const kept = catalog.split('<skill>').length - 1;
+    expect(kept).toBeLessThan(6);
+    // 日志点名 = 被丢的每个名字；目录里它们缺席；被丢集合与 note 集合一致。
+    const keptNames = [...catalog.matchAll(/<name>([^<]+)<\/name>/g)].map((m) => m[1]);
+    const allNames = [...full.catalog.matchAll(/<name>([^<]+)<\/name>/g)].map((m) => m[1]);
+    const droppedNames = allNames.filter((n) => !keptNames.includes(n));
+    expect(droppedNames.length).toBeGreaterThan(0);
+    for (const name of droppedNames) {
+      expect(budgetLine).toContain(name);
+      expect(catalog).not.toContain(`<name>${name}</name>`);
+    }
+    expect(catalog).toContain('</available_skills>');
+    expect(catalog).toContain('<omitted_skills');
+    expect(catalog).toMatch(/<\/omitted_skills>$/);
+    for (const name of droppedNames) {
+      expect(catalog).toContain(name); // note 段里点名（同一字符串出现即可）
+    }
+  });
+
+  test('绑定序 = 优先序：allowlist 顺序决定目录序（不再按扫描序盲切）', () => {
+    const root = fixtureRoot('budget-order');
+    writeSkill(root, 'alpha', { name: 'alpha', description: 'A 技能。' });
+    writeSkill(root, 'beta', { name: 'beta', description: 'B 技能。' });
+    writeSkill(root, 'gamma', { name: 'gamma', description: 'C 技能。' });
+    const { catalog } = collect(root, ['gamma', 'alpha', 'beta']);
+    expect(catalog.indexOf('<name>gamma</name>')).toBeLessThan(
+      catalog.indexOf('<name>alpha</name>'),
+    );
+    expect(catalog.indexOf('<name>alpha</name>')).toBeLessThan(
+      catalog.indexOf('<name>beta</name>'),
+    );
+  });
+
+  test('绑定序 = 存活序：超预算时绑定序末位先丢（置顶 = 调整绑定序）', () => {
+    const root = fixtureRoot('budget-pin');
+    writeSkill(root, 'z-first', { name: 'z-first', description: '绑定序首位。' });
+    writeSkill(root, 'a-last', { name: 'a-last', description: '绑定序末位。' });
+    const full = collect(root, ['z-first', 'a-last']);
+    const fullBytes = Buffer.byteLength(full.catalog, 'utf8');
+    const { catalog, logs } = collect(root, ['z-first', 'a-last'], undefined, fullBytes - 1);
+    // 丢的是绑定序末位 a-last（扫描序里它字母在前——若仍按扫描序盲切，丢的
+    // 会是 z-first）。这就是「能排序/置顶」的操作面。
+    expect(catalog).toContain('<name>z-first</name>');
+    expect(catalog).not.toContain('<name>a-last</name>');
+    expect(logs.find((l) => l.startsWith('budget:'))).toContain('a-last');
+  });
+
+  test('注入选择序 = 优先序（#1106 选择集同律收编）', () => {
+    const root = fixtureRoot('budget-inj-order');
+    writeSkill(root, 'alpha', { name: 'alpha', description: 'A 技能。' });
+    writeSkill(root, 'beta', { name: 'beta', description: 'B 技能。' });
+    const { catalog } = collectInjected(root, ['beta', 'alpha']);
+    expect(catalog.indexOf('<name>beta</name>')).toBeLessThan(
+      catalog.indexOf('<name>alpha</name>'),
+    );
+  });
+
+  test('字节口径 = UTF-8 字节（CJK 诚实）：按 .length 计会漏判的库必须触发预算', () => {
+    const root = fixtureRoot('budget-cjk');
+    // 300 个汉字 = 300 chars / 900 bytes。目录 bytes 落在 chars 与预算之上、
+    // chars 落在预算之下——只有按字节计才会判超（自校准取中点，免受 tmpdir
+    // 路径长度抖动影响）。
+    writeSkill(root, 'cjk-skill', { name: 'cjk-skill', description: '汉'.repeat(300) });
+    const full = collect(root);
+    const chars = full.catalog.length;
+    const bytes = Buffer.byteLength(full.catalog, 'utf8');
+    const budget = Math.floor((chars + bytes) / 2);
+    expect(bytes).toBeGreaterThan(budget); // 前提：byte 口径判超
+    expect(chars).toBeLessThan(budget); // 前提：char 口径判不超
+    const { catalog, logs } = collect(root, undefined, undefined, budget);
+    expect(logs.some((l) => l.startsWith('budget:'))).toBe(true);
+    expect(catalog).not.toContain('<name>cjk-skill</name>');
+    expect(catalog).toContain('<omitted_skills');
+  });
+
+  test('description 不再截断：长路由描述全量进目录（#1116 裁决③随预算换轨退役）', () => {
+    const root = fixtureRoot('budget-desc');
+    const long = 'x'.repeat(500);
     writeSkill(root, 'long-desc', { name: 'long-desc', description: long });
     const { catalog, logs } = collect(root);
-    expect(catalog).toContain(`${'x'.repeat(SKILL_DESCRIPTION_CAP)}…`);
-    expect(catalog).not.toContain(long);
-    expect(logs).toContain('cap: description truncated for long-desc');
+    expect(catalog).toContain(`<description>${long}</description>`);
+    expect(logs.some((l) => l.startsWith('cap:'))).toBe(false);
   });
 
-  test('description 在 cap 内 = 不截断、无 cap 日志', () => {
-    const root = fixtureRoot('cap-ok');
-    writeSkill(root, 'ok-desc', { name: 'ok-desc', description: 'y'.repeat(50) });
-    const { catalog, logs } = collect(root);
-    expect(catalog).toContain('y'.repeat(50));
-    expect(logs.some((l) => l.startsWith('cap:'))).toBe(false);
+  test('预算装不下表头+首条 = 全丢，信号仍在（预算行 + note 段，不静默）', () => {
+    const root = fixtureRoot('budget-floor');
+    writeSkill(root, 'only-skill', { name: 'only-skill', description: '唯一技能。' });
+    const { catalog, logs } = collect(root, undefined, undefined, 10);
+    expect(catalog).not.toContain('<available_skills>');
+    expect(catalog).toContain('<omitted_skills');
+    expect(catalog).toContain('only-skill');
+    expect(logs.some((l) => l.startsWith('budget:'))).toBe(true);
   });
 });
 
@@ -210,11 +316,11 @@ describe('allowlist 过滤四态（#372：agent.skills 白名单 = catalog 执�
     expect(logs.some((l) => l.includes('ghost-slug'))).toBe(false);
   });
 
-  test('过滤先于 cap 闸 = 白名单内条目不受目录总量截顶影响', () => {
+  test('过滤先于预算闸 = 白名单内条目不受目录总量影响（#1116 起无条数闸）', () => {
     const root = fixtureRoot('al-cap');
-    // 目录总量 > cap，但白名单只留 1 个排在扫描序后段的 skill：先过滤后 cap
-    // 时它必然存活（若先 cap 后过滤，它可能被截顶裁掉 → 白名单失效）。
-    const total = SKILLS_CATALOG_CAP + 5;
+    // 目录总量远超旧 50 条闸，但白名单只留 1 个排在扫描序后段的 skill：
+    // 过滤先于预算（授权语义先于预算语义），它必然全量存活。
+    const total = 55;
     for (let i = 0; i < total; i++) {
       writeSkill(root, `skill-${String(i).padStart(2, '0')}`, {
         name: `skill-${String(i).padStart(2, '0')}`,
@@ -224,7 +330,7 @@ describe('allowlist 过滤四态（#372：agent.skills 白名单 = catalog 执�
     const last = `skill-${String(total - 1).padStart(2, '0')}`;
     const { catalog, logs } = collect(root, [last]);
     expect(catalog).toContain(`<name>${last}</name>`);
-    expect(logs.some((l) => l.startsWith('cap: total='))).toBe(false);
+    expect(logs.some((l) => l.startsWith('budget:'))).toBe(false);
   });
 });
 
@@ -329,20 +435,18 @@ describe('团队技能目录合并（XMON-112 S2）', () => {
     expect(logs).toContain(`loaded: 2 skills from ${team} + ${local}`);
   });
 
-  test(`cap ${SKILLS_CATALOG_CAP} 在合并目录共享生效，团队条目优先存活`, () => {
+  test('字节预算在合并目录共享生效：团队条目居扫描序前端（first-wins + 优先存活）', () => {
     const local = fixtureRoot('tm-cap-local');
     const team = fixtureRoot('tm-cap-team');
-    for (let i = 0; i < SKILLS_CATALOG_CAP; i++) {
-      writeSkill(local, `skill-${String(i).padStart(2, '0')}`, {
-        name: `skill-${String(i).padStart(2, '0')}`,
-        description: `批量技能 ${i}。`,
-      });
-    }
+    writeSkill(local, 'local-tail', { name: 'local-tail', description: '本机末位技能。' });
     writeSkill(team, 'team-vip', { name: 'team-vip', description: '团队技能。' });
-    const { catalog, logs } = collect(local, undefined, team);
-    expect(catalog.split('<skill>').length - 1).toBe(SKILLS_CATALOG_CAP);
+    const full = collect(local, undefined, team);
+    const fullBytes = Buffer.byteLength(full.catalog, 'utf8');
+    const { catalog, logs } = collect(local, undefined, team, fullBytes - 1);
+    // 扫描序 = 团队目录在前 → 超预算从尾部丢，团队条目优先存活。
     expect(catalog).toContain('<name>team-vip</name>');
-    expect(logs).toContain(`cap: total=${SKILLS_CATALOG_CAP + 1} truncated=${SKILLS_CATALOG_CAP}`);
+    const budgetLine = logs.find((l) => l.startsWith('budget:'));
+    expect(budgetLine).toContain('local-tail');
   });
 
   test('allowlist=[] 纪律不变：团队目录在位也零注入（least-privilege）', () => {
@@ -366,11 +470,96 @@ describe('团队技能目录合并（XMON-112 S2）', () => {
   });
 });
 
+// —— #1116 ②：团队镜像 ↔ 个人目录重叠的去重与降噪—————————————
+// 失败方式清单（先于实现固化）：
+// 1. 逐条 collision 刷屏：同库两份（server skillsDir = daemon skillsDir 的
+//    单机常见形）每会话 99 行 collision 把真信号埋掉 → 内容逐字节相同的镜像
+//    归并为一行汇总，不再逐条落。
+// 2. 内容真冲突被降噪误伤：团队版≠本机版是真信号（覆盖语义）→ 逐条行保留。
+// 3. 重叠双吃预算：镜像去重后按合并集算预算 → entries 与字节都只计一份。
+
+describe('团队镜像去重降噪（#1116 ②：identical mirror 聚合 + 预算按去重集）', () => {
+  /** 团队目录 + 本机目录各写一个同 name 技能；same=true 时内容逐字节相同。 */
+  function mirrorPair(tag: string, same: boolean): { local: string; team: string } {
+    const local = fixtureRoot(`${tag}-local`);
+    const team = fixtureRoot(`${tag}-team`);
+    writeSkill(local, 'dup-skill', {
+      name: 'dup-skill',
+      description: '同一技能。',
+      body: same ? 'mirror body.' : 'local variant body.',
+    });
+    writeSkill(team, 'dup-skill', {
+      name: 'dup-skill',
+      description: '同一技能。',
+      body: same ? 'mirror body.' : 'team variant body.',
+    });
+    return { local, team };
+  }
+
+  test('identical mirror = 一行汇总，无逐条 collision 行；目录条目只计一份', () => {
+    const { local, team } = mirrorPair('mirror-same', true);
+    const { catalog, logs } = collect(local, undefined, team);
+    expect(catalog.split('<skill>').length - 1).toBe(1);
+    const collisionLines = logs.filter((l) => l.startsWith('collision:'));
+    // 一行汇总，无「name "dup-skill" collision (winner=…」逐条形。
+    expect(collisionLines).toHaveLength(1);
+    expect(collisionLines[0]).toContain('identical mirror');
+    expect(collisionLines[0]).toContain('1');
+    expect(collisionLines[0]).not.toContain('winner=');
+  });
+
+  test('多镜像 = 汇总行带计数（99 行 → 1 行的降噪面）', () => {
+    const local = fixtureRoot('mirror-many-local');
+    const team = fixtureRoot('mirror-many-team');
+    for (let i = 0; i < 4; i++) {
+      const name = `skill-${i}`;
+      writeSkill(local, name, {
+        name,
+        description: `技能 ${i}。`,
+        body: 'mirror body.',
+      });
+      writeSkill(team, name, {
+        name,
+        description: `技能 ${i}。`,
+        body: 'mirror body.',
+      });
+    }
+    const { catalog, logs } = collect(local, undefined, team);
+    expect(catalog.split('<skill>').length - 1).toBe(4);
+    const collisionLines = logs.filter((l) => l.startsWith('collision:'));
+    expect(collisionLines).toHaveLength(1);
+    expect(collisionLines[0]).toContain('4 identical mirror');
+  });
+
+  test('内容真冲突 = 逐条 collision 行保留（覆盖语义是真信号，不降噪）', () => {
+    const { local, team } = mirrorPair('mirror-diff', false);
+    const { catalog, logs } = collect(local, undefined, team);
+    expect(catalog.split('<skill>').length - 1).toBe(1);
+    const collisionLines = logs.filter((l) => l.startsWith('collision:'));
+    expect(collisionLines).toHaveLength(1);
+    expect(collisionLines[0]).toContain('winner=');
+    expect(collisionLines[0]).toContain('loser=');
+    expect(collisionLines[0]).not.toContain('identical mirror');
+  });
+
+  test('预算按去重后集合算：镜像重叠不双吃预算', () => {
+    const { local, team } = mirrorPair('mirror-budget', true);
+    // 预算 = 单条目录的精确字节数：若镜像被双计（旧口径按 50 条数切的对照面），
+    // 这里会触发 budget 丢弃；去重后单条恰好在预算内。
+    const full = collect(local, undefined, team);
+    const singleBytes = Buffer.byteLength(full.catalog, 'utf8');
+    const { catalog, logs } = collect(local, undefined, team, singleBytes);
+    expect(catalog).toContain('<name>dup-skill</name>');
+    expect(logs.some((l) => l.startsWith('budget:'))).toBe(false);
+  });
+});
+
 // —— #1106 派发技能注入选择：目录注入收窄（失败方式先固化）—————————————
 // injectedSkills（claim 载荷 agent.injectedSkills，server 按任务文本选出）在位
 // = 目录按本集收窄且 description 全文不截断；缺省 = 旧 server 形回落
-// allowlist（含 200 字截断）。deny 面（collectDeniedSkillDirs）不因选择收窄
-// ——授权语义仍吃 allowlist 全量（本文件同款断言见 skills-hard-block.test.ts）。
+// allowlist（#1116 起同样全量——200 字截断随字节预算退役）。deny 面
+// （collectDeniedSkillDirs）不因选择收窄——授权语义仍吃 allowlist 全量
+// （本文件同款断言见 skills-hard-block.test.ts）。
 
 describe('注入选择收窄（#1106：injectedSkills = 目录注入执行面）', () => {
   /** 三技能公共 fixture（alpha/beta/gamma）。 */
@@ -398,7 +587,7 @@ describe('注入选择收窄（#1106：injectedSkills = 目录注入执行面）
     const root = threeSkillRoot('inj-empty');
     const { catalog, logs } = collectInjected(root, [], { allowlist: ['alpha'] });
     expect(catalog).toBe('');
-    expect(logs).toContain('catalog: entries=0 chars=0');
+    expect(logs).toContain('catalog: entries=0 chars=0 bytes=0');
   });
 
   test('选择集 ids ⊆ allowlist 的运行时防御：名单外 id 也不入目录（不越授权）', () => {
@@ -409,16 +598,16 @@ describe('注入选择收窄（#1106：injectedSkills = 目录注入执行面）
     expect(catalog).not.toContain('<name>gamma</name>');
   });
 
-  test('选中条目 description 超 200 字 = 全文不截断（选择已控噪声，预算闸让位）', () => {
+  test('选中条目 description 超长 = 全文不截断（#1116 起全路径不截断，选择面同律）', () => {
     const root = fixtureRoot('inj-full-desc');
-    const long = 'x'.repeat(SKILL_DESCRIPTION_CAP + 50);
+    const long = 'x'.repeat(500);
     writeSkill(root, 'long-desc', { name: 'long-desc', description: long });
     const { catalog, logs } = collectInjected(root, ['long-desc'], { allowlist: ['long-desc'] });
     expect(catalog).toContain(`<description>${long}</description>`);
-    expect(logs.some((l) => l.startsWith('cap: description truncated for long-desc'))).toBe(false);
-    // 对照：缺省（旧 server 形）仍截断——回归红线。
+    expect(logs.some((l) => l.startsWith('cap:'))).toBe(false);
+    // 对照：缺省（旧 server 形）同样全量——200 字截断随 #1116 字节预算退役。
     const legacy = collect(root, ['long-desc']);
-    expect(legacy.catalog).toContain(`${'x'.repeat(SKILL_DESCRIPTION_CAP)}…`);
+    expect(legacy.catalog).toContain(`<description>${long}</description>`);
   });
 
   test('选择集含未知 id（目录已删/未物化）= 静默跳过不炸（#367 容忍语义）', () => {

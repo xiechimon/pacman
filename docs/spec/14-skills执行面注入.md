@@ -47,7 +47,7 @@ daemon 在创建 agent session 前，**显式扫描** pacman 配置的 skills �
 - `apps/daemon/src/config.ts`：加 `skillsDir: string`（schema），default = `env.PACMAN_SKILLS_DIR ?? join(homedir(), '.agents', 'skills')`。env 优先级高于 home 默认（承现有 settings 缝纪律）。
 - `apps/daemon/src/backend/pi.ts`：`createAgentSession({...})` 之前，新增步骤：
   1. `loadSkills({ cwd: config.home, agentDir: '<不存在的 pi 默认路径>', skillPaths: [skillsDir], includeDefaults: false })` → `{ skills, diagnostics }`（**`cwd` 用 daemon home 不依赖任务 worktree**——避免 worktree 切换导致 project-level skills 解析跳变）
-  2. catalog size 闸：skills 总数 > 50 时只取前 50 + `[skills] cap: total=<N> truncated=50` 日志；单 description > 200 字符截断 + 末尾 `…` + `[skills] cap: description truncated for <name>` 日志（具体阈值 lane 内可微调，原则是 catalog 不能无限增长）
+  2. catalog 字节预算（#1116，2026-10-10 用户裁决换轨：旧「50 条数闸 + 200 字描述截断」退役）：可见集由绑定面决定（#372 allowlist ∩ #1106 注入选择；chief = 信任面全量），预算只作 prompt 膨胀兜底——catalog 渲染后按 **UTF-8 字节**计（CJK 诚实，不用 `.length`），超 `SKILLS_CATALOG_BUDGET_BYTES`（1 MiB，对齐 Multica pack-archive 单文件档）时按**优先序从尾部丢弃**（优先序 = 注入选择序 > 白名单序 > 团队目录在前的扫描序——绑定数组顺序即用户的排序/置顶操作面），且**不静默**：`[skills] budget: total=<B> budget=<B'> dropped=<N>: <names>` 日志点名 + catalog 尾追加 `<omitted_skills reason="byte-budget">` 段（agent 自己也看得见少了谁）。description 不再截断（路由凭据全量；预算闸已覆盖成本语义）。
   3. `formatSkillsForPrompt(skills, fileReadTool)` → catalog XML 串
   4. ~~把 catalog 拼到 `SessionOpts.systemPrompt` 末尾~~ → **落点改归简报文件通道**（spec 24 / #958）：catalog 内容仍由本步骤产出，但由 runner 写进任务 worktree 的上下文文件（pi: `AGENTS.md` 系；claude-code: `CLAUDE.md`），靠 CLI 原生记忆机制加载，systemPrompt 通道对这类后端清空。拼接语义不变（`\n\n` 分隔、与 runner 给的正文拼接而非覆盖）。**注意别把这两件事读成矛盾**：上面第 1 条的「`cwd` 用 daemon home」说的是**技能目录的扫描位**（不随 worktree 切换跳变），本条的「写进 worktree」说的是**简报文件的落点**——扫描位不动，落点变了
   5. `diagnostics` 经 `logger.skills` 透传「`[skills] <type>: <msg>`」族
@@ -69,7 +69,7 @@ daemon 在创建 agent session 前，**显式扫描** pacman 配置的 skills �
 ### 数据契约
 
 - env：`PACMAN_SKILLS_DIR` —— 单字符串，dir 路径（默认 `~/.agents/skills`）。缺省 / 不存在目录 = 空 skills 集（与 spec 13 同律）。
-- daemon log：`[skills] <type>: <msg>` 族（`<type>` ∈ `loaded | collision | invalid-frontmatter | missing-skill-md`），info 级别。
+- daemon log：`[skills] <type>: <msg>` 族（`<type>` ∈ `loaded | collision | invalid-frontmatter | missing-skill-md | filtered | budget | catalog`），info 级别。#1116 ②：collision 里**内容逐字节相同的镜像**（单机 server skillsDir = daemon skillsDir 的常见形）归并为一行 `collision: <N> identical mirror(s) deduped (team view wins; budget counts the merged set once)`——逐条行只留给内容真冲突；`catalog: entries=<N> chars=<C> bytes=<B>` 观测行恒落（bytes = 预算口径）。
 - SessionOpts.systemPrompt：现有用户态拼接 `+ '\n\n' + formatSkillsForPrompt(skills, 'read')`。`fileReadTool` 传 `'read'` —— pacman daemon 默认带 `read` 工具。
 
 ## Testing Decisions
@@ -106,7 +106,7 @@ spec 13 定技能库 server 端写路径（XMON-109 S1：REST 写面 + machine-w
 ### 合并与冲突裁决（团队胜）
 
 - `skillPaths` 顺序 = `[teamSkillsDir, skillsDir]`：pi `loadSkills` first-wins（先进 Map 者为 winner），同名冲突**团队条目胜**、本机影子落 collision 诊断行（winner=团队路径，loser=本机路径）——白名单授予是权威信号，本地同名影子即失效。
-- cap 50 闸对合并后序列生效：团队条目在扫描序前端，优先占据 cap 名额；allowlist 过滤仍先于 cap（#372 语义不变，名单外团队条目同样被裁，`[]` = 零注入纪律不变）。
+- 字节预算对**合并后（去重）序列**生效（#1116 ②）：团队条目在扫描序前端 = 优先序高档，超预算时本机尾部条目先丢；镜像重叠不双吃预算（identical mirror 归并一行、目录条目只计一份）。allowlist 过滤仍先于预算（#372 语义不变，名单外团队条目同样被裁，`[]` = 零注入纪律不变）。
 - loaded 行：团队目录在位 = `loaded: N skills from <teamDir> + <localDir>`；纯本机 = 原行形不变。
 
 ### 降级（spec 14 MCP 降级同律，会话不阻断）
@@ -167,10 +167,10 @@ T1 (#367) 不阻塞 T3 但共享 wire 形状；T1 完工后开 T3 让 lane367 �
 - [ ] `apps/daemon/src/config.ts` 增 `skillsDir` 字段，env `PACMAN_SKILLS_DIR` 覆盖默认 `~/.agents/skills`；缺省 / 不存在 = 空 skills 集不报错
 - [ ] `apps/daemon/src/backend/pi.ts` 的 `createAgentSession` 调用前注入 catalog：`loadSkills`（`cwd: config.home`、`includeDefaults: false`、`skillPaths: [skillsDir]`）+ `formatSkillsForPrompt(skills, 'read')` 拼到 systemPrompt 末尾
 - [ ] **read 工具可达路径集含 skills 根目录**——这是本 spec 通路连通性的硬验收；端到端测试断言 agent `read SKILL.md` 不被 sandbox 拒
-- [ ] catalog size 闸生效：skills > 50 → 截顶 + 日志；description > 200 字符 → 截断 + 日志
+- [x] catalog 字节预算生效（#1116 换轨，原「50 条截顶 + 200 字描述截断」退役）：99 技能库全量进目录；超预算按绑定序尾部丢弃 + `budget:` 日志点名 + `<omitted_skills>` 目录尾段；CJK 按 UTF-8 字节计；description 不再截断
 - [ ] `DAEMON_LOG_PREFIXES` 增 `'skills'` 词表项；`DaemonLogger.skills(msg)` 方法实现；`isLogPrefix` 校验通过；formatLine 输出 `[skills] msg`
-- [ ] daemon 日志族「[skills] <type>: <msg>」输出 loaded / collision / invalid-frontmatter / missing-skill-md / cap 四态各一例（fixture 验证）
-- [ ] daemon 单测覆盖五种输入态 + 截顶 + 截断 + read 工具可达
+- [ ] daemon 日志族「[skills] <type>: <msg>」输出 loaded / collision（含 identical mirror 归并行）/ invalid-frontmatter / missing-skill-md / filtered / budget / catalog 各一例（fixture 验证）
+- [ ] daemon 单测覆盖五种输入态 + 预算四态（全量/超限/边界/优先序）+ read 工具可达
 - [ ] integration：daemon + mock skill dir + mock agent session 验证 session.systemPrompt 含 catalog XML，agent 调 `read SKILL.md` 时 transcript 含 SKILL.md 全文
 - [ ] `pnpm lint` + `pnpm typecheck` + 相关 e2e 与 integration 测试全绿
 - [ ] 现有 24 / integration 不回归
@@ -185,7 +185,9 @@ T1 (#367) 不阻塞 T3 但共享 wire 形状；T1 完工后开 T3 让 lane367 �
 
 ## 技能可见面收归（#917，2026-10-07）
 
-#958 / spec 24 把简报（含本 spec 的 skills catalog）搬进 worktree 上下文文件通道后，对 #917 的四条口径做了交叉裁决（正本 = issue #917 内同名评论）：口径 1（pacman 目录注入成唯一来源、取消 `SKILLS_CATALOG_CAP`）与口径 2（关掉 Claude Code 原生 Skill 工具面）**搁置**——简报现在依赖原生上下文文件通道，「关原生面」的方向不再成立，cap 50 闸与 description 200 字符截断**照旧不动**；口径 3（显式 `settingSources`）与口径 4（白名单硬挡）升为简报通道的**落地前提**，随本票落地。另有一项 #958 接线期实锤的发现折回本票：pi 的 resource loader 自注入一份 `<available_skills>` 段（重复清单问题先于 pacman 的目录注入存在），收口归本节。本节是裁决后的落地正本；与前文冲突处以本节为准。
+#958 / spec 24 把简报（含本 spec 的 skills catalog）搬进 worktree 上下文文件通道后，对 #917 的四条口径做了交叉裁决（正本 = issue #917 内同名评论）：口径 1（pacman 目录注入成唯一来源、取消 `SKILLS_CATALOG_CAP`）与口径 2（关掉 Claude Code 原生 Skill 工具面）**搁置**——简报现在依赖原生上下文文件通道，「关原生面」的方向不再成立；口径 3（显式 `settingSources`）与口径 4（白名单硬挡）升为简报通道的**落地前提**，随本票落地。另有一项 #958 接线期实锤的发现折回本票：pi 的 resource loader 自注入一份 `<available_skills>` 段（重复清单问题先于 pacman 的目录注入存在），收口归本节。本节是裁决后的落地正本；与前文冲突处以本节为准。
+
+**#1116 增补（2026-10-10 用户裁决）**：上文「cap 50 闸与 description 200 字符截断照旧不动」一条**作废**——上限口径换轨为「字节预算 + 按 agent 绑定」（正本 = issue #1116 用户裁决评论；落地见上文「catalog 字节预算」节）：可见集 = 绑定集（#372 ∩ #1106；chief = 信任面全量），预算按 UTF-8 字节（1 MiB，对齐 Multica pack-archive 单文件档），超限按绑定优先序尾部丢弃且非静默（`budget:` 日志点名 + `<omitted_skills>` 目录尾段）；identical mirror 的 collision 诊断归并降噪、预算按去重后集合算。口径 2（关原生面）维持搁置不变。
 
 ### 裁决后的范围（逐条实现）
 
