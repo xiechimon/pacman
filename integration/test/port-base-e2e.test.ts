@@ -202,8 +202,9 @@ describe('#1148 E2E：chief 满载立即被领（上限 1）', () => {
           delayMs: 6_000,
           toolCall: { name: 'bash', arguments: { command: `printf 'PB=%s' "$PACMAN_PORT_BASE"` } },
         },
-        // chief r1：收尾文本（chief 回合快速闭环）。
-        { content: '收到，已了解当前进度。' },
+        // chief r1：延迟 2s 的收尾文本（拉宽 claimed 观察窗——慢 runner 上纯
+        // 文本回合可在一个轮询间隔（100ms）内跑完，status 窗口会被跳过）。
+        { delayMs: 2_000, content: '收到，已了解当前进度。' },
         // worker r2：收尾文本。
         { content: '探针完成。' },
         // 第二个 worker 的两轮。
@@ -238,15 +239,18 @@ describe('#1148 E2E：chief 满载立即被领（上限 1）', () => {
     );
     expect(sent.status).toBe(201);
     const threadId = (sent.body as { thread: { id: string } }).thread.id;
-    await waitFor(() => {
-      const chiefSteps = stack.server.db
-        .select()
-        .from(stepTable)
-        .where(eq(stepTable.buildId, threadId))
-        .all();
-      return chiefSteps[0]?.status === 'claimed';
-    }, 30_000);
-    // chief 被领时 worker 仍在跑（并发在飞：1 worker + 1 chief）。
+    // chief 立即被领：状态面（claimed 窗 ≥2s——上方 delayMs 拉宽）与
+    // daemon.log 持久面（launch canon 行）双取一。日志行不受回合快慢影响：
+    // 极快回合的 claimed→done 转换可能整段落在一个轮询间隔里（本地快机/
+    // CI 慢机两形都撞过），日志行是窗口无关的被领证据。
+    await waitFor(
+      () =>
+        stepsOf(stack, threadId)[0]?.status === 'claimed' ||
+        stack.lines().some((l) => l.includes(`for conv ${threadId}`)),
+      30_000,
+    );
+    // chief 被领时 worker 仍在跑（并发在飞：1 worker + 1 chief——chief 没有
+    // 等满载 worker 收尾；若被饿死（旧码），worker 此刻已 done，本断言红）。
     expect(stepsOf(stack, w1.buildId)[0]?.status).toBe('claimed');
 
     // 第二个 worker 不领（cap 1 被 worker 占满 → 留 pending 排队）。
