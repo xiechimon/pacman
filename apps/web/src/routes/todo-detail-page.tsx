@@ -14,13 +14,10 @@
 // （transcript 实时流/步进度/plan 版本/变更 diff/overlay 三件），关口动作
 // 接真端点（开始/确认/驳回/合并/重跑/删除）；fixture 分支（含 chain 脚本）
 // 保持 #56–#75 行为字节不变。
-import { type Assignment, conversationBranch, parseGithubIssueSourceRef } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { toast } from 'sonner';
 import { activityStore } from '../api/activity.js';
-import { attachFile } from '../api/attachments.js';
 import { ApiError } from '../api/client.js';
 import {
   useApiMutations,
@@ -60,11 +57,7 @@ import {
 import { useAgentAvatarUrlById, useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
 import { AppSidebar } from '../board/app-sidebar.js';
-import {
-  assignOptionsFromMembers,
-  ChiefAgentDialog,
-  type ChiefAgentOption,
-} from '../chief/chief-agent-dialog.js';
+import { ChiefAgentDialog } from '../chief/chief-agent-dialog.js';
 import { useChiefRoot } from '../chief/chief-root.js';
 import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import { toastError } from '../components/ui/toaster.js';
@@ -76,15 +69,17 @@ import { FreshBlock } from '../detail/fresh-block.js';
 import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
 import { RejectDialog } from '../detail/reject-dialog.js';
-import { resolveReviewDefault } from '../detail/review-default.js';
-import { type ReviewAgentOption, ReviewDialog } from '../detail/review-dialog.js';
+import { ReviewDialog } from '../detail/review-dialog.js';
 import { RightPane } from '../detail/right-pane.js';
 import { SourceIssueLine } from '../detail/source-issue.js';
 import { SpecBlock } from '../detail/spec-block.js';
 import { StopConfirmDialog } from '../detail/stop-confirm-dialog.js';
+import { buildTaskMeta } from '../detail/task-meta.js';
 import { TaskMetaBlock, type TaskMetaFields } from '../detail/task-meta-block.js';
 import type { LiveStep } from '../detail/transcript.js';
 import { TranscriptColumn, type TranscriptColumnHandle } from '../detail/transcript-column.js';
+import { useDetailActions } from '../detail/use-detail-actions.js';
+import { type ChainState, useDetailComposer } from '../detail/use-detail-composer.js';
 import { UserMenu } from '../detail/user-menu.js';
 import { markClosed, markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
@@ -98,7 +93,6 @@ import type {
 } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import type { MentionGroups } from '../overlay/mention-picker.js';
 import type { FileMentionEntry } from '../overlay/mention-token.js';
@@ -113,16 +107,11 @@ import { readStoredTheme } from '../theme.js';
 const ASSIGN_AGENT_DIALOG_TITLE = '选择执行 Agent';
 const ASSIGN_AGENT_REBIND_CONFIRM_COPY = '更换执行 Agent？后续运行将改由 <agent> 执行。';
 
-/** Reject-chain walk state (AC3): idle = the fixture's confirm surface;
- *  streaming = the replan round (r8 67); landed = v(N+1) 待确认 (r8 68);
- *  building = the 确认 round opened after the chain's last step. */
-type ChainState = 'idle' | 'streaming' | 'landed' | 'building';
-
 /** Reject-chain view derivation (AC3): the streaming round borrows the
  *  planning surface (r8 67), the landed round the confirm surface with
  *  the new version's doc/dropdown, the building round the execution
  *  surface. Kept out of the component so the capture-state render stays
- *  readable. */
+ *  readable. ChainState 类型住 detail/use-detail-composer.ts（#1127）。 */
 function chainView(
   detail: DetailContent | undefined,
   chain: ChainState,
@@ -461,41 +450,34 @@ export function TodoDetailPage() {
     live && wireTodo?.sourceRef != null,
   );
 
-  // #476（#473 决策候选 A）：live 方案空态的任务元信息——字段序与缺省律
-  // 见 task-meta-block.tsx；fixture 面恒 null（无来源/机器/模型数据源），
-  // 空态占位「暂无方案」字节不变。
-  const taskMeta = useMemo<TaskMetaFields | null>(() => {
-    if (!live || wireTodo == null || buildId == null) return null;
-    const ref = wireTodo.sourceRef != null ? parseGithubIssueSourceRef(wireTodo.sourceRef) : null;
-    const prUrl = buildQ.data?.prUrl ?? null;
-    const prNumber = buildQ.data?.prNumber ?? null;
-    return {
-      sourceIssue:
-        ref != null
-          ? {
-              number: ref.issueNumber,
-              title: sourceEchoQ.data?.title ?? wireTodo.title,
-              url: `https://github.com/${ref.owner}/${ref.repo}/issues/${ref.issueNumber}`,
-            }
-          : null,
-      branch: conversationBranch(buildId),
-      pr: prUrl != null && prNumber != null ? { number: prNumber, url: prUrl } : null,
-      machine: machineField,
+  // #476（#473 决策候选 A）：live 方案空态的任务元信息——投影本体 #1127
+  // 收编进 detail/task-meta.ts（纯函数），此处只剩 useMemo 缓存壳；字段序
+  // 与缺省律见 task-meta-block.tsx；fixture 面恒 null。
+  const taskMeta = useMemo<TaskMetaFields | null>(
+    () =>
+      buildTaskMeta({
+        live,
+        wireTodo,
+        buildId,
+        build: buildQ.data,
+        machineField,
+        machineWaiting,
+        agentModel,
+        usage: usageQ.data,
+        sourceEchoTitle: sourceEchoQ.data?.title,
+      }),
+    [
+      live,
+      wireTodo,
+      buildId,
+      buildQ.data,
+      machineField,
       machineWaiting,
-      model: agentModel ?? usageQ.data?.[0]?.model ?? null,
-      createdAt: wireTodo.buildHistory[0]?.createdAt ?? buildQ.data?.createdAt ?? null,
-    };
-  }, [
-    live,
-    wireTodo,
-    buildId,
-    buildQ.data,
-    machineField,
-    machineWaiting,
-    agentModel,
-    usageQ.data,
-    sourceEchoQ.data,
-  ]);
+      agentModel,
+      usageQ.data,
+      sourceEchoQ.data,
+    ],
+  );
 
   // live 版本对比面（r8 64→65：上一版本 unified diff）。#244：to 版本
   // plan.md 全文挂 fullContent 槽——plans 读面已载各版本 content（05 册
@@ -545,159 +527,52 @@ export function TodoDetailPage() {
     [runningStep, machineName],
   );
 
-  // live 指派：dialog 未给显式 assignment 时取团队首个 Agent（02 §6.2 双槽
-  // 同值）；#318 开始 dialog 统一面携带选定双槽（分用开关 OFF = 同值，
-  // ON = plan/build 独立，r9 §3.6）。
-  const firstAgentId = useMemo(() => {
-    const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
-    return member?.actorId ?? null;
-  }, [membersQ.data]);
-  const startBuild = useCallback(
-    (withPlan: boolean, assignment?: Assignment) => {
-      if (!live || !wireTodo) return;
-      mutations.startBuilds.mutate(
-        {
-          projectId: wireTodo.projectId,
-          todoIds: [wireTodo.id],
-          assignment: assignment ?? {
-            plan: firstAgentId ? { agentId: firstAgentId } : null,
-            build: firstAgentId ? { agentId: firstAgentId } : null,
-          },
-          withPlan,
-        },
-        // #638 破坏性后果面（票面优先级 1）：弹层已关、任务停在半启动态却
-        // 零解释——toast 点名失败，server 原因进 description。
-        { onError: (error) => toastError(t('开始运行失败，请重试。'), error) },
-      );
-      setOverlay(null);
-    },
-    [live, wireTodo, mutations.startBuilds, firstAgentId, t],
-  );
+  // #1127：动作簇（开始/指派/完成/关闭/重跑钉选/审核候选）与 composer
+  // 发送分流收编进 hooks——detail/use-detail-actions.js 与
+  // detail/use-detail-composer.js；逻辑逐字搬移，本页只剩状态与 JSX 装配。
+  const actions = useDetailActions({
+    live,
+    todo,
+    wireTodo,
+    phase,
+    buildId,
+    steps,
+    members: membersQ.data,
+    machines: machinesQ.data,
+    mutations,
+    navigate,
+    setOverlay,
+    setMoreOpen,
+    setAssignOpen,
+  });
+  const {
+    startBuild,
+    assignOptions,
+    bindAssign,
+    canComplete,
+    completeTask,
+    canClose,
+    closeTask,
+    rerunPin,
+    unpinForRerun,
+    reviewAgents,
+    reviewDefaultId,
+    reviewProducerProvider,
+  } = actions;
+  const { onSend, onAttachment } = useDetailComposer({
+    live,
+    phase,
+    buildId,
+    running,
+    mutations,
+    scrollToEnd: () => transcriptColRef.current?.scrollToEnd(),
+    clearDraft: () => setLiveDraft(''),
+    chain,
+    setChain,
+    revisionAvailable: fixture.detail?.revision != null,
+  });
 
   if (todo == null) return null;
-
-  // —— #209 编辑分配:chip popover「编辑分配」→ agent 选择弹层(#182 家族
-  // 形态)→ PATCH assignment.build 槽(执行对话选中行 = build 槽派生投影,
-  // services/todos.ts;server 槽级 merge #208 保 plan 槽)→ mutation 自带
-  // invalidateAll 重取回显。候选 = members 读面 memberType:"agent" 行
-  // (chief-settings 同投影);fixture 面 onBind 缺省 → accept 律(选择即关)。——
-  // #318: model 副题并入投影(r9 §2.6 选择器行形「name · model」;开始
-  // dialog 与编辑分配共用同一候选集)。
-  // #616: 投影收编进 assignOptionsFromMembers（board 页的拖拽落位开始面
-  // 共用，单源在 chief-agent-dialog.tsx；XMON-105 avatarUrl 覆盖律随行）。
-  const assignOptions: ChiefAgentOption[] | undefined = live
-    ? assignOptionsFromMembers(membersQ.data ?? [])
-    : undefined;
-  const bindAssign = live
-    ? (agentId: string) =>
-        mutations.patchTodo.mutate(
-          { id: todo.id, body: { assignment: { build: { agentId } } } },
-          {
-            onSuccess: () => setAssignOpen(false),
-            // #638：失败时弹层留着（关挂在 onSuccess）但零解释——toast 补上。
-            onError: (error) => toastError(t('保存失败，请重试。'), error),
-          },
-        )
-    : undefined;
-
-  // —— #318 更多菜单生命周期行(r1 changelog 09-16:Complete 走看板自带
-  // confirm-and-merge、相位适配;Close 关闭语义)。完成 = review 开验收弹层
-  // (既有 accept→merge 链)/ confirm 关口确认(live wire);关闭 = PATCH phase
-  // closed 后回看板(卡片立即隐藏;延迟 Undo 窗口 [设计] wontfix,r1 语义
-  // 归 closed→todo reopen 面)。server 漏斗现有边 todo/failed→closed;
-  // review/confirm/done→closed 边缺,归 W3 server 票(票面授权前端+注记),
-  // 故 canClose 只放行有边的相位,其余 disabled(运行中禁用 = r1 Delete-in-
-  // turn 先例)。fixture 面无 wire:关闭走 deletions.ts 会话覆面同律。——
-  // #702(B-C17):failed 且 build 腿已交付 → 「完成」出口重新出现(服务端
-  // 恢复闸是权威判定,此处只是钮面可达性:steps 投影里执行步 done)。点开
-  // 同一 accept 弹层 → merge API → server 恢复回 review 关口 + 正常合并委派;
-  // 未交付的 failed(执行步失败/零产物)不亮钮——重跑面(rerun dialog)才是
-  // 它的出口。fixture 面无 steps 数据,不启用(live 判据钉死)。
-  const buildLegDone = steps.some((s) => s.kind === 'build' && s.status === 'done');
-  const canComplete =
-    phase === 'review' ||
-    (live && phase === 'confirm') ||
-    (live && phase === 'failed' && buildLegDone);
-  const canClose = phase === 'todo' || phase === 'failed';
-  const completeTask = () => {
-    setMoreOpen(false);
-    if (phase === 'review' || phase === 'failed') {
-      setOverlay({ kind: 'accept' });
-      return;
-    }
-    if (live && phase === 'confirm' && buildId != null)
-      mutations.stepAction.mutate({ buildId, body: { action: 'confirm' } });
-  };
-  // —— #864 T3：重跑面的钉选出口。重跑沿用任务钉选（orchestrate 读
-  // todo.machineId），钉着离线机 = 再失败一轮，所以失败面给「改为自动」。
-  // machines 读面未到时判「不知道」而不是「离线」（不把未取到错读成不在线）；
-  // 钉的机器行已不在（被删/换团队）= 服务端同离线语义，文案走「（已移除）」。
-  const pinnedTodoMachine =
-    wireTodo?.machineId != null && machinesQ.data != null
-      ? (machinesQ.data.find((m) => m.id === wireTodo.machineId) ?? null)
-      : undefined;
-  const rerunPin =
-    pinnedTodoMachine === undefined
-      ? null
-      : {
-          machineName: pinnedTodoMachine?.name ?? null,
-          offline: pinnedTodoMachine?.online !== true,
-        };
-  const unpinForRerun = () => {
-    mutations.patchTodo.mutate(
-      { id: todo.id, body: { machineId: null } },
-      { onError: (error) => toastError(t('改为自动失败，请重试。'), error) },
-    );
-  };
-
-  const closeTask = () => {
-    setMoreOpen(false);
-    if (live) {
-      mutations.patchTodo.mutate(
-        { id: todo.id, body: { phase: 'closed' } },
-        {
-          onSuccess: () => navigate('/app'),
-          // #638：关闭失败 = 留在详情页、任务没关，此前零反馈。
-          onError: (error) => toastError(t('关闭任务失败，请重试。'), error),
-        },
-      );
-      return;
-    }
-    markClosed(todo.id);
-    navigate('/app');
-  };
-
-  // AI 审核候选 Agent（M7 #312，r8 §3.1）：live = members 读面 memberType:"agent"
-  // 行投影（#509 起带 provider，供跨厂商判定）；fixture 面 undefined =
-  // ReviewDialog 兜底 DEFAULT_AGENT（行 A：r8 §3.1 仅一处 Agent 选取，canon
-  // 单默认行）。
-  const reviewAgents: ReviewAgentOption[] | undefined = live
-    ? (membersQ.data ?? [])
-        .filter((m) => m.memberType === 'agent')
-        .map((m) => {
-          const actor = m.actor as
-            | { displayName?: string; modelId?: string | null; provider?: string | null }
-            | undefined;
-          return {
-            id: m.actorId,
-            name: actor?.displayName ?? m.actorId,
-            model: actor?.modelId ?? '默认',
-            provider: actor?.provider ?? null,
-          };
-        })
-    : undefined;
-  // 默认选人 + 独立性判定（#509）：跨厂商优先，产出步 Agent = 执行侧槽优先、
-  // 规划槽回退（与服务端 per-step 凭据解析同一条链）；两槽都空 = 无基准，默认
-  // 值退到候选集稳定序第一且不声称独立。判定规则单源 = detail/review-default.ts
-  // ——用户改选后的复判走同一条 classifyReviewChoice（ReviewDialog 内）。
-  const reviewPick = resolveReviewDefault({
-    candidates: reviewAgents ?? [],
-    assignment: wireTodo?.assignment ?? null,
-  });
-  // fixture 面不做判定：reviewAgents undefined → 走 ReviewDialog 兜底单默认行，
-  // producerProvider 也保持 undefined（undefined = 本面不判定）。
-  const reviewDefaultId = live ? reviewPick.defaultAgentId : undefined;
-  const reviewProducerProvider = live ? reviewPick.producerProvider : undefined;
 
   const content = live
     ? wireTodo && buildId
@@ -946,28 +821,7 @@ export function TodoDetailPage() {
                 editable={live}
                 draft={live ? liveDraft : undefined}
                 onDraftChange={live ? setLiveDraft : undefined}
-                onAttachment={
-                  live
-                    ? async (files) => {
-                        // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
-                        // 失败 toast 点名原因（#729 失败方式 5/12：draft 一字不
-                        // 动，成功文件的 token 仍落入）；注入由 wire hook 做。
-                        const tokens: string[] = [];
-                        for (const file of files) {
-                          try {
-                            const r = await attachFile({ file, scope: 'message' });
-                            tokens.push(r.token);
-                          } catch (err) {
-                            console.error('attachment failed', file.name, err);
-                            toast.error(t(attachmentFailureTitle(err)), {
-                              description: file.name,
-                            });
-                          }
-                        }
-                        return tokens;
-                      }
-                    : undefined
-                }
+                onAttachment={onAttachment}
                 mentionGroups={mentionGroups}
                 mentionFiles={mentionFiles}
                 onStop={live && buildId ? () => setStopOpen(true) : undefined}
@@ -978,86 +832,7 @@ export function TodoDetailPage() {
                     ? () => setOverlay({ kind: 'review' })
                     : undefined
                 }
-                onSend={
-                  live
-                    ? (text) => {
-                        // #873：读者自己发出去的那条必须看得见——这一刻先跳到
-                        // 最新端（四个分流出口共用；被拒 409 不清稿，落在最新端
-                        // 也无害）。增长跟随的其余判断在原语 autoScroll 里。
-                        if (text !== '') transcriptColRef.current?.scrollToEnd();
-                        // 驳回回路（r5 §4）：confirm 关口发送 = revision + feedback
-                        // → 重规划步入队 → plan v(N+1)（会话流即时呈现）。
-                        if (phase === 'confirm' && buildId && text !== '') {
-                          mutations.stepAction.mutate({
-                            buildId,
-                            body: {
-                              action: 'revision',
-                              side: 'plan',
-                              feedback: text,
-                              clientMessageId: crypto.randomUUID(),
-                            },
-                          });
-                          return;
-                        }
-                        // W3 steer（#280，06 册 D9 / spec #277）：building 态发送 =
-                        // 运行中补话；review 态仅在运行中（AI 审核步在跑等）保持
-                        // 本面——运行补话与静息打回各走各的道，不互抢。server 门
-                        // （claimed 步在跑）收则 201，无在跑步 409 明确拒绝（提示行
-                        // + draft 保留，不丢字）。返回 Promise = composer 异步清稿面。
-                        if (
-                          (phase === 'building' || (phase === 'review' && running)) &&
-                          buildId &&
-                          text !== ''
-                        ) {
-                          return mutations.sendSteer
-                            .mutateAsync({ conversationId: buildId, content: text })
-                            .then(() => {
-                              setLiveDraft('');
-                              return undefined;
-                            });
-                        }
-                        // #701（B-C12）：review 关口静息态发送 = 人肉打回——confirm
-                        // 驳回的动作面复用（POST steps revision → review→planning +
-                        // 重规划步入队，边与 #330 自动回流同一条），不再撞 steer 面
-                        // 的 409 死路；「请求修改…」占位符从此诚实（可填即可发）。
-                        // Promise 面 = restart 同律：成功清稿、被拒（409 竞态）保留。
-                        if (phase === 'review' && !running && buildId && text !== '') {
-                          return mutations.stepAction
-                            .mutateAsync({
-                              buildId,
-                              body: {
-                                action: 'revision',
-                                side: 'plan',
-                                feedback: text,
-                                clientMessageId: crypto.randomUUID(),
-                              },
-                            })
-                            .then(() => undefined);
-                        }
-                        // #320 失败面发送 = 带反馈重启（r9 §3.3：原站 failed 态发消息
-                        // 触发新一轮，消息随新轮入会话——非 steer 语义）。走 steps
-                        // restart 动作位：新 build + 反馈行落新 conv + failed→queued。
-                        // Promise 面 = 成功清稿、被拒（相位漂移 409）保留 draft。
-                        if (phase === 'failed' && buildId && text !== '') {
-                          return mutations.stepAction
-                            .mutateAsync({
-                              buildId,
-                              body: {
-                                action: 'restart',
-                                feedback: text,
-                                clientMessageId: crypto.randomUUID(),
-                              },
-                            })
-                            .then(() => undefined);
-                        }
-                      }
-                    : detail?.revision != null && chain === 'idle'
-                      ? () => {
-                          setChain('streaming');
-                          window.setTimeout(() => setChain('landed'), 900);
-                        }
-                      : undefined
-                }
+                onSend={onSend}
               />
             )}
           </div>
