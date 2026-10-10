@@ -134,14 +134,31 @@ export interface ModelRowSkin {
   check: string;
 }
 
+/** #1095 内描焦点环配方单源（行钮与 listbox 容器共用）：2px outline
+ *  offset -2px——环墨落进元素盒内缘，滚动容器裁不到；环色走 #388 全局律
+ *  --focus-ring。outline-solid 不可省：Button 底座 outline-none 把
+ *  --tw-outline-style 钉成 none，outline-2 的 outline-style:
+ *  var(--tw-outline-style) 会算出 none——computed 宽度/偏移全对、像素零墨
+ *  的静默失败（实测踩过）；focus-visible 前缀的 outline-solid 以 0-2-0
+ *  特异性压回 solid。Button 底座消费方另配 ring-0 摘底座外环。 */
+export const FOCUS_INSET_CLS =
+  'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-(--focus-ring)';
+
 /** 行钮基底（#950 裸控件收编 Button ghost）：ghost 件配方按七通道律归零
  *  （#908 comment-6001887439 裁决 3——hover bg 含 dark: / aria-expanded
  *  bg+text / hover text / press translate / gap·px / font-weight / border），
  *  hover 底 = 旧行皮 --surface-secondary 等值；选中态载体 = aria-selected
  *  （#910 裁定 3 状态类归行为）：行底 --pick-selected-bg、名/勾墨
- *  --pick-selected-fg（#751 单源律随基底走，skin 只做各面几何）。 */
-export const PICK_ROW_BTN_CLS =
-  "w-full cursor-pointer justify-start border-none bg-transparent text-left font-normal whitespace-nowrap hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--foreground) aria-selected:bg-(--spot-soft) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+ *  --pick-selected-fg（#751 单源律随基底走，skin 只做各面几何）。
+ *  #1095 焦点配方（票面候选 a）：Button 底座的外环（focus-visible:ring-3，
+ *  3px box-shadow 画在行盒外）会被 listbox 滚动容器裁掉——#872 整行铺满律下
+ *  行盒四缘与裁剪盒齐平，贴边环段无墨（#883 原报、docs/verify/1011 归因实
+ *  测）。环改内描走 FOCUS_INSET_CLS（墨落行盒内，滚动容器裁不到；环色收敛
+ *  到 #388 全局律 --focus-ring，行灰环 --ring/50 双源就此退役），ring-0 摘
+ *  底座外环。transition 收窄到底座七通道里真会变的 background-color/color
+ *  ——底座 transition-all 违反「只过渡变化的属性」，但 components/ui 已冻结
+ *  （#1003），修在行级不动底座。 */
+export const PICK_ROW_BTN_CLS = `w-full cursor-pointer justify-start border-none bg-transparent text-left font-normal whitespace-nowrap transition-[background-color,color] hover:bg-(--secondary) hover:text-(--foreground) dark:hover:bg-(--secondary) aria-expanded:bg-transparent aria-expanded:text-(--foreground) aria-selected:bg-(--spot-soft) active:not-aria-[haspopup]:translate-y-0 focus-visible:ring-0 ${FOCUS_INSET_CLS} [&_svg:not([class*='size-'])]:size-auto`;
 
 interface ModelPickRowProps {
   skin: ModelRowSkin;
@@ -306,7 +323,11 @@ export function ModelPickList({
       )}
       <div
         ref={listRef}
-        className="max-h-80 overflow-y-auto"
+        // #1095 附带：容器是开面程序焦点的落点（typeahead 契约），键盘模态下
+        // :focus-visible 命中 div——#388 全局律的元素表不含 div，此前吃 UA 默
+        // 认蓝环（配方不同词）。改挂仓内环配方 FOCUS_INSET_CLS；内描形态：
+        // 容器横缘与壳内缘齐平（壳 px-0），外描环会越出弹层描边。
+        className={`max-h-80 overflow-y-auto overscroll-contain ${FOCUS_INSET_CLS}`}
         role="listbox"
         aria-label={listLabel}
         tabIndex={-1}
