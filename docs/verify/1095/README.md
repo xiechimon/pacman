@@ -89,4 +89,24 @@
 | `indent-compare.png` | 两面聚焦帧并排：name 墨缘内缩均 12px |
 
 before 档不重拍：#883 / #1011 的既有帧即 before（`docs/verify/1011/`，本目录
-`before-after-*` 合成帧直接引其 zoom 档）。
+`before-after-*` 合成帧直接引其 zoom 档）。**合成帧跨两次构建**（before =
+#1011 在 main 的档、after = 本票构建），探针参数同档（DSF 4 / 亮面 / 同
+clip 法则），几何差异只来自本票改动。
+
+`measurements.json.nav` 与 #1011 基线**不可逐项比**：导航压测改键盘开面
+（容器环证据帧需要），`after-open` 步的 matchesFocusVisible 由 false 变
+true 是模态差异不是契约变化；Tab/Shift+Tab/Escape 各步契约与 #1011 同。
+
+## 观感与收尾评审记录
+
+- **better-ui**：过。收掉一条 = listbox 滚动容器补 `overscroll-contain`
+  （「overflow-y-auto on a menu with no overscroll-behavior」行）；同心圆角
+  （内描环随行 rounded-lg 自动收半径）、高频交互动效档（行 hover 仅
+  background-color/color ≤150ms）、press 不缩放（行押译已归零）均核过无
+  发现。Button 底座 `transition-all` 同病但属冻结面（#1003），记 pre-
+  existing 不在本票修。
+- **interface-review**（working-tree  scope，两面 + 容器为扩展面）：无
+  Introduced / Regression 发现——环为等价替换（外环 → 内描环）、内缩为票面
+  裁决值、无 aria/文案/动效删除。pre-existing 两条：Button 底座
+  transition-all（冻结面，见上）；机器行（HOST_ROW_BTN_CLS）仍走底座灰环
+  词表（不同面，未因本票变坏；其 listbox 无滚动容器、无裁剪病）。

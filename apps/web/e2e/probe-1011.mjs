@@ -9,7 +9,8 @@
 //   4. 键盘导航压测（break-ui 焦点面）：Tab 进入首行、再 Tab、Shift+Tab 回退、
 //      Escape 关面焦点归还，逐步记录 activeElement 与 :focus-visible。
 // 基线帧必须在任何键盘输入之前拍：清单容器 tabIndex=-1，键盘模态下程序聚焦
-// 会让它吃到 UA 蓝环（:focus-visible 命中），基线就不干净。
+// 会让它吃到焦点环（#1095 前是 UA 蓝环、之后是仓内配方环；:focus-visible
+// 命中），基线就不干净。
 // 用法：node e2e/probe-1011.mjs <baseURL> <outDir>
 import { chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
