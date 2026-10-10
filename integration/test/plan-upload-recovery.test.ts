@@ -268,7 +268,12 @@ describe('#1026/#1028 终稿回传失败恢复（真进程重启）', () => {
     const lines = logLines();
     expect(lines.filter((l) => l.includes(`new session ${buildId}`))).toHaveLength(1);
     expect(lines.some((l) => l.includes(`continue session ${buildId}`))).toBe(false);
-    expect(readJournal()).toBeNull(); // 快路径补报完成即清残留
+    // 快路径补报完成即清残留——但 journal.remove 落在 daemon 侧 done 响应
+    // 回来之后（runner.ts 快路径：client.done → journal.remove），而上面的
+    // status 翻转是 server 侧观测，两者隔一个响应往返的窗：负载机上即读会
+    // 抢在 unlink 前（CI run 38012389260 输在这个窗）。语义是「最终清掉」，
+    // 断言按语义等有界等待，不钉实现时序。
+    await waitFor(() => readJournal() === null, 30_000);
 
     second.kill('SIGTERM');
     await new Promise<void>((resolve) => {
