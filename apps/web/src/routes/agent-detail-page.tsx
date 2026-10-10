@@ -421,12 +421,10 @@ export function AgentDetailPage() {
                           defaultSkill)}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent aria-label={t('默认 skill')} className="agent-skill-menu">
-                    <SelectItem className="agent-skill-row" value={null}>
-                      {t('未设置')}
-                    </SelectItem>
+                  <SelectContent aria-label={t('默认 skill')}>
+                    <SelectItem value={null}>{t('未设置')}</SelectItem>
                     {skillOptions.map((skill) => (
-                      <SelectItem key={skill.id} className="agent-skill-row" value={skill.id}>
+                      <SelectItem key={skill.id} value={skill.id}>
                         {skill.name}
                       </SelectItem>
                     ))}
@@ -691,7 +689,7 @@ export function AgentDetailPage() {
               </ProfileCard>
             </section>
 
-            <section className="agent-perm-group agent-perm-skills flex flex-col gap-2">
+            <section className="agent-perm-group flex flex-col gap-2">
               {/* #1169 授权技能（原 agent.skills 的授权半边）。「不限制」（null
                   = 全量可读）与「限制后全不勾」（[] = 显式全拒）是两种状态，
                   由顶部开关互转；限制态逐技能勾选（MCP 段同形），默认携带面
@@ -699,7 +697,7 @@ export function AgentDetailPage() {
               <h3 className="m-0 text-sm font-medium text-foreground">{t('授权技能')}</h3>
               <p className={PROFILE_HINT_CLS}>{t(AGENT_PERMISSION_COPY.skillsAllowlist)}</p>
               <ProfileCard>
-                <ProfileRow className="agent-allowlist-unrestricted-row" label={t('不限制')}>
+                <ProfileRow label={t('不限制')}>
                   <Switch
                     className="agent-allowlist-switch"
                     aria-label={t('不限制')}

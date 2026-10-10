@@ -979,7 +979,7 @@ describe('refresh 与 machine-wire 清单（#920 接力）', () => {
           provider: 'p',
           modelId: 'm',
           tools: [],
-          skills: ['dist-skill'],
+          skillsAllowlist: ['dist-skill'],
         })
         .run();
       const projectId = await postProject(s.app);
