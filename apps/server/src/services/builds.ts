@@ -258,6 +258,7 @@ export function applyStoppedStep(deps: BuildDeps, stepId: string): void {
       createdAt: stoppedRow.createdAt,
       status: stoppedRow.status,
       checkpointCommit: stoppedRow.checkpointCommit,
+      skillInjection: stoppedRow.skillInjection ?? null,
     });
   }
   const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
@@ -308,6 +309,8 @@ function enqueueStep(
   // 入队即 wake（低延迟派发，02 §1.2/§5.4；claim 长轮询等待者 + SSE 双通道）。
   deps.machineHub?.wake(teamId);
   // 会话流 step 事件（pending）：详情页进度行即时更新（M5 live streaming）。
+  // #1106：pending 步无注入选择（选择在 claim 时计算）——skillInjection 恒
+  // null，claim 后的 step 事件（publishStepStatus）携带真值。
   deps.convHub?.publishStep(buildId, {
     id,
     buildId,
@@ -316,6 +319,7 @@ function enqueueStep(
     createdAt,
     status: 'pending',
     checkpointCommit: null,
+    skillInjection: null,
   });
   return { id, buildId, kind, machineId: null, createdAt };
 }
@@ -369,6 +373,9 @@ export function listSteps(deps: BuildDeps, buildId: string): StepJournalRow[] {
     status: r.status,
     checkpointCommit: r.checkpointCommit,
     ...(queueById?.get(r.id) !== undefined ? { queue: queueById.get(r.id) } : {}),
+    // #1106 注入选择记录（详情面回查正本）：null = 未计算（chief 步/旧
+    // 数据），hits=[] = 已计算零命中。
+    skillInjection: r.skillInjection ?? null,
   }));
 }
 
@@ -946,6 +953,7 @@ export function failStepWithEvents(
       createdAt: failedStep.createdAt,
       status: failedStep.status,
       checkpointCommit: failedStep.checkpointCommit,
+      skillInjection: failedStep.skillInjection ?? null,
     });
   }
 }
@@ -1096,6 +1104,7 @@ function releaseClaimedStep(
       createdAt: released.createdAt,
       status: released.status,
       checkpointCommit: released.checkpointCommit,
+      skillInjection: released.skillInjection ?? null,
     });
   }
   // 他机 75s 长轮询不等满：释放即 wake，同队等待者立即重认领（machineHub 缺省

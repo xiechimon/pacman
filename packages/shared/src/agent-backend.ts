@@ -215,6 +215,13 @@ export interface SessionOpts {
    * （chief 面全量直通）；[] = 不注入任何 skill（least-privilege，与 MCP
    * 空勾选同律）；名单内未知 slug 静默跳过（#367 容忍语义）。 */
   skillsAllowlist?: string[];
+  /** #1106 派发技能注入选择（worker 步；claim 载荷 agent.injectedSkills
+   * 透传）：本步任务 brief 实际注入的技能 id 集。在位（含 []）= 目录注入按
+   * 本集收窄（描述全文不截断——选择本身已控制噪声，budget 闸让位）；
+   * 缺省 = 旧 server 形，目录注入回落 skillsAllowlist 白名单。**不改变
+   * 白名单硬挡**：#917 denied 判定仍吃 skillsAllowlist（授权语义），
+   * 注入选择只管「brief 里提哪些」。 */
+  injectedSkills?: string[];
   /** 团队技能物化目录（XMON-112 S2，spec 14 增补；#920 清单 + 按需拉）：
    * daemon 步启动经 GET /api/machine/skills/{stepId} 清单 + /file 按需拉取
    * 物化后的本机缓存视图目录。backend 把它排在本机 skillsDir 之前扫描——

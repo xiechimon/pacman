@@ -474,6 +474,14 @@ export interface SkillsCatalogOpts {
    * 未知 slug（目录已删）静默跳过。过滤先于 cap 闸——白名单内条目不受
    * 目录总量截顶影响。 */
   allowlist?: string[];
+  /** #1106 派发技能注入选择（SessionOpts.injectedSkills 透传；server 按任务
+   * 文本对授予集规则选出的 ids）：在位（含 []）= 目录注入按本集收窄——
+   * 空集 = 已计算零命中（零注入不是故障）；ids 与 allowlist 求交（选择不越
+   * 授权，运行时防御）；选中条目 description 全文不截断（选择本身已控噪声，
+   * 200 字预算闸让位）。缺省 = 旧 server 形，allowlist 全量直通（含截断，
+   * 零回归）。**不影响 deny 面**（collectDeniedSkillDirs 仍只吃 allowlist
+   * ——授权语义不随注入选择收窄，#917）。 */
+  injectedSkills?: string[];
   /** 团队技能物化目录（XMON-112 S2，spec 14 增补）：排在本机 skillsDir 之前
    * 扫描——pi loadSkills first-wins（先进 Map 者为 winner），同名冲突团队条目
    * 胜、本机影子进 collision 诊断行（loser）。cap 闸对合并后序列生效，团队
@@ -537,12 +545,27 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
     }
     skills = kept;
   }
+  // #1106 注入选择收窄：选择在位 = 目录按选择集再收窄（与 allowlist 过滤
+  // 叠加即求交——选择不越授权）；选中条目全文进目录（200 字闸只对「全量
+  // 目录 = 预算面」负责，选择集是任务相关性面，噪声已由 server 选择控制）。
+  const injected = opts.injectedSkills;
+  let fullDescription = false;
+  if (injected !== undefined) {
+    const selected = new Set(injected);
+    const kept: Skill[] = [];
+    for (const s of skills) {
+      if (selected.has(s.name)) kept.push(s);
+      else log?.(`filtered: ${s.name} not in injected selection`);
+    }
+    skills = kept;
+    fullDescription = true;
+  }
   if (skills.length > SKILLS_CATALOG_CAP) {
     log?.(`cap: total=${skills.length} truncated=${SKILLS_CATALOG_CAP}`);
     skills = skills.slice(0, SKILLS_CATALOG_CAP);
   }
   skills = skills.map((s) => {
-    if (s.description.length <= SKILL_DESCRIPTION_CAP) return s;
+    if (fullDescription || s.description.length <= SKILL_DESCRIPTION_CAP) return s;
     log?.(`cap: description truncated for ${s.name}`);
     return { ...s, description: `${s.description.slice(0, SKILL_DESCRIPTION_CAP)}…` };
   });
@@ -576,7 +599,7 @@ export function appendSkillsCatalog(base: string | undefined, catalog: string): 
  * runner 侧面拿不到这份配置。 */
 export function composeSkillsSection(
   skills: { skillsDir: string; cwd: string } | undefined,
-  opts: { skillsAllowlist?: string[]; teamSkillsDir?: string },
+  opts: { skillsAllowlist?: string[]; injectedSkills?: string[]; teamSkillsDir?: string },
   log?: (msg: string) => void,
 ): string {
   if (!skills) return '';
@@ -584,6 +607,7 @@ export function composeSkillsSection(
     skillsDir: skills.skillsDir,
     cwd: skills.cwd,
     ...(opts.skillsAllowlist !== undefined ? { allowlist: opts.skillsAllowlist } : {}),
+    ...(opts.injectedSkills !== undefined ? { injectedSkills: opts.injectedSkills } : {}),
     ...(opts.teamSkillsDir !== undefined ? { teamSkillsDir: opts.teamSkillsDir } : {}),
     ...(log ? { log } : {}),
   });

@@ -19,6 +19,8 @@ export * from './scheduler.js';
 export * from './secret-box.js';
 // #918：技能事实分类单源（daemon 活行 + web 详情页汇总共用）。
 export * from './skill-facts.js';
+// #1106：派发技能注入的纯选择层（server claim 消费；hits 记录进 step 行）。
+export * from './skill-inject.js';
 export * from './skill-route.js';
 export * from './tables.js';
 // spec 15 #394：占位标题派生 + 固定标签词表（ADR 0002 自觉背离原站的面）。
