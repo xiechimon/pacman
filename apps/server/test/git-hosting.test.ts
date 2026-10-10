@@ -310,6 +310,124 @@ describe('托管形态：bare repo + git http-backend（02 §3 锁定）', () =>
     expect((await req(s.app, 'GET', `/api/projects/${newUuidv7()}/commits`)).status).toBe(404);
   });
 
+  // 提交详情读面（#1102 历史行点击 → 该提交 diff；[推断] 路由，wire.test
+  // INFERRED_ROUTES 登记）。仓形 = 种子提交（根、空树）→ README → main 侧
+  // another.txt → --no-ff 合入 side 分支（side.txt）：一棵树上同时钉住
+  // S5（merge = 第一父 diff，combined 恒空集的反面）、S6（根空提交 files=[]
+  // 定义态）、S3（不可达/注入形 404）、S7（元信息与列表行同源一致）。
+  // S4（根提交全文件新增）需要根提交带文件——钉在 project-local.test.ts F6。
+  test('GET /api/projects/{id}/commits/{sha} → 元信息 + 第一父 diff；边界 404/定义态', async () => {
+    const record = await createProject({ name: 'commit-detail-probe', repoKind: 'hosted' });
+    const dir = workdir('commit-detail');
+    const repoDir = join(dir, 'repo');
+    expect((await git(['clone', authedUrl(record), repoDir], dir)).code).toBe(0);
+    writeFileSync(join(repoDir, 'README.md'), '# detail-probe\n');
+    expect((await git(['checkout', '-B', 'main'], repoDir)).code).toBe(0);
+    expect((await git(['add', 'README.md'], repoDir)).code).toBe(0);
+    expect((await git(['commit', '-m', 'docs: README detail'], repoDir)).code).toBe(0);
+    expect((await git(['checkout', '-b', 'side'], repoDir)).code).toBe(0);
+    writeFileSync(join(repoDir, 'side.txt'), 'side work\n');
+    expect((await git(['add', 'side.txt'], repoDir)).code).toBe(0);
+    expect((await git(['commit', '-m', 'side: add side.txt'], repoDir)).code).toBe(0);
+    expect((await git(['checkout', 'main'], repoDir)).code).toBe(0);
+    writeFileSync(join(repoDir, 'another.txt'), 'main work\n');
+    expect((await git(['add', 'another.txt'], repoDir)).code).toBe(0);
+    expect((await git(['commit', '-m', 'main: add another.txt'], repoDir)).code).toBe(0);
+    expect(
+      (await git(['merge', '--no-ff', 'side', '-m', 'merge side into main'], repoDir)).code,
+    ).toBe(0);
+    expect((await git(['push', '-u', 'origin', 'main'], repoDir)).code, 'push').toBe(0);
+
+    const list = (await (await req(s.app, 'GET', `/api/projects/${record.id}/commits`)).json()) as {
+      commits: { sha: string; shortSha: string; message: string; authorName: string; at: number }[];
+    };
+    // 种子（根、空树）+ README + side + another + merge = 5（git log 含被合
+    // 分支的提交，非 first-parent 序）
+    expect(list.commits).toHaveLength(5);
+    const byMessage = Object.fromEntries(list.commits.map((c) => [c.message, c]));
+    const merge = byMessage['merge side into main']!;
+    const readme = byMessage['docs: README detail']!;
+    const seed = byMessage[`init ${record.repoName}`]!;
+
+    type Detail = {
+      sha: string;
+      shortSha: string;
+      message: string;
+      authorName: string;
+      at: number;
+      files: {
+        path: string;
+        additions: number;
+        deletions: number;
+        hunks: { header: string; lines: string[] }[];
+      }[];
+    };
+
+    // merge 提交（S5）：diff = 相对第一父 = side 带来的 side.txt；默认
+    // combined diff 对这条干净 merge 恒空集——files 非空即钉死 --first-parent
+    const mergeRes = await req(s.app, 'GET', `/api/projects/${record.id}/commits/${merge.sha}`);
+    expect(mergeRes.status).toBe(200);
+    const mergeDetail = (await mergeRes.json()) as Detail;
+    expect(mergeDetail.files.map((f) => f.path)).toEqual(['side.txt']);
+    expect(mergeDetail.files[0]?.additions).toBe(1);
+    // S7 元信息与列表行一致（同 %x00 格式串同源）
+    expect(mergeDetail.sha).toBe(merge.sha);
+    expect(mergeDetail.shortSha).toBe(merge.shortSha);
+    expect(mergeDetail.message).toBe(merge.message);
+    expect(mergeDetail.authorName).toBe(merge.authorName);
+    expect(mergeDetail.at).toBe(merge.at);
+
+    // 普通提交：README.md 全文件新增行
+    const readmeDetail = (await (
+      await req(s.app, 'GET', `/api/projects/${record.id}/commits/${readme.sha}`)
+    ).json()) as Detail;
+    expect(readmeDetail.files).toHaveLength(1);
+    expect(readmeDetail.files[0]?.path).toBe('README.md');
+    expect(readmeDetail.files[0]?.hunks[0]?.lines).toContain('+# detail-probe');
+
+    // 种子提交（根、空树，S6）：files=[] 定义态——200 不是 404/500
+    const seedRes = await req(s.app, 'GET', `/api/projects/${record.id}/commits/${seed.sha}`);
+    expect(seedRes.status).toBe(200);
+    expect(((await seedRes.json()) as Detail).files).toEqual([]);
+
+    // S3 不可达 sha → 404；注入形（rev-parse --end-of-options 拒绝）→ 404
+    expect(
+      (await req(s.app, 'GET', `/api/projects/${record.id}/commits/${'0'.repeat(40)}`)).status,
+    ).toBe(404);
+    expect(
+      (
+        await req(
+          s.app,
+          'GET',
+          `/api/projects/${record.id}/commits/${encodeURIComponent('HEAD; echo hacked')}`,
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await req(
+          s.app,
+          'GET',
+          `/api/projects/${record.id}/commits/${encodeURIComponent('--output=/tmp/evil')}`,
+        )
+      ).status,
+    ).toBe(404);
+
+    // 非托管形态无本地读面 → 404（commits 列表面同族口径）
+    const github = await createProject({
+      name: 'gh-detail-probe',
+      repoKind: 'github',
+      githubRepo: 'octocat/hello',
+    });
+    expect(
+      (await req(s.app, 'GET', `/api/projects/${github.id}/commits/${'0'.repeat(40)}`)).status,
+    ).toBe(404);
+    // 未知项目 → 404
+    expect(
+      (await req(s.app, 'GET', `/api/projects/${newUuidv7()}/commits/${'0'.repeat(40)}`)).status,
+    ).toBe(404);
+  });
+
   test('conv 分支 push（02 §5.5：conv-<conversationId>）+ 二进制文件 base64', async () => {
     const record = await createProject({ name: 'conv-probe', repoKind: 'hosted' });
     const dir = workdir('conv');

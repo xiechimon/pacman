@@ -129,6 +129,7 @@ import {
   readBranches,
   readBuildChangeFile,
   readBuildChanges,
+  readCommitDetail,
   readCommitHistory,
   readFile,
   readFiles,
@@ -596,6 +597,15 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/projects/:id/commits', async (c) => {
     const row = requireProject(ctx, c.req.param('id'));
     return c.json(await readCommitHistory(ctx, row.id, c.req.query('ref')));
+  });
+
+  // 提交详情读面（#1102 历史行点击 → 该提交 diff；[推断] 路由，wire.test
+  // INFERRED_ROUTES 登记——projects/{id}/commits/{sha} REST 同族规则）。
+  // sha 位宽容任意 ref 样串：resolveCommitOr404 解析失败一律 404（注入形
+  // 不过缝，services/git.ts readCommitDetail 头注 S3）。
+  app.get('/api/projects/:id/commits/:sha', async (c) => {
+    const row = requireProject(ctx, c.req.param('id'));
+    return c.json(await readCommitDetail(ctx, row.id, c.req.param('sha')));
   });
 
   app.get('/api/todos', (c) => {

@@ -20,6 +20,7 @@ import {
   type DocumentDiffFile,
   gitHostedRepoPath,
   type ProjectBranchesResponse,
+  type ProjectCommitDetailResponse,
   type ProjectCommitsResponse,
   type ProjectFileResponse,
   type ProjectFilesResponse,
@@ -366,6 +367,61 @@ export async function readCommitHistory(
       };
     });
   return { ref, commits };
+}
+
+// —— 提交详情读面（#1102 历史行点击 → 该提交 diff）：[推断] 端点
+// GET /api/projects/{id}/commits/{sha}，wire 未采——wire.test INFERRED_ROUTES
+// 登记（commits 列表端点先例）。失败方式先列（仓测试纪律；hosted 面钉在
+// git-hosting.test.ts、local 面钉在 project-local.test.ts）：
+//   S1 未知项目 / github 形态 → 404（requireProject / requireRepoReadDir
+//      单源，commits 列表同族口径，不新增分叉）
+//   S2 local 目录消失 / 非 git → 404 + reason not_found/not_git（同闸同形，
+//      #1030 分类降级——不 500、不空树）
+//   S3 sha 不可达 / 注入形（`HEAD; …`、`--flag` 样串）→ 404 不 500：
+//      resolveCommitOr404 走 rev-parse --verify --end-of-options（lib/git.ts
+//      缝，注入安全），git show 只吃解析后的 40-64 位 hex，用户原文不进 argv
+//   S4 根提交（无父）→ 相对空树全文件新增（git show 对根提交的既定语义，
+//      2026-10-10 实测），不是崩溃也不是空集
+//   S5 merge 提交 → 相对第一父的 diff（--first-parent；默认 combined diff
+//      对干净 merge 恒空集，会把「有改动」演成「无改动」——2026-10-10 实测）
+//   S6 空提交 / 纯二进制提交 → files=[] 定义态（parseUnifiedDiff 滤掉无
+//      hunks 的文件行，build changes 面同款口径）
+//   S7 元信息与列表行漂移 → 同一 %x00 格式串（%H/%h/%aI/%an/%s，
+//      readCommitHistory 同源），详情头与行面渲染同源字段
+//   S8 巨大 diff → runGit 30s 超时（readCommitHistory/readBuildChanges 同
+//      口径）；无字节闸——changes 面同暴露，收紧归两面共同的后票
+
+/** 单提交元信息 + 相对第一父的文件级 diff（#1102 详情面数据源）。git show
+ * 单次调用：--format 首行 = 元信息（%x00 分隔），--patch 段直接喂
+ * parseUnifiedDiff（解析器天然跳过首个 `diff --git` 之前的一切行，元信息行
+ * 以 hex sha 开头不会误命中文件头前缀）。runGit 直调先例 =
+ * readCommitHistory / readBuildChanges（缝词表外的只读 git 查询留在 server
+ * lib/git.ts spawn 家族内）。 */
+export async function readCommitDetail(
+  ctx: RepoCtx,
+  projectId: string,
+  sha: string,
+): Promise<ProjectCommitDetailResponse> {
+  const dir = await requireRepoReadDir(ctx, projectId);
+  const commit = await resolveCommitOr404(dir, sha);
+  const r = await runGit(
+    ['show', '--format=%H%x00%h%x00%aI%x00%an%x00%s', '--patch', '--first-parent', commit],
+    { cwd: dir, timeoutMs: 30_000 },
+  );
+  if (r.code !== 0) throw notFound(`commit ${sha}`);
+  const text = r.stdout.toString('utf8');
+  const [fullSha, shortSha, at, authorName, message] = (text.split('\n')[0] ?? '').split('\0');
+  // resolveCommitOr404 已保证 commit 可达——show 输出空首行 = repo 状态在两次
+  // git 调用之间被抽走（并发 gc/prune），显式 404 不静默空。
+  if (fullSha === undefined || fullSha === '') throw notFound(`commit ${sha}`);
+  return {
+    sha: fullSha,
+    shortSha: shortSha ?? '',
+    message: message ?? '',
+    authorName: authorName ?? '',
+    at: Date.parse(at ?? '') || 0,
+    files: parseUnifiedDiff(text),
+  };
 }
 
 // —— build 变更面（M5 [推断] 读端点 GET /api/builds/{id}/changes 数据源）：

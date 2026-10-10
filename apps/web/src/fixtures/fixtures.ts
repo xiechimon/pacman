@@ -233,6 +233,25 @@ export const projectContent: ProjectContent = {
       message: 'docs: README',
       authorName: 'r3-builder',
       at: r7(11, 2),
+      // #1102 详情面 fixture 供肉：README.md 全文件新增（wire 形，行带 +
+      // 前缀 = parseUnifiedDiff 输出契约；与 fileContents 的 README 同文）。
+      files: [
+        {
+          path: 'README.md',
+          additions: 3,
+          deletions: 0,
+          hunks: [
+            {
+              header: '@@ -0,0 +1,3 @@',
+              lines: [
+                `+# ${PROJECT_NAME}`,
+                '+',
+                `+托管演示仓:任务全生命周期走查(待开始 → 规划中 → 待确认 → 执行中 → 待验收 → 已完成)。`,
+              ],
+            },
+          ],
+        },
+      ],
     },
     {
       id: '0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d',
@@ -240,6 +259,9 @@ export const projectContent: ProjectContent = {
       message: `init ${PROJECT_NAME}`,
       authorName: 'Pacman',
       at: r7(9, 41),
+      // 种子提交 = 空树（provisionHostedRepo seedInitialCommit 真值同形）：
+      // files:[] 定义态——fixture 故事与服务端行为不漂移。
+      files: [],
     },
   ],
 }; /** Client-created todo of the fixture phase (#66 new-task dialog): lands
@@ -1342,6 +1364,25 @@ export const projectLocalFiles: FixtureSet = {
         message: 'init local-repo',
         authorName: 'local-user',
         at: r7(10, 5),
+        // #1102：根提交（无父）= 相对空树全文件新增（server readCommitDetail
+        // S4 语义的 fixture 同形供肉）。
+        files: [
+          {
+            path: 'README.md',
+            additions: 3,
+            deletions: 0,
+            hunks: [
+              {
+                header: '@@ -0,0 +1,3 @@',
+                lines: [
+                  '+# local-repo',
+                  '+',
+                  '+本地仓库：用户本机既有 git 工作树仓，Files tab 直读工作树 HEAD。',
+                ],
+              },
+            ],
+          },
+        ],
       },
     ],
   },

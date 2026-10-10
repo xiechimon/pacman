@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { recordId } from './common.js';
+import { diffFileSchema } from './document-diff.js';
 
 /** repo 形态（02 §3/A4 双形态 + spec 12 local 三形态）：托管 = server 自带
  * 本地 bare repo（git http-backend）；接入 = GitHub（PR/CI 面）；local =
@@ -194,3 +195,25 @@ export const projectCommitsResponseSchema = z.object({
   ),
 });
 export type ProjectCommitsResponse = z.infer<typeof projectCommitsResponseSchema>;
+
+/** `GET /api/projects/{id}/commits/{sha}` 响应（#1102 历史行点击 → 提交详情
+ * 面：元信息与列表行同款五字段 + 该提交相对**第一父**的文件级 unified
+ * diff）。wire 未采，[推断] 读面——路径 = projects/{id}/… REST 同族规则
+ * （commits 列表先例），files 段复用 diffFileSchema（document-diff 单源，
+ * build changes 面同族）。边界口径（server readCommitDetail 实现钉死）：
+ * 根提交（无父）= 相对空树全文件新增；merge 提交 = 相对第一父（combined
+ * diff 对干净 merge 恒空集，会把「有改动」演成「无改动」，弃用）；空改动
+ * / 纯二进制提交 = files:[] 定义态（parseUnifiedDiff 滤无 hunks 行，changes
+ * 面同款）。 */
+export const projectCommitDetailResponseSchema = z.object({
+  sha: z.string(),
+  shortSha: z.string(),
+  /** 提交标题行（%s，与列表行 message 同源同值——详情头「与列表行一致」
+   * 验收的数据面）。 */
+  message: z.string(),
+  authorName: z.string(),
+  /** 作者时间 epoch ms（git %aI 解析，列表行同源）。 */
+  at: z.number(),
+  files: z.array(diffFileSchema),
+});
+export type ProjectCommitDetailResponse = z.infer<typeof projectCommitDetailResponseSchema>;

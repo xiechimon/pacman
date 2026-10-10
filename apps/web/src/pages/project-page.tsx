@@ -9,8 +9,10 @@
 // #67/#127) driving client-side filter/sort, and the search box filters
 // by title.
 import {
+  type DocumentDiffFile,
   LOCAL_ERROR_REASON_COPY,
   type LocalErrorReason,
+  type ProjectCommitDetailResponse,
   type ProjectFileResponse,
 } from '@pacman/shared';
 import { Fragment, type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
@@ -18,13 +20,14 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { ApiError } from '../api/client.js';
 import {
   useGithubConnection,
+  useProjectCommitDetail,
   useProjectCommits,
   useProjectFile,
   useProjects,
   useProjectTree,
   useTodos,
 } from '../api/hooks.js';
-import { mapCommits, toDisplayTodo } from '../api/mappers.js';
+import { mapCommits, mapDiffFiles, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
 import { Badge } from '../components/ui/badge.js';
@@ -48,8 +51,15 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../components/ui/input-group.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { DiffFileBlock } from '../detail/docpane.js';
 import { localTodo } from '../fixtures/fixtures.js';
-import type { Phase, ProjectCommitRow, ProjectContent, TodoRecord } from '../fixtures/records.js';
+import type {
+  DiffFile,
+  Phase,
+  ProjectCommitRow,
+  ProjectContent,
+  TodoRecord,
+} from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import {
@@ -64,6 +74,7 @@ import {
   ListLines,
   PlusSmall,
   Search,
+  X,
 } from '../icons/index.js';
 import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { GithubIssuesDialog } from './github-issues-dialog.js';
@@ -81,6 +92,13 @@ import { PageShell } from './shell.js';
  *  aria-current）。 */
 const FILE_ROW_CLS = 'w-full cursor-pointer justify-start gap-2 px-1.5 font-normal';
 const FILE_ROW_ACTIVE_CLS = 'bg-muted hover:bg-muted dark:hover:bg-muted';
+
+/** 历史行钮（#1102 点行开提交详情）：文件行同款 ghost 件默认形态，双行文本
+ *  所以 h-auto + 原 li 行的 py-[5px] 节奏；prj-history-row 别名留存
+ *  （dead-buttons / #980 跨域定位句柄），选中态载体 = aria-current（#910
+ *  裁定 3，文件行同律）。 */
+const HISTORY_ROW_CLS =
+  'h-auto w-full cursor-pointer justify-start gap-2 px-1.5 py-[5px] font-normal [&_svg]:flex-none [&_svg]:text-muted-foreground';
 
 /** #1097 Files 面行数据 = wire entry（name/path/type）原样投影。fixture 面
  *  string 文件退化为顶层 blob 行（path=name，形态零漂移）；live 面直接吃
@@ -109,6 +127,8 @@ function FilesPane({
   now,
   selectedFile,
   onSelectFile,
+  selectedCommit,
+  onSelectCommit,
 }: {
   branch: string;
   entries: FileTreeRow[];
@@ -127,6 +147,9 @@ function FilesPane({
   /** #202 查看器选中文件（#1097 起 = 完整路径，同名跨目录不串）;null = 未选。 */
   selectedFile: string | null;
   onSelectFile: (path: string) => void;
+  /** #1102 详情面选中提交（全 sha）；null = 未选。 */
+  selectedCommit: string | null;
+  onSelectCommit: (sha: string) => void;
 }) {
   const { t } = useI18n();
   return (
@@ -263,20 +286,29 @@ function FilesPane({
           {t('尚无提交历史。')}
         </div>
       ) : (
-        // 历史行形 [设计]（官方历史面无捕获）：git log 最小投影，新→旧
+        // 历史行形 [设计]（官方历史面无捕获）：git log 最小投影，新→旧。
+        // #1102 起可点：行 = ghost 钮（文件行同族），点击开右侧提交详情面；
+        // data-history-entry = 跨域定位载体（data-tree-entry #1097 同律）。
         <ul className="mt-3">
           {commits.map((c) => (
-            <li
-              className="prj-history-row flex w-full items-center gap-2 px-1 py-[5px] [&_svg]:flex-none [&_svg]:text-muted-foreground"
-              key={c.id}
-            >
-              <GitCommit width={14} height={14} />
-              <span className="flex min-w-0 flex-col gap-px">
-                <span className="truncate text-xs leading-4 text-foreground">{c.message}</span>
-                <span className="font-mono text-[11px] leading-[14px] text-muted-foreground">
-                  {c.authorName} · {relativeTime(c.at, now, t)} · {c.shortSha}
+            <li key={c.id}>
+              <Button
+                variant="ghost"
+                data-history-entry="commit"
+                aria-current={selectedCommit === c.id ? 'true' : undefined}
+                className={`prj-history-row ${HISTORY_ROW_CLS}${selectedCommit === c.id ? ` ${FILE_ROW_ACTIVE_CLS}` : ''}`}
+                onClick={() => onSelectCommit(c.id)}
+              >
+                <GitCommit width={14} height={14} />
+                <span className="flex min-w-0 flex-1 flex-col items-start gap-px">
+                  <span className="max-w-full truncate text-xs leading-4 text-foreground">
+                    {c.message}
+                  </span>
+                  <span className="font-mono text-[11px] leading-[14px] text-muted-foreground">
+                    {c.authorName} · {relativeTime(c.at, now, t)} · {c.shortSha}
+                  </span>
                 </span>
-              </span>
+              </Button>
             </li>
           ))}
         </ul>
@@ -328,6 +360,153 @@ function deriveFileView(
   return file.data.encoding === 'base64'
     ? { kind: 'binary' }
     : { kind: 'text', content: file.data.content };
+}
+
+/** 提交详情面状态（#1102，镜像 #202 FileViewState 推导族）：idle = 占位；
+ *  loading/error 仅 live 可达；detail = 元信息 + wire 形 files（渲染前经
+ *  mapDiffFiles 进 DiffFileBlock 显示契约）。 */
+type CommitViewState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'error'; reason?: string }
+  | {
+      kind: 'detail';
+      sha: string;
+      shortSha: string;
+      message: string;
+      authorName: string;
+      at: number;
+      files: DocumentDiffFile[];
+    };
+
+/** 详情面状态推导（#1102，deriveFileView 同律）：fixture 直读行上 files 槽
+ *  （缺席键 = files:[] 定义态，行数据必带肉防死钮）；live 折 query 三态，
+ *  error 携带分类 reason（LOCAL_ERROR_REASON_COPY 分译用，#386/#1030 单源）。
+ *  结构子集传参，不绑 useQuery 全形。 */
+function deriveCommitView(
+  selected: string | null,
+  live: boolean,
+  fixtureRow: ProjectCommitRow | undefined,
+  q: { isError: boolean; error: Error | null; data: ProjectCommitDetailResponse | undefined },
+): CommitViewState {
+  if (selected === null) return { kind: 'idle' };
+  if (!live) {
+    return fixtureRow === undefined
+      ? { kind: 'idle' }
+      : {
+          kind: 'detail',
+          sha: fixtureRow.id,
+          shortSha: fixtureRow.shortSha,
+          message: fixtureRow.message,
+          authorName: fixtureRow.authorName,
+          at: fixtureRow.at,
+          files: fixtureRow.files ?? [],
+        };
+  }
+  if (q.isError) {
+    return {
+      kind: 'error',
+      ...(q.error instanceof ApiError && q.error.reason !== undefined
+        ? { reason: q.error.reason }
+        : {}),
+    };
+  }
+  if (q.data === undefined) return { kind: 'loading' };
+  return { kind: 'detail', ...q.data };
+}
+
+/** 提交详情查看器（#1102）：右栏「右侧查看器」形态（文件查看器同位）。
+ *  头带 = 元信息与列表行同源同格式（message / authorName · 相对时间 ·
+ *  shortSha——「与列表行一致」验收的渲染面）+ 关闭钮（清选中回占位）；
+ *  体 = DiffFileBlock 复用（docpane 渲染单源，allowFullFile=false 摘全文钮）。
+ *  w-max min-w-full = 行底色骑满横向滚动宽（#1101 症状①同款修法）。 */
+function CommitDetailView({
+  view,
+  files,
+  now,
+  onClose,
+}: {
+  view: CommitViewState;
+  /** view.kind==='detail' 时的 mapDiffFiles 产物（调用方 memo，其余态空数组）。 */
+  files: DiffFile[];
+  now: number;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  if (view.kind !== 'detail') {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-1 text-[13px] text-muted-foreground">
+        <span>
+          {view.kind === 'loading'
+            ? t('加载中…')
+            : view.kind === 'error'
+              ? t('提交详情加载失败')
+              : t('请选择一个提交查看')}
+        </span>
+        {/* 分类 reason 走 #386 单源分译（local 不可达降级词表）；未分类
+            （网络/5xx）只出主行——tree 降级分支同款口径。 */}
+        {view.kind === 'error' &&
+        view.reason !== undefined &&
+        view.reason in LOCAL_ERROR_REASON_COPY ? (
+          <span className="text-xs">
+            {t(LOCAL_ERROR_REASON_COPY[view.reason as LocalErrorReason])}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+  return (
+    <div className="flex min-w-0 flex-1 flex-col" data-commit-detail="pane">
+      <div className="flex flex-none items-start gap-2 border-b border-border px-4 py-2.5">
+        <GitCommit width={14} height={14} className="mt-[3px] flex-none text-muted-foreground" />
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-px">
+          {/* data-commit-detail 载体 = 跨域定位句柄（data-tree-entry #1097 同律）。 */}
+          <span
+            className="max-w-full truncate text-[13px] leading-5 text-foreground"
+            data-commit-detail="message"
+          >
+            {view.message}
+          </span>
+          <span
+            className="font-mono text-[11px] leading-4 text-muted-foreground"
+            data-commit-detail="meta"
+          >
+            {view.authorName} · {relativeTime(view.at, now, t)} · {view.shortSha}
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="flex-none text-muted-foreground"
+          aria-label={t('关闭提交详情')}
+          onClick={onClose}
+        >
+          <X width={12} height={12} />
+        </Button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        {files.length === 0 ? (
+          // 空改动集定义态（空提交 / 纯二进制 / 种子提交——server S6 口径）：
+          // 诚实文案，不白屏不「加载失败」。
+          <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+            {t('该提交没有可显示的改动。')}
+          </div>
+        ) : (
+          <div className="w-max min-w-full">
+            {files.map((file) => (
+              <DiffFileBlock
+                key={file.path}
+                file={file}
+                expanded
+                buildId={null}
+                allowFullFile={false}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function readStoredLayout(storage: Storage): TasksLayout {
@@ -743,6 +922,29 @@ export function ProjectPage() {
   const fixtureFileContent =
     !live && selectedFile !== null ? (fixture.project?.fileContents?.[selectedFile] ?? null) : null;
   const fileView = deriveFileView(selectedFile, live, fixtureFileContent, fileQ);
+  // 提交详情选中态（#1102）：存 (projectId, sha) 对——fileSel/dirSel 同款
+  // 纪律，路由切项目组件不重挂载，旧项目选中不串场。详情读面惰性门与
+  // commitsQ 同闸（live + 文件 tab + 历史 seg + 可读形态），行点击触发。
+  const [commitSel, setCommitSel] = useState<{ projectId: string; sha: string } | null>(null);
+  const selectedCommit = commitSel !== null && commitSel.projectId === id ? commitSel.sha : null;
+  const commitDetailQ = useProjectCommitDetail(
+    live ? id : undefined,
+    selectedCommit ?? undefined,
+    live && tab === 'files' && seg === 'history' && (hostedRepo || localRepo),
+  );
+  const fixtureCommitRows = !live ? (project?.commits ?? []) : [];
+  const commitView = deriveCommitView(
+    selectedCommit,
+    live,
+    selectedCommit !== null ? fixtureCommitRows.find((c) => c.id === selectedCommit) : undefined,
+    commitDetailQ,
+  );
+  // wire 形 → DiffFileBlock 显示契约（mapDiffFiles 单源，docpane/changes 面
+  // 同款）；非 detail 态恒空数组，memo 挂 commitView 身份不重算。
+  const commitDiffFiles = useMemo(
+    () => (commitView.kind === 'detail' ? mapDiffFiles(commitView.files) : []),
+    [commitView],
+  );
   const todos = live
     ? (todosQ.data ?? []).map(toDisplayTodo).filter((x) => x.projectId === id)
     : [...fixture.todos, ...fixtureAdded].filter((x) => x.projectId === id);
@@ -861,8 +1063,20 @@ export function ProjectPage() {
             now={live ? Date.now() : fixture.now}
             selectedFile={selectedFile}
             onSelectFile={(path) => setFileSel({ projectId: id ?? '', path })}
+            selectedCommit={selectedCommit}
+            onSelectCommit={(sha) => setCommitSel({ projectId: id ?? '', sha })}
           />
-          {fileView.kind === 'text' ? (
+          {/* 右栏查看器按 seg 分面（#1102）：历史 seg = 提交详情面（选中/
+              加载/错误/空改动四态诚实分渲）；文件 seg = 既有文件查看器零
+              回归。两选中态独立存——seg 来回切各自还原，不互串。 */}
+          {seg === 'history' ? (
+            <CommitDetailView
+              view={commitView}
+              files={commitDiffFiles}
+              now={live ? Date.now() : fixture.now}
+              onClose={() => setCommitSel(null)}
+            />
+          ) : fileView.kind === 'text' ? (
             <div className="block min-w-0 flex-1 overflow-auto px-4 py-3 text-[13px] text-muted-foreground">
               <pre className="m-0 font-mono text-xs leading-[18px] whitespace-pre text-foreground">
                 {fileView.content}
