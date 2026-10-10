@@ -6,6 +6,7 @@ import type { FetchLike } from './lib/github.js';
 import type { ConversationStreamHub, TeamStreamHub } from './services/events.js';
 import type { MachineWakeHub, PendingUpload } from './services/machines.js';
 import type { OAuthClientConfig, OAuthStateEntry } from './services/oauth.js';
+import type { SkillImportFetch } from './services/skill-import.js';
 
 export interface AppContext {
   db: Db;
@@ -48,6 +49,17 @@ export interface AppContext {
    *  SKILLS_DIR_DEFAULT `~/.agents/skills`，env PACMAN_SKILLS_DIR 覆写，
    *  config.ts 单源展开）。 */
   skillsDir: string;
+  /** 技能导入来源登记文件（#1170：数据根 skill-sources.json——refresh 重拉
+   *  的数据源；技能本体不入库，来源记录也不入 DB，见
+   *  services/skill-source-store.ts 头注）。 */
+  skillSourcesPath: string;
+  /** 技能导入 URL 分支出站注入位（#1170：api.github.com + raw 拉取；
+   *  缺省 = globalThis.fetch，测试注入 mock。与 githubFetch（repo picker
+   *  认证面）分位——出站域不同不共用）。 */
+  skillImportFetch?: SkillImportFetch;
+  /** 技能导入单请求超时（#1170：缺省 SKILL_IMPORT_FETCH_TIMEOUT_MS；
+   *  测试注入短超时钉 504 面）。 */
+  skillImportTimeoutMs?: number;
   /** SPA 静态同源托管根（02/A1；= apps/web/dist 产物目录）。null/缺省 =
    *  不托管（纯 API 形态，dev 期 vite proxy 用）。 */
   webDir?: string | null;

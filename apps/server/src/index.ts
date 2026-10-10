@@ -2,6 +2,7 @@
 // SPA 静态同源托管，02/A1——webDir 见 config.ts）。
 
 import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { serve } from '@hono/node-server';
 import { BRAND } from '@pacman/shared';
 import pino from 'pino';
@@ -64,6 +65,7 @@ const app = createApp(
     reposDir,
     attachmentsDir,
     skillsDir: config.skillsDir,
+    skillSourcesPath: join(config.dataDir, 'skill-sources.json'),
     webDir: config.webDir,
     authToken: config.authToken,
     mcpConfigPath: config.mcpConfigPath,

@@ -11,6 +11,7 @@ import {
   createScheduleBodySchema,
   createSkillBodySchema,
   githubReposResponseSchema,
+  importSkillBodySchema,
   PHASE_VALUES,
   patchMachineBodySchema,
   patchProviderBodySchema,
@@ -60,6 +61,7 @@ import {
 import { createSchedule, deleteSchedule, listSchedules } from './services/schedules.js';
 import { search } from './services/search.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './services/secrets.js';
+import { importSkill, refreshSkill, type SkillImportOpts } from './services/skill-import.js';
 import {
   createLocalSkill,
   listSkillFiles,
@@ -71,6 +73,17 @@ import {
 
 export function registerResourceRoutes(app: Hono, ctx: AppContext): void {
   const svc = svcOf(ctx);
+
+  /** #1170 导入/refresh 服务参数（两路由共用；出站注入位走 ctx 缝）。 */
+  const importOpts = (teamId: string): SkillImportOpts => ({
+    db: ctx.db,
+    skillsDir: ctx.skillsDir,
+    skillSourcesPath: ctx.skillSourcesPath,
+    teamId,
+    actor: { type: 'member', id: ctx.user.id },
+    fetch: ctx.skillImportFetch ?? globalThis.fetch,
+    ...(ctx.skillImportTimeoutMs !== undefined ? { timeoutMs: ctx.skillImportTimeoutMs } : {}),
+  });
 
   // —— 团队 MCP server 读面（spec 13/#368 本地 config 只读制：数据源 =
   // server 本机 ~/.claude.json 投影；管理写面 POST/PATCH/DELETE 已随登记制
@@ -272,6 +285,29 @@ export function registerResourceRoutes(app: Hono, ctx: AppContext): void {
     const content = readSkillFile(resolved.dir, fileName); // 逃逸/缺位 = null
     if (content === null) throw notFound(`file ${fileName}`);
     return c.json({ fileName, content }); // 封套 [推断]；文本投影
+  });
+
+  // POST /api/teams/{id}/skills/import（#1170）：导入通道——body {localPath}
+  // 或 {url} 二选一（本地目录 / GitHub 公共仓子目录）。收集与安全守卫在
+  // services/skill-import.ts（SSRF 固定 host 面 / realpath 归一 / 只读复制
+  // / 字节闸 / utf8 严格），落盘复用 createLocalSkill 全部既有校验 + 审计。
+  // → 201 record（与 POST /api/skills 同形）。
+  app.post('/api/teams/:id/skills/import', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(importSkillBodySchema, await jsonBody(c), 'body');
+    const record = await importSkill(importOpts(teamId), body);
+    return c.json(record, 201);
+  });
+
+  // POST /api/teams/{id}/skills/{sid}/refresh（#1170）：按登记来源重拉，技能
+  // id 不变（来源 frontmatter name 漂移 = 409 拒绝），复用 updateLocalSkill
+  // 覆写语义；无来源记录（手建技能）= 409 说明。→ 200 record。
+  app.post('/api/teams/:id/skills/:sid/refresh', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const record = await refreshSkill(importOpts(teamId), c.req.param('sid'));
+    return c.json(record);
   });
 
   // whats-new（词表内：形状保留、内容自选，02 §6.1 [设计]——记录 = whats_new
