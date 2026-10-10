@@ -53,8 +53,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { toast } from 'sonner';
-import { attachFile } from '../api/attachments.js';
 import { useMachines, useMembers, useProjects, useSkills, useTodos } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
@@ -88,7 +86,7 @@ import {
   RuntimeClaudeCode,
   RuntimePi,
 } from '../icons/index.js';
-import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
+import { uploadMessageAttachments } from '../overlay/attachment-paste.js';
 import { AttachmentStrip } from '../overlay/attachment-strip.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
@@ -320,27 +318,12 @@ function ChiefDrawerInner({
     })),
     machine: (machinesQ.data ?? []).map((m) => ({ id: m.id, label: m.name })),
   };
-  // #732：live 面的附件委托（todo-detail-page §#310 同款配方：逐文件 grant +
-  // upload scope 'message'，失败 toast 点名 + 成功 token 仍落；token 注入由
-  // wire hook 行原子做）。fixture 面无委托 → wire 附件链全惰。
+  // #732：live 面的附件委托——逐文件 grant + upload 循环 #1127 起收编进
+  // overlay/attachment-paste.js 的 uploadMessageAttachments（与详情页
+  // composer 同源：失败 toast 点名 + 成功 token 仍落、draft 不动；token
+  // 注入由 wire hook 行原子做）。fixture 面无委托 → wire 附件链全惰。
   const onAttachment =
-    onSend != null
-      ? async (files: File[]) => {
-          const tokens: string[] = [];
-          for (const file of files) {
-            try {
-              const r = await attachFile({ file, scope: 'message' });
-              tokens.push(r.token);
-            } catch (err) {
-              console.error('attachment failed', file.name, err);
-              toast.error(t(attachmentFailureTitle(err)), {
-                description: file.name,
-              });
-            }
-          }
-          return tokens;
-        }
-      : undefined;
+    onSend != null ? (files: File[]) => uploadMessageAttachments(files, t) : undefined;
   const [modelOpen, setModelOpen] = useState(false);
   // #651 → #1009 A1 滚动模型替换：真滚动容器 = MessageScroller Viewport
   // （data-testid chief-body 载体随迁；overflowY auto 面由原语承载），贴底

@@ -6,9 +6,11 @@
 // anchored: a token sharing its line with prose silently degrades to
 // literal text).
 //
-// Scope = pure functions + one small stateful counter, no JSX and no
-// fetching: the grant/upload chain stays in api/attachments.ts and the
-// surfaces keep owning their toasts and draft state.
+// Scope = pure functions + one small stateful counter, no JSX. #1127 扩界：
+// 逐文件 grant + upload + 失败 toast 的**循环配方**此前在 detail composer 与
+// chief drawer 两处复制（靠「同款配方」注释手工同步）——收编为本模块的
+// uploadMessageAttachments，toast 文案由调用面的 t 参数化（模块自身不进
+// i18n provider）；语义单源：失败 toast 点名 + 成功 token 仍落、draft 不动。
 //
 // Rulings honored here (issue #729):
 //  - tokens land at the captured caret, each on its own line; a paste at
@@ -21,7 +23,8 @@
 //  - a text-only paste extracts to the empty set and the handler never
 //    touches the event, so plain text pasting stays byte-identical.
 
-import { AttachmentError } from '../api/attachments.js';
+import { toast } from 'sonner';
+import { AttachmentError, attachFile } from '../api/attachments.js';
 
 /** Structural stand-in for DataTransfer so the extraction stays testable
  *  outside a DOM (the real clipboardData is assignable by shape). */
@@ -230,4 +233,27 @@ export function attachmentFailureTitle(err: unknown): string {
     if (err.reason === 'mime') return '不支持该文件类型';
   }
   return '附件上传失败';
+}
+
+/** #1127: 逐文件 grant + upload 循环（scope 'message'）的单源——detail
+ *  composer 与 chief drawer 共用。失败 toast 点名 + 成功文件的 token 仍落
+ *  （#729 失败方式 5/12 律：draft 一字不动）；t 参数化文案，模块不进
+ *  i18n provider。 */
+export async function uploadMessageAttachments(
+  files: File[],
+  t: (key: string) => string,
+): Promise<string[]> {
+  const tokens: string[] = [];
+  for (const file of files) {
+    try {
+      const r = await attachFile({ file, scope: 'message' });
+      tokens.push(r.token);
+    } catch (err) {
+      console.error('attachment failed', file.name, err);
+      toast.error(t(attachmentFailureTitle(err)), {
+        description: file.name,
+      });
+    }
+  }
+  return tokens;
 }
