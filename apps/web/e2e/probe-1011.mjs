@@ -132,22 +132,11 @@ async function probeFace(browser, face) {
 
   const r = { scenario, triggerName, dialogName };
 
-  // —— 相位 A：键盘导航压测（独立开面，记录后关面） ——
-  await openMenu();
-  const nav = [{ step: 'after-open(mouse)', ...(await active()) }];
-  await page.keyboard.press('Tab');
-  nav.push({ step: 'tab-1', ...(await active()) });
-  await page.keyboard.press('Tab');
-  nav.push({ step: 'tab-2', ...(await active()) });
-  await page.keyboard.press('Shift+Tab');
-  nav.push({ step: 'shift-tab', ...(await active()) });
-  nav.push({ step: 'menu-still-open', open: await menu.count() });
-  r.nav = nav;
-  await page.keyboard.press('Escape');
-  await menu.waitFor({ state: 'detached' });
-  await page.waitForTimeout(200);
-
-  // —— 相位 B：环渲染实测 ——
+  // —— 相位 A：环渲染实测。必须先于本 context 内任何键盘输入：基线帧要鼠标
+  //    模态（开面零环）。旧序把导航压测放前面，压测的 Tab/Escape 把输入模态
+  //    留在键盘，第二次开面的容器程序焦点命中 :focus-visible 吃环——基线帧
+  //    带环，base-vs-focused 的 diff 归因全错（#1095 实测踩到）。导航压测移
+  //    到相位 B，顺带拍键盘模态开面的容器环帧。 ——
   await openMenu();
   // 基线帧：开面即拍——此刻焦点在清单容器但输入模态是鼠标，:focus-visible
   // 不命中，全菜单零环。
@@ -267,6 +256,33 @@ async function probeFace(browser, face) {
     height: g.row.h + 16,
   };
   writeFileSync(join(OUT, `${key}-row1-left-edge-zoom.png`), await page.screenshot({ clip: zoomClip }));
+
+  // —— 相位 B：键盘导航压测（第二次开面；此刻输入模态已是键盘，开面时容器
+  //    程序焦点命中 :focus-visible——顺带拍容器环帧，#1095 附带修的容器焦点
+  //    配方（UA 蓝环 → 仓内 --focus-ring 内描）的证据帧就是它）。 ——
+  await page.keyboard.press('Escape');
+  await menu.waitFor({ state: 'detached' });
+  await page.waitForTimeout(200);
+  // 键盘开面（focus + Enter，不用 openMenu 的鼠标 click）：鼠标 click 会把
+  // 输入模态拉回 mouse，容器程序焦点就不命中 :focus-visible，容器环帧拍不到
+  // （#1095 实测：两面一真一假）。键盘路径下触发钮先 focus-visible，程序焦点
+  // 移进容器按「前一焦点有环则继环」启发式必命中。
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  await menu.waitFor({ state: 'visible' });
+  await menu.evaluate((el) =>
+    Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
+  );
+  writeFileSync(join(OUT, `${key}-container-focus-ring.png`), await page.screenshot({ clip }));
+  const nav = [{ step: 'after-open(keyboard-modality)', ...(await active()) }];
+  await page.keyboard.press('Tab');
+  nav.push({ step: 'tab-1', ...(await active()) });
+  await page.keyboard.press('Tab');
+  nav.push({ step: 'tab-2', ...(await active()) });
+  await page.keyboard.press('Shift+Tab');
+  nav.push({ step: 'shift-tab', ...(await active()) });
+  nav.push({ step: 'menu-still-open', open: await menu.count() });
+  r.nav = nav;
 
   // —— 相位 C：阳性对照（触发钮环，弹层外无裁剪祖先） ——
   await page.keyboard.press('Escape');

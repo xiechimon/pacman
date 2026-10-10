@@ -21,12 +21,14 @@ import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { MENU_ARROW_LEFT_CLS, MENU_SHELL_CLS } from './recipes.js';
 
-/** r5 108 行形的皮肤组（#950 清零后 = token utility，旧 .chief-model-pick-*
- *  族等值：纵向 7px + 横向 20px（#872 壳垫 12 + 本面墨衬 8）/ gap 8 /
+/** r5 108 行形的皮肤组（#950 清零后 = token utility：纵向 7px / gap 8 /
  *  name 13px 截断 / provider 11px tertiary）；比压缩弹层面多一层 col 列
- *  容器（名 + 副题纵排）。 */
+ *  容器（名 + 副题纵排）。横向内衬 #1095 起 = 12px（px-3）：与设置面行、
+ *  HOST_ROW_BTN_CLS、仓内菜单行族同档统一（旧值 20px = #872 壳垫 12 + 本面
+ *  墨衬 8 的叠加分解随壳垫清零作废；取值 12 是产品裁决，票面建议、PR 点名
+ *  可否决）。行形观感不随缩进变档：13px 名 + 11px 副题 + 7px 纵衬原样。 */
 const ROW_SKIN: ModelRowSkin = {
-  row: 'h-auto gap-2 px-5 py-[7px]',
+  row: 'h-auto gap-2 px-3 py-[7px]',
   col: 'flex min-w-0 flex-auto flex-col',
   name: 'truncate text-[13px] text-(--foreground)',
   provider: 'text-[11px] text-(--text-tertiary)',
