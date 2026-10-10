@@ -716,6 +716,14 @@ export async function runStep(
     // （undefined = 全量 catalog，chief 是信任面）；旧 server 未携带 = 缺省
     // 直通（零回归）。过滤落点 = backend catalog 构建（backend/pi.ts）。
     ...(isChief || agent.skills === undefined ? {} : { skillsAllowlist: agent.skills }),
+    // #1106 派发技能注入选择：claim 载荷 agent.injectedSkills（server 按任务
+    // 文本对授予集规则选出，ids ⊆ skills）。在位（含 []）= 目录注入按本集
+    // 收窄（backend catalog 构建，同 skillsAllowlist 落点）；[] = 已计算零命中
+    // （零注入不是故障）。chief 步不携带；旧 server 未携带 = 缺省回落白名单
+    // 全量（零回归）。deny 面（#917）不受本字段影响——仍吃 skillsAllowlist。
+    ...(isChief || agent.injectedSkills === undefined
+      ? {}
+      : { injectedSkills: agent.injectedSkills }),
     // 团队技能物化目录（XMON-112 S2）：backend 把它排在本机 skillsDir 之前
     // 扫描（同名冲突团队条目胜，pi first-wins）；null = 纯本机（零回归）。
     ...(teamSkillsDir !== null ? { teamSkillsDir } : {}),

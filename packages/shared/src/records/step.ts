@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import { skillFactSchema } from '../skill-facts.js';
+import { skillInjectionSchema } from '../skill-inject.js';
 import { epochMs, recordId } from './common.js';
 
 /** 三类步（02 §4.2 中文语义名的 wire 投影 [推断]）+ `chief`（M4a [设计]：
@@ -48,10 +49,15 @@ export type StepStatus = z.infer<typeof stepStatusSchema>;
 
 /** steps 读面/会话流 step 事件行 = record + journal 位透出 [设计]（M5 详情
  * 面进度行/分支 dialog 目标提交数据源；stepRecordSchema 最小投影不含 =
- * zod strip 下 record 对拍不漂移）。server/web 双端单源。 */
+ * zod strip 下 record 对拍不漂移）。server/web 双端单源。
+ * #1106 注入选择记录位：worker 步 claim 时服务端对「任务文本 × 授予技能
+ * 目录」做规则选择，结果（含每条命中的规则与原因）随 claim 落本列——
+ * 任务详情面据此回查「本任务注入了哪些技能、为何选中」。null = 未计算
+ * （chief 步 / 旧数据）；{ hits: [] } = 已计算零命中（配置事实非故障）。 */
 export const stepJournalRowSchema = stepRecordSchema.extend({
   status: stepStatusSchema,
   checkpointCommit: recordId.nullable(),
+  skillInjection: skillInjectionSchema.nullable(),
 });
 export type StepJournalRow = z.infer<typeof stepJournalRowSchema>;
 

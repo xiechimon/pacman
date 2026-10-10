@@ -492,6 +492,10 @@ export const EN: Record<string, string> = {
   '✕ skill: {n}（已挡下）': '✕ skill: {n} (blocked)',
   '技能：{n}': 'Skills: {n}',
   '挡下：{n}': 'Blocked: {n}',
+  // #1106 dispatch skill injection: detail-face lookup row (reasons ride as
+  // server data, not t() keys — same law as note #634).
+  '注入技能：': 'Injected skills: ',
+  '未注入技能（任务文本未命中任何技能）': 'No skills injected (task text matched none)',
   已取消: 'Cancelled',
   [PROBE_TOOL_CALL_LABEL]: `Calling tool: ${PROBE_TOOL_PILLS[1]}`,
   '方案 · v1': 'Plan · v1',

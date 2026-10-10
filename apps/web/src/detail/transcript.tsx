@@ -354,6 +354,31 @@ function Row({
           {t('由定时发起')}
         </div>
       );
+    case 'injected-skills':
+      // #1106 注入选择回查行（note 同视觉族，居中 tertiary 小字）：每技能
+      // 一段 `id（原因）`，零命中 = 单行「未注入」占位。独立 testid 供
+      // 探针定位；原因 = 服务端 reason 原文（数据，不走 t()——同 note 的
+      // #634 例外：t() 只管 label 模板）。
+      return (
+        <div
+          className="chat-note mx-auto mt-3.5 flex max-w-[68ch] flex-wrap items-baseline justify-center gap-x-1.5 text-center text-xs leading-4 text-(--text-tertiary)"
+          data-testid="injected-skills"
+        >
+          {item.skills.length > 0 ? (
+            <>
+              <span>{t('注入技能：')}</span>
+              {item.skills.map((s) => (
+                <span key={s.id} className="[overflow-wrap:anywhere]">
+                  {s.id}
+                  <span className="text-(--text-tertiary)">（{s.reason}）</span>
+                </span>
+              ))}
+            </>
+          ) : (
+            <span>{t('未注入技能（任务文本未命中任何技能）')}</span>
+          )}
+        </div>
+      );
     case 'chief':
       return (
         <div className={`${ROW_BASE} chat-row--chief ${margin}`}>

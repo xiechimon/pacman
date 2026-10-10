@@ -55,6 +55,7 @@ function stepRow(
     createdAt: 1,
     status,
     checkpointCommit: null,
+    skillInjection: null,
   };
 }
 

@@ -55,6 +55,7 @@ function step(status: StepJournalRow['status'], kind: StepJournalRow['kind'] = '
     createdAt: NOW - 30_000,
     status,
     checkpointCommit: null,
+    skillInjection: null,
   };
 }
 
