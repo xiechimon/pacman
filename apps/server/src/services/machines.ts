@@ -59,7 +59,7 @@ import {
   WORKER_REMOTE_TOOLS,
   WORKER_REMOTE_TOOLS_GITHUB,
 } from '@pacman/shared';
-import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
   agent,
@@ -644,6 +644,8 @@ export function markPresence(
   db.update(machine)
     .set({
       online: true,
+      // #1136：陈旧判定的真值源——每拍覆写（sweepStaleMachines 见下方）。
+      lastSeenAt: nowMs(),
       ...(body.cliVersion !== undefined ? { latestCliVersion: body.cliVersion } : {}),
       ...(body.claudeCode !== undefined ? { claudeCodeReport: body.claudeCode } : {}),
     })
@@ -655,12 +657,65 @@ export function markPresence(
   }
 }
 
-export function markOffline(deps: MachineDeps, machineId: string): void {
+/** 窄位形（db + hub）：SSE abort（routes-machine 全量 deps）与陈旧扫掠
+ * （scheduler 的 BuildDeps）两调用方都只消费这两位。 */
+export function markOffline(deps: Pick<MachineDeps, 'db' | 'hub'>, machineId: string): void {
   const { db, hub } = deps;
   const row = db.select().from(machine).where(eq(machine.id, machineId)).get();
   if (!row?.online) return;
   db.update(machine).set({ online: false }).where(eq(machine.id, machineId)).run();
   hub.publish(row.teamId, () => ({ type: 'machine_presence', machineId, online: false }));
+}
+
+// —— #1136 机器行陈旧判定（静默死机的第二真值源）—————————————————————————
+
+/** 在线机器的 lastSeenAt 陈旧阈值。推导（票 #1136 阈值纪律 + Multica 同款
+ * 口径 r10 §5.2）：健康机器的 lastSeenAt 最坏年龄 = presence 节拍 30s +
+ * 网络抖动/事件循环停顿；再叠 tick 检测延迟不影响年龄只影响检出时刻。
+ * 150s ≈ 5× 节拍，且与 Multica `RuntimeClaimFreshnessSeconds`（150s，
+ * task.go:189，含 105s 最坏年龄推导注释）同数——proven 形状不自造新节奏。
+ * 误杀比漏杀贵：闪断翻 offline 会让会话亲和闸放行换机（丢会话，
+ * tryClaim 的 ownerRow.online 判定），这里给足余量；检出延迟 =
+ * 阈值 + ≤1 tick（15s）≈ 3 分钟量级，与 Multica 文档口径（「约 3 分钟」）
+ * 一致。别拍 30s——那是把节拍当故障。 */
+export const MACHINE_STALE_OFFLINE_MS = 150_000;
+
+/** 陈旧扫掠：在线且 lastSeenAt 超 MACHINE_STALE_OFFLINE_MS 未更新的机器 →
+ * markOffline（与 SSE abort 同一漏斗，事件面/幂等共享）。scheduler tick 驱动
+ * （与三个步扫尾同拍，先于它们跑——同 tick 翻 offline，步的离线判据立即可
+ * 见；调度侧不传 tick 的合成 now——见 scheduler.ts 的钟面注释）。纪律（票
+ * #1136 风险面）：
+ * - **只翻 online、不动步**：钉选宽限/释放/扫尾（#862/#864/#881 的
+ *   「有界等待」家族）以 machine.online 为前提、各有自己的判据与宽限，本
+ *   sweep 只负责让前提为真，不越权释放。
+ * - **lastSeenAt NULL 不判**（升级前存量行）：无数据不翻，下一拍 presence
+ *   （≤30s）补齐——升级部署零误杀窗口。
+ * - **闪断恢复窗口 = 阈值本身**：健康 presence 永不过阈（30s ≪ 150s），翻
+ *   回在线走 markPresence 既有 becameOnline 路径，不新增事件形态；阈值内
+ *   的网络抖动静默吸收（offline/online 事件只对真 ≥150s 中断发出）。
+ * - 静默死机（断电/分区/拔线，无 FIN）正是 SSE abort 抓不住的形态——本
+ *   sweep 是 online 翻转的第二真值源，#861「步永久 claimed」的最后残余
+ *   入口。多实例同库各自扫：markOffline 幂等（再读再判），重复事件对 UI
+ *   无害（同态幂等）。 */
+export function sweepStaleMachines(
+  deps: Pick<MachineDeps, 'db' | 'hub'>,
+  now: number = nowMs(),
+): void {
+  const { db } = deps;
+  const stale = db
+    .select({ id: machine.id })
+    .from(machine)
+    .where(
+      and(
+        eq(machine.online, true),
+        isNotNull(machine.lastSeenAt),
+        lt(machine.lastSeenAt, now - MACHINE_STALE_OFFLINE_MS),
+      ),
+    )
+    .all();
+  for (const row of stale) {
+    markOffline(deps, row.id);
+  }
 }
 
 // —— recover（02 §5.4 步 journal 恢复的 server 侧真值）————————————————————————

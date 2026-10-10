@@ -232,6 +232,13 @@
       "when": 1791596758278,
       "tag": "0032_perfect_bushwacker",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1791617953233,
+      "tag": "0033_messy_cyclops",
+      "breakpoints": true
     }
   ]
 }
