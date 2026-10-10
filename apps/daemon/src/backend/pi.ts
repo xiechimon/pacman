@@ -442,10 +442,17 @@ function headerOf(title: string): string {
 // catalog 是索引不全文：token 预算只与 catalog 长度线性相关，skill 全文由
 // agent 按 description 匹配时经 read 工具（location 绝对路径）按需加载。
 
-/** catalog 总数闸（spec 14：catalog 不能无限增长；阈值 lane 内定 50）。 */
-export const SKILLS_CATALOG_CAP = 50;
-/** 单 description 截断闸（spec 14：200 字符 + 末尾 `…`）。 */
-export const SKILL_DESCRIPTION_CAP = 200;
+/** catalog 字节预算（#1116，2026-10-10 用户裁决：口径 (b) 字节预算 + (c) 按
+ * agent 绑定，替除旧「机器范围全集 + 50 条盲切」）。可见集由绑定面决定
+ * （#372 allowlist ∩ #1106 注入选择；chief = 信任面全量），本预算只作 prompt
+ * 膨胀的兜底闸：按 UTF-8 字节计（CJK 诚实，不用 .length 低估 3 倍），超限
+ * 按优先序（绑定序 → 团队目录在前的扫描序）从尾部丢弃并显式点名（日志
+ * `budget:` 行 + 目录尾 `<omitted_skills>` 段，agent 与用户都看得见丢了谁），
+ * 不再静默盲切。1 MiB 对齐参照产品 Multica pack-archive 的
+ * MAX_SKILL_FILE_BYTES（packages/core/skills/pack-archive.ts——catalog 本身
+ * 是一份文本工件，取其单文件档；8 MiB/包与 256 文件/包档归物理分发面
+ * （#920 清单 + 按需拉，有意不设整包闸），不由本闸承担）。 */
+export const SKILLS_CATALOG_BUDGET_BYTES = 1 << 20;
 
 /** 保证不存在的 pi 默认 agentDir（spec 14：强制 loadSkills 跳过 user 级默认
  * 扫描——includeDefaults:false 下 agentDir 仅参与 source 标注，传不存在路径
@@ -484,9 +491,13 @@ export interface SkillsCatalogOpts {
   injectedSkills?: string[];
   /** 团队技能物化目录（XMON-112 S2，spec 14 增补）：排在本机 skillsDir 之前
    * 扫描——pi loadSkills first-wins（先进 Map 者为 winner），同名冲突团队条目
-   * 胜、本机影子进 collision 诊断行（loser）。cap 闸对合并后序列生效，团队
-   * 条目优先占据 cap 名额。缺省 = 纯本机扫描（输出与旧行为逐字节等价）。 */
+   * 胜、本机影子进 collision 诊断行（loser）。字节预算对合并后序列生效，团队
+   * 条目居扫描序前端（优先序高档）。缺省 = 纯本机扫描（输出与旧行为逐字节
+   * 等价）。 */
   teamSkillsDir?: string;
+  /** catalog 字节预算覆写（#1116 测试注入面 [设计]；缺省 =
+   * SKILLS_CATALOG_BUDGET_BYTES）。 */
+  budgetBytes?: number;
   /** `[skills] <type>: <msg>` 诊断行出口（machine-loop 接 logger.skills）。 */
   log?: (msg: string) => void;
 }
@@ -508,9 +519,61 @@ function scanSessionSkills(
   });
 }
 
+/** 两条 collision 文件内容逐字节相同 = 纯镜像（单机 server skillsDir 与
+ * daemon skillsDir 指同一棵库的常见形：物化视图与本机目录互为副本）。读失败
+ * 按不同处理（回落逐条行，不吞诊断）。 */
+function isIdenticalMirror(winnerPath: string, loserPath: string): boolean {
+  try {
+    return readFileSync(winnerPath).equals(readFileSync(loserPath));
+  } catch {
+    return false;
+  }
+}
+
+/** 绑定序收编（#1116 优先序）：注入选择在位 = 选择序，其次白名单序（用户
+ * 勾选/置顶的操作面——数组顺序即优先级），缺省 = 扫描序（团队目录在前）。
+ * 名单内未知 slug 无对应 skill，天然静默跳过（#367 容忍语义）。 */
+function orderSkillsByBinding(skills: Skill[], order: readonly string[] | undefined): Skill[] {
+  if (order === undefined) return skills;
+  const byName = new Map(skills.map((s) => [s.name, s]));
+  return order.flatMap((id) => {
+    const s = byName.get(id);
+    return s === undefined ? [] : [s];
+  });
+}
+
+/** 按字节预算装填：保留优先序前缀（二分找最大 k——目录字节数随条目数单调
+ * 递增，log2(n) 次 render），尾部（最低优先）丢弃。预算装不下表头+首条 = 全
+ * 丢（k=0 恒合法：空目录 render 为 0 字节）。 */
+function fitSkillsToBudget(
+  skills: Skill[],
+  budgetBytes: number,
+): { kept: Skill[]; dropped: Skill[]; totalBytes: number } {
+  const bytes = (n: number): number =>
+    Buffer.byteLength(formatSkillsForPrompt(skills.slice(0, n), 'read'), 'utf8');
+  let lo = 0; // 恒合法（空 = 0 字节 ≤ 预算）
+  let hi = skills.length; // 合法上界候选（超预算则收缩）
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2); // 取上中位：mid > lo 保证前进
+    if (bytes(mid) <= budgetBytes) lo = mid;
+    else hi = mid - 1;
+  }
+  const totalBytes = bytes(skills.length);
+  return { kept: skills.slice(0, lo), dropped: skills.slice(lo), totalBytes };
+}
+
+/** 超预算丢名清单（日志 + 目录尾段共用）：名字集上限 100——极端库的丢名
+ * 本身不该再把日志/note 撑爆；超出部分收进「+N more」。 */
+function listDroppedNames(dropped: readonly Skill[]): string {
+  const names = dropped.map((s) => s.name);
+  return names.length <= 100
+    ? names.join(', ')
+    : `${names.slice(0, 100).join(', ')} +${names.length - 100} more`;
+}
+
 /** 扫描 skills 目录 → `<available_skills>` catalog XML 串（空串 = 无可注入
  * skills）。loadSkills 抛错（权限等）降级空集 + invalid 行，不阻断会话创建
- * （spec 14 Premortem 护栏）。 */
+ * （spec 14 Premortem 护栏）。预算语义见 SKILLS_CATALOG_BUDGET_BYTES。 */
 export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
   const log = opts.log;
   let skills: Skill[];
@@ -521,10 +584,21 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
     diagnostics = result.diagnostics;
   } catch (err) {
     log?.(`invalid: ${err instanceof Error ? err.message : String(err)}`);
-    log?.('catalog: entries=0 chars=0');
+    log?.('catalog: entries=0 chars=0 bytes=0');
     return '';
   }
+  // collision 降噪（#1116 ②）：identical mirror（团队物化视图 = 本机同库副本）
+  // 归并为一行汇总——逐条行只留给内容真冲突（团队版覆盖本机版是真信号）。
+  let identicalMirrors = 0;
   for (const d of diagnostics) {
+    if (
+      d.type === 'collision' &&
+      d.collision !== undefined &&
+      isIdenticalMirror(d.collision.winnerPath, d.collision.loserPath)
+    ) {
+      identicalMirrors++;
+      continue;
+    }
     const where =
       d.collision !== undefined
         ? ` (winner=${d.collision.winnerPath} loser=${d.collision.loserPath})`
@@ -533,9 +607,15 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
           : '';
     log?.(`${classifySkillDiagnostic(d)}: ${d.message}${where}`);
   }
-  // per-agent 白名单过滤（#372）：先于 cap 闸——白名单是授权语义（谁能进
-  // catalog），cap 是预算语义（进者截顶）；顺序颠倒会让目录总量把授权条目
-  // 挤掉。名单内未知 slug 无对应 skill，天然静默跳过（#367 容忍语义）。
+  if (identicalMirrors > 0) {
+    log?.(
+      `collision: ${identicalMirrors} identical mirror(s) deduped (team view wins; ` +
+        `budget counts the merged set once)`,
+    );
+  }
+  // per-agent 白名单过滤（#372）：先于预算闸——白名单是授权语义（谁能进
+  // catalog），预算是成本语义（进者兜底截顶）；顺序颠倒会让目录总量把授权
+  // 条目挤掉。
   if (opts.allowlist !== undefined) {
     const allowed = new Set(opts.allowlist);
     const kept: Skill[] = [];
@@ -546,10 +626,8 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
     skills = kept;
   }
   // #1106 注入选择收窄：选择在位 = 目录按选择集再收窄（与 allowlist 过滤
-  // 叠加即求交——选择不越授权）；选中条目全文进目录（200 字闸只对「全量
-  // 目录 = 预算面」负责，选择集是任务相关性面，噪声已由 server 选择控制）。
+  // 叠加即求交——选择不越授权）。
   const injected = opts.injectedSkills;
-  let fullDescription = false;
   if (injected !== undefined) {
     const selected = new Set(injected);
     const kept: Skill[] = [];
@@ -558,17 +636,28 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
       else log?.(`filtered: ${s.name} not in injected selection`);
     }
     skills = kept;
-    fullDescription = true;
   }
-  if (skills.length > SKILLS_CATALOG_CAP) {
-    log?.(`cap: total=${skills.length} truncated=${SKILLS_CATALOG_CAP}`);
-    skills = skills.slice(0, SKILLS_CATALOG_CAP);
+  // 优先序 = 绑定序（注入选择序 > 白名单序 > 扫描序）——超预算时尾部先丢，
+  // 排序/置顶的操作面 = 调整绑定数组顺序（#1116 ①）。
+  skills = orderSkillsByBinding(skills, injected ?? opts.allowlist);
+  // 字节预算兜底（#1116）：替换旧 50 条盲切。disableModelInvocation 条目
+  // formatSkillsForPrompt 本就不渲染——预筛出预算集，装填数学才诚实
+  // （它们不占预算、不进丢名清单）。
+  const budgetable = skills.filter((s) => !s.disableModelInvocation);
+  const budget = opts.budgetBytes ?? SKILLS_CATALOG_BUDGET_BYTES;
+  const { kept, dropped, totalBytes } = fitSkillsToBudget(budgetable, budget);
+  let catalog = formatSkillsForPrompt(kept, 'read');
+  if (dropped.length > 0) {
+    const names = listDroppedNames(dropped);
+    log?.(`budget: total=${totalBytes} budget=${budget} dropped=${dropped.length}: ${names}`);
+    // 非静默信号（#1116 ①）：被丢技能在目录尾点名——agent 自己也看得见
+    // 「哪些技能存在但没进清单」，用户侧出口 = 上方日志行。note 本身不吃
+    // 预算（它是信号不是载荷，长度由丢名清单上限约束）。
+    catalog +=
+      `\n\n<omitted_skills reason="byte-budget" budget="${budget}">\n` +
+      `The following skills exist but were omitted from the catalog to fit the byte budget: ${names}\n` +
+      `</omitted_skills>`;
   }
-  skills = skills.map((s) => {
-    if (fullDescription || s.description.length <= SKILL_DESCRIPTION_CAP) return s;
-    log?.(`cap: description truncated for ${s.name}`);
-    return { ...s, description: `${s.description.slice(0, SKILL_DESCRIPTION_CAP)}…` };
-  });
   if (skills.length > 0) {
     log?.(
       opts.teamSkillsDir !== undefined
@@ -576,10 +665,12 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
         : `loaded: ${skills.length} skills from ${opts.skillsDir}`,
     );
   }
-  const catalog = formatSkillsForPrompt(skills, 'read');
   // 观测信号（#917 口径 5）：目录条数/字节数每次构造都落行——entries=0 也落，
-  // 「注入了多少」不靠 loaded 行的在位与否反推。
-  log?.(`catalog: entries=${skills.length} chars=${catalog.length}`);
+  // 「注入了多少」不靠 loaded 行的在位与否反推。#1116 起补 bytes 位（预算
+  // 口径 = UTF-8 字节，与 chars 分开报）。
+  log?.(
+    `catalog: entries=${kept.length} chars=${catalog.length} bytes=${Buffer.byteLength(catalog, 'utf8')}`,
+  );
   return catalog;
 }
 

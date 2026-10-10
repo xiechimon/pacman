@@ -327,7 +327,7 @@ describe('buildClaudeSdkOptions（spec 14 §裁决后的范围 1/2：settingSour
 // —— catalog 观测行（失败方式 10）———————————————————————————————
 
 describe('[skills] catalog 观测行（#917 口径 5：目录条数 = 明确信号）', () => {
-  test('每次构造都落 catalog: entries=<N> chars=<C>，entries=0 也落', () => {
+  test('每次构造都落 catalog: entries=<N> chars=<C> bytes=<B>，entries=0 也落', () => {
     const root = fixtureRoot('observe');
     writeSkill(root, 'alpha');
     const logsFull: string[] = [];
@@ -336,7 +336,9 @@ describe('[skills] catalog 观测行（#917 口径 5：目录条数 = 明确信�
       cwd: tmpdir(),
       log: (m) => logsFull.push(m),
     });
-    expect(logsFull).toContain(`catalog: entries=1 chars=${catalog.length}`);
+    expect(logsFull).toContain(
+      `catalog: entries=1 chars=${catalog.length} bytes=${Buffer.byteLength(catalog, 'utf8')}`,
+    );
 
     // 空白名单 → entries=0：loaded 行缺席但 catalog 行必须在（信号无洞）。
     const logsZero: string[] = [];
@@ -346,6 +348,6 @@ describe('[skills] catalog 观测行（#917 口径 5：目录条数 = 明确信�
       allowlist: [],
       log: (m) => logsZero.push(m),
     });
-    expect(logsZero).toContain('catalog: entries=0 chars=0');
+    expect(logsZero).toContain('catalog: entries=0 chars=0 bytes=0');
   });
 });
