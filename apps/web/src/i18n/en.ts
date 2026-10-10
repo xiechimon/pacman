@@ -379,8 +379,11 @@ export const EN: Record<string, string> = {
   目标分支: 'Target branch',
   危险操作: 'Danger zone',
   删除项目: 'Delete project',
-  '将永久删除所有任务与执行记录，此操作不可恢复。':
-    'Permanently deletes all todos and run records. This cannot be undone.',
+  // #1174：删除卡文案列真级联（正本 = server services/projects.ts 清图序：
+  // step/build → schedule → tag → todo → 托管 bare repo 磁盘面；技能不入库
+  // 亦不按项目授权，不在级联）。
+  '删除项目将级联删除其下所有任务、构建历史、定时任务、标签与托管仓库文件，此操作不可恢复。':
+    'Deleting the project cascade-deletes all its tasks, build history, schedules, tags, and hosted repository files. This cannot be undone.',
   // #207 确认弹层(r2 24d): 标题镜像删除任务句,确认输入行 {name} = 项目名。
   '确定删除该项目？此操作不可撤销。': 'Delete this project? This cannot be undone.',
   '输入 {name} 以确认删除': 'Type {name} to confirm deletion.',

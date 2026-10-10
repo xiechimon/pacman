@@ -10,8 +10,14 @@ import { expect, type Page, test } from '@playwright/test';
 //    后仍禁用(流程死锁)。
 // 4. 确认后不跳 /app,或跳走后侧栏项目行仍在(列表未消;fixture 删除覆面
 //    = #66 deletions 同律,reload 还原)。
+// 5. (#1174) 入口断链 — 设置路由自 #207 起带全套删除流,但曾全站无导航
+//    指向(孤儿路由;票面实撞场景 = 删项目只能猜 API)。项目页 topbar 右缘
+//    齿轮(形态 = todos.dev 项目页实测:右缘动作区 aria-label 设置)补上入
+//    口;钉齿轮在场 → 点击落 /settings(scenario query 随行,丢了 fixture
+//    面即破) → 危险区在场。
 
 const SETTINGS = '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings?scenario=r2-24c';
+const PROJECT_PAGE = '/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=r2-24c';
 const PROJECT_NAME = 'r3-lifecycle';
 // 侧栏项目行 = board 域跨域别名（#943 面），href 语义位已足——类名段摘除。
 const PROJECT_ROW = 'a[href*="/app/project/ZAQczKCu0MOAzC1ZqcFlX"]';
@@ -25,6 +31,13 @@ async function openConfirm(page: Page) {
   await expect(dialog).toBeVisible();
   return dialog;
 }
+
+test('project topbar gear reaches the settings danger zone (#1174 entry)', async ({ page }) => {
+  await page.goto(PROJECT_PAGE);
+  await page.getByRole('link', { name: '设置', exact: true }).click();
+  await expect(page).toHaveURL(SETTINGS);
+  await expect(page.getByText('危险操作')).toHaveText('危险操作');
+});
 
 test('danger card renders and opens the project delete confirm', async ({ page }) => {
   await page.goto(SETTINGS);

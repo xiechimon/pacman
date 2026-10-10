@@ -74,6 +74,7 @@ import {
   ListLines,
   PlusSmall,
   Search,
+  Settings,
   X,
 } from '../icons/index.js';
 import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
@@ -1020,6 +1021,25 @@ export function ProjectPage() {
       ]}
       tab={tab}
       onTab={(next) => setTab(next === 'tasks' ? 'tasks' : 'files')}
+      action={
+        id === undefined ? undefined : (
+          // #1174 设置入口：/app/project/:id/settings 自 #207 起带全套删除流，
+          // 但全站没有任何导航指向它——孤儿路由，删项目只能猜 API（票面实撞
+          // 场景）。形态 = todos.dev 项目页实测（ego-browser 2026-10-10）：
+          // topbar 右缘动作区齿轮（28×28 命中 / 16px lucide settings 形）→
+          // 设置路由；search 随行保 fixture scenario（team-page 设置链同律）。
+          // registry ghost icon-sm 钮经 render prop 落 router Link（dhead 返回
+          // 钮同款 #1006 形态，锚语义保留）；零手写 per-face。
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            render={<Link to={{ pathname: `/app/project/${id}/settings`, search }} />}
+            aria-label={t('设置')}
+          >
+            <Settings />
+          </Button>
+        )
+      }
     >
       {tab === 'files' && isLocalRepo && treeQ.isError ? (
         // local 仓不可达降级（#1030）：tree 读失败 = server 看不到 localPath
