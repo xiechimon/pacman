@@ -1,0 +1,82 @@
+<mxfile host="app.diagrams.net" agent="claude" version="24.0.0">
+  <diagram id="routes-split" name="routes-split">
+    <mxGraphModel dx="900" dy="620" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="640" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="beforeT" value="Before — one file, every domain" style="text;html=1;align=center;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="330" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="beforeBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;verticalAlign=top;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="30" y="52" width="330" height="460" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="routes.ts · 1985 lines" style="text;html=1;align=left;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="46" y="62" width="300" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="104 route registrations + /api/* cookie middleware + one svc bundle + 13 module-level helpers, all interleaved" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="46" y="92" width="298" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="mixed in registration order: auth+teams+SSE · projects+tags+github-import+fs · todos · builds+plans/changes/usage · chief · conversations · agents+memories · attachments · providers+oauth+secrets+api-keys+skills+schedules · mcp · git CGI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="46" y="164" width="298" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" value="collision magnet — 53 commits in 30 days; every parallel lane touching any web endpoint edits this one file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="46" y="308" width="298" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="b5" value="routes-machine.ts (wire face, 02 §5) already split since M3 — the precedent this PR follows" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="46" y="392" width="298" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="afterT" value="After — thin composer + 11 domain modules" style="text;html=1;align=center;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="370" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" value="routes.ts · 42 lines — registerRoutes() = 11 register calls in fixed order (core first: its /api/* cookie middleware must register before every /api handler)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#334155;fontSize=11;fontStyle=1;verticalAlign=top;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="500" y="52" width="370" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="11 domain modules — each exports register&lt;Domain&gt;Routes(app, ctx), routes-machine.ts pattern; counts = registrations moved" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;verticalAlign=top;spacing=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="500" y="132" width="370" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="m1" value="routes-core.ts · 16" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="512" y="164" width="172" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m2" value="routes-projects.ts · 19" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="692" y="164" width="166" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m3" value="routes-todos.ts · 8" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="512" y="196" width="172" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m4" value="routes-builds.ts · 12" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="692" y="196" width="166" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m5" value="routes-chief.ts · 7" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="512" y="228" width="172" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m6" value="routes-conversations.ts · 3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="692" y="228" width="166" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m7" value="routes-agents.ts · 8" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="512" y="260" width="172" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m8" value="routes-attachments.ts · 3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="692" y="260" width="166" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m9" value="routes-resources.ts · 26" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="512" y="292" width="172" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m10" value="routes-mcp.ts · 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="692" y="292" width="166" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="m11" value="routes-git-hosting.ts · 1 (own auth realm — ticket's first-ship cut)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="512" y="324" width="346" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="routes-helpers.ts — requireTeam / requireProject / requireAgentRow · row mappers · jsonBody · requestOrigin · verifyGitBasicAuth · svcOf (the svc bundle builder)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=11;verticalAlign=top;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="500" y="388" width="370" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" value="equivalence proofs: wire.test.ts zero edits, 26/26 · route table 129 = 129 rows, set identical, middleware-first and mcp/git-last order held · full server suite 861/861 · routes-machine.ts untouched" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontSize=11;verticalAlign=top;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="500" y="460" width="370" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow1" value="split #1125" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#334155;fontSize=11;fontStyle=1;" edge="1" parent="1" source="beforeBox" target="a1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
