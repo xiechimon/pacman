@@ -20,13 +20,19 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { useNewTaskHotkey } from '../overlays/hotkeys.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
+import { safeLocalStorage, safeSetItem } from '../safe-storage.js';
 import { attentionCount } from './columns.js';
 import { BoardSidebar, type SidebarProject, type SidebarSelected } from './sidebar.js';
 
 export const SIDEBAR_STORAGE_KEY = 'pacman.sidebar-collapsed'; // mirrored in e2e (sidebar-nav / collapse-family specs)
 
-function readCollapsed(storage: Storage): boolean {
-  return storage.getItem(SIDEBAR_STORAGE_KEY) === '1';
+function readCollapsed(storage: Storage | null): boolean {
+  // #1091：null / getItem 抛 = 无记忆，回落展开态（首渲染路径，抛错即全树卸载）。
+  try {
+    return storage?.getItem(SIDEBAR_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 export interface AppSidebarProps {
@@ -73,11 +79,11 @@ export function AppSidebar({
   // exact key is [推断] (r2 §1.1 only documents `tds.sidebarProjectsCollapsed`
   // for the project-group fold), and the fixture build injects it like the
   // theme key so the rail capture stays deterministic.
-  const [collapsed, setCollapsed] = useState(() => readCollapsed(localStorage));
+  const [collapsed, setCollapsed] = useState(() => readCollapsed(safeLocalStorage()));
   const toggle = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0');
+      safeSetItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0');
       return next;
     });
   }, []);

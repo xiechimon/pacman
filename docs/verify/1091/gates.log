@@ -1,0 +1,16 @@
+## gates on this branch
+
+$ pnpm lint            -> rc=0 (biome ci: 638 files, 0 errors; 17 warnings / 29 infos = pre-existing baseline)
+$ pnpm typecheck       -> rc=0 (all packages)
+$ pnpm spec:parse      -> PASS: every spec in apps/web/e2e and integration/test parses
+$ pnpm exec vitest run test/notify-pref.test.ts test/i18n.test.ts -> 2 files / 14 tests passed
+
+## full e2e (e2e:affected fell back to the whole suite: boot files are shared surface)
+$ E2E_PORT=8408 pnpm --filter @pacman/web e2e:affected
+  3 failed
+  5 did not run
+  884 passed (6.1m)
+
+## the 3 failures rerun in isolation (load flakes, not regressions)
+$ E2E_PORT=8408 pnpm --filter @pacman/web exec playwright test e2e/project-new-fs-pick.spec.ts e2e/provider-oauth.spec.ts e2e/token-gate.spec.ts
+  19 passed (13.8s)

@@ -99,6 +99,7 @@ import type { FileMentionEntry } from '../overlay/mention-token.js';
 import { MoreMenu } from '../overlay/more-menu.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
+import { safeLocalStorage } from '../safe-storage.js';
 import { readStoredTheme } from '../theme.js';
 
 /** #209 编辑分配弹层文案 [设计](r2 C.18:该弹层内容从未捕获;弹层形态复用
@@ -907,7 +908,9 @@ export function TodoDetailPage() {
             悬浮窗由根 layout 常驻（chief-root.tsx），#443 的 unreadOnly
             门控在根 host 按路由保留。 */}
       </div>
-      {!live && detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
+      {!live && detail?.userMenuOpen === true && (
+        <UserMenu theme={readStoredTheme(safeLocalStorage())} />
+      )}
       <MoreMenu
         open={moreOpen}
         anchor={moreAnchorRef}

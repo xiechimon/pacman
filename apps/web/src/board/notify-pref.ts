@@ -16,15 +16,29 @@ export const NOTIFY_PREF_KEY = 'pacman.notifyEnabled';
 
 export type NotifyPref = 'on' | 'off';
 
-/** 读偏好档：'1'→on、'0'→off、其余（未设/垃圾值）→null（跟随权限）。 */
-export function readNotifyPref(storage: Pick<Storage, 'getItem'>): NotifyPref | null {
-  const value = storage.getItem(NOTIFY_PREF_KEY);
+/** 读偏好档：'1'→on、'0'→off、其余（未设/垃圾值/Storage 不可用 #1091）→null
+ *  （跟随权限）。storage 为 null = safeLocalStorage 的不可用面，等同未表态。 */
+export function readNotifyPref(storage: Pick<Storage, 'getItem'> | null): NotifyPref | null {
+  let value: string | null = null;
+  try {
+    value = storage?.getItem(NOTIFY_PREF_KEY) ?? null;
+  } catch {
+    return null; // Storage 对象在但 getItem 抛——同未表态
+  }
   if (value === '1') return 'on';
   if (value === '0') return 'off';
   return null;
 }
 
-/** 写偏好档（on→'1'、off→'0'）。开关每次点击都落，刷新即回读。 */
-export function persistNotifyPref(pref: NotifyPref, storage: Pick<Storage, 'setItem'>): void {
-  storage.setItem(NOTIFY_PREF_KEY, pref === 'on' ? '1' : '0');
+/** 写偏好档（on→'1'、off→'0'）。开关每次点击都落，刷新即回读；写不进
+ *  （Storage 不可用 #1091）静默丢——开关会话内照常翻转，只是不持久。 */
+export function persistNotifyPref(
+  pref: NotifyPref,
+  storage: Pick<Storage, 'setItem'> | null,
+): void {
+  try {
+    storage?.setItem(NOTIFY_PREF_KEY, pref === 'on' ? '1' : '0');
+  } catch {
+    // 写不进 = 不记住（auth.ts writeToken 同律）
+  }
 }
