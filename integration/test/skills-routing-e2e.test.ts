@@ -165,7 +165,12 @@ beforeAll(async () => {
     '团队分发技能丙（目录末位——截顶先吃掉的就是尾部）。',
     'gamma body.',
   );
-  server.db.update(agentTable).set({ skills: ALLOWLIST }).where(eq(agentTable.id, AGENT_ID)).run();
+  // #1169：授权白名单槽正名（原 skills 单字段拆分——ALLOWLIST 内容零变更）。
+  server.db
+    .update(agentTable)
+    .set({ skillsAllowlist: ALLOWLIST })
+    .where(eq(agentTable.id, AGENT_ID))
+    .run();
 
   // daemon 本机库：local-one 授权、local-blocked 白名单外（硬挡对照）。
   localSkillsDir = mkdtempSync(join(tmpdir(), 'pacman-it-routing-local-'));
@@ -325,7 +330,13 @@ describe('spec 14 技能路由行为验收 E2E（#919）', () => {
     // build 1 已收尾（phase=review 且 5 轮耗尽）再翻白名单——避免在跑步
     // 中途改 agent 行。
     await waitFor(() => stub.requests.length === 5, 30_000);
-    server.db.update(agentTable).set({ skills: [] }).where(eq(agentTable.id, AGENT_ID)).run();
+    // #1169：显式勾空（[]）仍是「全拒」形态——与 null（不限制）两态由
+    // #1169 拆开，本测试钉的是勾空显式出声（F6）。
+    server.db
+      .update(agentTable)
+      .set({ skillsAllowlist: [] })
+      .where(eq(agentTable.id, AGENT_ID))
+      .run();
     // build 2 的轮次现在补位（stub 按引用读数组；build 1 已零在跑步）。
     stubRounds.push(
       {

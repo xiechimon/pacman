@@ -297,7 +297,8 @@ describe('agent record (r3 §4 实测原样)', () => {
     thinkingLevel: null,
     tools: [],
     secrets: [],
-    skills: [],
+    defaultSkill: null,
+    skillsAllowlist: null,
     mcpServers: [],
   };
 
@@ -307,6 +308,39 @@ describe('agent record (r3 §4 实测原样)', () => {
 
   it('rejects unobserved status values ([推断] note guards the enum)', () => {
     expect(agentRecordSchema.safeParse({ ...sample, status: 'archived' }).success).toBe(false);
+  });
+
+  // #1169 拆字段失败方式（先于实现固化）：
+  // 1. null 被读成全拒 → 「不限制」塌缩成「全拒」，新建 agent 出生即残废
+  //    （本票主修位）。schema 两态都必须可承载：null/[]/子集三态不得混淆。
+  // 2. 单值写进数组位 → defaultSkill 收到 ['x']，消费面 skills[0] 复活。
+  // 3. 旧 skills 字段残留在 wire → 两消费面（概览 Select / deny 白名单）
+  //    有一处还读旧名 = 拆字段不完整。
+  it('skillsAllowlist 三态：null（不限制）/ []（显式全拒）/ 子集，互不塌缩', () => {
+    expect(
+      agentRecordSchema.parse({ ...sample, skillsAllowlist: null }).skillsAllowlist,
+    ).toBeNull();
+    expect(agentRecordSchema.parse({ ...sample, skillsAllowlist: [] }).skillsAllowlist).toEqual([]);
+    expect(
+      agentRecordSchema.parse({ ...sample, skillsAllowlist: ['deploy'] }).skillsAllowlist,
+    ).toEqual(['deploy']);
+  });
+
+  it('defaultSkill 单值槽：string 与 null 过；数组（含单元素）拒', () => {
+    expect(agentRecordSchema.parse({ ...sample, defaultSkill: 'deploy' }).defaultSkill).toBe(
+      'deploy',
+    );
+    expect(agentRecordSchema.parse({ ...sample, defaultSkill: null }).defaultSkill).toBeNull();
+    expect(agentRecordSchema.safeParse({ ...sample, defaultSkill: [] }).success).toBe(false);
+    expect(agentRecordSchema.safeParse({ ...sample, defaultSkill: ['deploy'] }).success).toBe(
+      false,
+    );
+  });
+
+  it('旧 skills 字段下线：schema 无此槽（读写面同名迁移，无兼容残留）', () => {
+    expect('skills' in agentRecordSchema.shape).toBe(false);
+    expect('defaultSkill' in agentRecordSchema.shape).toBe(true);
+    expect('skillsAllowlist' in agentRecordSchema.shape).toBe(true);
   });
 });
 
@@ -354,7 +388,8 @@ describe('agent 权限开关词表（XMON-84 用户拍板 B：六档全保留）
       thinkingLevel: null,
       tools: ['远程 shell'],
       secrets: [],
-      skills: [],
+      defaultSkill: null,
+      skillsAllowlist: null,
       mcpServers: [],
     };
     expect(agentRecordSchema.parse(row).tools).toEqual(['远程 shell']);
@@ -637,7 +672,8 @@ describe('team record (r2 §1.5 teams-v1 缓存实测值)', () => {
         thinkingLevel: null,
         tools: [],
         secrets: [],
-        skills: [],
+        defaultSkill: null,
+        skillsAllowlist: null,
         mcpServers: [],
         activeTaskCount: 1, // r5 §1 实测增量字段
       },

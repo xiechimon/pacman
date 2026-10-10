@@ -105,7 +105,8 @@ function seedAgent(s: TestServer, id: string, provider: string) {
       thinkingLevel: null,
       tools: [],
       secrets: [],
-      skills: [],
+      defaultSkill: null,
+      skillsAllowlist: null,
       mcpServers: [],
     })
     .run();

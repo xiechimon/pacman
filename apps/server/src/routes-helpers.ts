@@ -120,7 +120,9 @@ export function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
     thinkingLevel: row.thinkingLevel,
     tools: row.tools,
     secrets: row.secrets,
-    skills: row.skills,
+    // #1169：旧 skills 一列两义（携带+授权）拆成两字段，此处投影同名两槽。
+    defaultSkill: row.defaultSkill,
+    skillsAllowlist: row.skillsAllowlist,
     mcpServers: row.mcpServers,
   };
 }

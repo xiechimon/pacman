@@ -89,6 +89,7 @@ const COMPUTED_KEYS = new Set<string>([
   AGENT_PERMISSION_COPY.mcpServers,
   AGENT_PERMISSION_COPY.responsibility,
   AGENT_PERMISSION_COPY.defaultSkill,
+  AGENT_PERMISSION_COPY.skillsAllowlist,
   MEMORY_EMPTY_COPY,
   // #499: 记忆 tab 的搜索/排序词 canon = shared MEMORY_UI_COPY（searchPlaceholder
   // 与 sort 两键本面渲染，sourceLink 未落地故不入 en 词典），经 t() 消费、

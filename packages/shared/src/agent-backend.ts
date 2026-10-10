@@ -210,10 +210,11 @@ export interface SessionOpts {
   /** per-turn 连接、失败降级不阻断（02 §7.1）。 */
   mcpServers?: McpEndpoint[];
   /** skills catalog 白名单（#372；spec 14「SessionOpts 不加字段」的修订——
-   * 当时不过滤所以不加，本字段把过滤白名单补进契约）。slug 集 = agent.skills
-   * （frontmatter name 回落目录名，#367 wire 模型）。undefined = 不过滤
-   * （chief 面全量直通）；[] = 不注入任何 skill（least-privilege，与 MCP
-   * 空勾选同律）；名单内未知 slug 静默跳过（#367 容忍语义）。 */
+   * 当时不过滤所以不加，本字段把过滤白名单补进契约）。slug 集 = claim 载荷
+   * agent.skillsAllowlist（#1169 正名；frontmatter name 回落目录名，#367 wire
+   * 模型）。undefined = 不过滤（chief 面全量直通，null「不限制」由 runner 折叠
+   * 进来——两态不进本契约面）；[] = 不注入任何 skill 且全库 Read 被 #917 硬挡
+   * （显式全拒）；名单内未知 slug 静默跳过（#367 容忍语义）。 */
   skillsAllowlist?: string[];
   /** #1106 派发技能注入选择（worker 步；claim 载荷 agent.injectedSkills
    * 透传）：本步任务 brief 实际注入的技能 id 集。在位（含 []）= 目录注入按

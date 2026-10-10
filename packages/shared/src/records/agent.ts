@@ -83,7 +83,8 @@ export function filterAgentTools(tools: string[]): string[] {
 }
 
 /** 权限面其余各档的说明文案（r3 §4 原文；品牌串经 brand.ts 槽，版本门常量
- * 见 records/secret.ts）。工具开关的副文案见 AGENT_TOOL_COPY。 */
+ * 见 records/secret.ts）。工具开关的副文案见 AGENT_TOOL_COPY。
+ * defaultSkill（携带）/ skillsAllowlist（授权）两文案自 #1169 起分家。 */
 export const AGENT_PERMISSION_COPY = {
   secrets: `任务执行时，该 Agent 可在需要密钥的执行步中按需取用团队密钥，每次取用都会留下记录；密钥不预置进 shell 环境。所在机器需要 ${BRAND.cliCommandName} CLI ${SECRET_MIN_CLI_VERSION} 及以上。`,
   mcpServers:
@@ -91,6 +92,8 @@ export const AGENT_PERMISSION_COPY = {
   responsibility:
     '用一两句话说明该 Agent 的职责。该说明会注入它执行的每个任务，也会提供给总管用于分派。',
   defaultSkill: '该 Agent 执行任何任务时自动携带的团队技能，无需在消息中 @ 引用。',
+  skillsAllowlist:
+    '该 Agent 执行任务时可读取的团队技能范围。开启「不限制」= 全量可读；关闭后仅勾选的技能可读，未勾选一律拒绝——「不限制」与全不勾是两种状态，可随时互转。',
 } as const;
 
 export const agentRecordSchema = z.object({
@@ -111,8 +114,14 @@ export const agentRecordSchema = z.object({
   tools: z.array(z.string()),
   /** 团队密钥授权集（关联 secret id [推断]；值只写不读，02 §8）。 */
   secrets: z.array(z.string()),
-  /** 默认携带/被授予技能（关联 skill id [推断]）。 */
-  skills: z.array(z.string()),
+  /** 默认携带技能（#1169）：单值，关联 skill id，null = 不携带。旧 agent.skills
+   * 字段「skills[0] 单值」消费面（详情页概览 Select）的正本。与 skillsAllowlist
+   * 互不影响：携带不必授权，授权不必携带。 */
+  defaultSkill: z.string().nullable(),
+  /** 授权白名单（#1169）：关联 skill id 集；**null = 不限制**（全量可读，创建
+   * 缺省）；数组 = 白名单（名单外目录 Read 被 #917 deny 硬挡，bypassPermissions
+   * 下仍挡）。「谁都不许读」须显式写 []——闸从意外默认变回有意选择。 */
+  skillsAllowlist: z.array(z.string()).nullable(),
   /** MCP 逐个勾选（关联 mcp_server id [推断]，02 §7.1）。 */
   mcpServers: z.array(z.string()),
 });
@@ -128,7 +137,10 @@ export const createAgentBodySchema = z.object({
   thinkingLevel: z.string().nullish(),
   tools: z.array(z.string()).optional(),
   secrets: z.array(z.string()).optional(),
-  skills: z.array(z.string()).optional(),
+  /** 单值槽（#1169）：数组（含单元素）拒——携带语义不得再经数组位表达。 */
+  defaultSkill: z.string().nullish(),
+  /** nullish（#1169）：显式 null = 不限制（与缺省同值）；[] = 显式全拒。 */
+  skillsAllowlist: z.array(z.string()).nullish(),
   mcpServers: z.array(z.string()).optional(),
 });
 export type CreateAgentBody = z.infer<typeof createAgentBodySchema>;

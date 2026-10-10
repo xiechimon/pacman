@@ -160,8 +160,9 @@ describe('M4a Chief 机器协议全环（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5�
     expect(claimed.remoteTools).toHaveLength(CHIEF_TOOL_COUNT); // 51 词表全量
     expect(claimed.agent?.id).toBe(AGENT_ID); // 绑定 Agent 执行
     expect(claimed.agent?.modelId).toBe('stub-model');
-    // chief 步不携带 skills 白名单（#372：chief 是信任面，不受过滤约束）。
-    expect(claimed.agent?.skills).toBeUndefined();
+    // chief 步不携带技能两字段（#372/#1169：chief 是信任面，不受过滤约束）。
+    expect(claimed.agent?.skillsAllowlist).toBeUndefined();
+    expect(claimed.agent?.defaultSkill).toBeUndefined();
     expect(claimed.todo).toBeUndefined(); // 无 todo 语境
     const stepId = claimed.step.id;
 

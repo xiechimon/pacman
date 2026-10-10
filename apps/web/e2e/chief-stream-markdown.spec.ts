@@ -120,7 +120,8 @@ const AGENT = {
   thinkingLevel: null,
   tools: [],
   secrets: [],
-  skills: [],
+  defaultSkill: null,
+  skillsAllowlist: null,
   mcpServers: [],
 };
 /** activeRun 在位 = 回合进行中（typing 尾行的 gate 输入）。 */

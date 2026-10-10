@@ -198,15 +198,22 @@ export function AgentDetailPage() {
       if (agentId === undefined) return;
       if (live) {
         // #638 概览半（票面裁决）：名称/职责/模型/默认 skill 失败 → toast；
-        // tools/secrets/mcpServers 三组失败归权限 tab 的 scoped 红字行
-        // （permSaveFailed，XMON-80/P2 canon）——不双报。判据 = 本次 body 的
-        // 键集，与 permSaveFailed 的渲染位判据同源（那里读失败那次的
-        // variables，这里调用点手上有 body）。
+        // tools/secrets/skillsAllowlist/mcpServers 四组失败归权限 tab 的
+        // scoped 红字行（permSaveFailed，XMON-80/P2 canon；#1169 授权技能
+        // 入组）——不双报。判据 = 本次 body 的键集，与 permSaveFailed 的
+        // 渲染位判据同源（那里读失败那次的 variables，这里调用点手上有
+        // body）。
         mutations.patchAgent.mutate(
           { id: agentId, body },
           {
             onError: (error) => {
-              if ('tools' in body || 'secrets' in body || 'mcpServers' in body) return;
+              if (
+                'tools' in body ||
+                'secrets' in body ||
+                'skillsAllowlist' in body ||
+                'mcpServers' in body
+              )
+                return;
               toastError(t('保存失败，请重试。'), error);
             },
           },
@@ -268,12 +275,15 @@ export function AgentDetailPage() {
   // mutation——概览的名称 / 职责 / 模型 / 默认 skill 也走它，所以裸看 isError
   // 会把概览的失败挂在权限 tab 的红字上，指到一个用户没动过的控件。判据取
   // 失败那一次的 variables（todo-detail-page 的 restart 分支同律）：只有失败
-  // 体碰了工具 / 密钥 / MCP 三组，才落在这块面的账上。
+  // 体碰了工具 / 密钥 / 授权技能 / MCP 四组，才落在这块面的账上。
   const failedPatchBody = mutations.patchAgent.variables?.body;
   const permSaveFailed =
     mutations.patchAgent.isError &&
     failedPatchBody !== undefined &&
-    ('tools' in failedPatchBody || 'secrets' in failedPatchBody || 'mcpServers' in failedPatchBody);
+    ('tools' in failedPatchBody ||
+      'secrets' in failedPatchBody ||
+      'skillsAllowlist' in failedPatchBody ||
+      'mcpServers' in failedPatchBody);
 
   if (agent === undefined) {
     return (
@@ -303,8 +313,22 @@ export function AgentDetailPage() {
     const next = on ? [...agent.mcpServers, id] : agent.mcpServers.filter((v) => v !== id);
     patch({ mcpServers: next });
   };
+  // #1169 授权技能：限制态（数组）下的逐技能勾选。两态互转入口 = 上方
+  // 「不限制」开关（null ↔ []）；勾集只在限制态渲染（不限制态逐技能开关
+  // 无语义——全量已可读）。显式序列化：关「不限制」发 {skillsAllowlist: []}，
+  // 重开发 {skillsAllowlist: null}——undefined（不带键）= 不动，两态不得
+  // 在序列化面塌缩。
+  const toggleAllowlistSkill = (id: string, on: boolean) => {
+    if (agent.skillsAllowlist === null) return; // 不限制态无逐技能勾选
+    const next = on
+      ? [...new Set([...agent.skillsAllowlist, id])]
+      : agent.skillsAllowlist.filter((v) => v !== id);
+    patch({ skillsAllowlist: next });
+  };
 
-  const defaultSkill = agent.skills[0] ?? null;
+  // #1169 拆字段：defaultSkill（携带，单值）直绑 wire 槽——清空 = null，
+  // 不再经数组位（旧 skills:[next] 的单值伪装已退役）。
+  const defaultSkill = agent.defaultSkill;
   // 思考强度档位（XMON-16）：live 面词表来自能力读面 `GET /api/capabilities`
   // （server 投影 shared 单源）；fixture 面与读面未解析时直接取 shared
   // `THINKING_LEVELS` 本身——那不是第二份真值，就是读面背后的同一个常量。
@@ -381,13 +405,15 @@ export function AgentDetailPage() {
                     Select 壳后两格同形（#1010：壳 = registry select compound 族，
                     几何归 registry 默认）。值回显同模型面：候选里没有的值（技能
                     已被删除）出裸 id，不空白。「未设置」清空行 = null item。
+                    #1169 起值直绑 defaultSkill 单值槽（清空发显式 null，不再
+                    经数组位——与授权面 skillsAllowlist 互不影响）。
                     prefix 句柄类（agent-skill-select/-menu/-row）零规则，e2e 用；
                     弹层 Portal 落 body，locator 页面级取。 */}
                 <Select
                   value={defaultSkill}
-                  onValueChange={(next) => patch({ skills: next === null ? [] : [next as string] })}
+                  onValueChange={(next) => patch({ defaultSkill: next })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="agent-skill-select">
                     <SelectValue>
                       {defaultSkill === null
                         ? t('未设置')
@@ -660,6 +686,41 @@ export function AgentDetailPage() {
                     />
                   </ProfileRow>
                 ))}
+              </ProfileCard>
+            </section>
+
+            <section className="agent-perm-group flex flex-col gap-2">
+              {/* #1169 授权技能（原 agent.skills 的授权半边）。「不限制」（null
+                  = 全量可读）与「限制后全不勾」（[] = 显式全拒）是两种状态，
+                  由顶部开关互转；限制态逐技能勾选（MCP 段同形），默认携带面
+                  （defaultSkill，概览）与本段互不影响。 */}
+              <h3 className="m-0 text-sm font-medium text-foreground">{t('授权技能')}</h3>
+              <p className={PROFILE_HINT_CLS}>{t(AGENT_PERMISSION_COPY.skillsAllowlist)}</p>
+              <ProfileCard>
+                <ProfileRow label={t('不限制')}>
+                  <Switch
+                    className="agent-allowlist-switch"
+                    aria-label={t('不限制')}
+                    checked={agent.skillsAllowlist === null}
+                    onCheckedChange={(on) => patch({ skillsAllowlist: on ? null : [] })}
+                  />
+                </ProfileRow>
+                {(() => {
+                  // 局部 const 收窄进 map 闭包（agent 合并对象的属性收窄不跨
+                  // 回调边界）：null 态不渲染逐技能行。
+                  const allowlist = agent.skillsAllowlist;
+                  if (allowlist === null) return null;
+                  return skillOptions.map((skill) => (
+                    <ProfileRow key={skill.id} className="agent-allowlist-row" label={skill.name}>
+                      <Switch
+                        className="agent-allowlist-skill-switch"
+                        aria-label={skill.name}
+                        checked={allowlist.includes(skill.id)}
+                        onCheckedChange={(checked) => toggleAllowlistSkill(skill.id, checked)}
+                      />
+                    </ProfileRow>
+                  ));
+                })()}
               </ProfileCard>
             </section>
 

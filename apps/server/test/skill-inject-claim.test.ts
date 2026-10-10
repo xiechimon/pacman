@@ -13,6 +13,8 @@
 //    step 行 skillInjection null；
 // 6. wire 纯增可选字段：不带 injectedSkills 的旧形载荷仍过 claimedStepSchema
 //    （版本墙零新增）。
+// 8.（#1169）skillsAllowlist=null（不限制）被读成全拒零候选 → 不限制 agent
+//    的注入选择面塌缩；null = 候选基全量现扫（数组才是候选边界）。
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -120,7 +122,8 @@ async function setupWorld(): Promise<World> {
         thinkingLevel: null,
         tools: [],
         secrets: [],
-        skills: id === AGENT_ID ? [...GRANTED] : [],
+        defaultSkill: null,
+        skillsAllowlist: id === AGENT_ID ? [...GRANTED] : null,
         mcpServers: [],
       })
       .run();
@@ -178,8 +181,8 @@ describe('#1106 派发技能注入（worker claim 选择）', () => {
     const got = await claim(w.s.app, w.token);
     expect(got).not.toBeNull();
     expect(got?.step.kind).toBe('build');
-    // 授权上限不变：skills 全量透传（#917 硬挡判定吃它）。
-    expect(got?.agent?.skills).toEqual(GRANTED);
+    // 授权上限不变：skillsAllowlist 全量透传（#917 硬挡判定吃它）。
+    expect(got?.agent?.skillsAllowlist).toEqual(GRANTED);
     // 注入选择 ⊆ 授权，且只含前端域技能（求职/知识库族零注入）。
     const injected = got?.agent?.injectedSkills ?? [];
     expect(injected.length).toBeGreaterThan(0);
@@ -208,7 +211,7 @@ describe('#1106 派发技能注入（worker claim 选择）', () => {
     expect(got?.step.kind).toBe('build');
     // 零命中：ids 空数组（已计算）；授权集仍全量（零注入 ≠ 收权）。
     expect(got?.agent?.injectedSkills).toEqual([]);
-    expect(got?.agent?.skills).toEqual(GRANTED);
+    expect(got?.agent?.skillsAllowlist).toEqual(GRANTED);
     expect(stepRow(w.s, got!.step.id).skillInjection).toEqual({ hits: [] });
   });
 
@@ -217,7 +220,7 @@ describe('#1106 派发技能注入（worker claim 选择）', () => {
     // tdd 在技能根里但收权（授予集不再含它）；文本点名 tdd。
     w.s.db
       .update(agentTable)
-      .set({ skills: GRANTED.filter((id) => id !== 'tdd') })
+      .set({ skillsAllowlist: GRANTED.filter((id) => id !== 'tdd') })
       .where(eq(agentTable.id, AGENT_ID))
       .run();
     const todoId = await createTodo(w.s, w.projectId, '用 tdd 给购物车模块补测试');
@@ -225,7 +228,25 @@ describe('#1106 派发技能注入（worker claim 选择）', () => {
     const got = await claim(w.s.app, w.token);
     // 显式点名不越授予边界；测试域无其它已授予技能 → 零注入。
     expect(got?.agent?.injectedSkills).toEqual([]);
-    expect(got?.agent?.skills).not.toContain('tdd');
+    expect(got?.agent?.skillsAllowlist).not.toContain('tdd');
+  });
+
+  test('失败方式 8（#1169）：skillsAllowlist=null（不限制）→ 候选基 = 全量现扫（不再是零候选）', async () => {
+    const w = await setupWorld();
+    // null = 不限制：tdd 不在授予集也进候选基，点名照选——deny 闸管读，
+    // 选择面管 brief，两缝互不越界（拆字段后 null 不再被读成全拒零候选）。
+    w.s.db
+      .update(agentTable)
+      .set({ skillsAllowlist: null })
+      .where(eq(agentTable.id, AGENT_ID))
+      .run();
+    const todoId = await createTodo(w.s, w.projectId, '用 tdd 给购物车模块补测试');
+    await startBuild(w.s, w.projectId, todoId);
+    const got = await claim(w.s.app, w.token);
+    expect(got?.agent?.skillsAllowlist).toBeNull();
+    expect(got?.agent?.injectedSkills).toContain('tdd');
+    const hits = stepRow(w.s, got!.step.id).skillInjection?.hits ?? [];
+    expect(hits.map((h) => h.id)).toContain('tdd');
   });
 
   test('失败方式 7：授予但 server 未扫到（daemon 本机库技能）→ 点名照选（候选基 = 授予集）', async () => {
@@ -234,7 +255,7 @@ describe('#1106 派发技能注入（worker claim 选择）', () => {
     // 名——现扫只提供描述侧联接，不是候选边界（候选边界 = 授予集）。
     w.s.db
       .update(agentTable)
-      .set({ skills: [...GRANTED, 'local-one'] })
+      .set({ skillsAllowlist: [...GRANTED, 'local-one'] })
       .where(eq(agentTable.id, AGENT_ID))
       .run();
     const todoId = await createTodo(w.s, w.projectId, '用 local-one 处理本地构建');
@@ -273,7 +294,8 @@ describe('#1106 chief 步不经选择面（claim 实走）', () => {
     expect(got?.step.kind).toBe('chief');
     // chief = 信任面：选择字段缺省（不是 []——缺省 = 未选择，[] = 已算零命中）。
     expect(got?.agent?.injectedSkills).toBeUndefined();
-    expect(got?.agent?.skills).toBeUndefined();
+    expect(got?.agent?.skillsAllowlist).toBeUndefined();
+    expect(got?.agent?.defaultSkill).toBeUndefined();
     const row = stepRow(w.s, got!.step.id);
     expect(row.skillInjection).toBeNull();
     expect(row.buildId).toBe(body.thread.id);

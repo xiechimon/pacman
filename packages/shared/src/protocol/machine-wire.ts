@@ -191,19 +191,23 @@ export const claimedStepSchema = z.object({
       /** 该 Agent 记忆条目注入 systemPrompt（02 §4.4 读路径最小形；注入形
        * [推断] 保留，04 附录 A）。 */
       memories: z.array(z.object({ title: z.string(), content: z.string() })).optional(),
-      /** skills catalog 白名单（#372）：勾选 slug 原样透传（frontmatter name
-       * 回落目录名，spec 13 #367 候选源同源）。worker 步恒携带——含空数组
-       * （[] = 不注入任何 skill；缺省 = 全量直通是 chief 面语义，worker 空
-       * 勾选若缺省不携带会错落到全量 catalog）。chief 步不携带（不受过滤
-       * 约束）。无版本墙：纯增可选字段，旧 daemon 忽略 = 现行为全量直通，
-       * 不存在 MCP slug 断约那种混发形状失败模式。 */
-      skills: z.array(z.string()).optional(),
+      /** 授权白名单（#1169 起正名，原 skills 字段拆出的授权半边）：null =
+       * 不限制（全量可读，创建缺省——[] 旧行已随迁移转 null）；数组 = 白名单
+       * （#917 deny 吃它，名单外 Read 硬挡）；[] = 显式全拒（有意选择，不再
+       * 是意外缺省）。worker 步恒携带（null 或数组）；chief 步不携带（信任面
+       * 全量直通）。旧 daemon 忽略本字段 = 其缺省律全量直通——混版本窗口里
+       * 老 daemon 对白名单行不设挡（窗口期接受，server+daemon 同步部署即收）。 */
+      skillsAllowlist: z.array(z.string()).nullable().optional(),
+      /** 默认携带技能（#1169 携带半边，单值）：worker 步恒携带（null = 未设）；
+       * daemon 据此把非空值排进 #1116 注入绑定序首位（自动携带语义）。chief
+       * 步不携带（chief 目录恒全量，无绑定序）。 */
+      defaultSkill: z.string().nullable().optional(),
       /** #1106 派发技能注入选择（worker 步恒携带含空数组）：本步任务 brief
        * 实际注入的技能 id 集（= 服务端按任务文本对授予集规则选出的子集；
        * [] = 已计算零命中——零注入不是故障；缺省 = 旧 server 未做选择，
-       * 目录注入回落 agent.skills 白名单全量）。ids ⊆ skills（授权上限
-       * 不变——denied 判定仍吃 skills，本字段只收窄目录注入面）。纯增
-       * 可选字段：旧 daemon 忽略 = 现行为，无版本墙。 */
+       * 目录注入回落 skillsAllowlist 白名单全量）。ids ⊆ skillsAllowlist
+       * （授权上限不变——denied 判定仍吃 allowlist 全量，本字段只收窄目录
+       * 注入面）。纯增可选字段：旧 daemon 忽略 = 现行为，无版本墙。 */
       injectedSkills: z.array(z.string()).optional(),
       /** 权限开关已开集（XMON-77）：词表 = AGENT_TOOL_SWITCHES 六档（XMON-84
        * 用户拍板 B 恢复全六档），执法落点 = daemon 收尾闸（merge fail-fast +
@@ -588,7 +592,8 @@ export const machineShellResultResponseSchema = machineOkResponseSchema;
  * hash 不同的文件，单请求预算与库总量解耦（旧「一次 GET 塞全量全文」的
  * 512KB/2MB 整包字节闸即 #920 根因：真实技能库 18MB 必超、分发从未成功）。
  * selection 区分出包语义：chief 步 = 'all'（信任面全量现扫），worker 步 =
- * 'whitelist'（agent.skills 白名单交集）——空清单时 daemon 据此点名语境。
+ * 'whitelist'（agent.skillsAllowlist 白名单交集）或不限制 agent 的 'all'
+ * （skillsAllowlist=null → 全量现扫，#1169）；空清单时 daemon 据此点名语境。
  * 完整性 = 逐文件 sha256 + sizeBytes 双校验（materializeTeamSkills）。 */
 export const machineSkillsManifestResponseSchema = z.object({
   selection: z.enum(['all', 'whitelist']),

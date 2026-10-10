@@ -443,7 +443,8 @@ describe('todo CRUD（demo 面：curl 增删改查）', () => {
           thinkingLevel: null,
           tools: [],
           secrets: [],
-          skills: [],
+          defaultSkill: null,
+          skillsAllowlist: null,
           mcpServers: [],
         })
         .run();

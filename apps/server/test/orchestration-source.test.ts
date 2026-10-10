@@ -65,7 +65,8 @@ function seedAgent(): void {
       thinkingLevel: null,
       tools: [],
       secrets: [],
-      skills: [],
+      defaultSkill: null,
+      skillsAllowlist: null,
       mcpServers: [],
     })
     .run();

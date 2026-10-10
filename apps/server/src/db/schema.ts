@@ -342,7 +342,12 @@ export const agent = sqliteTable('agent', {
   thinkingLevel: text('thinkingLevel'),
   tools: json<string[]>('tools').notNull().default(sql`'[]'`),
   secrets: json<string[]>('secrets').notNull().default(sql`'[]'`),
-  skills: json<string[]>('skills').notNull().default(sql`'[]'`),
+  /** 默认携带技能（#1169）：单值，可空——旧 skills 列拆出的「skills[0] 单值」半边。 */
+  defaultSkill: text('defaultSkill'),
+  /** 授权白名单（#1169）：可空 json——null = 不限制（创建缺省，本票默认语义），
+   * 数组 = 白名单（#917 deny），[] = 显式全拒（有意选择）。旧 skills 列的
+   * 授权半边；notNull + default '[]' 的旧形随迁移退役（[] 行已迁 null）。 */
+  skillsAllowlist: json<string[]>('skillsAllowlist'),
   mcpServers: json<string[]>('mcpServers').notNull().default(sql`'[]'`),
 });
 

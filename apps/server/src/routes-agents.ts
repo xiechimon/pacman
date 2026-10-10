@@ -87,9 +87,18 @@ export function registerAgentRoutes(app: Hono, ctx: AppContext): void {
         // 照旧尊重，缺省才补默认。
         tools: filterAgentTools(body.tools ?? [...AGENT_TOOL_DEFAULTS]),
         secrets: body.secrets ?? [],
-        // spec 13 #367：skills[] 校验源 = 本地现扫存在性；未知 id 静默跳过
-        // （目录删除后死引用不留，不报错）。
-        skills: filterKnownSkillIds(ctx.skillsDir, body.skills ?? []),
+        // #1169 拆字段：defaultSkill（携带，单值）/ skillsAllowlist（授权）。
+        // 校验源同 #367 律 = 本地现扫存在性：defaultSkill 未知 id 静默回落
+        // null（不报错）；skillsAllowlist 缺省 null（不限制——本票主修位：
+        // 新建 agent 出生即全量可读），显式 [] 原样存（有意全拒）。
+        defaultSkill:
+          body.defaultSkill != null
+            ? (filterKnownSkillIds(ctx.skillsDir, [body.defaultSkill])[0] ?? null)
+            : null,
+        skillsAllowlist:
+          body.skillsAllowlist == null
+            ? null
+            : filterKnownSkillIds(ctx.skillsDir, body.skillsAllowlist),
         mcpServers: body.mcpServers ?? [],
       })
       .run();
@@ -109,9 +118,20 @@ export function registerAgentRoutes(app: Hono, ctx: AppContext): void {
     const row = requireAgentRow(ctx, teamId, c.req.param('aid'));
     const body = parseWith(patchAgentBodySchema, await jsonBody(c), 'body');
     const sets: Partial<typeof row> = {};
-    // spec 13 #367：skills[] 与 create 同律——现扫存在性过滤，未知 id 静默跳过。
-    if (body.skills !== undefined) {
-      sets.skills = filterKnownSkillIds(ctx.skillsDir, body.skills);
+    // #1169 拆字段：defaultSkill / skillsAllowlist 与 #367 律同——现扫存在性
+    // 过滤，未知 id 静默跳过。显式 null 各自清空（defaultSkill → 不携带、
+    // skillsAllowlist → 不限制）；缺省不动（undefined ≠ null 的序列化坑）。
+    if (body.defaultSkill !== undefined) {
+      sets.defaultSkill =
+        body.defaultSkill == null
+          ? null
+          : (filterKnownSkillIds(ctx.skillsDir, [body.defaultSkill])[0] ?? null);
+    }
+    if (body.skillsAllowlist !== undefined) {
+      sets.skillsAllowlist =
+        body.skillsAllowlist == null
+          ? null
+          : filterKnownSkillIds(ctx.skillsDir, body.skillsAllowlist);
     }
     // XMON-77：tools[] 与 create 同律——写侧过滤（词表外值静默丢弃）。
     if (body.tools !== undefined) {
