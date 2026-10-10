@@ -30,6 +30,7 @@ import type {
   GithubIssueState,
   GithubIssuesResponse,
   GithubReposResponse,
+  ImportSkillBody,
   MachineRecord,
   McpServerRecord,
   MemoryRecord,
@@ -899,6 +900,14 @@ export function useApiMutations(teamId: string | undefined) {
           `/api/teams/${teamId}/skills/${encodeURIComponent(input.id)}`,
           input.body,
         ),
+      onSuccess: invalidateAll,
+    }),
+    // 技能导入（#1170）：POST teams/{id}/skills/import（localPath / GitHub URL
+    // 二选一）；成功失效重取列表即现。错误面（400 校验 / 409 同名 / 502·504
+    // 上游）由弹窗按 status 分译——这里不吞。
+    importSkill: useMutation({
+      mutationFn: (body: ImportSkillBody) =>
+        api.post<SkillRecord>(`/api/teams/${teamId}/skills/import`, body),
       onSuccess: invalidateAll,
     }),
     // mcp-servers 无 mutation 面（spec 13 #368：MCP = 本机 ~/.claude.json

@@ -273,6 +273,22 @@ export const EN: Record<string, string> = {
   '该技能已不存在——可能刚被移动或删除。':
     'This skill no longer exists — it may have just been moved or deleted.',
   '内容未通过校验。': 'The content failed validation.',
+  // #1170 技能导入弹窗（SkillImportDialog + 技能页 topbar 导入钮）。
+  导入: 'Import',
+  导入技能: 'Import skill',
+  本地路径: 'Local path',
+  'GitHub 地址': 'GitHub URL',
+  'server 本机上的技能目录路径，目录里要有 SKILL.md。':
+    'Path to a skill directory on the pacman server machine — it must contain a SKILL.md.',
+  'GitHub 公共仓库或其中子目录的地址；导入后可用 refresh 重新拉取。':
+    'Address of a public GitHub repository or a subdirectory of one; after importing you can refresh to re-pull it.',
+  '两字段二选一：填其中一个，另一个留空。':
+    'Fill in exactly one of the two fields and leave the other empty.',
+  '同名技能已存在——先处理现有技能，再重新导入。':
+    'A skill with this name already exists — resolve the existing one first, then import again.',
+  '来源未通过校验。': 'The source failed validation.',
+  '拉取来源失败——稍后重试。': 'Fetching the source failed — try again later.',
+  '导入失败，请重试。': 'Import failed, please retry.',
   '尚无 MCP 服务器。': 'No MCP servers yet.',
   // spec 13/#368 本地 config 只读制：空态文案 = 配置指引（无添加钮）。
   '读取 server 本机 ~/.claude.json 的 mcpServers 段：在该文件添加配置并刷新，即出现在这里。MCP 服务器为 Agent 提供额外工具；授权在每个 Agent 的页面上单独进行。':

@@ -80,6 +80,20 @@ export const updateSkillToolParamsSchema = updateSkillBodySchema.extend({
 });
 export type UpdateSkillToolParams = z.infer<typeof updateSkillToolParamsSchema>;
 
+/** POST /api/teams/{id}/skills/import body（#1170）：localPath 与 url 二选一
+ * ——localPath = server 本机技能目录（须含 SKILL.md），url = GitHub 公共仓/
+ * 子目录。xor 由 refine 钉（双缺/双给 = 400）；分支语义与 SSRF/路径守卫归
+ * server services/skill-import.ts（本 schema 只钉形状）。 */
+export const importSkillBodySchema = z
+  .object({
+    localPath: z.string().min(1).optional(),
+    url: z.string().min(1).optional(),
+  })
+  .refine((b) => (b.localPath !== undefined) !== (b.url !== undefined), {
+    message: 'invalid body: exactly one of localPath or url is required',
+  });
+export type ImportSkillBody = z.infer<typeof importSkillBodySchema>;
+
 /** 技能目录名安全域（create 的 body.name = 新目录名）：字母/数字开头，仅
  * 字母数字点横杠下划线，≤64 字符——可作 URL 段与跨平台目录名。XMON-114 自
  * server services/skills.ts 上提：web 表单预检与 server 写面校验同一闸。 */

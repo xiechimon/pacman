@@ -3,7 +3,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { Hono } from 'hono';
 import { createApp } from '../src/app.js';
 import type { AppContext } from '../src/context.js';
@@ -25,6 +25,13 @@ export function bootServer(
     /** 技能根目录（spec 13 #367 现扫面）；缺省 = 自建隔离空目录（空集语义；
      * 要技能行的测试显式建目录传参）。 */
     skillsDir?: string;
+    /** #1170 导入来源登记文件；缺省 = 自建隔离文件路径（同 skillsDir 纪律：
+     * 测试间零串扰；跨「重启」持久用例显式传同一路径两次 boot）。 */
+    skillSourcesPath?: string;
+    /** #1170 URL 分支出站 mock（GitHub API + raw 面）。 */
+    skillImportFetch?: AppContext['skillImportFetch'];
+    /** #1170 单请求超时（钉 504 面用短超时）。 */
+    skillImportTimeoutMs?: number;
     webDir?: string | null;
     /** GitHub 出站 mock（spec 12/#359 repo picker 代理面；#223 skills scan
      *  曾用同一位，随 spec 13 #367 退役）。 */
@@ -53,6 +60,12 @@ export function bootServer(
   const attachmentsDir = opts.attachmentsDir ?? mkdtempSync(join(tmpdir(), 'pacman-att-'));
   const ownSkillsDir = opts.skillsDir === undefined;
   const skillsDir = opts.skillsDir ?? mkdtempSync(join(tmpdir(), 'pacman-skills-'));
+  // #1170：来源登记文件缺省 = 隔离目录内（目录级清理，文件自身不预建——
+  // 首次导入时由 store 创建）。
+  const ownSkillSourcesDir = opts.skillSourcesPath === undefined;
+  const skillSourcesPath =
+    opts.skillSourcesPath ??
+    join(mkdtempSync(join(tmpdir(), 'pacman-skill-sources-')), 'skill-sources.json');
   const oauthStates: AppContext['oauthStates'] = new Map();
   const app = createApp({
     db,
@@ -72,9 +85,14 @@ export function bootServer(
     oauthClient: opts.oauthClient ?? null,
     ...(opts.oauthFetch !== undefined ? { oauthFetch: opts.oauthFetch } : {}),
     ...(opts.githubFetch !== undefined ? { githubFetch: opts.githubFetch } : {}),
+    ...(opts.skillImportFetch !== undefined ? { skillImportFetch: opts.skillImportFetch } : {}),
+    ...(opts.skillImportTimeoutMs !== undefined
+      ? { skillImportTimeoutMs: opts.skillImportTimeoutMs }
+      : {}),
     reposDir,
     attachmentsDir,
     skillsDir,
+    skillSourcesPath,
     ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
     authToken: opts.authToken ?? null,
     mcpConfigPath: opts.mcpConfigPath ?? join(tmpdir(), `pacman-mcp-absent-${randomUUID()}.json`),
@@ -97,6 +115,7 @@ export function bootServer(
       if (ownReposDir) rmSync(reposDir, { recursive: true, force: true });
       if (ownAttDir) rmSync(attachmentsDir, { recursive: true, force: true });
       if (ownSkillsDir) rmSync(skillsDir, { recursive: true, force: true });
+      if (ownSkillSourcesDir) rmSync(dirname(skillSourcesPath), { recursive: true, force: true });
     },
   };
 }

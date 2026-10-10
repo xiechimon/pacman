@@ -103,6 +103,12 @@ export async function bootRealServer(opts: {
     reposDir,
     attachmentsDir,
     skillsDir,
+    // #1170 导入来源登记：隔离目录内（与 skillsDir 同纪律；集成用例需要
+    // 导入/refresh 时走 PACMAN_HOME 无关的隔离路径）。
+    skillSourcesPath: join(
+      mkdtempSync(join(tmpdir(), 'pacman-it-skill-sources-')),
+      'skill-sources.json',
+    ),
     webDir: opts.webDir ?? null,
     // #251 可选 token 鉴权：集成面全部走关态（默认行为零改动）。
     authToken: null,

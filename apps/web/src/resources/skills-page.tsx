@@ -26,7 +26,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../components/ui/input-group.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { ArrowUpDown, ChevronDown, Puzzle, Search } from '../icons/index.js';
+import { ArrowUpDown, ChevronDown, Download, Puzzle, Search } from '../icons/index.js';
 import {
   EmptyState,
   RES_SEARCH_ROW_CLS,
@@ -39,6 +39,7 @@ import {
 } from './parts.js';
 import { ResourceShell } from './shell.js';
 import { SkillDialog, type SkillEditTarget } from './skill-dialog.js';
+import { SkillImportDialog } from './skill-import-dialog.js';
 
 export const SKILLS_HREF = '/app/resources/skills';
 
@@ -60,6 +61,8 @@ export function SkillsPage() {
   // 弹窗态：null = 关；{skill?} 无 skill = 新建，有 = 编辑（XMON-114）。
   const [dialog, setDialog] = useState<{ skill?: SkillEditTarget } | null>(null);
   const openCreate = () => setDialog({});
+  // 导入弹窗（#1170）：localPath / GitHub URL 二选一 → POST skills/import。
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <ResourceShell
@@ -68,6 +71,12 @@ export function SkillsPage() {
       backHref="/app"
       selected={SKILLS_HREF}
       onNew={openCreate}
+      headerExtra={
+        <Button variant="link" onClick={() => setImportOpen(true)} data-testid="resource-import">
+          <Download width={13} height={13} />
+          {t('导入')}
+        </Button>
+      }
       fixture={fixture}
     >
       {skills.length === 0 ? (
@@ -146,6 +155,7 @@ export function SkillsPage() {
         </>
       )}
       <SkillDialog open={dialog !== null} onClose={() => setDialog(null)} skill={dialog?.skill} />
+      <SkillImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </ResourceShell>
   );
 }

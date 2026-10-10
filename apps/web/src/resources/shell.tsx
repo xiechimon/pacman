@@ -25,10 +25,10 @@ import { ChevronLeft, Plus } from '../icons/index.js';
  *  强调（同 #1006 R4 / #1055 口径）；右墨缘 21px 是 r7 实测 layout，归消费点。 */
 const RES_NEW_CLS = 'ml-auto mr-[21px]';
 
-/** `+ 新建` 的 SPA 链接形态（newHref 分支）：link 档同配方经 buttonVariants
- *  复用。载体是 react-router Link（渲染仍是 <a>，链接不在 #851 裸控件账内；
- *  focus 环走 #388 全局 :where(a) 律）——#1157：裸 <a href> 会整页导航。 */
-const RES_NEW_ANCHOR_CLS = cn(buttonVariants({ variant: 'link' }), RES_NEW_CLS);
+/** #1170 headerExtra（右侧动作位第二槽，技能页「导入」首用）：有 extra 时
+ *  右对齐容器统一持位（ml-auto/mr 归容器，gap 分隔），`+ 新建` 的持位类
+ *  传空防双 auto-margin 分摊空隙；无 extra = 现状零改动（`+ 新建` 独持位）。 */
+const RES_RIGHT_CLS = 'ml-auto mr-[21px] flex items-center gap-1.5';
 
 interface ResourceShellProps {
   /** Centered topbar title (`技能` / `MCP 服务器` / …). */
@@ -48,6 +48,9 @@ interface ResourceShellProps {
   /** Read-only surfaces carry no `+ 新建` action (skills, spec 13 #367：
    *  技能 = 本地目录现扫只读投影，无新建/导入面). */
   hideNew?: boolean;
+  /** 右侧动作位第二槽（#1170 首用 = 技能页「导入」钮）：渲染在 `+ 新建`
+   *  左侧、同右对齐容器内（见 RES_RIGHT_CLS）；缺省 = 现状布局零改动。 */
+  headerExtra?: ReactNode;
   fixture: FixtureSet;
   children: ReactNode;
 }
@@ -60,6 +63,7 @@ export function ResourceShell({
   newHref,
   onNew,
   hideNew = false,
+  headerExtra,
   fixture,
   children,
 }: ResourceShellProps) {
@@ -67,17 +71,31 @@ export function ResourceShell({
   // data-testid="resource-new" = #910 二级载体：title-band hit-test 律
   // （#133）的探针要在 elementFromPoint 后按 CSS 选择器认领元素，role 定位
   // 表达不了；行为面（点击开弹窗）一律走 getByRole('button', {name:'新建'})。
-  const newAction = hideNew ? null : newHref != null ? (
-    <Link className={RES_NEW_ANCHOR_CLS} to={newHref} data-testid="resource-new">
-      <Plus width={13} height={13} />
-      {t('新建')}
-    </Link>
-  ) : (
-    <Button variant="link" className={RES_NEW_CLS} onClick={onNew} data-testid="resource-new">
-      <Plus width={13} height={13} />
-      {t('新建')}
-    </Button>
-  );
+  const renderNew = (cls: string) =>
+    hideNew ? null : newHref != null ? (
+      <Link
+        className={cn(buttonVariants({ variant: 'link' }), cls)}
+        to={newHref}
+        data-testid="resource-new"
+      >
+        <Plus width={13} height={13} />
+        {t('新建')}
+      </Link>
+    ) : (
+      <Button variant="link" className={cls} onClick={onNew} data-testid="resource-new">
+        <Plus width={13} height={13} />
+        {t('新建')}
+      </Button>
+    );
+  const newAction =
+    headerExtra == null ? (
+      renderNew(RES_NEW_CLS)
+    ) : (
+      <div className={RES_RIGHT_CLS}>
+        {headerExtra}
+        {renderNew('')}
+      </div>
+    );
 
   return (
     <div className="flex h-full" data-route={href}>

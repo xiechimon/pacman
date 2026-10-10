@@ -119,6 +119,16 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
     path: '/api/teams/{id}/skills/{sid}',
     note: 'XMON-109（spec 13 回摆）：写路径——覆写式更新（列出者覆写、未列者保留；改名须携带新 SKILL.md）',
   },
+  {
+    method: 'POST',
+    path: '/api/teams/{id}/skills/import',
+    note: '#1170：导入通道——body {localPath} 或 {url} 二选一（本地目录 / GitHub 公共仓子目录）；落盘复用 createLocalSkill 校验；SSRF/路径守卫见 services/skill-import.ts',
+  },
+  {
+    method: 'POST',
+    path: '/api/teams/{id}/skills/{sid}/refresh',
+    note: '#1170：按记录的来源重拉（技能 id 不变，复用 updateLocalSkill 覆写语义）；无来源记录 = 409',
+  },
   { method: 'POST', path: '/api/schedules' },
   { method: 'POST', path: '/api/analytics/first-touch', note: '形状保留、内容自选；可空实现' },
   {
