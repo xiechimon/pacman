@@ -16,10 +16,12 @@ import type { Scheduler } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { build, schedule, todo } from '../db/schema.js';
+import type { FetchLike } from '../lib/github.js';
 import { nowMs } from '../lib/ids.js';
 import { ATTACHMENT_GC_INTERVAL_MS, type GcLogger, sweepAttachments } from './attachment-gc.js';
 import { type BuildDeps, startBuilds, sweepAbandonedBuildSteps, toBuildRecord } from './builds.js';
 import { failAbandonedChiefSteps, fireDueChiefWakes } from './chief.js';
+import { CI_POLL_INTERVAL_MS, type CiPollLogger, createCiPoller } from './ci-loop.js';
 import type { TeamStreamHub } from './events.js';
 import { sweepStaleMachines } from './machines.js';
 import { PhaseTransitionError } from './phase.js';
@@ -28,6 +30,16 @@ import { computeNextRunAt, dueSchedules, isRecurring, updateNextRunAt } from './
 export interface SchedulerOptions {
   /** 真实时间循环 tick 间隔（config schedulerTickMs）。 */
   tickMs: number;
+}
+
+/** #1150 CI 磨绿环运行位：轮询器挂本调度器家族——自有 60s 循环
+ * （CI_POLL_INTERVAL_MS，与 tick 的 15s 分道——tick 是同步契约（shared
+ * Scheduler.tick: void），网络读不进 tick；GC 的 sweep 是纯 fs 才能 piggyback）。
+ * 缺省/null = 不开轮询（既有调用零改动）。githubFetch 是轮询的出站读位
+ * （AppContext.githubFetch 同族），logger = 对账行（每 sweep 一行）。 */
+export interface CiPollRun {
+  githubFetch: FetchLike;
+  logger: CiPollLogger;
 }
 
 /** 附件回收运行位（#759：tick piggyback，缺省 = 不开回收——既有调用零改动）。 */
@@ -43,8 +55,16 @@ export function createScheduler(
   deps: BuildDeps,
   opts: SchedulerOptions,
   gc?: AttachmentGcRun | null,
+  ci?: CiPollRun | null,
 ): Scheduler {
   let timer: NodeJS.Timeout | null = null;
+  // #1150 CI 磨绿环轮询器（可选运行位）：start/stop 生命周期与 tick 同家族；
+  // sweep 自带 per 候选容错 + 对账日志，循环兜底 catch 防 interval 上抛。
+  const ciPoller =
+    ci !== undefined && ci !== null
+      ? createCiPoller(deps, { githubFetch: ci.githubFetch, logger: ci.logger })
+      : null;
+  let ciTimer: NodeJS.Timeout | null = null;
   // 回收限流位（内存记上次 sweep 时刻；多实例同库时各自限流，重复 sweep
   // 无害——Victim 判定幂等，删过即无行）。
   let lastGcAt = 0;
@@ -143,11 +163,24 @@ export function createScheduler(
       tick(); // 启动即补扫（停机期间到期行下一 tick 语义，[设计]）
       timer = setInterval(() => tick(), opts.tickMs);
       timer.unref?.(); // 测试/短命令不吊住事件循环
+      // #1150 CI 磨绿环：独立 60s 循环（启动即补扫 + 周期轮询；tick 不承载——
+      // tick 是同步契约，网络读只进本循环）。
+      if (ciPoller !== null) {
+        void ciPoller.sweep().catch(() => {}); // sweep 内部已容错，此处兜底不打进 start
+        ciTimer = setInterval(() => {
+          void ciPoller.sweep().catch(() => {});
+        }, CI_POLL_INTERVAL_MS);
+        ciTimer.unref?.();
+      }
     },
     stop() {
       if (timer !== null) {
         clearInterval(timer);
         timer = null;
+      }
+      if (ciTimer !== null) {
+        clearInterval(ciTimer);
+        ciTimer = null;
       }
     },
   };

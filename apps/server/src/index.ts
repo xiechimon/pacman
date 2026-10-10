@@ -42,6 +42,7 @@ seedLocalMachine(db, seeded.team.id);
 backfillFixedTags(db);
 const hub = new TeamStreamHub();
 const convHub = new ConversationStreamHub();
+const machineHub = new MachineWakeHub();
 const reposDir = reposDirOf(config);
 mkdirSync(reposDir, { recursive: true });
 const attachmentsDir = attachmentsDirOf(config);
@@ -50,7 +51,7 @@ const app = createApp(
   {
     db,
     hub,
-    machineHub: new MachineWakeHub(),
+    machineHub,
     convHub,
     secretBox,
     user: seeded.user,
@@ -76,12 +77,16 @@ const app = createApp(
 warnInsecureBind(logger, config);
 
 // cron 定时闭环（02 §9.2 宿主自持）：启动即补扫 + tick 循环。
-// deps 含 user（M2c 通知面）：定时轮停 review 经 build 漏斗发 build_review（r5 §7.2）。
+// deps 含 user（M2c 通知面）：定时轮停 review 经 build 漏斗发 build_review（r5 §7.2）；
+// machineHub / box = #1150 CI 磨绿环轮询的 wake / token 阶梯位。
 // #759 附件回收挂 tick（首 tick 即补扫，之后每小时一次；pino 直传 = GcLogger）。
+// #1150 CI 磨绿环挂同家族自循环（60s 轮询 PR checks；出站读 globalThis.fetch
+// ——与 AppContext.githubFetch 同源的缺省位）。
 const scheduler = createScheduler(
-  { db, hub, user: seeded.user, convHub },
+  { db, hub, machineHub, user: seeded.user, convHub, box: secretBox },
   { tickMs: config.schedulerTickMs },
   { attachmentsDir, logger },
+  { githubFetch: globalThis.fetch, logger },
 );
 scheduler.start();
 

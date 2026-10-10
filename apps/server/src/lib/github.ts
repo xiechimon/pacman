@@ -442,6 +442,93 @@ export async function githubUpdateIssueTitle(
   await writeJson(fetchImpl, 'PATCH', url, token, { title });
 }
 
+// —— PR checks 只读面（#1150 CI 磨绿环：轮询器的唯一出站读）———————————————————
+
+/** check run 最小投影（#1150 fix prompt 材料位；畸形行跳过）。output.title/
+ * output.summary = GitHub 在本端点给的「失败摘要」面（真实日志下载归
+ * actions/jobs + 重定向，不属轮询面——每轮每 PR 一次条件 GET 是票面钉的
+ * 扫描纪律，日志拉取会把「条件读」退化成全量拉）。 */
+export interface GithubCheckRun {
+  name: string;
+  /** 上游 status：queued | in_progress | completed。 */
+  status: string;
+  /** completed 时：success | failure | neutral | cancelled | skipped | timed_out；
+   * 未完成恒 null。 */
+  conclusion: string | null;
+  outputTitle: string | null;
+  outputSummary: string | null;
+}
+
+export interface GithubCheckRunsPage {
+  /** true = 304 Not Modified（条件 GET 命中 etag，调用方复用缓存判据）。 */
+  notModified: boolean;
+  etag: string | null;
+  checkRuns: GithubCheckRun[];
+}
+
+/** 单页条数 [设计]：上游 per_page 上限 100，磨绿仓（门禁数个位数）远不满；
+ * 超出部分丢尾——不在本端点翻页（丢的是常驻非门禁 check，不在「磨绿」面）。 */
+const CHECK_RUNS_PER_PAGE = 100;
+
+/** PR head 的 check-runs 只读（`GET /repos/{o}/{r}/commits/{ref}/check-runs`；
+ * ref = conv 分支名，上游解析分支头——PR 的 head 即分支 tip，无需再拉
+ * pulls/{n} 取 sha）。条件 GET（If-None-Match 携带上轮 etag → 304 → 调用方
+ * 复用判据，不出全量体）。token 可空（匿名梯，公开仓可达）。null = 读不到
+ * （网络/404 私仓/限流/响应形坏不区分——fail-open 语义归调用方，同
+ * githubPullState）。单次尝试、FETCH_TIMEOUT_MS 上界，不重试。 */
+export async function githubCommitCheckRuns(
+  fetchImpl: FetchLike,
+  token: string | null,
+  owner: string,
+  repo: string,
+  ref: string,
+  opts: { etag?: string | null } = {},
+): Promise<GithubCheckRunsPage | null> {
+  const url =
+    `https://api.github.com/${repoPath(owner, repo)}/commits/${encodeURIComponent(ref)}` +
+    `/check-runs?per_page=${CHECK_RUNS_PER_PAGE}`;
+  let res: Awaited<ReturnType<FetchLike>>;
+  try {
+    res = await fetchImpl(url, {
+      headers: {
+        ...API_HEADERS,
+        ...(token !== null ? { authorization: `Bearer ${token}` } : {}),
+        ...(opts.etag != null ? { 'if-none-match': opts.etag } : {}),
+      },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch {
+    return null;
+  }
+  if (res.status === 304) {
+    // 304 无应答体：etag 回传（调用方缓存键不变），checkRuns 空（notModified 位承载语义）。
+    return { notModified: true, etag: opts.etag ?? null, checkRuns: [] };
+  }
+  if (!res.ok) return null;
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    return null;
+  }
+  if (typeof data !== 'object' || data === null) return null;
+  const raw = (data as { check_runs?: unknown }).check_runs;
+  if (!Array.isArray(raw)) return null;
+  const checkRuns: GithubCheckRun[] = [];
+  for (const entry of raw as Array<Record<string, unknown>>) {
+    if (typeof entry?.name !== 'string' || typeof entry.status !== 'string') continue;
+    const output = (entry.output ?? null) as Record<string, unknown> | null;
+    checkRuns.push({
+      name: entry.name,
+      status: entry.status,
+      conclusion: typeof entry.conclusion === 'string' ? entry.conclusion : null,
+      outputTitle: typeof output?.title === 'string' ? output.title : null,
+      outputSummary: typeof output?.summary === 'string' ? output.summary : null,
+    });
+  }
+  return { notModified: false, etag: res.headers.get('etag'), checkRuns };
+}
+
 // —— OAuth token 交换面（#231 握手：callback 收码后唯一一次出站）———————————
 
 export interface OAuthExchangeInput {
