@@ -43,17 +43,31 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const now = () => Date.now();
 
 // —— DB 读面（better-sqlite3 从 apps/server 解析，只读打开）———————————————
+// --expect=old：打 origin/main 的旧栈（VERIFY_PORT/VERIFY_RUN_DIR 指过去），
+// 断言反向——静默死机后 machine.online 永不翻 false（本票要杀的 bug 复现）。
+// 旧 schema 无 lastSeenAt 列：PRAGMA 探列存在性，缺列时 lastSeenAt 恒 null。
+const EXPECT_OLD = process.argv.includes('--expect=old');
 const openDb = () => {
   const requireServer = createRequire(join(SCRIPT_ROOT, 'apps', 'server', 'package.json'));
   const Database = requireServer('better-sqlite3');
   return new Database(DB_PATH, { readonly: true });
 };
+function hasLastSeenColumn() {
+  const db = openDb();
+  try {
+    const cols = db.prepare('PRAGMA table_info(machine)').all();
+    return cols.some((c) => c.name === 'lastSeenAt');
+  } finally {
+    db.close();
+  }
+}
 function machineRow() {
   const db = openDb();
   try {
-    const row = db
-      .prepare('SELECT id, online, "lastSeenAt" FROM machine WHERE name = ?')
-      .get(MACHINE_NAME);
+    const withCol = hasLastSeenColumn();
+    const row = withCol
+      ? db.prepare('SELECT id, online, "lastSeenAt" FROM machine WHERE name = ?').get(MACHINE_NAME)
+      : db.prepare('SELECT id, online FROM machine WHERE name = ?').get(MACHINE_NAME);
     // SQLite 布尔 = 0/1 整数；取样统一转 JS 布尔（严格等值比较用）。
     return row === undefined ? undefined : { ...row, online: !!row.online };
   } finally {
@@ -160,11 +174,51 @@ daemon.on('exit', (code) => appendFileSync(daemonConsole, `\n[probe] daemon exit
 const enrolled = await pollUntil('enroll', (s) => s.online === true, { timeoutMs: 60_000, intervalMs: 2000 });
 check(enrolled.hit, 'daemon enroll → machine online（presence 置位）');
 const enrolledRow = machineRow();
+const machineId = enrolledRow?.id;
+
+// —— --expect=old 腿：origin/main 旧栈上的反向断言（bug 复现），跑完即收————
+if (EXPECT_OLD) {
+  check(!hasLastSeenColumn(), 'old-1: machine 表无 lastSeenAt 列（改动前 schema 形态）');
+  console.log('old leg: SIGSTOP silent death (210s)');
+  const oldDeathAt = now();
+  signalTree(daemon.pid, 'SIGSTOP');
+  const frozen = await pollUntil('old-freeze', () => false, { timeoutMs: STALE_MS + 60_000, intervalMs: 10_000 });
+  const stayedOnline = frozen.timeline.every((s) => s.online === true);
+  check(
+    stayedOnline,
+    `old-2: 静默死机 ${(STALE_MS + 60_000) / 1000}s 后 online 仍 true——无第二真值源，机器行永不翻 offline（#1136 要杀的 #861 残余 bug 复现）`,
+  );
+  signalTree(daemon.pid, 'SIGCONT');
+  const back = await pollUntil('old-recover', (s) => s.online === true, { timeoutMs: 30_000, intervalMs: 5000 });
+  check(back.hit, 'old-3: SIGCONT 后 presence 通道恢复（机器全程 online，无需翻回）');
+  try {
+    daemon.kill('SIGTERM');
+  } catch { /* 已退出 */ }
+  await sleep(2000);
+  try {
+    if (!daemon.killed) daemon.kill('SIGKILL');
+  } catch { /* 已退出 */ }
+  const oldResult = {
+    probe: 'drive-1136-stale-sweep',
+    expect: 'old',
+    ticket: 1136,
+    stack: { server: SERVER, db: DB_PATH, machineId, machineName: MACHINE_NAME },
+    timings: { oldDeathAt, observedMs: STALE_MS + 60_000, lastSampleOnline: frozen.timeline.at(-1)?.online },
+    phases: { frozen: frozen.timeline },
+    checks,
+    failures,
+  };
+  writeFileSync(join(EVIDENCE, 'result.json'), `${JSON.stringify(oldResult, null, 2)}\n`);
+  if (existsSync(join(RUN_DIR, 'server.log'))) copyFileSync(join(RUN_DIR, 'server.log'), join(EVIDENCE, 'server.log'));
+  console.log(`\nresult (old): ${checks.length - failures}/${checks.length} checks PASS`);
+  console.log(`evidence → ${EVIDENCE}`);
+  process.exit(failures === 0 ? 0 : 1);
+}
+
 check(
   enrolledRow?.lastSeenAt != null,
   'markPresence 落 lastSeenAt（迁移列 + 写路径 live 实证）',
 );
-const machineId = enrolledRow?.id;
 
 // 3) Phase A：healthy 观察 60s（≥ 4 个 scheduler tick）。
 console.log('phase A: healthy observation 60s');
