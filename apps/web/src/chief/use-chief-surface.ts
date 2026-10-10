@@ -14,7 +14,7 @@
 // runs exactly one instance of this hook, so the listener stays a
 // singleton per route.
 
-import type { ChiefCompactionModel, TranscriptRow } from '@pacman/shared';
+import type { AskUserAnswer, ChiefCompactionModel, TranscriptRow } from '@pacman/shared';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { activityStore } from '../api/activity.js';
@@ -67,6 +67,10 @@ export interface ChiefSurface {
   /** #615 返工 live only：恢复钮「恢复到此处」= POST chief threads rewind
    *  （threadId 由 surface 持活动线程闭包携带）。 */
   onRewind?: (messageId: string) => void;
+  /** #1049 live only：问答卡提交回答 / 取消提问（POST questions 端点；
+   *  threadId 同 rewind 闭包携带；409（已答/已取消竞态）→ toast，不重试）。 */
+  onAnswerQuestion?: (input: { requestId: string; answers: AskUserAnswer[] }) => void;
+  onCancelQuestion?: (requestId: string) => void;
 }
 
 /** activeThreadIdx sentinel (#146): the fresh-thread view while threads
@@ -257,6 +261,26 @@ export function useChiefSurface(
         );
       }
     : undefined;
+  // #1049 问答卡回调：失败（含 409 竞态——卡已翻面后重复提交）toast 呈报；
+  // 成功翻面走 SSE message 事件 + invalidateAll 重取（S8 同律，不持乐观态）。
+  const onAnswerQuestion = live
+    ? (input: { requestId: string; answers: AskUserAnswer[] }) => {
+        if (activeThread === null) return;
+        mutations.chiefAnswerQuestion.mutate(
+          { threadId: activeThread.id, ...input },
+          { onError: (e) => toastError(t('提交回答失败，请重试。'), e) },
+        );
+      }
+    : undefined;
+  const onCancelQuestion = live
+    ? (requestId: string) => {
+        if (activeThread === null) return;
+        mutations.chiefCancelQuestion.mutate(
+          { threadId: activeThread.id, requestId },
+          { onError: (e) => toastError(t('取消提问失败，请重试。'), e) },
+        );
+      }
+    : undefined;
 
   const onSend = live
     ? (text: string) => {
@@ -300,5 +324,7 @@ export function useChiefSurface(
     modelOptions,
     onPickModel,
     onRewind,
+    onAnswerQuestion,
+    onCancelQuestion,
   };
 }

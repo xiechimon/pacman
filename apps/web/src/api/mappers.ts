@@ -27,6 +27,8 @@ import type {
   TodoRecord as WireTodo,
 } from '@pacman/shared';
 import {
+  ASK_USER_QUESTION_KIND,
+  askUserQuestionContentSchema,
   BRAND,
   CHIEF_TURN_ERROR_KIND,
   chiefTurnErrorContentSchema,
@@ -1058,6 +1060,44 @@ export function chiefTurnErrorOfContent(content: unknown): string | null {
   return row.success ? row.data.message : null;
 }
 
+/** 解析 ASK_USER_QUESTION_KIND 问答行（#1049）：server 落的 ask_user 提问
+ * assistant 行 content 为 JSON 串；非该 kind / 坏形状 = null（照旧走跳过
+ * 路径——问答卡不渲染坏形，不给假卡）。 */
+export function askQuestionOfContent(content: unknown): {
+  requestId: string;
+  status: 'pending' | 'answered' | 'cancelled';
+  questions: {
+    header: string;
+    question: string;
+    options: { label: string; description?: string }[];
+    multiSelect?: boolean;
+  }[];
+  answers: { header: string; choices?: string[]; text?: string }[] | null;
+} | null {
+  if (typeof content !== 'string') return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return null;
+  }
+  if (
+    parsed === null ||
+    typeof parsed !== 'object' ||
+    (parsed as { kind?: unknown }).kind !== ASK_USER_QUESTION_KIND
+  ) {
+    return null;
+  }
+  const row = askUserQuestionContentSchema.safeParse(parsed);
+  if (!row.success) return null;
+  return {
+    requestId: row.data.requestId,
+    status: row.data.status,
+    questions: row.data.questions,
+    answers: row.data.answers,
+  };
+}
+
 /** r5 100/111 hero 网格 canon（卡序 = 抓包序；与 fixtures CHIEF_EXAMPLES
  * 同源文案——live 面单源在此，fixture 面保持自有副本不动）。 */
 const CHIEF_HERO_EXAMPLES = [
@@ -1152,6 +1192,22 @@ function collectChiefStream(
         });
       }
       continue; // 工具行不进 chief 流主呈现（r5 114/116 折叠态无工具行）
+    }
+    // #1049 问答行：assistant 行 content 为 ask_user_question JSON 串——
+    // 单列问答卡（选项可点/多选/自由文本；不落 robot 文本面，raw JSON 不
+    // 渲染）。坏形状不产卡（不给假卡）。
+    const ask = m.role === 'assistant' ? askQuestionOfContent(m.content) : null;
+    if (ask !== null) {
+      pendingTools = []; // 问答是回合边界内的显式停驻点，前导工具行就地折叠
+      items.push({
+        kind: 'question',
+        id: m.id,
+        requestId: ask.requestId,
+        status: ask.status,
+        questions: ask.questions,
+        answers: ask.answers,
+      });
+      continue;
     }
     const rawText = textOfContent(m.content).trim();
     if (rawText === '') {

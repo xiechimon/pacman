@@ -40,6 +40,7 @@
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import {
+  type AskUserAnswer,
   CHIEF_INPUT_PLACEHOLDER,
   CHIEF_INPUT_PLACEHOLDER_STEERING,
   type ChiefCompactionModel,
@@ -110,6 +111,7 @@ import { SlashHelp, SlashMenu } from '../overlay/slash-menu.js';
 import { useChiefNewThreadHotkey } from '../overlays/hotkeys.js';
 import { ChiefIdentity } from './chief-identity.js';
 import { ChiefModelPopover } from './chief-model-popover.js';
+import { ChiefQuestionCard } from './chief-question-card.js';
 import { AVATAR_IMG_CLS, AVATAR_SLOT_CLS } from './recipes.js';
 
 /** 悬浮窗壳（ADR 0013 D2/D10：几何皮肤整套采 Multica 原值——默认
@@ -331,6 +333,11 @@ interface DrawerProps {
   /** #615 返工 live 面：恢复钮确认后 = POST chief threads rewind（截断锚后
    *  消息 + 新会话重发）；缺省 = fixture 律（确认层 accept 关窗零请求）。 */
   onRewind?: (messageId: string) => void;
+  /** #1049 live 面：问答卡提交回答（POST questions/{requestId}/answer）；
+   *  缺省 = 惰性（fixture 律，提交/取消钮 disabled）。 */
+  onAnswerQuestion?: (input: { requestId: string; answers: AskUserAnswer[] }) => void;
+  /** #1049 live 面：问答卡取消提问（POST questions/{requestId}/cancel）。 */
+  onCancelQuestion?: (requestId: string) => void;
 }
 
 interface InnerProps extends DrawerProps {
@@ -410,6 +417,8 @@ function ChiefDrawerInner({
   modelOptions,
   onPickModel,
   onRewind,
+  onAnswerQuestion,
+  onCancelQuestion,
   threadsOpen,
   setThreadsOpen,
 }: InnerProps) {
@@ -1070,6 +1079,39 @@ function ChiefDrawerInner({
                           {...(item.seconds !== undefined ? { seconds: item.seconds } : {})}
                           {...(item.running !== undefined ? { running: item.running } : {})}
                           {...(item.error !== undefined ? { error: item.error } : {})}
+                        />
+                      </MessageContent>
+                    </Message>
+                  </MessageScrollerItem>
+                );
+              // #1049 问答卡：头像槽同思考行（绑定身份脸/虚线字形），内容列
+              // = ChiefQuestionCard（选项可点/多选/自由文本；pending 期答/取
+              // 消回调 = surface mutations；答毕 SSE 重取翻面）。
+              if (item.kind === 'question')
+                return (
+                  <MessageScrollerItem
+                    key={item.id ?? i}
+                    messageId={item.id}
+                    style={SCROLLER_ITEM_STYLE}
+                  >
+                    <Message className={`chief-msg ${MSG_ROW_CLS}`}>
+                      {chief.bound && chief.agent ? (
+                        <span className={AVATAR_IMG_CLS}>
+                          <SeededAvatar
+                            className="size-6"
+                            name={chief.agent.displayName}
+                            src={chief.agent.avatarUrl}
+                            fallback="/avatar-robot-1.svg"
+                          />
+                        </span>
+                      ) : (
+                        <ChiefFaceDashed width={24} height={24} className={AVATAR_SLOT_CLS} />
+                      )}
+                      <MessageContent className={MSG_COL_MID_CLS} data-testid="chief-msg-col">
+                        <ChiefQuestionCard
+                          item={item}
+                          {...(onAnswerQuestion ? { onAnswer: onAnswerQuestion } : {})}
+                          {...(onCancelQuestion ? { onCancel: onCancelQuestion } : {})}
                         />
                       </MessageContent>
                     </Message>

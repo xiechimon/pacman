@@ -118,6 +118,7 @@ import {
   rewindChiefThread,
   sendChiefMessage,
 } from './services/chief.js';
+import { answerQuestion, cancelQuestion, parseAnswerBody } from './services/chief-questions.js';
 import { planDocumentDiff } from './services/documents.js';
 import { createSerialConnection } from './services/events.js';
 import { listDir } from './services/fs-list.js';
@@ -868,6 +869,41 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     requireTeam(ctx, teamId);
     const body = parseWith(chiefRewindBodySchema, await jsonBody(c), 'body');
     return c.json(rewindChiefThread(svc, teamId, c.req.param('tid'), body));
+  });
+
+  // —— #1049 问答卡答题面（web → server；线程归属 = requireTeam + 线程 team
+  // 双校验；返回翻转后的卡 content，前端就地翻面）。answers 执法（选项 ⊆
+  // label 集 / 文本题非空 / 逐题对应）在 services/chief-questions.ts 单源。
+  app.post('/api/teams/:id/chief/threads/:tid/questions/:requestId/answer', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const threadId = c.req.param('tid');
+    const thread = getChiefThread(svc, threadId);
+    if (!thread || thread.teamId !== teamId) throw notFound(`chief thread ${threadId}`);
+    const answers = parseAnswerBody(await jsonBody(c));
+    return c.json(
+      answerQuestion(svc, {
+        threadId,
+        requestId: c.req.param('requestId'),
+        answers,
+      }),
+    );
+  });
+
+  // —— #1049 问答卡取消面（用户「不答了」：卡翻 cancelled，等答的机器 hold
+  // 随即返回 cancelled——模型收到后收束回合，不自动拍板（D3/D4 的用户侧出口）。
+  app.post('/api/teams/:id/chief/threads/:tid/questions/:requestId/cancel', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const threadId = c.req.param('tid');
+    const thread = getChiefThread(svc, threadId);
+    if (!thread || thread.teamId !== teamId) throw notFound(`chief thread ${threadId}`);
+    cancelQuestion(svc, {
+      threadId,
+      requestId: c.req.param('requestId'),
+      reason: '用户取消了本次提问',
+    });
+    return c.json({ ok: true as const });
   });
 
   // 既有线程续消息 = POST /conversations/{id}/messages（REST 同名 [推断]）。

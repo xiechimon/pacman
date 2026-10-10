@@ -361,21 +361,81 @@ export function parseMcpAttentionMessage(message: string): McpAttentionLine[] {
   return out;
 }
 
-/** headless 捕获 UI：notify 真转发（canon 降级行原料），其余成员一律
+/** headless 捕获 UI：notify 真转发（canon 降级行原料）；#1049 起 select/
+ * confirm/input 三件经 ask 通道真答（#1023 建的缝接上原生问答）——ask 缺席
+ * 的会话保持 no-op（worker 步无 ask_user 词，行为零漂移）。其余成员一律
  * no-op——daemon 无终端面，pi 对无 UI 会话本来就用同形 no-op 桩
- * （runner.js noOpUIContext）。Proxy 免手写全部接口成员；仅 notify 在
- * headless 流程会被读到。绑定为 uiContext 会把 ctx.hasUI 翻真，故只在
- * 有 MCP 端点的会话绑定（见 open()）。 */
-function headlessCaptureUi(
+ * （runner.js noOpUIContext）。Proxy 免手写全部接口成员。绑定为 uiContext
+ * 会把 ctx.hasUI 翻真（项目信任已由宿主钉 deny，MCP 登录命令不在无人值守
+ * 面——hasUI 消费面审计过，无行为漂移），故在有 MCP 端点**或** ask 通道
+ * 在位的会话绑定（见 open()）。 */
+export function headlessCaptureUi(
   onNotify: (message: string, type?: 'info' | 'warning' | 'error') => void,
+  /** #1049 问答通道（= runner 的 ask_user 拦截面；缺省 = 本会话无问答）。 */
+  ask?: (params: Record<string, unknown>) => Promise<string>,
 ): ExtensionUIContext {
-  const base: Record<string, unknown> = { notify: onNotify };
+  const base: Record<string, unknown> = {
+    notify: onNotify,
+    ...(ask !== undefined
+      ? {
+          select: async (title: string, options: string[]) => {
+            const parsed = await askViaChannel(ask, {
+              header: headerOf(title),
+              question: title,
+              options: options.map((label) => ({ label })),
+            });
+            return parsed?.choices?.[0];
+          },
+          confirm: async (title: string, message: string) => {
+            const parsed = await askViaChannel(ask, {
+              header: headerOf(title),
+              question: message === '' ? title : `${title}\n${message}`,
+              options: [{ label: '是' }, { label: '否' }],
+            });
+            return parsed?.choices?.[0] === '是';
+          },
+          input: async (title: string) => {
+            const parsed = await askViaChannel(ask, {
+              header: headerOf(title),
+              question: title,
+              options: [],
+            });
+            return parsed?.text;
+          },
+        }
+      : {}),
+  };
   return new Proxy(base, {
     get(target, prop) {
       if (typeof prop === 'string' && prop in target) return target[prop];
       return () => undefined;
     },
   }) as unknown as ExtensionUIContext;
+}
+
+/** ctx.ui 问句 → ask 通道单题往返（#1049）。失败/取消 = undefined（pi 语义：
+ * 用户没答）；解析坏形同样 undefined——extension 面不抛断回合。 */
+async function askViaChannel(
+  ask: (params: Record<string, unknown>) => Promise<string>,
+  question: { header: string; question: string; options: { label: string }[] },
+): Promise<{ choices?: string[]; text?: string } | undefined> {
+  try {
+    const text = await ask({ questions: [question] });
+    const parsed = JSON.parse(text) as {
+      status?: string;
+      answers?: { choices?: string[]; text?: string }[] | null;
+    };
+    if (parsed.status !== 'answered') return undefined;
+    return parsed.answers?.[0] ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** 问句标题截短（卡上 header 位；长标题按词界截）。 */
+function headerOf(title: string): string {
+  const trimmed = title.trim();
+  return trimmed.length > 24 ? `${trimmed.slice(0, 24)}…` : trimmed || '问题';
 }
 
 // —— skills 执行面注入（spec 14/#371）————————————————————————
@@ -1257,16 +1317,24 @@ export class PiBackend implements AgentBackend {
         }
       },
     };
+    // remoteTools/relay（r5 §3.1 bundle makeRemoteTools 同构）——提前到捕获
+    // UI 之前（#1049：ask 通道判定要读它）。
+    const remoteTools = opts.remoteTools ?? [];
+    const relay = opts.executeRemoteTool;
     // 连接失败观察缝（headless）：pi MCP 扩展把失败经 ctx.ui.notify 报告，
     // SDK 会话无别的连接状态出口——捕获 notify 解析 attention 块出 canon
     // 降级行（行形钉在 pi-mcp-attention.test + 集成 m4b，上游改词即红）。
-    // 仅在有 MCP 端点时绑定（绑定会把 ctx.hasUI 翻真，非 MCP 步保持纯
-    // headless 语义零漂移）。
+    // #1049：词表带 ask_user 的会话（chief 步）把 ctx.ui.select/confirm/
+    // input 接到问答通道——pi 原生 UI 原语落同一条卡（#1023 的缝）。
+    const askRelay =
+      relay !== undefined && remoteTools.some((t) => t.name === 'ask_user')
+        ? (params: Record<string, unknown>) => relay('ask_user', params)
+        : undefined;
     const mcpCaptureUi = headlessCaptureUi((message) => {
       for (const { slug, reason } of parseMcpAttentionMessage(message)) {
         onMcpLog?.(connectFailedLine(slug, reason));
       }
-    });
+    }, askRelay);
     const loader = new DefaultResourceLoader({
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
@@ -1293,8 +1361,6 @@ export class PiBackend implements AgentBackend {
     // remoteTools → pi customTools（r5 §3.1 bundle makeRemoteTools 同构）：每条
     // execute 经 opts.executeRemoteTool relay 回传服务端执行；拒绝/传输失败 →
     // 结果文本（bundle text(msg) 形，pi 侧照常消费，不抛断回合）。
-    const remoteTools = opts.remoteTools ?? [];
-    const relay = opts.executeRemoteTool;
     const customTools =
       remoteTools.length > 0 && relay
         ? remoteTools.map((def) =>
@@ -1403,8 +1469,11 @@ export class PiBackend implements AgentBackend {
     // bindExtensions（#930 必调步，官方示例 14-codemode-mcp 同款）：发
     // session_start → MCP 扩展读注册表、后台连接 server；首轮 prompt 只对
     // direct server 等待（startupWaitMs 10s 上限，慢/死 server 不拖回合）。
-    // 有 MCP 端点时绑捕获 UI（连接失败观察缝，见上方 mcpCaptureUi 注释）。
-    await session.bindExtensions(mcpEndpoints.length > 0 ? { uiContext: mcpCaptureUi } : {});
+    // 有 MCP 端点（连接失败观察缝）或 ask 通道在位（#1049 问答 UI）时绑
+    // 捕获 UI（见上方 mcpCaptureUi 注释的 hasUI 消费面审计）。
+    await session.bindExtensions(
+      mcpEndpoints.length > 0 || askRelay !== undefined ? { uiContext: mcpCaptureUi } : {},
+    );
     this.opts.onSession?.(session.sessionId, session.sessionFile);
     const handle = new PiSessionHandle(session, model, diagnose);
     // #730 首轮图片交付：promptImages 随 prompt 进会话（pi PromptOptions.

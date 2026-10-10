@@ -6,6 +6,8 @@ import type {
   AgentRecord,
   AgentTask,
   ApiKeyRow,
+  AskUserAnswer,
+  AskUserQuestionContent,
   Assignment,
   BuildRecord,
   CapabilitiesResponse,
@@ -782,6 +784,24 @@ export function useApiMutations(teamId: string | undefined) {
         api.post<{ deletedCount: number; thread: ChiefThread }>(
           `/api/teams/${teamId}/chief/threads/${input.threadId}/rewind`,
           { messageId: input.messageId },
+        ),
+      onSuccess: invalidateAll,
+    }),
+    // #1049 问答卡：答题/取消（S8 同律——不持乐观态，答毕 SSE message 事件 +
+    // invalidateAll 重取翻面；409（已答/已取消）走 onError toast）。
+    chiefAnswerQuestion: useMutation({
+      mutationFn: (input: { threadId: string; requestId: string; answers: AskUserAnswer[] }) =>
+        api.post<AskUserQuestionContent>(
+          `/api/teams/${teamId}/chief/threads/${input.threadId}/questions/${input.requestId}/answer`,
+          { answers: input.answers },
+        ),
+      onSuccess: invalidateAll,
+    }),
+    chiefCancelQuestion: useMutation({
+      mutationFn: (input: { threadId: string; requestId: string }) =>
+        api.post<{ ok: boolean }>(
+          `/api/teams/${teamId}/chief/threads/${input.threadId}/questions/${input.requestId}/cancel`,
+          {},
         ),
       onSuccess: invalidateAll,
     }),

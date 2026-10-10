@@ -13,6 +13,8 @@ import type {
   ClaimedStep,
   ClaudeCodeReport,
   GitCredentials,
+  MachineAskBody,
+  MachineAskResponse,
   MachineAttachmentResponse,
   MachineDoneBody,
   MachineShellPrecheckBody,
@@ -95,6 +97,13 @@ import {
   parseChiefTrigger,
   upsertChiefMessage,
 } from './chief.js';
+import {
+  ASK_HOLD_MS,
+  type ChiefQuestionDeps,
+  cancelPendingQuestions,
+  createOrGetQuestion,
+  holdForQuestion,
+} from './chief-questions.js';
 import { executeChiefTool, executeWorkerMemoryTool } from './chief-tools.js';
 import type { StepCredentialBundle } from './credentials.js';
 import {
@@ -1217,6 +1226,52 @@ export function reportActivity(
   deps.convHub?.publishActivity(row.buildId, { ...report, stepId, at: nowMs() });
 }
 
+/** 机器问答通道（#1049：POST /api/machine/ask/<stepId>）。与 relay 工具面分道
+ * 的理由：ask_user 的等待语义（挂到人答为止）与 relayTool 的 10s 超时互斥——
+ * 专用端点 + hold 长轮询（claim 同律：到期回 pending，daemon 原样重发同
+ * requestId，幂等命中既有卡不叠不重通知）。步必须是被本机认领的 chief 步；
+ * 非 chief 步（worker 词表无 ask_user）400。signal = 请求断连（#1065 僵尸
+ * 认领同律：死请求不占线，hold 循环即刻退）。 */
+export async function machineAsk(
+  deps: MachineDeps,
+  machineId: string,
+  stepId: string,
+  body: MachineAskBody,
+  opts: { holdMs: number; signal?: AbortSignal } = { holdMs: ASK_HOLD_MS },
+): Promise<MachineAskResponse> {
+  const row = ownedStep(deps, machineId, stepId);
+  if (row.kind !== 'chief' || !isChiefConversation(row.buildId)) {
+    throw new HttpError(400, `step ${stepId} is not a chief step`);
+  }
+  const qDeps: ChiefQuestionDeps = {
+    db: deps.db,
+    hub: deps.hub,
+    user: deps.user,
+    ...(deps.convHub !== undefined ? { convHub: deps.convHub } : {}),
+  };
+  const { content } = createOrGetQuestion(qDeps, {
+    threadId: row.buildId,
+    requestId: body.requestId,
+    questions: body.questions,
+  });
+  const final =
+    content.status === 'pending'
+      ? await holdForQuestion(qDeps, {
+          threadId: row.buildId,
+          requestId: body.requestId,
+          holdMs: opts.holdMs,
+          ...(opts.signal !== undefined ? { signal: opts.signal } : {}),
+        })
+      : content;
+  const settled = final ?? content;
+  return {
+    status: settled.status,
+    requestId: body.requestId,
+    answers: settled.status === 'answered' ? (settled.answers ?? null) : null,
+    reason: settled.status === 'cancelled' ? (settled.cancelReason ?? null) : null,
+  };
+}
+
 /** remoteTools relay 执行（02 §4.3「服务端定义并执行」；r5 §3.1 bundle：POST
  * /api/machine/tool/<stepId> {name, params} → {text}）。机器所有权校验后按步类
  * 分流：chief 步 = 51 词表（溯源上下文 step → chief_thread → chief）；worker
@@ -1942,6 +1997,19 @@ export async function finishStep(
       .where(eq(step.id, stepId))
       .run();
     publishStepStatus(deps, stepId);
+    // #1049 步终态收口：pending 问答卡翻 cancelled（等答 hold 随即返回，
+    // D4 出口——挂住的回合不无限占线）。先于 finishChiefTurn：翻面事件沿
+    // 会话流到达 web 时线程行还是回合态，卡片上下文自洽。
+    cancelPendingQuestions(
+      {
+        db: deps.db,
+        hub: deps.hub,
+        user: deps.user,
+        ...(deps.convHub !== undefined ? { convHub: deps.convHub } : {}),
+      },
+      stepRow.buildId,
+      '回合已结束',
+    );
     finishChiefTurn(deps, stepRow.buildId, outcome);
     if (outcome.status === 'success') notifyChiefTurn(deps, stepRow.buildId);
     // #631 失败闭环：build 路径的失败原因有 build.errorMessage 承接，chief

@@ -764,6 +764,23 @@ export type ChiefStreamItem =
    *  居中 danger 色提示 + 失败原因原文（live 面单源 = api/mappers
    *  mapChiefStream；fixture 面无此行——失败场景走 live 验证）。 */
   | { kind: 'error'; text: string }
+  /** #1049 问答卡行：chief ask_user 提问的投影（live 面单源 = api/mappers
+   *  collectChiefStream 的 askUserQuestionContentOf 分支；fixture 面无此行
+   *  ——问答是 live 交互场景，捕获面不构造）。pending 期可答可取消；答毕/
+   *  取消后只读翻面。`id` = 源 chief_message id（= requestId，答题端点位）。 */
+  | {
+      kind: 'question';
+      id?: string;
+      requestId: string;
+      status: 'pending' | 'answered' | 'cancelled';
+      questions: {
+        header: string;
+        question: string;
+        options: { label: string; description?: string }[];
+        multiSelect?: boolean;
+      }[];
+      answers: { header: string; choices?: string[]; text?: string }[] | null;
+    }
   /** User bubble with avatar + the copy/restore icon pair below it.
    *  `id` = live 面 chief_message id（#615 返工恢复钮的 rewind 锚；fixture
    *  面缺省 = 确认层 accept 律关窗，零请求）。#742: a live user row may
