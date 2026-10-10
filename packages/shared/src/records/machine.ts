@@ -40,15 +40,17 @@ export const machineRecordSchema = z.object({
    * migration 回填）——「机器 shell 权限改动秒级热加载」由每调用预检兑现
    * （POST /api/machine/shell/{stepId} 复读本列，非 claim 期一次闸）。 */
   shellEnabled: z.boolean(),
-  /** 机器并发上限（#1108）：该机同时执行的步数 N——server claim 闸 +
-   * daemon 本地闸双侧消费；超过 N 的步留 pending（排队）。DB NOT NULL
-   * 默认 3（历史值 0000 migration 同数）。optional 形 = 加法契约：老
-   * server 响应缺该字段，消费方回退（daemon 的本地闸按 1 串行，web 不
-   * 渲染并发面）；server 恒发全块。 */
+  /** 机器并发上限（#1108）：该机同时执行的 worker 步数 N——server claim 闸 +
+   * daemon 本地闸双侧消费；超过 N 的 worker 步留 pending（排队）。#1148 起
+   * chief 步不受本值约束（不占槽：满载 worker 时 chief 照领、runningSteps
+   * 不计 chief）。DB NOT NULL 默认 3（历史值 0000 migration 同数）。optional
+   * 形 = 加法契约：老 server 响应缺该字段，消费方回退（daemon 的本地闸按
+   * 1 串行，web 不渲染并发面）；server 恒发全块。 */
   maxConcurrent: z.number().int().optional(),
-  /** 该机当前 claimed 步数（#1108 排队可见的机器面读数，`执行中 n/N` 的
-   * n）：读侧派生（listSteps/claim 时点计数），不落库。optional 形同
-   * maxConcurrent——老 server 缺席时机器页不渲染该标注。 */
+  /** 该机当前 claimed 非 chief 步数（#1108 排队可见的机器面读数，`执行中 n/N`
+   * n；#1148 起 chief 在跑不进 n——n 恒 ≤ N）：读侧派生（listSteps/claim
+   * 时点计数），不落库。optional 形同 maxConcurrent——老 server 缺席时机器
+   * 页不渲染该标注。 */
   runningSteps: z.number().int().optional(),
 });
 export type MachineRecord = z.infer<typeof machineRecordSchema>;

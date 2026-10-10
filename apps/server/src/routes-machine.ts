@@ -261,7 +261,9 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   // —— POST /api/machine/tasks/claim（长轮询，节奏 ~75s + wake，r3 §1.5）———————
   app.post('/api/machine/tasks/claim', async (c) => {
     const row = me(c);
-    parseWith(machineClaimBodySchema, (await jsonBody(c)) ?? {}, 'body');
+    // #1148：maxWorkers 自报（daemon worker 并发上限）进 claim 闸；缺省 =
+    // 老 daemon 形（body 只按机器行）。
+    const body = parseWith(machineClaimBodySchema, (await jsonBody(c)) ?? {}, 'body');
     // #1065：透传请求存活态——客户端断连（daemon 被杀）时 node-server 对
     // Request signal abort，claim 面据此不替死机领步。
     const step = await claimStep(
@@ -271,6 +273,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
       ctx.claimHoldMs,
       originOf(c),
       c.req.raw.signal,
+      body,
     );
     return c.json({ step });
   });

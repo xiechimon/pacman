@@ -101,8 +101,16 @@ export type MachineRecoverResponse = z.infer<typeof machineRecoverResponseSchema
 
 /** POST /api/machine/tasks/claim body [推断]（动词：长轮询有实证，POST 为
  * claim 语义惯用形）。#503 起空体：原 `running`（在跑步数）字段只服务已被
- * 摘除的并发门，server 侧从未读它。 */
-export const machineClaimBodySchema = z.object({});
+ * 摘除的并发门，server 侧从未读它。
+ * #1148 增 `maxWorkers`（daemon worker 并发上限自报）：值 = daemon 侧
+ * effective cap（env PACMAN_DAEMON_MAX_CONCURRENT > DB machine 行 > 默认，
+ * daemon 解析单源）。server 的 worker 容量闸取 min(machine.maxConcurrent,
+ * 此值)——chief 步不受它约束。缺省 = 老 daemon 形（server 只按机器行；
+ * 纯增可选字段，zod strip 语义，无版本墙）。 */
+export const machineClaimBodySchema = z.object({
+  maxWorkers: z.number().int().min(1).optional(),
+});
+export type MachineClaimBody = z.infer<typeof machineClaimBodySchema>;
 
 /** claim 载荷（02 §4.2 三类步 + §5.7 生命周期行所需上下文）[设计]——
  * wire 未采（r3 无 claim 响应样本）；字段 = 主时序执行最小集，凭证不在此

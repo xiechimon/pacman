@@ -233,6 +233,12 @@ export interface SessionOpts {
    * 全量工具面（worker/chief 步现行为）。落点 = backend 工具面构建，宿主
    * 无从旁路。 */
   readOnly?: boolean;
+  /** #1148 per-step env 注入（worker 步端口基座 PACMAN_PORT_BASE 等）：值进
+   * agent 进程的命令环境——pi = bash 工具 spawn env（spawnHook）；claude-code
+   * = SDK options.env（整替语义，backend 展开 process.env）。注意它**不是**
+   * wire 字段（claim 载荷不携带）：槽位分配是 machine-loop 的本地事实，env
+   * 只随 SessionOpts 跨缝。缺省 = 不注入（backend 零变化）。 */
+  env?: Record<string, string>;
   /** worktree 目录（02 §5.5）。 */
   cwd: string;
   /** 本轮任务文本（实现期精化，01 §5 头部口径）：createSession = 首条用户

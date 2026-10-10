@@ -32,6 +32,7 @@ import { join, sep } from 'node:path';
 import {
   type AgentSession,
   createAgentSession,
+  createBashToolDefinition,
   createMcpExtension,
   createReadToolDefinition,
   DefaultResourceLoader,
@@ -1542,6 +1543,22 @@ export class PiBackend implements AgentBackend {
     if (deniedSkills.length > 0) {
       this.opts.onSkillsLog?.(`deny: ${deniedSkills.length} skill dir(s) hard-blocked`);
     }
+    // #1148 步级 env → bash spawn 注入：以同名 customTool 覆盖内建 bash（注
+    // 册表按名后写胜出，gatedRead 同律）。spawnHook 是 pi bash 工具的原生缝
+    // （BashToolOptions.spawnHook：command/cwd/env 三位；env 位在 PI_* 会话变
+    // 量注入之后合并——per-step 值最后写胜出）。createBashToolDefinition 与
+    // 会话内建 bash 同函数同参（agent-session 内部即 createAllToolDefinitions
+    // → createBashToolDefinition(cwd, options?.bash)；daemon 的 inMemory
+    // settings 无 shellPath/commandPrefix，两路行为位等价零漂移）。opts.env
+    // 缺席 = 不覆盖（零回归）。
+    const envBash =
+      opts.env !== undefined
+        ? defineTool(
+            createBashToolDefinition(opts.cwd, {
+              spawnHook: (ctx) => ({ ...ctx, env: { ...ctx.env, ...opts.env } }),
+            }),
+          )
+        : null;
     const { session } = await createAgentSession({
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
@@ -1575,9 +1592,14 @@ export class PiBackend implements AgentBackend {
         }),
         ...(mcpEndpoints.length > 0 ? [...MCP_TOOL_ALLOWLIST] : []),
       ],
-      ...(gatedRead || customTools.length > 0 || localTools.length > 0
+      ...(gatedRead || envBash !== null || customTools.length > 0 || localTools.length > 0
         ? {
-            customTools: [...(gatedRead ? [gatedRead] : []), ...customTools, ...localTools],
+            customTools: [
+              ...(gatedRead ? [gatedRead] : []),
+              ...(envBash !== null ? [envBash] : []),
+              ...customTools,
+              ...localTools,
+            ],
           }
         : {}),
     });

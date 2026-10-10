@@ -59,7 +59,7 @@ import {
   WORKER_REMOTE_TOOLS,
   WORKER_REMOTE_TOOLS_GITHUB,
 } from '@pacman/shared';
-import { and, asc, desc, eq, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
   agent,
@@ -450,13 +450,15 @@ export function findApiKeyByPlain(db: Db, plain: string) {
 
 /** machine 行 → wire record 投影单源（routes.ts GET/PATCH 与 routes-machine.ts
  * me 双消费；字段增删只改这里 + shared schema）。 */
-/** #1108 机器记录的 runningSteps 派生：该机 claimed 步数（全 kind——容量
- *  闸、机器页 `执行中 n/N`、排队 waitingFor 快照三处同源同数）。 */
+/** #1108 机器记录的 runningSteps 派生：该机 claimed 步数。#1148 起**只数
+ *  非 chief 步**（chief 不占并发槽——容量闸、机器页 `执行中 n/N`、排队
+ *  waitingFor 快照三处同源同数：满载 worker + chief 在跑时 n 不超 N，chief
+ *  步不受闸也不进计数）。 */
 export function machineRunningCount(db: Db, machineId: string): number {
   return db
     .select({ id: step.id })
     .from(step)
-    .where(and(eq(step.machineId, machineId), eq(step.status, 'claimed')))
+    .where(and(eq(step.machineId, machineId), eq(step.status, 'claimed'), ne(step.kind, 'chief')))
     .all().length;
 }
 
@@ -1004,22 +1006,33 @@ function tryClaim(
   machineId: string,
   teamId: string,
   origin: string,
+  maxWorkers?: number,
 ): ClaimedStep | null {
   const { db } = deps;
   const machineRow = db.select().from(machine).where(eq(machine.id, machineId)).get();
   if (!machineRow) return null;
   // #1108 并发门回归（maxConcurrent 列随本票复位——#503 摘除的前提「daemon
-  // 串行永不触顶」被 daemon 并行循环作废）：本机 claimed 步数达上限 = 不发步，
-  // 步留 pending（排队——对钉选机可见的步即该机队列，对未钉步它机照领）。
-  // 机器释放空位（finishStep 终态 wake）后下一轮 claim 即领。老 daemon（串行
-  // 循环）恒 1 ≤ N，闸对其永不触发 = 混版本零回归。
+  // 串行永不触顶」被 daemon 并行循环作废）：本机非 chief claimed 步数达上限 =
+  // worker 步不发，步留 pending（排队——对钉选机可见的步即该机队列，对未钉
+  // 步它机照领）。机器释放空位（finishStep 终态 wake）后下一轮 claim 即领。
+  // 老 daemon（串行循环）恒 1 ≤ N，闸对其永不触发 = 混版本零回归。
+  // #1148 chief 步不占槽：machineRunningCount 只数非 chief 步——满载 worker
+  // 时 chief 候选照发（workerCands 置空、earliestWorker = ∞，下方 chief 循
+  // 环不被挡）；仅 chief 在跑的机器满载不发 = 现状语义收窄到 worker 面。
+  // #1148 maxWorkers（claim body 自报）：worker 闸取 min(DB, 自报)——daemon
+  // 侧 env PACMAN_DAEMON_MAX_CONCURRENT 覆盖 DB 的 server 落点；缺省（老
+  // daemon）只按机器行。chief 不受它约束。
   const running = machineRunningCount(db, machineId);
-  if (running >= machineRow.maxConcurrent) return null;
-
-  // chief 步与 worker 步共队列，按 createdAt FIFO 交错（chief 派工先于其产生的
-  // worker 步入队，天然领先；跨类型仍按 createdAt 保序 [设计]）。
-  const workerCands = claimCandidates(deps, machineId, teamId);
+  const workerCap = Math.min(
+    machineRow.maxConcurrent,
+    ...(maxWorkers !== undefined ? [maxWorkers] : []),
+  );
+  const workerCands = running >= workerCap ? [] : claimCandidates(deps, machineId, teamId);
   const chiefCands = claimChiefCandidates(deps, machineId, teamId);
+  // chief 步与 worker 步共队列，按 createdAt FIFO 交错（chief 派工先于其产生的
+  // worker 步入队，天然领先；跨类型仍按 createdAt 保序 [设计]）。闸关（worker
+  // 满载）时 workerCands 空 = earliestWorker ∞——chief 照走（被挡的 worker 本
+  // 就不可领，不让它反过来饿死 chief）。
   const earliestWorker = workerCands[0]?.stepRow.createdAt ?? Number.POSITIVE_INFINITY;
   for (const cand of chiefCands) {
     if (cand.stepRow.createdAt > earliestWorker) break; // worker 更早 → 先走 worker
@@ -1257,13 +1270,14 @@ export async function claimStep(
   holdMs: number,
   origin: string,
   signal?: AbortSignal,
+  body?: { maxWorkers?: number },
 ): Promise<ClaimedStep | null> {
   if (signal?.aborted) return null;
-  const first = tryClaim(deps, machineId, teamId, origin);
+  const first = tryClaim(deps, machineId, teamId, origin, body?.maxWorkers);
   if (first) return first;
   await deps.machineHub.waitWake(teamId, holdMs, signal);
   if (signal?.aborted) return null;
-  return tryClaim(deps, machineId, teamId, origin);
+  return tryClaim(deps, machineId, teamId, origin, body?.maxWorkers);
 }
 
 // —— journal：heartbeat / tool / token / upload-urls / done（02 §5.4）——————————

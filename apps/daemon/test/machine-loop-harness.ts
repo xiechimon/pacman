@@ -95,6 +95,8 @@ export class FakeMachineApi implements MachineApi {
   onStreamEvent: ((ev: MachineStreamEvent) => void) | null = null;
   /** claim 请求计数（#482：wake 事件不得引发在飞 claim 中断重发）。 */
   claimCalls = 0;
+  /** #1148：claim body 记录面（maxWorkers 自报断言用）。 */
+  claimBodies: unknown[] = [];
 
   enrollBodies: unknown[] = [];
   presenceBodies: unknown[] = [];
@@ -132,8 +134,9 @@ export class FakeMachineApi implements MachineApi {
     this.calls.push('recover');
     return { steps: this.recoverSteps };
   }
-  async claim(signal?: AbortSignal): Promise<ClaimedStep | null> {
+  async claim(signal?: AbortSignal, body?: unknown): Promise<ClaimedStep | null> {
     this.claimCalls += 1;
+    if (body !== undefined) this.claimBodies.push(body);
     if (this.failClaims > 0) {
       this.failClaims -= 1;
       throw new Error('network down');
@@ -142,7 +145,13 @@ export class FakeMachineApi implements MachineApi {
     if (next instanceof Error) throw next;
     if (next) return next;
     return new Promise<ClaimedStep | null>((resolve, reject) => {
-      this.parked = resolve;
+      // #1148：parked 解析即清（与 abort 同律）——「parked ≠ null」恒表示一条
+      // 挂起中的 claim（多步连续推送的测试不再可能把第二步推给已消费的旧
+      // resolver——那是静默丢弃面）。
+      this.parked = (v) => {
+        this.parked = null;
+        resolve(v);
+      };
       signal?.addEventListener('abort', () => {
         this.parked = null;
         reject(new Error('aborted'));
@@ -272,6 +281,9 @@ export async function boot(opts: {
   preEnrolled?: { serverUrl: string };
   /** #1026：runMachine 起动前预置 journal 条目（recover 快路径派发面）。 */
   seedJournal?: (paths: StatePaths) => void;
+  /** #1148：cap 解析 env 源注入面（PACMAN_DAEMON_MAX_CONCURRENT；缺省 =
+   * 真 process.env，proxyEnv 同律）。 */
+  capEnv?: NodeJS.ProcessEnv;
 }) {
   const home = tmpHome();
   const { logger, lines } = captureLogger();
@@ -313,6 +325,7 @@ export async function boot(opts: {
     presenceIntervalMs: 60_000,
     claimBackoffBaseMs: 10,
     proxyEnv: {},
+    ...(opts.capEnv !== undefined ? { capEnv: opts.capEnv } : {}),
   });
   return { handle, api, lines, paths, home };
 }

@@ -10,8 +10,8 @@ import { boot, CLAIMED, FakeMachineApi, waitFor } from './machine-loop-harness.j
 // 失败方式（先于实现固化）：
 //   P1 该并行不并行：cap≥2 且两步在队 → 两步并发执行（canon 行
 //      `(1 running)` / `(2 running)` 各一条）。
-//   P2 本地闸失效：在飞数达 cap 仍发起 claim（parked 应保持 null——不浪费
-//      一次必空手的长轮询）。
+//   P2 本地闸停发（#1148 语义更新）：在飞数达 cap 且 gated server → 循环保
+//      持恰一条挂起 claim（chief 可领），不叠发风暴。
 //   P3 空位交接：一步收尾（done 落账）→ 槽释放 → 循环恢复领步（parked
 //      回来）。
 //   P4 优雅停止破约：stop 后 done 在在飞步收尾前 resolve。
@@ -80,14 +80,18 @@ describe('#1108 并行执行循环（localCap 并发 + 空位交接 + 优雅停�
     api.parked?.(claimedFor('s2', 'conv-2'));
     await waitFor(() => lines.some((l) => l.includes('step s2 for conv conv-2 (2 running)')));
     expect(lines.some((l) => l.includes('step s1 for conv conv-1 (1 running)'))).toBe(true);
-    // P2：在飞 2 = cap → 不再 claim（claimCalls 不增；观察窗 80ms）。
+    // P2（#1148 语义更新）：在飞 2 = cap、gated server → 循环保持**恰一条**
+    // 挂起 claim（chief 随时可领——poll 不再「必空手」，但也不叠发风暴；
+    // 观察窗 80ms 内 claimCalls 至多 +1 且 parked 存活）。
     const claimsAtFull = api.claimCalls;
     await new Promise((r) => setTimeout(r, 80));
-    expect(api.claimCalls).toBe(claimsAtFull);
-    // P3：释放步 1 → done 落账 → 空位交接（循环恢复 claim）。
+    expect(api.claimCalls).toBeLessThanOrEqual(claimsAtFull + 1);
+    expect(api.parked).not.toBeNull();
+    // P3：释放步 1 → done 落账 → 空位交接（挂起 claim 在位——server 侧闸开
+    // 即经它领下一格；#1148 起空位交接的载体就是这条常开 claim）。
     gate1.resolve();
     await waitFor(() => api.doneBodies.some((d) => d.stepId === 's1'));
-    await waitFor(() => api.claimCalls > claimsAtFull);
+    await waitFor(() => api.parked !== null);
     api.parked?.(claimedFor('s3', 'conv-3'));
     await waitFor(() => lines.some((l) => l.includes('step s3 for conv conv-3 (2 running)')));
     // P4：优雅停止——s2/s3 未收尾前 done 不得 resolve。
